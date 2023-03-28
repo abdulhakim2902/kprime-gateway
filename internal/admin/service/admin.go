@@ -2,8 +2,8 @@ package service
 
 import (
 	"context"
-	"gateway/internal/admin/model"
 	"gateway/internal/admin/repository"
+	"gateway/internal/user/model"
 	"log"
 	"math/rand"
 	"net/url"

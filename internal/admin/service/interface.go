@@ -2,7 +2,7 @@ package service
 
 import (
 	"context"
-	"gateway/internal/admin/model"
+	"gateway/internal/user/model"
 	"net/url"
 )
 

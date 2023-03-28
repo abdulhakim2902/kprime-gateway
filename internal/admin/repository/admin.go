@@ -3,7 +3,7 @@ package repository
 import (
 	"context"
 	"fmt"
-	"gateway/internal/admin/model"
+	"gateway/internal/user/model"
 
 	"gorm.io/gorm"
 )

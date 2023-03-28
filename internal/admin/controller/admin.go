@@ -2,8 +2,8 @@ package controller
 
 import (
 	"encoding/json"
-	_adminModel "gateway/internal/admin/model"
 	"gateway/internal/admin/service"
+	_userModel "gateway/internal/user/model"
 	"gateway/pkg/model"
 	"net/http"
 
@@ -24,7 +24,7 @@ func NewAdminHandler(r *gin.Engine, svc service.IAdminService) {
 }
 
 func (h *adminHandler) CreateNewClient(r *gin.Context) {
-	var req _adminModel.CreateClient
+	var req _userModel.CreateClient
 	err := json.NewDecoder(r.Request.Body).Decode(&req)
 	if err != nil {
 		r.JSON(http.StatusBadRequest, &model.Response{

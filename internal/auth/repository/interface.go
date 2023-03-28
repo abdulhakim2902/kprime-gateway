@@ -2,7 +2,7 @@ package repository
 
 import (
 	"context"
-	"gateway/internal/admin/model"
+	"gateway/internal/user/model"
 )
 
 type IAuthRepo interface {

@@ -3,9 +3,9 @@ package main
 import (
 	"context"
 	"gateway/internal/admin/controller"
-	"gateway/internal/admin/model"
 	"gateway/internal/admin/repository"
 	"gateway/internal/admin/service"
+	"gateway/internal/user/model"
 	"log"
 	"net/http"
 	"os"
