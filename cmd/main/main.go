@@ -2,6 +2,7 @@ package main
 
 import (
 	"gateway/internal/admin/controller"
+	"gateway/internal/admin/model"
 	"gateway/internal/admin/repository"
 	"gateway/internal/admin/service"
 	"net/http"
@@ -19,6 +20,7 @@ func main() {
 		panic(err)
 	}
 
+	db.AutoMigrate(&model.Client{})
 	repo := repository.NewAdminRepo(db)
 	svc := service.NewAdminService(repo)
 	controller.NewAdminHandler(r, svc)

@@ -1,5 +1,8 @@
 package model
 
 type Response struct {
-	Data string `json:"data"`
+	Error   bool        `json:"error"`
+	Message string      `json:"message"`
+	Data    interface{} `json:"data"`
+	Paging  interface{} `json:"paging"`
 }
