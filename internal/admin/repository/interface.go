@@ -5,7 +5,7 @@ import (
 	"gateway/internal/admin/model"
 )
 
-type Repo interface {
+type IAdminRepo interface {
 	CreateNewClient(ctx context.Context, data model.Client) (client model.Client, err error)
 	GetAllClient(context.Context, map[string]interface{}) ([]model.Client, error)
 }

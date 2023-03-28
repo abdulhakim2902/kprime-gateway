@@ -6,7 +6,7 @@ import (
 	"net/url"
 )
 
-type AdminService interface {
+type IAdminService interface {
 	CreateNewClient(context.Context, model.CreateClient) (model.Client, error)
 	GetAllClient(context.Context, url.Values) ([]model.Client, error)
 }

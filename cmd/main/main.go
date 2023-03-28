@@ -7,6 +7,10 @@ import (
 	"gateway/internal/admin/service"
 	"net/http"
 
+	_authCtrl "gateway/internal/auth/controller"
+	_authRepo "gateway/internal/auth/repository"
+	_authSvc "gateway/internal/auth/service"
+
 	"github.com/gin-gonic/gin"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -14,16 +18,20 @@ import (
 
 func main() {
 	r := gin.New()
-	dsn := "root:secret@tcp(127.0.0.1:3306)/option_exchange"
+	dsn := "root:secret@tcp(127.0.0.1:3306)/option_exchange?parseTime=true"
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
 		panic(err)
 	}
 
 	db.AutoMigrate(&model.Client{})
-	repo := repository.NewAdminRepo(db)
-	svc := service.NewAdminService(repo)
-	controller.NewAdminHandler(r, svc)
+	adminRepo := repository.NewAdminRepo(db)
+	adminSvc := service.NewAdminService(adminRepo)
+	controller.NewAdminHandler(r, adminSvc)
+
+	authRepo := _authRepo.NewAuthRepo(db)
+	authSvc := _authSvc.NewAuthService(authRepo)
+	_authCtrl.NewAuthHandler(r, authSvc)
 
 	r.GET("/ping", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{

@@ -11,10 +11,10 @@ import (
 )
 
 type adminHandler struct {
-	svc service.AdminService
+	svc service.IAdminService
 }
 
-func NewAdminHandler(r *gin.Engine, svc service.AdminService) {
+func NewAdminHandler(r *gin.Engine, svc service.IAdminService) {
 	handler := &adminHandler{
 		svc: svc,
 	}
@@ -31,6 +31,7 @@ func (h *adminHandler) CreateNewClient(r *gin.Context) {
 			Error:   true,
 			Message: err.Error(),
 		})
+		return
 	}
 	client, err := h.svc.CreateNewClient(r.Request.Context(), req)
 	if err != nil {
@@ -38,10 +39,12 @@ func (h *adminHandler) CreateNewClient(r *gin.Context) {
 			Error:   true,
 			Message: err.Error(),
 		})
+		return
 	}
 	r.JSON(http.StatusAccepted, &model.Response{
 		Data: client,
 	})
+	return
 }
 
 func (h *adminHandler) GetAllClient(r *gin.Context) {
@@ -51,8 +54,10 @@ func (h *adminHandler) GetAllClient(r *gin.Context) {
 			Error:   true,
 			Message: err.Error(),
 		})
+		return
 	}
 	r.JSON(http.StatusOK, &model.Response{
 		Data: clients,
 	})
+	return
 }
