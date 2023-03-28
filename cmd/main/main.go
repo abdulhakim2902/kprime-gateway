@@ -11,6 +11,9 @@ import (
 	_authRepo "gateway/internal/auth/repository"
 	_authSvc "gateway/internal/auth/service"
 
+	_deribitCtrl "gateway/internal/deribit/controller"
+	_deribitSvc "gateway/internal/deribit/service"
+
 	"github.com/gin-gonic/gin"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -18,7 +21,7 @@ import (
 
 func main() {
 	r := gin.New()
-	dsn := "root:secret@tcp(127.0.0.1:3306)/option_exchange?parseTime=true"
+	dsn := "root:@tcp(127.0.0.1:3306)/option_exchange?parseTime=true"
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
 		panic(err)
@@ -32,6 +35,9 @@ func main() {
 	authRepo := _authRepo.NewAuthRepo(db)
 	authSvc := _authSvc.NewAuthService(authRepo)
 	_authCtrl.NewAuthHandler(r, authSvc)
+
+	_deribitSvc := _deribitSvc.NewDeribitService()
+	_deribitCtrl.NewDeribitHandler(r, _deribitSvc)
 
 	r.GET("/ping", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
