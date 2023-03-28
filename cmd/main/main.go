@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"gateway/internal/admin/controller"
+	_adminModel "gateway/internal/admin/model"
 	"gateway/internal/admin/repository"
 	"gateway/internal/admin/service"
 	"gateway/internal/user/model"
@@ -17,6 +18,8 @@ import (
 	_authRepo "gateway/internal/auth/repository"
 	_authSvc "gateway/internal/auth/service"
 
+	"github.com/casbin/casbin/v2"
+	gormadapter "github.com/casbin/gorm-adapter/v3"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"gorm.io/driver/mysql"
@@ -24,7 +27,7 @@ import (
 )
 
 func main() {
-	err := godotenv.Load()
+	err := godotenv.Load("../../.env")
 	if err != nil {
 		panic(err)
 	}
@@ -34,15 +37,26 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	adapter, err := gormadapter.NewAdapterByDB(db)
+	if err != nil {
+		panic("failed to load rbac config")
+	}
 
-	db.AutoMigrate(&model.Client{})
+	enforcer, err := casbin.NewEnforcer("../../pkg/rbac/config/model.conf", adapter)
+	if err != nil {
+		panic(err)
+	}
+
+	//dev only
+	db.AutoMigrate(&model.Client{}, &_adminModel.Admin{}, &_adminModel.Role{})
+	
 	adminRepo := repository.NewAdminRepo(db)
 	adminSvc := service.NewAdminService(adminRepo)
-	controller.NewAdminHandler(r, adminSvc)
+	controller.NewAdminHandler(r, adminSvc, enforcer)
 
 	authRepo := _authRepo.NewAuthRepo(db)
 	authSvc := _authSvc.NewAuthService(authRepo)
-	_authCtrl.NewAuthHandler(r, authSvc)
+	_authCtrl.NewAuthHandler(r, authSvc, enforcer)
 
 	srv := &http.Server{
 		Addr:    ":8080",

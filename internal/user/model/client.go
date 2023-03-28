@@ -1,6 +1,9 @@
 package model
 
-import "time"
+import (
+	"gateway/internal/admin/model"
+	"time"
+)
 
 type CreateClient struct {
 	Name     string `json:"name"`
@@ -9,12 +12,14 @@ type CreateClient struct {
 }
 
 type Client struct {
-	ID                 uint      `gorm:"primarykey" json:"id"`
-	Name               string    `json:"name" gorm:"<-"`
-	Email              string    `json:"email" gorm:"<-"`
-	ClientId           string    `json:"client_id" gorm:"<-"`
-	Password           string    `json:"password" gorm:"<-"`
-	HashedClientSecret string    `json:"hashed_client_secret" gorm:"<-"`
-	CreatedAt          time.Time `json:"created_at"`
-	UpdatedAt          time.Time `json:"updated_at"`
+	ID                 uint       `gorm:"primarykey" json:"id"`
+	Name               string     `json:"name"`
+	Email              string     `json:"email"`
+	ClientId           string     `json:"client_id"`
+	Password           string     `json:"password"`
+	HashedClientSecret string     `json:"hashed_client_secret"`
+	RoleId             int        `json:"role_id"`
+	Role               model.Role `gorm:"foreignKey:RoleId"`
+	CreatedAt          time.Time  `json:"created_at"`
+	UpdatedAt          time.Time  `json:"updated_at"`
 }

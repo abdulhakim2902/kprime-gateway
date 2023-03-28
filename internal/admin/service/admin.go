@@ -2,8 +2,9 @@ package service
 
 import (
 	"context"
+	"gateway/internal/admin/model"
 	"gateway/internal/admin/repository"
-	"gateway/internal/user/model"
+	_userModel "gateway/internal/user/model"
 	"log"
 	"math/rand"
 	"net/url"
@@ -19,20 +20,41 @@ func NewAdminService(adminRepo repository.IAdminRepo) IAdminService {
 	return &adminService{adminRepo}
 }
 
-func (svc adminService) CreateNewClient(ctx context.Context, data model.CreateClient) (model.Client, error) {
+func (svc adminService) Register(ctx context.Context, data model.RegisterAdmin) (admin model.Admin, err error) {
+	
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(data.Password), 14)
 	if err != nil {
 		log.Println(err.Error())
-		return model.Client{}, err
+		return admin, err
+	}
+	if err != nil {
+		log.Println(err.Error())
+		return admin, err
+	}
+	admin = model.Admin{
+		Name:     data.Name,
+		Email:    data.Email,
+		Password: string(hashedPassword),
+		RoleId:   1,
+	}
+	svc.repo.Register(ctx, admin)
+	return admin, nil
+}
+
+func (svc adminService) CreateNewClient(ctx context.Context, data _userModel.CreateClient) (_userModel.Client, error) {
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(data.Password), 14)
+	if err != nil {
+		log.Println(err.Error())
+		return _userModel.Client{}, err
 	}
 	clientId := generateClientId()
 	clientSecret := generateClientSecret(clientId)
 	hashedSecret, err := bcrypt.GenerateFromPassword([]byte(clientSecret), 14)
 	if err != nil {
 		log.Println(err.Error())
-		return model.Client{}, err
+		return _userModel.Client{}, err
 	}
-	client := model.Client{
+	client := _userModel.Client{
 		Name:               data.Name,
 		Email:              data.Email,
 		Password:           string(hashedPassword),
@@ -40,14 +62,14 @@ func (svc adminService) CreateNewClient(ctx context.Context, data model.CreateCl
 		HashedClientSecret: string(hashedSecret),
 	}
 	svc.repo.CreateNewClient(ctx, client)
-	return model.Client{}, nil
+	return _userModel.Client{}, nil
 }
 
-func (svc adminService) GetAllClient(ctx context.Context, query url.Values) (clients []model.Client, err error) {
+func (svc adminService) GetAllClient(ctx context.Context, query url.Values) (clients []_userModel.Client, err error) {
 	clients, err = svc.repo.GetAllClient(ctx, nil)
 	if err != nil {
 		log.Println(err.Error())
-		return []model.Client{}, err
+		return []_userModel.Client{}, err
 	}
 	return clients, nil
 }
