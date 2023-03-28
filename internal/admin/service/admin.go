@@ -12,10 +12,10 @@ import (
 )
 
 type adminService struct {
-	repo repository.Repo
+	repo repository.IAdminRepo
 }
 
-func NewAdminService(adminRepo repository.Repo) AdminService {
+func NewAdminService(adminRepo repository.IAdminRepo) IAdminService {
 	return &adminService{adminRepo}
 }
 
