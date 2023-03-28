@@ -92,3 +92,45 @@ func main() {
 	}
 	log.Println("Server exiting")
 }
+
+func setupRBAC(enforcer *casbin.Enforcer) {
+	if hasPolicy := enforcer.HasPolicy("admin", "user", "read"); !hasPolicy {
+		enforcer.AddPolicy("admin", "user", "read")
+	}
+	if hasPolicy := enforcer.HasPolicy("admin", "user", "write"); !hasPolicy {
+		enforcer.AddPolicy("admin", "user", "write")
+	}
+	if hasPolicy := enforcer.HasPolicy("admin", "user", "delete"); !hasPolicy {
+		enforcer.AddPolicy("admin", "user", "delete")
+	}
+
+	// Role: admin 
+	if hasPolicy := enforcer.HasPolicy("admin", "role", "read"); !hasPolicy {
+		enforcer.AddPolicy("admin", "role", "read")
+	}
+	if hasPolicy := enforcer.HasPolicy("admin", "role", "write"); !hasPolicy {
+		enforcer.AddPolicy("admin", "role", "write")
+	}
+	if hasPolicy := enforcer.HasPolicy("admin", "role", "delete"); !hasPolicy {
+		enforcer.AddPolicy("admin", "role", "delete")
+	}
+
+	// Role: market_maker 
+	if hasPolicy := enforcer.HasPolicy("market_maker", "trading", "buy"); !hasPolicy {
+		enforcer.AddPolicy("market_maker", "trading", "buy")
+	}
+	if hasPolicy := enforcer.HasPolicy("market_maker", "trading", "sell"); !hasPolicy {
+		enforcer.AddPolicy("market_maker", "trading", "sell")
+	}
+	if hasPolicy := enforcer.HasPolicy("market_maker", "instrument", "write"); !hasPolicy {
+		enforcer.AddPolicy("market_maker", "instrument", "write")
+	}
+
+	// Role: client/user
+	if hasPolicy := enforcer.HasPolicy("user", "trading", "sell"); !hasPolicy {
+		enforcer.AddPolicy("user", "trading", "sell")
+	}
+	if hasPolicy := enforcer.HasPolicy("user", "trading", "buy"); !hasPolicy {
+		enforcer.AddPolicy("user", "trading", "buy")
+	}
+}
