@@ -5,12 +5,23 @@ import (
 
 	"github.com/casbin/casbin/v2"
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt"
 )
 
 func Authorize(obj string, act string, enforcer *casbin.Enforcer) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Get current user/subject
-		sub, existed := c.Get("userID")
+		authorization := c.GetHeader("authorization")
+		tokenString := authorization[7:]
+		token, _ := jwt.Parse(tokenString, func(t *jwt.Token) (interface{}, error) {
+			token, _ := t.Method.(*jwt.SigningMethodHMAC)
+            
+            return token, nil
+		})
+		claims := token.Claims.(jwt.MapClaims);
+		c.Set("role", claims["role"])
+		c.Set("userID", claims["userID"])
+
+		sub, existed := c.Get("role")
 		if !existed {
 			c.AbortWithStatusJSON(401, gin.H{"msg": "User hasn't logged in yet"})
 			return
@@ -32,7 +43,7 @@ func Authorize(obj string, act string, enforcer *casbin.Enforcer) gin.HandlerFun
 		}
 
 		if !ok {
-			c.AbortWithStatusJSON(403, gin.H{"msg": "You are not authorized"})
+			c.AbortWithStatusJSON(403, gin.H{"msg": "You are not authorized for this action"})
 			return
 		}
 		c.Next()

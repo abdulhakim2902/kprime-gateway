@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"gateway/internal/admin/controller"
 	_adminModel "gateway/internal/admin/model"
 	"gateway/internal/admin/repository"
@@ -34,6 +35,8 @@ import (
 func main() {
 	_, b, _, _ := runtime.Caller(0)
 	rootDir := path.Join(b, "../../../")
+	fmt.Println(b)
+	fmt.Println(rootDir)
 	err := godotenv.Load(path.Join(rootDir, ".env"))
 	if err != nil {
 		panic(err)
