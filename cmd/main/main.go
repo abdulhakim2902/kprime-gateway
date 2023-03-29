@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"gateway/internal/admin/controller"
 	_adminModel "gateway/internal/admin/model"
 	"gateway/internal/admin/repository"
@@ -11,6 +12,8 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path"
+	"runtime"
 	"syscall"
 	"time"
 
@@ -27,7 +30,11 @@ import (
 )
 
 func main() {
-	err := godotenv.Load("../../.env")
+	_, b, _, _ := runtime.Caller(0)
+	rootDir := path.Join(b, "../../../")
+	fmt.Println(b)
+	fmt.Println(rootDir)
+	err := godotenv.Load(path.Join(rootDir, ".env"))
 	if err != nil {
 		panic(err)
 	}
@@ -42,7 +49,7 @@ func main() {
 		panic("failed to load rbac config")
 	}
 
-	enforcer, err := casbin.NewEnforcer("../../pkg/rbac/config/model.conf", adapter)
+	enforcer, err := casbin.NewEnforcer(path.Join(rootDir, "pkg/rbac/config/model.conf"), adapter)
 	if err != nil {
 		panic(err)
 	}
