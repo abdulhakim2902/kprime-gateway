@@ -2,8 +2,6 @@ package middleware
 
 import (
 	"fmt"
-	"gateway/pkg/model"
-	"net/http"
 
 	"github.com/casbin/casbin/v2"
 	"github.com/gin-gonic/gin"
@@ -15,13 +13,8 @@ func Authorize(obj string, act string, enforcer *casbin.Enforcer) gin.HandlerFun
 		authorization := c.GetHeader("authorization")
 		tokenString := authorization[7:]
 		token, _ := jwt.Parse(tokenString, func(t *jwt.Token) (interface{}, error) {
-			token, ok := t.Method.(*jwt.SigningMethodECDSA)
-            if !ok {
-               c.JSON(http.StatusUnauthorized, &model.Response{
-					Error: true,
-					Message: "Unauthorized",
-			   })
-            }
+			token, _ := t.Method.(*jwt.SigningMethodHMAC)
+            
             return token, nil
 		})
 		claims := token.Claims.(jwt.MapClaims);
