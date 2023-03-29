@@ -44,11 +44,13 @@ func (s authService) AdminLogin(ctx context.Context, data model.LoginRequest) (s
 	if err != nil {
 		return "", bcrypt.ErrMismatchedHashAndPassword
 	}
+	authToken, err := s.repo.GenerateAuthDetail(ctx, admin.ID)
 	claim := jwt.MapClaims{
 		"exp":    time.Now().Add(time.Hour * 3).Unix(),
 		"iat":    time.Now().Unix(),
 		"userID": admin.ID,
 		"role":   admin.Role.Name,
+		"authUUID": authToken.AuthUUID,
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claim)
 	signedToken, err = token.SignedString([]byte(admin.Role.Name))
@@ -56,4 +58,9 @@ func (s authService) AdminLogin(ctx context.Context, data model.LoginRequest) (s
 		return "", err
 	}
 	return signedToken, nil
+}
+
+func(s authService) Logout(ctx context.Context) (error) {
+	s.repo.InvalidateToken(ctx, ctx.Value("userID").(uint), ctx.Value("authUUID").(string))
+	return nil
 }
