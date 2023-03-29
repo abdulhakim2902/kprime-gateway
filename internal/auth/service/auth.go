@@ -33,3 +33,20 @@ func (s authService) Login(ctx context.Context, data model.LoginRequest) (signed
 	}
 	return signedToken, nil
 }
+
+func (s authService) AdminLogin(ctx context.Context, data model.LoginRequest) (signedToken string, err error) {
+	admin, err := s.repo.GetAdminByEmail(ctx, data.Email)
+	if (err != nil) {
+		return "", err
+	}
+	err = bcrypt.CompareHashAndPassword([]byte(admin.Password), []byte(data.Password))
+	if err != nil {
+		return "", bcrypt.ErrMismatchedHashAndPassword
+	}
+	token := jwt.New(jwt.SigningMethodHS256)
+	signedToken, err = token.SignedString([]byte(admin.Role.Name))
+	if err != nil {
+		return "", err
+	}
+	return signedToken, nil
+}

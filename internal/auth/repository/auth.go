@@ -3,7 +3,8 @@ package repository
 import (
 	"context"
 	"fmt"
-	"gateway/internal/admin/model"
+	_adminModel "gateway/internal/admin/model"
+	_userModel "gateway/internal/user/model"
 
 	"gorm.io/gorm"
 )
@@ -16,18 +17,29 @@ func NewAuthRepo(db *gorm.DB) IAuthRepo {
 	return &authRepo{db}
 }
 
-func (a authRepo) GetOneUserByEmail(ctx context.Context, email string) (user model.Client, err error) {
-	result := a.db.Where(&model.Client{Email: email}).First(&user)
+func (a authRepo) GetOneUserByEmail(ctx context.Context, email string) (user _userModel.Client, err error) {
+	result := a.db.Where(&_userModel.Client{Email: email}).First(&user)
 	if result.Error != nil {
 		return user, result.Error
 	}
-	if user == (model.Client{}) {
+	if user == (_userModel.Client{}) {
 		return user, fmt.Errorf("user with the email %s is not found", email)
 	}
-	fmt.Print(user.ID, user.Email)
 	return user, nil
 }
 
-func (a authRepo) GetUser(ctx context.Context, query map[string]interface{}) (users []model.Client, err error) {
+func (a authRepo) GetAdminByEmail(ctx context.Context, email string) (admin _adminModel.Admin, err error) {
+	result := a.db.Where(&_adminModel.Admin{Email: email}).First(&admin)
+	if result.Error != nil {
+		return admin, result.Error
+	}
+	if admin == (_adminModel.Admin{}) {
+		return admin, fmt.Errorf("user with the email %s is not found", email)
+	}
+	return admin, nil
+}
+
+
+func (a authRepo) GetUser(ctx context.Context, query map[string]interface{}) (users []_userModel.Client, err error) {
 	return users, nil
 }
