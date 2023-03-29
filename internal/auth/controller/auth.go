@@ -7,6 +7,8 @@ import (
 	"gateway/pkg/model"
 	"net/http"
 
+	cors "github.com/rs/cors/wrapper/gin"
+
 	"github.com/casbin/casbin/v2"
 	"github.com/gin-gonic/gin"
 )
@@ -19,6 +21,7 @@ func NewAuthHandler(r *gin.Engine, svc service.IAuthService, enforcer *casbin.En
 	handler := &authHandler{
 		svc: svc,
 	}
+	r.Use(cors.AllowAll())
 
 	authRoute := r.Group("/auth")
 	userAuthRoute := authRoute.Group("user")

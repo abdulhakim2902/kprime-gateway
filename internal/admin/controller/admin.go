@@ -9,6 +9,8 @@ import (
 	"gateway/pkg/rbac/middleware"
 	"net/http"
 
+	cors "github.com/rs/cors/wrapper/gin"
+
 	"github.com/casbin/casbin/v2"
 	"github.com/gin-gonic/gin"
 )
@@ -21,6 +23,7 @@ func NewAdminHandler(r *gin.Engine, svc service.IAdminService, enforcer *casbin.
 	handler := &adminHandler{
 		svc: svc,
 	}
+	r.Use(cors.AllowAll())
 	adminRoute := r.Group("/admin")
 
 	adminRoute.POST("/register", handler.Register)
