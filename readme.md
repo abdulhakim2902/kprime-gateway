@@ -24,3 +24,17 @@ go run main.go
 
 under cmd/main directory
 this will automatically install project dependecy, just make sure you have go installed and GOPATH set in your env.
+
+### Using docker
+
+to build the image you can run
+
+```bash
+docker build -t exchage-gateway .
+```
+
+and running the container by running this command
+
+```bash
+docker run --rm -p 8080:8080 exchange-gateway
+```
