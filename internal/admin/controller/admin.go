@@ -27,8 +27,8 @@ func NewAdminHandler(r *gin.Engine, svc service.IAdminService, enforcer *casbin.
 	adminRoute := r.Group("/admin")
 
 	adminRoute.POST("/register", handler.Register)
-	adminRoute.POST("/client", middleware.Authorize("client", "write", enforcer), handler.CreateNewClient)
-	adminRoute.GET("/client", middleware.Authorize("client", "read", enforcer), handler.GetAllClient)
+	adminRoute.POST("/client", middleware.Authorize("user", "write", enforcer), handler.CreateNewClient)
+	adminRoute.GET("/client", middleware.Authorize("user", "read", enforcer), handler.GetAllClient)
 }
 
 func (h *adminHandler) Register(r *gin.Context) {

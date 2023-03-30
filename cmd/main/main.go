@@ -7,6 +7,7 @@ import (
 	_adminModel "gateway/internal/admin/model"
 	"gateway/internal/admin/repository"
 	"gateway/internal/admin/service"
+	_authModel "gateway/internal/auth/model"
 	"gateway/internal/user/model"
 	"log"
 	"net/http"
@@ -55,8 +56,9 @@ func main() {
 	}
 
 	//dev only
-	db.AutoMigrate(&model.Client{}, &_adminModel.Admin{}, &_adminModel.Role{})
-	
+	db.AutoMigrate(&model.Client{}, &_adminModel.Admin{}, &_adminModel.Role{}, &_authModel.TokenAuth{})
+	setupRBAC(enforcer)
+
 	adminRepo := repository.NewAdminRepo(db)
 	adminSvc := service.NewAdminService(adminRepo)
 	controller.NewAdminHandler(r, adminSvc, enforcer)
@@ -111,7 +113,7 @@ func setupRBAC(enforcer *casbin.Enforcer) {
 		enforcer.AddPolicy("admin", "user", "delete")
 	}
 
-	// Role: admin 
+	// Role: admin
 	if hasPolicy := enforcer.HasPolicy("admin", "role", "read"); !hasPolicy {
 		enforcer.AddPolicy("admin", "role", "read")
 	}
@@ -122,7 +124,7 @@ func setupRBAC(enforcer *casbin.Enforcer) {
 		enforcer.AddPolicy("admin", "role", "delete")
 	}
 
-	// Role: market_maker 
+	// Role: market_maker
 	if hasPolicy := enforcer.HasPolicy("market_maker", "trading", "buy"); !hasPolicy {
 		enforcer.AddPolicy("market_maker", "trading", "buy")
 	}
