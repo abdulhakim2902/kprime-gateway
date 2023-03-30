@@ -2,9 +2,10 @@ package service
 
 import (
 	"context"
-	"net/url"
+	"gateway/internal/deribit/model"
 )
 
 type IDeribitService interface {
-	DeribitParseOrder(ctx context.Context, params url.Values) (interface{}, error)
+	DeribitParseBuy(ctx context.Context, data model.DeribitRequest) (model.DeribitResponse, error)
+	DeribitParseSell(ctx context.Context, data model.DeribitRequest) (model.DeribitResponse, error)
 }
