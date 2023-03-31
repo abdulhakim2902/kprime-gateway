@@ -21,6 +21,9 @@ import (
 	_authRepo "gateway/internal/auth/repository"
 	_authSvc "gateway/internal/auth/service"
 
+	_deribitCtrl "gateway/internal/deribit/controller"
+	_deribitSvc "gateway/internal/deribit/service"
+
 	"github.com/casbin/casbin/v2"
 	gormadapter "github.com/casbin/gorm-adapter/v3"
 	"github.com/gin-gonic/gin"
@@ -56,7 +59,7 @@ func main() {
 
 	//dev only
 	db.AutoMigrate(&model.Client{}, &_adminModel.Admin{}, &_adminModel.Role{})
-	
+
 	adminRepo := repository.NewAdminRepo(db)
 	adminSvc := service.NewAdminService(adminRepo)
 	controller.NewAdminHandler(r, adminSvc, enforcer)
@@ -64,6 +67,9 @@ func main() {
 	authRepo := _authRepo.NewAuthRepo(db)
 	authSvc := _authSvc.NewAuthService(authRepo)
 	_authCtrl.NewAuthHandler(r, authSvc, enforcer)
+
+	_deribitSvc := _deribitSvc.NewDeribitService()
+	_deribitCtrl.NewDeribitHandler(r, _deribitSvc)
 
 	srv := &http.Server{
 		Addr:    ":8080",
@@ -111,7 +117,7 @@ func setupRBAC(enforcer *casbin.Enforcer) {
 		enforcer.AddPolicy("admin", "user", "delete")
 	}
 
-	// Role: admin 
+	// Role: admin
 	if hasPolicy := enforcer.HasPolicy("admin", "role", "read"); !hasPolicy {
 		enforcer.AddPolicy("admin", "role", "read")
 	}
@@ -122,7 +128,7 @@ func setupRBAC(enforcer *casbin.Enforcer) {
 		enforcer.AddPolicy("admin", "role", "delete")
 	}
 
-	// Role: market_maker 
+	// Role: market_maker
 	if hasPolicy := enforcer.HasPolicy("market_maker", "trading", "buy"); !hasPolicy {
 		enforcer.AddPolicy("market_maker", "trading", "buy")
 	}
