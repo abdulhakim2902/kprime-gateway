@@ -21,7 +21,7 @@ func NewAuthRepo(db *gorm.DB) IAuthRepo {
 }
 
 func (a authRepo) GetOneUserByEmail(ctx context.Context, email string) (user _userModel.Client, err error) {
-	result := a.db.Joins("Role").Where(&_userModel.Client{Email: email}).First(&user)
+	result := a.db.Joins("Role").Where(&_userModel.Client{Email: email}).Select("email").First(&user)
 	if result.Error != nil {
 		return user, result.Error
 	}
@@ -32,7 +32,7 @@ func (a authRepo) GetOneUserByEmail(ctx context.Context, email string) (user _us
 }
 
 func (a authRepo) GetAdminByEmail(ctx context.Context, email string) (admin _adminModel.Admin, err error) {
-	result := a.db.Joins("Role").Where(&_adminModel.Admin{Email: email}).First(&admin)
+	result := a.db.Joins("Role").Where(&_adminModel.Admin{Email: email}).Select("email").First(&admin)
 	if result.Error != nil {
 		return admin, result.Error
 	}
