@@ -10,15 +10,15 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-type authService struct {
+type AuthService struct {
 	repo repository.IAuthRepo
 }
 
 func NewAuthService(repo repository.IAuthRepo) IAuthService {
-	return &authService{repo}
+	return &AuthService{repo}
 }
 
-func (s authService) Login(ctx context.Context, data model.LoginRequest) (signedToken string, err error) {
+func (s AuthService) Login(ctx context.Context, data model.LoginRequest) (signedToken string, err error) {
 	user, err := s.repo.GetOneUserByEmail(ctx, data.Email)
 	if err != nil {
 		return "", err
@@ -35,7 +35,7 @@ func (s authService) Login(ctx context.Context, data model.LoginRequest) (signed
 	return signedToken, nil
 }
 
-func (s authService) AdminLogin(ctx context.Context, data model.LoginRequest) (signedToken string, err error) {
+func (s AuthService) AdminLogin(ctx context.Context, data model.LoginRequest) (signedToken string, err error) {
 	admin, err := s.repo.GetAdminByEmail(ctx, data.Email)
 	if err != nil {
 		return "", err
@@ -46,10 +46,10 @@ func (s authService) AdminLogin(ctx context.Context, data model.LoginRequest) (s
 	}
 	authToken, err := s.repo.GenerateAuthDetail(ctx, admin.ID)
 	claim := jwt.MapClaims{
-		"exp":    time.Now().Add(time.Hour * 3).Unix(),
-		"iat":    time.Now().Unix(),
-		"userID": admin.ID,
-		"role":   admin.Role.Name,
+		"exp":      time.Now().Add(time.Hour * 3).Unix(),
+		"iat":      time.Now().Unix(),
+		"userID":   admin.ID,
+		"role":     admin.Role.Name,
 		"authUUID": authToken.AuthUUID,
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claim)
@@ -60,7 +60,7 @@ func (s authService) AdminLogin(ctx context.Context, data model.LoginRequest) (s
 	return signedToken, nil
 }
 
-func(s authService) Logout(ctx context.Context) (error) {
+func (s AuthService) Logout(ctx context.Context) error {
 	s.repo.InvalidateToken(ctx, ctx.Value("userID").(uint), ctx.Value("authUUID").(string))
 	return nil
 }
