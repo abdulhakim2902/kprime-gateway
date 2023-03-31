@@ -2,8 +2,12 @@ package service
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"gateway/internal/deribit/model"
 	"strings"
+
+	"github.com/Shopify/sarama"
 )
 
 type deribitService struct {
@@ -29,6 +33,36 @@ func (svc deribitService) DeribitParseBuy(ctx context.Context, data model.Deribi
 		Price:          data.Price,
 		Amount:         data.Amount,
 	}
+
+	// Kafka Producer
+	config := sarama.NewConfig()
+	config.Producer.Return.Successes = true
+
+	producer, err := sarama.NewSyncProducer([]string{"localhost:29092"}, config)
+	if err != nil {
+		panic(err)
+	}
+	defer producer.Close()
+
+	topic := "deribit-buy"
+
+	buyConverted, err := json.Marshal(buy)
+	if err != nil {
+		panic(err)
+	}
+
+	message := &sarama.ProducerMessage{
+		Topic: topic,
+		Value: sarama.StringEncoder(buyConverted),
+	}
+
+	partition, offset, err := producer.SendMessage(message)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println("Message sent to topic", topic, "partition", partition, "offset", offset)
+	// End Kafka Producer
 
 	return buy, nil
 }
