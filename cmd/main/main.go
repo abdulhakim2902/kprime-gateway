@@ -22,6 +22,9 @@ import (
 	_authRepo "gateway/internal/auth/repository"
 	_authSvc "gateway/internal/auth/service"
 
+	_deribitCtrl "gateway/internal/deribit/controller"
+	_deribitSvc "gateway/internal/deribit/service"
+
 	"github.com/casbin/casbin/v2"
 	gormadapter "github.com/casbin/gorm-adapter/v3"
 	"github.com/gin-gonic/gin"
@@ -65,6 +68,9 @@ func main() {
 	authRepo := _authRepo.NewAuthRepo(db)
 	authSvc := _authSvc.NewAuthService(authRepo)
 	_authCtrl.NewAuthHandler(r, authSvc, enforcer)
+
+	_deribitSvc := _deribitSvc.NewDeribitService()
+	_deribitCtrl.NewDeribitHandler(r, _deribitSvc)
 
 	srv := &http.Server{
 		Addr:    ":8080",
