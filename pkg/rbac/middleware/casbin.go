@@ -14,10 +14,10 @@ func Authorize(obj string, act string, enforcer *casbin.Enforcer) gin.HandlerFun
 		tokenString := authorization[7:]
 		token, _ := jwt.Parse(tokenString, func(t *jwt.Token) (interface{}, error) {
 			token, _ := t.Method.(*jwt.SigningMethodHMAC)
-            
-            return token, nil
+
+			return token, nil
 		})
-		claims := token.Claims.(jwt.MapClaims);
+		claims := token.Claims.(jwt.MapClaims)
 		c.Set("role", claims["role"])
 		c.Set("userID", claims["userID"])
 

@@ -17,6 +17,7 @@ type Client struct {
 	Email              string     `json:"email"`
 	ClientId           string     `json:"client_id"`
 	Password           string     `json:"password"`
+	Company            string     `json:"company"`
 	HashedClientSecret string     `json:"hashed_client_secret"`
 	RoleId             int        `json:"role_id"`
 	Role               model.Role `gorm:"foreignKey:RoleId"`

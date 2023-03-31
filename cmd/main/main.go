@@ -7,6 +7,7 @@ import (
 	_adminModel "gateway/internal/admin/model"
 	"gateway/internal/admin/repository"
 	"gateway/internal/admin/service"
+	_authModel "gateway/internal/auth/model"
 	"gateway/internal/user/model"
 	"log"
 	"net/http"
@@ -58,7 +59,8 @@ func main() {
 	}
 
 	//dev only
-	db.AutoMigrate(&model.Client{}, &_adminModel.Admin{}, &_adminModel.Role{})
+	db.AutoMigrate(&model.Client{}, &_adminModel.Admin{}, &_adminModel.Role{}, &_authModel.TokenAuth{})
+	setupRBAC(enforcer)
 
 	adminRepo := repository.NewAdminRepo(db)
 	adminSvc := service.NewAdminService(adminRepo)

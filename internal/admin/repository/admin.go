@@ -29,7 +29,7 @@ func (repo *adminRepo) CreateNewClient(ctx context.Context, data _userModel.Clie
 }
 
 func (repo *adminRepo) GetAllClient(ctx context.Context, query map[string]interface{}) (clients []_userModel.Client, err error) {
-	_ = repo.db.Find(&clients)
+	_ = repo.db.Joins("Role").Find(&clients)
 	fmt.Print(clients)
 	return clients, err
 
