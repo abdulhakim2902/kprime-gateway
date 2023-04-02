@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"gateway/internal/admin/model"
+	_adminModel "gateway/internal/admin/model"
 	"gateway/internal/admin/repository"
 	_userModel "gateway/internal/user/model"
 	"log"
@@ -57,10 +58,11 @@ func (svc adminService) CreateNewClient(ctx context.Context, data _userModel.Cre
 	client := _userModel.Client{
 		Name:               data.Name,
 		Email:              data.Email,
+		Company:            data.Company,
 		Password:           string(hashedPassword),
 		ClientId:           clientId,
 		HashedClientSecret: string(hashedSecret),
-		RoleId:             2,
+		RoleId:             data.RoleId,
 	}
 	svc.repo.CreateNewClient(ctx, client)
 	return _userModel.Client{}, nil
@@ -73,6 +75,15 @@ func (svc adminService) GetAllClient(ctx context.Context, query url.Values) (cli
 		return []_userModel.Client{}, err
 	}
 	return clients, nil
+}
+
+func (svc adminService) GetAllRole(ctx context.Context, query url.Values) (roles []_adminModel.Role, err error) {
+	roles, err = svc.repo.GetAllRole(ctx, nil)
+	if err != nil {
+		log.Println(err.Error())
+		return []_adminModel.Role{}, err
+	}
+	return roles, nil
 }
 
 func generateClientId() string {

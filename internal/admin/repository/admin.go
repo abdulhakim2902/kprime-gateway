@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"gateway/internal/admin/model"
+	_adminModel "gateway/internal/admin/model"
 	_userModel "gateway/internal/user/model"
 
 	"gorm.io/gorm"
@@ -32,5 +33,10 @@ func (repo *adminRepo) GetAllClient(ctx context.Context, query map[string]interf
 	_ = repo.db.Joins("Role").Find(&clients)
 	fmt.Print(clients)
 	return clients, err
+}
 
+func (repo *adminRepo) GetAllRole(ctx context.Context, query map[string]interface{}) (roles []_adminModel.Role, err error) {
+	_ = repo.db.Find(&roles)
+	fmt.Print(roles)
+	return roles, err
 }
