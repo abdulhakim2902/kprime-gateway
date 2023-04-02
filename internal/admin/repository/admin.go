@@ -23,10 +23,10 @@ func (repo *adminRepo) Register(ctx context.Context, data model.Admin) (admin mo
 	return admin, nil
 }
 
-func (repo *adminRepo) CreateNewClient(ctx context.Context, data _userModel.Client) (_userModel.Client, error) {
+func (repo *adminRepo) CreateNewClient(ctx context.Context, data _userModel.Client) (_userModel.APIKeys, error) {
 	_ = repo.db.Create(&data)
 
-	return _userModel.Client{}, nil
+	return _userModel.APIKeys{}, nil
 }
 
 func (repo *adminRepo) GetAllClient(ctx context.Context, query map[string]interface{}) (clients []_userModel.Client, err error) {

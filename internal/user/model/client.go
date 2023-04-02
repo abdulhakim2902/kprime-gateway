@@ -14,15 +14,21 @@ type CreateClient struct {
 }
 
 type Client struct {
-	ID                 uint       `gorm:"primarykey" json:"id"`
-	Name               string     `json:"name"`
-	Email              string     `json:"email"`
-	ClientId           string     `json:"api_id"`
-	Password           string     `json:"-"`
-	Company            string     `json:"company"`
-	HashedClientSecret string     `json:"api_secret"`
-	RoleId             int        `json:"role_id"`
-	Role               model.Role `gorm:"foreignKey:RoleId"`
-	CreatedAt          time.Time  `json:"created_at"`
-	UpdatedAt          time.Time  `json:"updated_at"`
+	ID        uint       `gorm:"primarykey" json:"id"`
+	Name      string     `json:"name"`
+	Email     string     `json:"email"`
+	Password  string     `json:"pasword"`
+	APIKey    string     `json:"api_key"`
+	Company   string     `json:"company"`
+	APISecret string     `json:"api_secret"`
+	RoleId    int        `json:"role_id"`
+	Role      model.Role `gorm:"foreignKey:RoleId"`
+	CreatedAt time.Time  `json:"created_at"`
+	UpdatedAt time.Time  `json:"updated_at"`
+}
+
+type APIKeys struct {
+	Password  string
+	APIKey    string
+	APISecret string
 }

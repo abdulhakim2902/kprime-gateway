@@ -28,7 +28,7 @@ func (s AuthService) Login(ctx context.Context, data model.LoginRequest) (signed
 		return "", bcrypt.ErrMismatchedHashAndPassword
 	}
 	token := jwt.New(jwt.SigningMethodHS256)
-	signedToken, err = token.SignedString([]byte(user.ClientId))
+	signedToken, err = token.SignedString([]byte(user.APIKey))
 	if err != nil {
 		return "", err
 	}
