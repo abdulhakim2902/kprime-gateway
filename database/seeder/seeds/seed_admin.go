@@ -11,8 +11,7 @@ import (
 )
 
 func Seed_Admin(db *gorm.DB) error {
-	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte("password"), 14)
-
+	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte("password"), bcrypt.DefaultCost)
 	admin := model.Admin{
 		Name:     "admin",
 		Email:    "admin@mail.com",

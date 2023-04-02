@@ -21,7 +21,7 @@ func NewAuthRepo(db *gorm.DB) IAuthRepo {
 }
 
 func (a authRepo) GetOneUserByEmail(ctx context.Context, email string) (user _userModel.Client, err error) {
-	result := a.db.Joins("Role").Where(&_userModel.Client{Email: email}).Select("email").First(&user)
+	result := a.db.Joins("Role").Where(&_userModel.Client{Email: email}).First(&user)
 	if result.Error != nil {
 		return user, result.Error
 	}
@@ -31,14 +31,26 @@ func (a authRepo) GetOneUserByEmail(ctx context.Context, email string) (user _us
 	return user, nil
 }
 
+func (a authRepo) GetOneUserByAPIKey(ctx context.Context, APIKey string) (user _userModel.Client, err error) {
+	result := a.db.Joins("Role").Where(&_userModel.Client{APIKey: APIKey}).First(&user)
+	if result.Error != nil {
+		return user, result.Error
+	}
+	if user == (_userModel.Client{}) {
+		return user, fmt.Errorf("user with the API KEY %s is not found", APIKey)
+	}
+	return user, nil
+}
+
 func (a authRepo) GetAdminByEmail(ctx context.Context, email string) (admin _adminModel.Admin, err error) {
-	result := a.db.Joins("Role").Where(&_adminModel.Admin{Email: email}).Select("email").First(&admin)
+	result := a.db.Joins("Role").Where(&_adminModel.Admin{Email: email}).First(&admin)
 	if result.Error != nil {
 		return admin, result.Error
 	}
 	if admin == (_adminModel.Admin{}) {
 		return admin, fmt.Errorf("user with the email %s is not found", email)
 	}
+
 	return admin, nil
 }
 

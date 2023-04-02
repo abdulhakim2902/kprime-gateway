@@ -91,8 +91,10 @@ func main() {
 	_deribitSvc := _deribitSvc.NewDeribitService()
 	_deribitCtrl.NewDeribitHandler(r, _deribitSvc)
 
+	fmt.Printf("Server is running on %s \n", os.Getenv("PORT"))
+
 	srv := &http.Server{
-		Addr:    ":8080",
+		Addr:    ":" + os.Getenv("PORT"),
 		Handler: r,
 	}
 
