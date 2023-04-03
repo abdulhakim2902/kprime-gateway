@@ -72,6 +72,13 @@ func (svc adminService) CreateNewClient(ctx context.Context, data _userModel.Cre
 	}, nil
 }
 
+func (svc adminService) DeleteClient(ctx context.Context, id int) (_userModel.ResponseClient, error) {
+	svc.repo.DeleteClient(ctx, id)
+	return _userModel.ResponseClient{
+		Response: "Delete Success!",
+	}, nil
+}
+
 func (svc adminService) GetAllClient(ctx context.Context, query url.Values) (clients []_userModel.Client, err error) {
 	clients, err = svc.repo.GetAllClient(ctx, nil)
 	if err != nil {

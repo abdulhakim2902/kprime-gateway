@@ -2,7 +2,6 @@ package repository
 
 import (
 	"context"
-	"fmt"
 	"gateway/internal/admin/model"
 	_adminModel "gateway/internal/admin/model"
 	_userModel "gateway/internal/user/model"
@@ -29,15 +28,21 @@ func (repo *adminRepo) CreateNewClient(ctx context.Context, data _userModel.Clie
 	return _userModel.APIKeys{}, nil
 }
 
+func (repo *adminRepo) DeleteClient(ctx context.Context, id int) (_userModel.ResponseClient, error) {
+	_ = repo.db.Delete(&_userModel.Client{ID: uint(id)})
+
+	return _userModel.ResponseClient{}, nil
+}
+
 func (repo *adminRepo) GetAllClient(ctx context.Context, query map[string]interface{}) (clients []_userModel.Client, err error) {
 	_ = repo.db.Joins("Role").Find(&clients)
-	fmt.Print(clients)
+
 	return clients, err
 }
 
 func (repo *adminRepo) GetAllRole(ctx context.Context, query map[string]interface{}) (roles []_adminModel.Role, err error) {
 	_ = repo.db.Find(&roles)
-	fmt.Print(roles)
+
 	return roles, err
 }
 
