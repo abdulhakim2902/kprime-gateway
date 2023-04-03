@@ -8,6 +8,7 @@ import (
 	"gateway/internal/admin/repository"
 	"gateway/internal/admin/service"
 	_authModel "gateway/internal/auth/model"
+	"gateway/internal/ordermatch"
 	"gateway/internal/user/model"
 	"log"
 	"net/http"
@@ -72,6 +73,10 @@ func main() {
 
 	_deribitSvc := _deribitSvc.NewDeribitService()
 	_deribitCtrl.NewDeribitHandler(r, _deribitSvc)
+
+	//qf
+
+	ordermatch.Cmd.Execute()
 
 	srv := &http.Server{
 		Addr:    ":8080",

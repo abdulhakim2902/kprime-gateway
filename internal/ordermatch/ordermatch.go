@@ -19,12 +19,12 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"gateway/internal/ordermatch"
 	"gateway/pkg/utils"
 	"io"
 	"os"
 	"os/signal"
 	"path"
+	"runtime"
 	"strconv"
 	"syscall"
 
@@ -42,14 +42,14 @@ import (
 // Application implements the quickfix.Application interface
 type Application struct {
 	*quickfix.MessageRouter
-	*ordermatch.OrderMatcher
+	*OrderMatcher
 	execID int
 }
 
 func newApplication() *Application {
 	app := &Application{
 		MessageRouter: quickfix.NewMessageRouter(),
-		OrderMatcher:  ordermatch.NewOrderMatcher(),
+		OrderMatcher:  NewOrderMatcher(),
 	}
 	app.AddRoute(newordersingle.Route(app.onNewOrderSingle))
 	app.AddRoute(ordercancelrequest.Route(app.onOrderCancelRequest))
@@ -126,7 +126,7 @@ func (a *Application) onNewOrderSingle(msg newordersingle.NewOrderSingle, sessio
 		return err
 	}
 
-	order := ordermatch.Order{
+	order := Order{
 		ClOrdID:      clOrdID,
 		Symbol:       symbol,
 		SenderCompID: senderCompID,
@@ -179,11 +179,11 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 	return
 }
 
-func (a *Application) acceptOrder(order ordermatch.Order) {
+func (a *Application) acceptOrder(order Order) {
 	a.updateOrder(order, enum.OrdStatus_NEW)
 }
 
-func (a *Application) fillOrder(order ordermatch.Order) {
+func (a *Application) fillOrder(order Order) {
 	status := enum.OrdStatus_FILLED
 	if !order.IsClosed() {
 		status = enum.OrdStatus_PARTIALLY_FILLED
@@ -191,7 +191,7 @@ func (a *Application) fillOrder(order ordermatch.Order) {
 	a.updateOrder(order, status)
 }
 
-func (a *Application) cancelOrder(order ordermatch.Order) {
+func (a *Application) cancelOrder(order Order) {
 	a.updateOrder(order, enum.OrdStatus_CANCELED)
 }
 
@@ -200,7 +200,7 @@ func (a *Application) genExecID() string {
 	return strconv.Itoa(a.execID)
 }
 
-func (a *Application) updateOrder(order ordermatch.Order, status enum.OrdStatus) {
+func (a *Application) updateOrder(order Order, status enum.OrdStatus) {
 	execReport := executionreport.New(
 		field.NewOrderID(order.ClOrdID),
 		field.NewExecID(a.genExecID()),
@@ -245,32 +245,16 @@ var (
 		Short:   short,
 		Long:    long,
 		Aliases: []string{"oms"},
-		Example: "qf ordermatch [YOUR_FIX_CONFIG_FILE_HERE.cfg] (default is ./config/ordermatch.cfg)",
+		Example: "qf ordermatch [YOUR_FIX_CONFIG_FILE_HERE.cfg] (default is ./config/cfg)",
 		RunE:    execute,
 	}
 )
 
 func execute(cmd *cobra.Command, args []string) error {
 	var cfgFileName string
-	argLen := len(args)
-	switch argLen {
-	case 0:
-		{
-			utils.PrintInfo("FIX config file not provided...")
-			utils.PrintInfo("attempting to use default location './config/ordermatch.cfg' ...")
-			cfgFileName = path.Join("config", "ordermatch.cfg")
-		}
-	case 1:
-		{
-			cfgFileName = args[0]
-		}
-	default:
-		{
-			return fmt.Errorf("incorrect argument number")
-		}
-	}
 
-	cfg, err := os.Open(cfgFileName)
+	_, b, _, _ := runtime.Caller(0)
+	cfg, err := os.Open(path.Join(b, "../", "config", "ordermatch.cfg"))
 	if err != nil {
 		return fmt.Errorf("error opening %v, %v", cfgFileName, err)
 	}
