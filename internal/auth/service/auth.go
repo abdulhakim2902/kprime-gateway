@@ -4,6 +4,7 @@ import (
 	"context"
 	"gateway/internal/auth/model"
 	"gateway/internal/auth/repository"
+	"os"
 	"time"
 
 	"github.com/golang-jwt/jwt"
@@ -27,8 +28,19 @@ func (s AuthService) Login(ctx context.Context, data model.LoginRequest) (signed
 	if err != nil {
 		return "", bcrypt.ErrMismatchedHashAndPassword
 	}
-	token := jwt.New(jwt.SigningMethodHS256)
-	signedToken, err = token.SignedString([]byte(user.APIKey))
+
+	authToken, err := s.repo.GenerateAuthDetail(ctx, user.ID)
+	claim := jwt.MapClaims{
+		"exp":      time.Now().Add(time.Hour * 3).Unix(),
+		"iat":      time.Now().Unix(),
+		"userID":   user.ID,
+		"role":     user.Role.Name,
+		"authUUID": authToken.AuthUUID,
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claim)
+
+	jwtKey := os.Getenv("JWT_KEY")
+	signedToken, err = token.SignedString([]byte(jwtKey))
 	if err != nil {
 		return "", err
 	}
@@ -53,7 +65,9 @@ func (s AuthService) AdminLogin(ctx context.Context, data model.LoginRequest) (s
 		"authUUID": authToken.AuthUUID,
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claim)
-	signedToken, err = token.SignedString([]byte(admin.Role.Name))
+
+	jwtKey := os.Getenv("JWT_KEY")
+	signedToken, err = token.SignedString([]byte(jwtKey))
 	if err != nil {
 		return "", err
 	}
