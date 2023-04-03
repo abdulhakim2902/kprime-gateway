@@ -26,6 +26,8 @@ import (
 	_deribitCtrl "gateway/internal/deribit/controller"
 	_deribitSvc "gateway/internal/deribit/service"
 
+	_wsCtrl "gateway/internal/ws/controller"
+
 	"github.com/casbin/casbin/v2"
 	gormadapter "github.com/casbin/gorm-adapter/v3"
 	"github.com/gin-gonic/gin"
@@ -90,6 +92,8 @@ func main() {
 
 	_deribitSvc := _deribitSvc.NewDeribitService()
 	_deribitCtrl.NewDeribitHandler(r, _deribitSvc)
+
+	_wsCtrl.NewWebsocketHandler(r, authSvc, _deribitSvc)
 
 	fmt.Printf("Server is running on %s \n", os.Getenv("PORT"))
 

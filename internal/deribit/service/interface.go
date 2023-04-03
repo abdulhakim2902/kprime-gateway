@@ -6,6 +6,6 @@ import (
 )
 
 type IDeribitService interface {
-	DeribitParseBuy(ctx context.Context, data model.DeribitRequest) (model.DeribitResponse, error)
-	DeribitParseSell(ctx context.Context, data model.DeribitRequest) (model.DeribitResponse, error)
+	DeribitParseBuy(ctx context.Context, userID string, data model.DeribitRequest) (model.DeribitResponse, error)
+	DeribitParseSell(ctx context.Context, userID string, data model.DeribitRequest) (model.DeribitResponse, error)
 }
