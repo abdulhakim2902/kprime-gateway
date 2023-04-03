@@ -19,8 +19,10 @@ func NewDeribitHandler(r *gin.Engine, svc service.IDeribitService) {
 		svc: svc,
 	}
 
-	r.POST("private/buy", handler.DeribitParseBuy)
-	r.POST("private/sell", handler.DeribitParseSell)
+	private := r.Group("/private")
+
+	private.POST("/buy", handler.DeribitParseBuy)
+	private.POST("/sell", handler.DeribitParseSell)
 }
 
 func (h DeribitHandler) DeribitParseBuy(r *gin.Context) {
