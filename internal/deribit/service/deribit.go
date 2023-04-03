@@ -14,12 +14,12 @@ func NewDeribitService() IDeribitService {
 	return &deribitService{}
 }
 
-func (svc deribitService) DeribitParseBuy(ctx context.Context, data model.DeribitRequest) (model.DeribitResponse, error) {
+func (svc deribitService) DeribitParseBuy(ctx context.Context, userId string, data model.DeribitRequest) (model.DeribitResponse, error) {
 	_string := data.InstrumentName
 	substring := strings.Split(_string, "-")
 
 	buy := model.DeribitResponse{
-		UserId:         "",
+		UserId:         userId,
 		ClientId:       "",
 		Underlying:     substring[0],
 		ExpirationDate: substring[1],
@@ -33,12 +33,12 @@ func (svc deribitService) DeribitParseBuy(ctx context.Context, data model.Deribi
 	return buy, nil
 }
 
-func (svc deribitService) DeribitParseSell(ctx context.Context, data model.DeribitRequest) (model.DeribitResponse, error) {
+func (svc deribitService) DeribitParseSell(ctx context.Context, userId string, data model.DeribitRequest) (model.DeribitResponse, error) {
 	_string := data.InstrumentName
 	substring := strings.Split(_string, "-")
 
 	sell := model.DeribitResponse{
-		UserId:         "",
+		UserId:         userId,
 		ClientId:       "",
 		Underlying:     substring[0],
 		ExpirationDate: substring[1],
