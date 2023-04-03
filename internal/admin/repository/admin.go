@@ -40,3 +40,9 @@ func (repo *adminRepo) GetAllRole(ctx context.Context, query map[string]interfac
 	fmt.Print(roles)
 	return roles, err
 }
+
+func (repo *adminRepo) GetByName(ctx context.Context, name string) (admin model.Admin, err error) {
+	result := repo.db.Where("name = ?", name).First(&admin)
+
+	return admin, result.Error
+}
