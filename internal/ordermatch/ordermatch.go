@@ -82,6 +82,23 @@ func (a Application) FromAdmin(msg *quickfix.Message, sessionID quickfix.Session
 
 // FromApp implemented as part of Application interface, uses Router on incoming application messages
 func (a *Application) FromApp(msg *quickfix.Message, sessionID quickfix.SessionID) (reject quickfix.MessageRejectError) {
+	var uname field.UsernameField
+	var password field.PasswordField
+
+	msgType, reject := msg.MsgType()
+	if msgType == "Logon" {
+		if reject = msg.Body.Get(&uname); reject != nil {
+			return
+		}
+
+		if reject = msg.Body.Get(&password); reject != nil {
+			return
+		}
+
+		// Validate.
+
+	}
+
 	return a.Route(msg, sessionID)
 }
 

@@ -7,7 +7,7 @@ type IApplication interface {
 	OnCreate(sessionID quickfix.SessionID)
 
 	//Notification of a session successfully logging on.
-	OnLogon(sessionID quickfix.SessionID)
+	OnLogon(message quickfix.Message, sessionID quickfix.SessionID)
 
 	//Notification of a session logging off or disconnecting.
 	OnLogout(sessionID quickfix.SessionID)
