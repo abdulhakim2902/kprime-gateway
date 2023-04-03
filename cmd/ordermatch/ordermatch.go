@@ -19,6 +19,8 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"gateway/internal/ordermatch"
+	"gateway/pkg/utils"
 	"io"
 	"os"
 	"os/signal"
@@ -27,8 +29,6 @@ import (
 	"syscall"
 
 	"github.com/quickfixgo/enum"
-	"github.com/quickfixgo/examples/cmd/ordermatch/internal"
-	"github.com/quickfixgo/examples/cmd/utils"
 	"github.com/quickfixgo/field"
 	"github.com/quickfixgo/fix42/executionreport"
 	"github.com/quickfixgo/fix42/marketdatarequest"
@@ -42,14 +42,14 @@ import (
 // Application implements the quickfix.Application interface
 type Application struct {
 	*quickfix.MessageRouter
-	*internal.OrderMatcher
+	*ordermatch.OrderMatcher
 	execID int
 }
 
 func newApplication() *Application {
 	app := &Application{
 		MessageRouter: quickfix.NewMessageRouter(),
-		OrderMatcher:  internal.NewOrderMatcher(),
+		OrderMatcher:  ordermatch.NewOrderMatcher(),
 	}
 	app.AddRoute(newordersingle.Route(app.onNewOrderSingle))
 	app.AddRoute(ordercancelrequest.Route(app.onOrderCancelRequest))
@@ -126,7 +126,7 @@ func (a *Application) onNewOrderSingle(msg newordersingle.NewOrderSingle, sessio
 		return err
 	}
 
-	order := internal.Order{
+	order := ordermatch.Order{
 		ClOrdID:      clOrdID,
 		Symbol:       symbol,
 		SenderCompID: senderCompID,
@@ -179,11 +179,11 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 	return
 }
 
-func (a *Application) acceptOrder(order internal.Order) {
+func (a *Application) acceptOrder(order ordermatch.Order) {
 	a.updateOrder(order, enum.OrdStatus_NEW)
 }
 
-func (a *Application) fillOrder(order internal.Order) {
+func (a *Application) fillOrder(order ordermatch.Order) {
 	status := enum.OrdStatus_FILLED
 	if !order.IsClosed() {
 		status = enum.OrdStatus_PARTIALLY_FILLED
@@ -191,7 +191,7 @@ func (a *Application) fillOrder(order internal.Order) {
 	a.updateOrder(order, status)
 }
 
-func (a *Application) cancelOrder(order internal.Order) {
+func (a *Application) cancelOrder(order ordermatch.Order) {
 	a.updateOrder(order, enum.OrdStatus_CANCELED)
 }
 
@@ -200,7 +200,7 @@ func (a *Application) genExecID() string {
 	return strconv.Itoa(a.execID)
 }
 
-func (a *Application) updateOrder(order internal.Order, status enum.OrdStatus) {
+func (a *Application) updateOrder(order ordermatch.Order, status enum.OrdStatus) {
 	execReport := executionreport.New(
 		field.NewOrderID(order.ClOrdID),
 		field.NewExecID(a.genExecID()),
