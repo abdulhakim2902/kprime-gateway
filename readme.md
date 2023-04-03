@@ -27,6 +27,11 @@ this will automatically install project dependecy, just make sure you have go in
 
 ### Using docker
 
+please setup database connection first on `.env` file by copy `.env.example` file
+instead of using `localhost` or `127.0.0.1` please use `host.docker.internal` for database connection in docker
+
+if you find connection refused error make sure that your local MySQL installation is configured to allow remote connections. by default, MySQL is configured to only accept connections from the local machine. you will need to update the bind-address setting in the MySQL configuration file (`my.cnf` or `my.ini`) to allow remote connections. to update MySQL remote connection please add or update the `bind-address` section and set it to `0.0.0.0`
+
 to build the image you can run
 
 ```bash

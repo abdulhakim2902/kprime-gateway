@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"gateway/database/seeder/seeds"
 	"gateway/internal/admin/controller"
 	_adminModel "gateway/internal/admin/model"
 	"gateway/internal/admin/repository"
@@ -44,6 +45,14 @@ func main() {
 		panic(err)
 	}
 	r := gin.New()
+	if os.Getenv("NODE_ENV") == "development" {
+		gin.SetMode(gin.DebugMode)
+	} else if os.Getenv("NODE_ENV") == "staging" {
+		gin.SetMode(gin.TestMode)
+	} else if os.Getenv("NODE_ENV") == "production" {
+		gin.SetMode(gin.ReleaseMode)
+	}
+
 	dsn := os.Getenv("DB_CONNECTION")
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
@@ -60,7 +69,16 @@ func main() {
 	}
 
 	//dev only
-	db.AutoMigrate(&model.Client{}, &_adminModel.Admin{}, &_adminModel.Role{}, &_authModel.TokenAuth{})
+	if gin.Mode() != gin.ReleaseMode {
+		db.AutoMigrate(&model.Client{}, &_adminModel.Admin{}, &_adminModel.Role{}, &_authModel.TokenAuth{})
+	}
+
+	// Seed Database
+	for _, seed := range seeds.All() {
+		if err := seed.Run(db); err != nil {
+			log.Fatalf("Running seed '%s', failed with error:\n%s", seed.Name, err)
+		}
+	}
 	setupRBAC(enforcer)
 
 	adminRepo := repository.NewAdminRepo(db)
@@ -75,11 +93,12 @@ func main() {
 	_deribitCtrl.NewDeribitHandler(r, _deribitSvc)
 
 	//qf
-
 	ordermatch.Cmd.Execute()
 
+	fmt.Printf("Server is running on %s \n", os.Getenv("PORT"))
+
 	srv := &http.Server{
-		Addr:    ":8080",
+		Addr:    ":" + os.Getenv("PORT"),
 		Handler: r,
 	}
 

@@ -2,11 +2,47 @@ package middleware
 
 import (
 	"fmt"
+	"net/http"
+	"os"
+	"strings"
 
 	"github.com/casbin/casbin/v2"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt"
 )
+
+func Authenticate() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		authorizationHeader := c.GetHeader("Authorization")
+		if authorizationHeader == "" {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization header not provided"})
+			c.Abort()
+			return
+		}
+
+		jwtKey := os.Getenv("JWT_KEY")
+		tokenString := strings.TrimPrefix(authorizationHeader, "Bearer ")
+		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+			}
+			return []byte(jwtKey), nil
+		})
+
+		if err != nil || !token.Valid {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
+			c.Abort()
+			return
+		}
+
+		claims := token.Claims.(jwt.MapClaims)
+
+		c.Set("role", claims["role"])
+		c.Set("userID", claims["userID"])
+
+		c.Next()
+	}
+}
 
 func Authorize(obj string, act string, enforcer *casbin.Enforcer) gin.HandlerFunc {
 	return func(c *gin.Context) {

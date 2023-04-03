@@ -31,6 +31,17 @@ func (a authRepo) GetOneUserByEmail(ctx context.Context, email string) (user _us
 	return user, nil
 }
 
+func (a authRepo) GetOneUserByAPIKey(ctx context.Context, APIKey string) (user _userModel.Client, err error) {
+	result := a.db.Joins("Role").Where(&_userModel.Client{APIKey: APIKey}).First(&user)
+	if result.Error != nil {
+		return user, result.Error
+	}
+	if user == (_userModel.Client{}) {
+		return user, fmt.Errorf("user with the API KEY %s is not found", APIKey)
+	}
+	return user, nil
+}
+
 func (a authRepo) GetAdminByEmail(ctx context.Context, email string) (admin _adminModel.Admin, err error) {
 	result := a.db.Joins("Role").Where(&_adminModel.Admin{Email: email}).First(&admin)
 	if result.Error != nil {
@@ -39,9 +50,9 @@ func (a authRepo) GetAdminByEmail(ctx context.Context, email string) (admin _adm
 	if admin == (_adminModel.Admin{}) {
 		return admin, fmt.Errorf("user with the email %s is not found", email)
 	}
+
 	return admin, nil
 }
-
 
 func (a authRepo) GetUser(ctx context.Context, query map[string]interface{}) (users []_userModel.Client, err error) {
 	return users, nil
@@ -57,10 +68,10 @@ func (a authRepo) GenerateAuthDetail(ctx context.Context, userId uint) (auth _au
 	return auth, nil
 }
 
-func (a authRepo) InvalidateToken(ctx context.Context, userID uint, authID string) (error) {
+func (a authRepo) InvalidateToken(ctx context.Context, userID uint, authID string) error {
 	a.db.Where(&_authModel.TokenAuth{
 		AuthUUID: authID,
-		UserID: userID,
+		UserID:   userID,
 	}).Delete(&_authModel.TokenAuth{})
 	return nil
 }
