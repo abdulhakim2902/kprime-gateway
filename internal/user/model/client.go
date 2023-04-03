@@ -13,6 +13,10 @@ type CreateClient struct {
 	RoleId   int    `json:"role_id"`
 }
 
+type DeleteClient struct {
+	ID uint `json:"id"`
+}
+
 type Client struct {
 	ID        uint       `gorm:"primarykey" json:"id"`
 	Name      string     `json:"name"`
@@ -31,4 +35,8 @@ type APIKeys struct {
 	Password  string
 	APIKey    string
 	APISecret string
+}
+
+type ResponseClient struct {
+	Response string
 }
