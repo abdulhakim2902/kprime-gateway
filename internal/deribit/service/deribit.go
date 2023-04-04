@@ -3,11 +3,9 @@ package service
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"gateway/internal/deribit/model"
+	"gateway/pkg/kafka/producer/order"
 	"strings"
-
-	"github.com/Shopify/sarama"
 )
 
 type deribitService struct {
@@ -34,35 +32,11 @@ func (svc deribitService) DeribitParseBuy(ctx context.Context, data model.Deribi
 		Amount:         data.Amount,
 	}
 
-	// Kafka Producer
-	config := sarama.NewConfig()
-	config.Producer.Return.Successes = true
-
-	producer, err := sarama.NewSyncProducer([]string{"localhost:29092"}, config)
+	_buy, err := json.Marshal(buy)
 	if err != nil {
 		panic(err)
 	}
-	defer producer.Close()
-
-	topic := "deribit-buy"
-
-	buyConverted, err := json.Marshal(buy)
-	if err != nil {
-		panic(err)
-	}
-
-	message := &sarama.ProducerMessage{
-		Topic: topic,
-		Value: sarama.StringEncoder(buyConverted),
-	}
-
-	partition, offset, err := producer.SendMessage(message)
-	if err != nil {
-		panic(err)
-	}
-
-	fmt.Println("Message sent to topic", topic, "partition", partition, "offset", offset)
-	// End Kafka Producer
+	order.ProduceOrder(string(_buy))
 
 	return buy, nil
 }
@@ -82,6 +56,12 @@ func (svc deribitService) DeribitParseSell(ctx context.Context, data model.Derib
 		Price:          data.Price,
 		Amount:         data.Amount,
 	}
+
+	_sell, err := json.Marshal(sell)
+	if err != nil {
+		panic(err)
+	}
+	order.ProduceOrder(string(_sell))
 
 	return sell, nil
 }
