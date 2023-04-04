@@ -19,6 +19,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"gateway/internal/user/model"
 	"gateway/pkg/utils"
 	"io"
 	"os"
@@ -35,6 +36,9 @@ import (
 	"github.com/quickfixgo/fix42/newordersingle"
 	"github.com/quickfixgo/fix42/ordercancelrequest"
 	"github.com/spf13/cobra"
+	"golang.org/x/crypto/bcrypt"
+	"gorm.io/driver/mysql"
+	"gorm.io/gorm"
 
 	"github.com/quickfixgo/quickfix"
 )
@@ -44,12 +48,16 @@ type Application struct {
 	*quickfix.MessageRouter
 	*OrderMatcher
 	execID int
+	*gorm.DB
 }
 
 func newApplication() *Application {
+	dsn := os.Getenv("DB_CONNECTION")
+	db, _ := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	app := &Application{
 		MessageRouter: quickfix.NewMessageRouter(),
 		OrderMatcher:  NewOrderMatcher(),
+		DB:            db,
 	}
 	app.AddRoute(newordersingle.Route(app.onNewOrderSingle))
 	app.AddRoute(ordercancelrequest.Route(app.onOrderCancelRequest))
@@ -77,28 +85,35 @@ func (a Application) ToApp(msg *quickfix.Message, sessionID quickfix.SessionID) 
 
 // FromAdmin implemented as part of Application interface
 func (a Application) FromAdmin(msg *quickfix.Message, sessionID quickfix.SessionID) quickfix.MessageRejectError {
+	if msg.IsMsgTypeOf(string(enum.MsgType_LOGON)) {
+		var uname field.UsernameField
+		var pwd field.PasswordField
+		if err := msg.Body.Get(&pwd); err != nil {
+			return err
+		}
+
+		if err := msg.Body.Get(&uname); err != nil {
+			return err
+		}
+
+		var user model.Client
+		res := a.DB.Where(model.Client{
+			Name: uname.String(),
+		}).Find(&user)
+
+		if res.Error != nil {
+			return quickfix.NewMessageRejectError("Failed getting user", 1, nil)
+		}
+
+		if err := bcrypt.CompareHashAndPassword([]byte(user.APISecret), []byte(pwd.String())); err != nil {
+			return quickfix.NewMessageRejectError("Wrong API Secret", 1, nil)
+		}
+	}
 	return nil
 }
 
 // FromApp implemented as part of Application interface, uses Router on incoming application messages
 func (a *Application) FromApp(msg *quickfix.Message, sessionID quickfix.SessionID) (reject quickfix.MessageRejectError) {
-	var uname field.UsernameField
-	var password field.PasswordField
-
-	msgType, reject := msg.MsgType()
-	if msgType == "Logon" {
-		if reject = msg.Body.Get(&uname); reject != nil {
-			return
-		}
-
-		if reject = msg.Body.Get(&password); reject != nil {
-			return
-		}
-
-		// Validate.
-
-	}
-
 	return a.Route(msg, sessionID)
 }
 
