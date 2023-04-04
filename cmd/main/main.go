@@ -19,6 +19,10 @@ import (
 	"syscall"
 	"time"
 
+	"gateway/pkg/kafka/consumer/order"
+	"gateway/pkg/kafka/consumer/orderbook"
+	"gateway/pkg/kafka/consumer/trade"
+
 	_authCtrl "gateway/internal/auth/controller"
 	_authRepo "gateway/internal/auth/repository"
 	_authSvc "gateway/internal/auth/service"
@@ -114,6 +118,11 @@ func main() {
 			log.Fatalf("listen: %s\n", err)
 		}
 	}()
+
+	//kafka listener
+	order.ConsumeOrder()
+	trade.ConsumeTrade()
+	orderbook.ConsumeOrderbook()
 
 	// Wait for interrupt signal to gracefully shutdown the server with
 	// a timeout of 5 seconds.
