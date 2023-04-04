@@ -25,6 +25,7 @@ import (
 
 	_deribitCtrl "gateway/internal/deribit/controller"
 	_deribitSvc "gateway/internal/deribit/service"
+	_wsOrderbookSvc "gateway/internal/ws/service"
 
 	_wsCtrl "gateway/internal/ws/controller"
 
@@ -93,7 +94,9 @@ func main() {
 	_deribitSvc := _deribitSvc.NewDeribitService()
 	_deribitCtrl.NewDeribitHandler(r, _deribitSvc)
 
-	_wsCtrl.NewWebsocketHandler(r, authSvc, _deribitSvc)
+	_wsOrderbookSvc := _wsOrderbookSvc.NewwsOrderbookService()
+
+	_wsCtrl.NewWebsocketHandler(r, authSvc, _deribitSvc, _wsOrderbookSvc)
 
 	fmt.Printf("Server is running on %s \n", os.Getenv("PORT"))
 
