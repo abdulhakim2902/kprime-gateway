@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"gateway/internal/admin/model"
 	_adminModel "gateway/internal/admin/model"
 	"gateway/internal/admin/repository"
@@ -47,7 +48,9 @@ func (svc adminService) CreateNewClient(ctx context.Context, data _userModel.Cre
 	password := generateClientSecret(clientId)
 	clientSecret := generateClientSecret(clientId)
 	hashedSecret, err := bcrypt.GenerateFromPassword([]byte(clientSecret), bcrypt.DefaultCost)
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(data.Password), 14)
+	fmt.Println("password : ", password)
+	fmt.Println("hashedPassword : ", string(hashedPassword))
 	if err != nil {
 		log.Println(err.Error())
 		return _userModel.APIKeys{
