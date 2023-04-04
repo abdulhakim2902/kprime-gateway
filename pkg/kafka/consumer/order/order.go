@@ -16,7 +16,7 @@ func ConsumeOrder() {
 	consumerConfig.Consumer.Offsets.Initial = sarama.OffsetOldest
 
 	// Create a new Kafka consumer instance
-	consumer, err := sarama.NewConsumer([]string{"localhost:29092"}, consumerConfig)
+	consumer, err := sarama.NewConsumer([]string{os.Getenv("KAFKA_BROKER")}, consumerConfig)
 	if err != nil {
 		panic(err)
 	}
