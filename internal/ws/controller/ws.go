@@ -104,6 +104,8 @@ func (svc wsHandler) PrivateBuy(input interface{}, c *ws.Client) {
 		Price:          msg.Price,
 	})
 
+	//register order connection
+
 	c.SendMessage(res)
 	return
 }
