@@ -8,6 +8,8 @@ import (
 	"gateway/internal/auth/service"
 	deribitModel "gateway/internal/deribit/model"
 	deribitService "gateway/internal/deribit/service"
+	wsService "gateway/internal/ws/service"
+	"strings"
 
 	cors "github.com/rs/cors/wrapper/gin"
 
@@ -19,12 +21,14 @@ import (
 type wsHandler struct {
 	authSvc    service.IAuthService
 	deribitSvc deribitService.IDeribitService
+	wsOBSvc    wsService.IwsOrderbookService
 }
 
-func NewWebsocketHandler(r *gin.Engine, authSvc service.IAuthService, deribitSvc deribitService.IDeribitService) {
+func NewWebsocketHandler(r *gin.Engine, authSvc service.IAuthService, deribitSvc deribitService.IDeribitService, wsOBSvc wsService.IwsOrderbookService) {
 	handler := &wsHandler{
 		authSvc:    authSvc,
 		deribitSvc: deribitSvc,
+		wsOBSvc:    wsOBSvc,
 	}
 	r.Use(cors.AllowAll())
 
@@ -32,6 +36,9 @@ func NewWebsocketHandler(r *gin.Engine, authSvc service.IAuthService, deribitSvc
 
 	ws.RegisterChannel("/public/auth", handler.PublicAuth)
 	ws.RegisterChannel("/private/buy", handler.PrivateBuy)
+
+	ws.RegisterChannel("/public/subscribe", handler.SubscribeHandler)
+	ws.RegisterChannel("/public/unsubscribe", handler.UnsubscribeHandler)
 
 }
 
@@ -99,6 +106,50 @@ func (svc wsHandler) PrivateBuy(input interface{}, c *ws.Client) {
 
 	c.SendMessage(res)
 	return
+}
+
+func (svc wsHandler) SubscribeHandler(input interface{}, c *ws.Client) {
+	type Req struct {
+		Channels []string `json:"channels"`
+	}
+
+	msg := &Req{}
+	bytes, _ := json.Marshal(input)
+	if err := json.Unmarshal(bytes, &msg); err != nil {
+		c.SendMessage(gin.H{"err": err})
+		return
+	}
+
+	for _, channel := range msg.Channels {
+		fmt.Println(channel)
+		s := strings.Split(channel, ".")
+		switch s[0] {
+		case "orderbook":
+			svc.wsOBSvc.Subscribe(c, s[1])
+		}
+	}
+}
+
+func (svc wsHandler) UnsubscribeHandler(input interface{}, c *ws.Client) {
+	type Req struct {
+		Channels []string `json:"channels"`
+	}
+
+	msg := &Req{}
+	bytes, _ := json.Marshal(input)
+	if err := json.Unmarshal(bytes, &msg); err != nil {
+		c.SendMessage(gin.H{"err": err})
+		return
+	}
+
+	for _, channel := range msg.Channels {
+		fmt.Println(channel)
+		s := strings.Split(channel, ".")
+		switch s[0] {
+		case "orderbook":
+			svc.wsOBSvc.Unsubscribe(c)
+		}
+	}
 }
 
 // func hn(input interface{}, c *ws.Client) {
