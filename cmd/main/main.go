@@ -83,6 +83,9 @@ func main() {
 	}
 	setupRBAC(enforcer)
 
+	// Initiate Redis Connection Here
+	// redis := redis.NewRedisConnection(os.Getenv("REDIS_URL"))
+
 	adminRepo := repository.NewAdminRepo(db)
 	adminSvc := service.NewAdminService(adminRepo)
 	controller.NewAdminHandler(r, adminSvc, enforcer)
