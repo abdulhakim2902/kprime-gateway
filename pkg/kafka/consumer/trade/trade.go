@@ -43,7 +43,7 @@ func ConsumeTrade() {
 			for {
 				select {
 				case message := <-partitionConsumer.Messages():
-					fmt.Printf("Received message on topic %s, partition %d, offset %d:\n%s\n",
+					fmt.Printf("Kafka received message on topic %s, partition %d, offset %d:\n%s\n",
 						message.Topic, message.Partition, message.Offset, string(message.Value))
 				case err := <-partitionConsumer.Errors():
 					fmt.Printf("Error: %v\n", err)

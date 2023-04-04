@@ -28,5 +28,5 @@ func ProduceOrder(obj string) {
 		panic(err)
 	}
 
-	fmt.Println("Message sent to topic", topic, "partition", partition, "offset", offset)
+	fmt.Println("Kafka message sent to topic", topic, "partition", partition, "offset", offset)
 }
