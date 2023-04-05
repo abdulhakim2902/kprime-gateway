@@ -36,11 +36,7 @@ func (repo *adminRepo) CreateNewRole(ctx context.Context, data _roleModel.Role) 
 }
 
 func (repo *adminRepo) DeleteRole(ctx context.Context, id int) (_roleModel.ResponseRole, error) {
-	_ = repo.db.Delete(&_roleModel.Role{
-		Model: gorm.Model{
-			ID: uint(id),
-		},
-	})
+	_ = repo.db.Delete(&_roleModel.Role{ID: uint(id)})
 
 	return _roleModel.ResponseRole{}, nil
 }

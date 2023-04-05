@@ -1,10 +1,13 @@
 package model
 
-import "gorm.io/gorm"
+import "time"
 
 type Role struct {
-	gorm.Model
-	Name string `json:"name"`
+	// gorm.Model
+	ID        uint `gorm:"primarykey" json:"id"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	Name      string `json:"name"`
 }
 
 type DeleteClient struct {
