@@ -3,6 +3,7 @@ package consumer
 import (
 	"encoding/json"
 	"fmt"
+	obInt "gateway/internal/orderbook/service"
 	"gateway/pkg/ws"
 	"log"
 	"os"
@@ -10,7 +11,7 @@ import (
 	"github.com/Shopify/sarama"
 )
 
-func KafkaConsumer() {
+func KafkaConsumer(obSvc obInt.IOrderbookService) {
 	config := sarama.NewConfig()
 	config.Consumer.Return.Errors = true
 
@@ -37,7 +38,7 @@ func KafkaConsumer() {
 				case "TRADE":
 					handleTopicTrade(message)
 				case "ORDERBOOK":
-					handleTopicOrderbook(message)
+					obSvc.HandleConsume(message)
 				default:
 					log.Printf("Unknown topic: %s", topic)
 				}

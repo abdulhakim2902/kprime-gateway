@@ -9,9 +9,9 @@ import (
 	"gateway/internal/admin/repository"
 	"gateway/internal/admin/service"
 	_authModel "gateway/internal/auth/model"
-	"gateway/internal/ordermatch"
 	"gateway/internal/user/model"
 	"gateway/pkg/kafka/consumer"
+	"gateway/pkg/redis"
 	"log"
 	"net/http"
 	"os"
@@ -30,6 +30,8 @@ import (
 	_deribitCtrl "gateway/internal/deribit/controller"
 	_deribitSvc "gateway/internal/deribit/service"
 	_wsOrderbookSvc "gateway/internal/ws/service"
+
+	_obSvc "gateway/internal/orderbook/service"
 
 	_wsCtrl "gateway/internal/ws/controller"
 
@@ -88,7 +90,7 @@ func main() {
 	setupRBAC(enforcer)
 
 	// Initiate Redis Connection Here
-	// redis := redis.NewRedisConnection(os.Getenv("REDIS_URL"))
+	redis := redis.NewRedisConnection(os.Getenv("REDIS_URL"))
 
 	adminRepo := repository.NewAdminRepo(db)
 	adminSvc := service.NewAdminService(adminRepo)
@@ -102,8 +104,8 @@ func main() {
 	_deribitCtrl.NewDeribitHandler(r, _deribitSvc)
 
 	//qf
-	ordermatch.Cmd.Execute()
-	_wsOrderbookSvc := _wsOrderbookSvc.NewwsOrderbookService()
+	// ordermatch.Cmd.Execute()
+	_wsOrderbookSvc := _wsOrderbookSvc.NewwsOrderbookService(redis)
 
 	_wsCtrl.NewWebsocketHandler(r, authSvc, _deribitSvc, _wsOrderbookSvc)
 
@@ -121,8 +123,10 @@ func main() {
 		}
 	}()
 
+	_obSvc := _obSvc.NewOrderbookHandler(r, redis)
+
 	//kafka listener
-	consumer.KafkaConsumer()
+	consumer.KafkaConsumer(_obSvc)
 
 	// Wait for interrupt signal to gracefully shutdown the server with
 	// a timeout of 5 seconds.
