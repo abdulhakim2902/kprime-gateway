@@ -2,10 +2,13 @@ package controller
 
 import (
 	"encoding/json"
+	"fmt"
 	_deribitModel "gateway/internal/deribit/model"
 	"gateway/internal/deribit/service"
 	"gateway/pkg/model"
+	"gateway/pkg/rbac/middleware"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
@@ -26,21 +29,44 @@ func NewDeribitHandler(r *gin.Engine, svc service.IDeribitService) {
 }
 
 func (h DeribitHandler) DeribitParseBuy(r *gin.Context) {
-	var req _deribitModel.DeribitRequest
-	err := json.NewDecoder(r.Request.Body).Decode(&req)
-	if err != nil {
+	userID, err := r.Get("userID")
+	if !err {
+		fmt.Println(err)
 		r.JSON(http.StatusBadRequest, &model.Response{
-			Error:   true,
-			Message: err.Error(),
+			Error: true,
 		})
 		return
 	}
 
-	order, err := h.svc.DeribitParseBuy(r.Request.Context(), req)
-	if err != nil {
+	// Convert to float
+	userIDFloat, ok := userID.(float64)
+	if !ok {
+		fmt.Println("!ok")
+
+		r.JSON(http.StatusBadRequest, &model.Response{
+			Error: true,
+		})
+		return
+	}
+
+	// Convert to string
+	userIDStr := strconv.FormatFloat(userIDFloat, 'f', 0, 64)
+
+	var req _deribitModel.DeribitRequest
+	errJson := json.NewDecoder(r.Request.Body).Decode(&req)
+	if errJson != nil {
+		r.JSON(http.StatusBadRequest, &model.Response{
+			Error:   true,
+			Message: errJson.Error(),
+		})
+		return
+	}
+
+	order, errJson := h.svc.DeribitParseBuy(r.Request.Context(), userIDStr, req)
+	if errJson != nil {
 		r.JSON(http.StatusInternalServerError, &model.Response{
 			Error:   true,
-			Message: err.Error(),
+			Message: errJson.Error(),
 		})
 		return
 	}
@@ -51,6 +77,30 @@ func (h DeribitHandler) DeribitParseBuy(r *gin.Context) {
 }
 
 func (h DeribitHandler) DeribitParseSell(r *gin.Context) {
+
+	userID, errGin := r.Get("userID")
+	if !errGin {
+		fmt.Println(errGin)
+		r.JSON(http.StatusBadRequest, &model.Response{
+			Error: true,
+		})
+		return
+	}
+
+	// Convert to float
+	userIDFloat, ok := userID.(float64)
+	if !ok {
+		fmt.Println("!ok")
+
+		r.JSON(http.StatusBadRequest, &model.Response{
+			Error: true,
+		})
+		return
+	}
+
+	// Convert to string
+	userIDStr := strconv.FormatFloat(userIDFloat, 'f', 0, 64)
+
 	var req _deribitModel.DeribitRequest
 	err := json.NewDecoder(r.Request.Body).Decode(&req)
 	if err != nil {
@@ -61,7 +111,7 @@ func (h DeribitHandler) DeribitParseSell(r *gin.Context) {
 		return
 	}
 
-	order, err := h.svc.DeribitParseSell(r.Request.Context(), req)
+	order, err := h.svc.DeribitParseSell(r.Request.Context(), userIDStr, req)
 	if err != nil {
 		r.JSON(http.StatusInternalServerError, &model.Response{
 			Error:   true,

@@ -20,12 +20,19 @@ import (
 	"syscall"
 	"time"
 
+	"gateway/pkg/kafka/consumer/order"
+	"gateway/pkg/kafka/consumer/orderbook"
+	"gateway/pkg/kafka/consumer/trade"
+
 	_authCtrl "gateway/internal/auth/controller"
 	_authRepo "gateway/internal/auth/repository"
 	_authSvc "gateway/internal/auth/service"
 
 	_deribitCtrl "gateway/internal/deribit/controller"
 	_deribitSvc "gateway/internal/deribit/service"
+	_wsOrderbookSvc "gateway/internal/ws/service"
+
+	_wsCtrl "gateway/internal/ws/controller"
 
 	"github.com/casbin/casbin/v2"
 	gormadapter "github.com/casbin/gorm-adapter/v3"
@@ -81,6 +88,9 @@ func main() {
 	}
 	setupRBAC(enforcer)
 
+	// Initiate Redis Connection Here
+	// redis := redis.NewRedisConnection(os.Getenv("REDIS_URL"))
+
 	adminRepo := repository.NewAdminRepo(db)
 	adminSvc := service.NewAdminService(adminRepo)
 	controller.NewAdminHandler(r, adminSvc, enforcer)
@@ -94,6 +104,9 @@ func main() {
 
 	//qf
 	ordermatch.Cmd.Execute()
+	_wsOrderbookSvc := _wsOrderbookSvc.NewwsOrderbookService()
+
+	_wsCtrl.NewWebsocketHandler(r, authSvc, _deribitSvc, _wsOrderbookSvc)
 
 	fmt.Printf("Server is running on %s \n", os.Getenv("PORT"))
 
@@ -108,6 +121,11 @@ func main() {
 			log.Fatalf("listen: %s\n", err)
 		}
 	}()
+
+	//kafka listener
+	order.ConsumeOrder()
+	trade.ConsumeTrade()
+	orderbook.ConsumeOrderbook()
 
 	// Wait for interrupt signal to gracefully shutdown the server with
 	// a timeout of 5 seconds.

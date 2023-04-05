@@ -8,6 +8,7 @@ import (
 	"gateway/pkg/model"
 	"gateway/pkg/rbac/middleware"
 	"net/http"
+	"strconv"
 
 	cors "github.com/rs/cors/wrapper/gin"
 
@@ -28,6 +29,7 @@ func NewAdminHandler(r *gin.Engine, svc service.IAdminService, enforcer *casbin.
 
 	adminRoute.POST("/register", handler.Register)
 	adminRoute.POST("/client", middleware.Authorize("user", "write", enforcer), handler.CreateNewClient)
+	adminRoute.DELETE("/client/:id", middleware.Authorize("user", "write", enforcer), handler.DeleteClient)
 	adminRoute.GET("/client", middleware.Authorize("user", "read", enforcer), handler.GetAllClient)
 	adminRoute.GET("/role", middleware.Authorize("user", "read", enforcer), handler.GetAllRole)
 }
@@ -66,6 +68,22 @@ func (h *adminHandler) CreateNewClient(r *gin.Context) {
 		return
 	}
 	client, err := h.svc.CreateNewClient(r.Request.Context(), req)
+	if err != nil {
+		r.JSON(http.StatusInternalServerError, &model.Response{
+			Error:   true,
+			Message: err.Error(),
+		})
+		return
+	}
+	r.JSON(http.StatusAccepted, &model.Response{
+		Data: client,
+	})
+	return
+}
+
+func (h *adminHandler) DeleteClient(r *gin.Context) {
+	id, err := strconv.Atoi(r.Param("id"))
+	client, err := h.svc.DeleteClient(r.Request.Context(), id)
 	if err != nil {
 		r.JSON(http.StatusInternalServerError, &model.Response{
 			Error:   true,
