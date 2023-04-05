@@ -4,6 +4,7 @@ import (
 	"context"
 	"gateway/internal/admin/model"
 	_adminModel "gateway/internal/admin/model"
+	_roleModel "gateway/internal/role/model"
 	_userModel "gateway/internal/user/model"
 
 	"gorm.io/gorm"
@@ -26,6 +27,18 @@ func (repo *adminRepo) CreateNewClient(ctx context.Context, data _userModel.Clie
 	_ = repo.db.Create(&data)
 
 	return _userModel.APIKeys{}, nil
+}
+
+func (repo *adminRepo) CreateNewRole(ctx context.Context, data _roleModel.Role) (_roleModel.ResponseRole, error) {
+	_ = repo.db.Create(&data)
+
+	return _roleModel.ResponseRole{}, nil
+}
+
+func (repo *adminRepo) DeleteRole(ctx context.Context, id int) (_roleModel.ResponseRole, error) {
+	_ = repo.db.Delete(&_roleModel.Role{ID: int(id)})
+
+	return _roleModel.ResponseRole{}, nil
 }
 
 func (repo *adminRepo) DeleteClient(ctx context.Context, id int) (_userModel.ResponseClient, error) {

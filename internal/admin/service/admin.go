@@ -2,10 +2,10 @@ package service
 
 import (
 	"context"
-	"fmt"
 	"gateway/internal/admin/model"
 	_adminModel "gateway/internal/admin/model"
 	"gateway/internal/admin/repository"
+	_roleModel "gateway/internal/role/model"
 	_userModel "gateway/internal/user/model"
 	"log"
 	"math/rand"
@@ -49,8 +49,6 @@ func (svc adminService) CreateNewClient(ctx context.Context, data _userModel.Cre
 	clientSecret := generateClientSecret(clientId)
 	hashedSecret, err := bcrypt.GenerateFromPassword([]byte(clientSecret), bcrypt.DefaultCost)
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(data.Password), 14)
-	fmt.Println("password : ", password)
-	fmt.Println("hashedPassword : ", string(hashedPassword))
 	if err != nil {
 		log.Println(err.Error())
 		return _userModel.APIKeys{
@@ -72,6 +70,23 @@ func (svc adminService) CreateNewClient(ctx context.Context, data _userModel.Cre
 		Password:  password,
 		APIKey:    clientId,
 		APISecret: clientSecret,
+	}, nil
+}
+
+func (svc adminService) CreateNewRole(ctx context.Context, data _roleModel.CreateRole) (_roleModel.ResponseRole, error) {
+	role := _roleModel.Role{
+		Name: data.Name,
+	}
+	svc.repo.CreateNewRole(ctx, role)
+	return _roleModel.ResponseRole{
+		Response: "Create Success!",
+	}, nil
+}
+
+func (svc adminService) DeleteRole(ctx context.Context, id int) (_roleModel.ResponseRole, error) {
+	svc.repo.DeleteRole(ctx, id)
+	return _roleModel.ResponseRole{
+		Response: "Delete Success!",
 	}, nil
 }
 

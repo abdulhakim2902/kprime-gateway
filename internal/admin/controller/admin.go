@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	_adminModel "gateway/internal/admin/model"
 	"gateway/internal/admin/service"
+	_roleModel "gateway/internal/role/model"
 	_userModel "gateway/internal/user/model"
 	"gateway/pkg/model"
 	"gateway/pkg/rbac/middleware"
@@ -28,10 +29,14 @@ func NewAdminHandler(r *gin.Engine, svc service.IAdminService, enforcer *casbin.
 	adminRoute := r.Group("/admin")
 
 	adminRoute.POST("/register", handler.Register)
+
+	adminRoute.GET("/client", middleware.Authorize("user", "read", enforcer), handler.GetAllClient)
 	adminRoute.POST("/client", middleware.Authorize("user", "write", enforcer), handler.CreateNewClient)
 	adminRoute.DELETE("/client/:id", middleware.Authorize("user", "write", enforcer), handler.DeleteClient)
-	adminRoute.GET("/client", middleware.Authorize("user", "read", enforcer), handler.GetAllClient)
+
 	adminRoute.GET("/role", middleware.Authorize("user", "read", enforcer), handler.GetAllRole)
+	adminRoute.POST("/role", middleware.Authorize("user", "write", enforcer), handler.CreateNewRole)
+	adminRoute.DELETE("/role/:id", middleware.Authorize("user", "write", enforcer), handler.DeleteRole)
 }
 
 func (h *adminHandler) Register(r *gin.Context) {
@@ -77,6 +82,46 @@ func (h *adminHandler) CreateNewClient(r *gin.Context) {
 	}
 	r.JSON(http.StatusAccepted, &model.Response{
 		Data: client,
+	})
+	return
+}
+
+func (h *adminHandler) CreateNewRole(r *gin.Context) {
+	var req _roleModel.CreateRole
+	err := json.NewDecoder(r.Request.Body).Decode(&req)
+	if err != nil {
+		r.JSON(http.StatusBadRequest, &model.Response{
+			Error:   true,
+			Message: err.Error(),
+		})
+		return
+	}
+	role, err := h.svc.CreateNewRole(r.Request.Context(), req)
+	if err != nil {
+		r.JSON(http.StatusInternalServerError, &model.Response{
+			Error:   true,
+			Message: err.Error(),
+		})
+		return
+	}
+	r.JSON(http.StatusAccepted, &model.Response{
+		Data: role,
+	})
+	return
+}
+
+func (h *adminHandler) DeleteRole(r *gin.Context) {
+	id, err := strconv.Atoi(r.Param("id"))
+	role, err := h.svc.DeleteRole(r.Request.Context(), id)
+	if err != nil {
+		r.JSON(http.StatusInternalServerError, &model.Response{
+			Error:   true,
+			Message: err.Error(),
+		})
+		return
+	}
+	r.JSON(http.StatusAccepted, &model.Response{
+		Data: role,
 	})
 	return
 }
