@@ -9,7 +9,9 @@ import (
 	"gateway/internal/admin/repository"
 	"gateway/internal/admin/service"
 	_authModel "gateway/internal/auth/model"
+	"gateway/internal/ordermatch"
 	"gateway/internal/user/model"
+	"gateway/pkg/kafka/consumer"
 	"log"
 	"net/http"
 	"os"
@@ -19,9 +21,7 @@ import (
 	"syscall"
 	"time"
 
-	"gateway/pkg/kafka/consumer/order"
-	"gateway/pkg/kafka/consumer/orderbook"
-	"gateway/pkg/kafka/consumer/trade"
+	// "gateway/pkg/kafka/consumer"
 
 	_authCtrl "gateway/internal/auth/controller"
 	_authRepo "gateway/internal/auth/repository"
@@ -101,6 +101,8 @@ func main() {
 	_deribitSvc := _deribitSvc.NewDeribitService()
 	_deribitCtrl.NewDeribitHandler(r, _deribitSvc)
 
+	//qf
+	ordermatch.Cmd.Execute()
 	_wsOrderbookSvc := _wsOrderbookSvc.NewwsOrderbookService()
 
 	_wsCtrl.NewWebsocketHandler(r, authSvc, _deribitSvc, _wsOrderbookSvc)
@@ -120,9 +122,7 @@ func main() {
 	}()
 
 	//kafka listener
-	order.ConsumeOrder()
-	trade.ConsumeTrade()
-	orderbook.ConsumeOrderbook()
+	consumer.KafkaConsumer()
 
 	// Wait for interrupt signal to gracefully shutdown the server with
 	// a timeout of 5 seconds.

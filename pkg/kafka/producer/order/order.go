@@ -2,6 +2,7 @@ package order
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/Shopify/sarama"
 )
@@ -10,13 +11,13 @@ func ProduceOrder(obj string) {
 	config := sarama.NewConfig()
 	config.Producer.Return.Successes = true
 
-	producer, err := sarama.NewSyncProducer([]string{"localhost:29092"}, config)
+	producer, err := sarama.NewSyncProducer([]string{os.Getenv("KAFKA_BROKER")}, config)
 	if err != nil {
 		panic(err)
 	}
 	defer producer.Close()
 
-	topic := "ORDER"
+	topic := "NEWORDER"
 
 	message := &sarama.ProducerMessage{
 		Topic: topic,
