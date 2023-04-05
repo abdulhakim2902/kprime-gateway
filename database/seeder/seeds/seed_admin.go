@@ -26,7 +26,7 @@ func Seed_Admin(db *gorm.DB) error {
 			Name:     "admin",
 			Email:    "admin@mail.com",
 			Password: string(hashedPassword),
-			RoleId:   role.ID,
+			RoleId:   int(role.ID),
 		}
 
 		adminRepo.Register(context.TODO(), admin)
