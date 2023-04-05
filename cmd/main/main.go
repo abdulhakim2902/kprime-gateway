@@ -21,6 +21,8 @@ import (
 	"syscall"
 	"time"
 
+	"gateway/internal/ordermatch"
+
 	// "gateway/pkg/kafka/consumer"
 
 	_authCtrl "gateway/internal/auth/controller"
@@ -105,7 +107,7 @@ func main() {
 
 	//qf
 	go ordermatch.Cmd.Execute()
-	_wsOrderbookSvc := _wsOrderbookSvc.NewwsOrderbookService()
+	_wsOrderbookSvc := _wsOrderbookSvc.NewwsOrderbookService(redis)
 
 	_wsCtrl.NewWebsocketHandler(r, authSvc, _deribitSvc, _wsOrderbookSvc)
 
