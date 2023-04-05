@@ -1,7 +1,9 @@
 package order
 
 import (
+	"encoding/json"
 	"fmt"
+	"gateway/pkg/ws"
 	"os"
 	"os/signal"
 	"syscall"
@@ -45,6 +47,18 @@ func ConsumeOrder() {
 				case message := <-partitionConsumer.Messages():
 					fmt.Printf("Kafka received message on topic %s, partition %d, offset %d:\n%s\n",
 						message.Topic, message.Partition, message.Offset, string(message.Value))
+
+					str := string(message.Value)
+					var data map[string]interface{}
+					err := json.Unmarshal([]byte(str), &data)
+					if err != nil {
+						fmt.Println("Error parsing JSON:", err)
+						return
+					}
+
+					// Send message to websocket
+					userIDStr := fmt.Sprintf("%v", data["user_id"])
+					ws.SendOrderMessage(userIDStr, message.Value)
 				case err := <-partitionConsumer.Errors():
 					fmt.Printf("Error: %v\n", err)
 					return
