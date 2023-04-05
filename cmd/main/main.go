@@ -104,8 +104,8 @@ func main() {
 	_deribitCtrl.NewDeribitHandler(r, _deribitSvc)
 
 	//qf
-	// ordermatch.Cmd.Execute()
-	_wsOrderbookSvc := _wsOrderbookSvc.NewwsOrderbookService(redis)
+	go ordermatch.Cmd.Execute()
+	_wsOrderbookSvc := _wsOrderbookSvc.NewwsOrderbookService()
 
 	_wsCtrl.NewWebsocketHandler(r, authSvc, _deribitSvc, _wsOrderbookSvc)
 
