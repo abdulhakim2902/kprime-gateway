@@ -18,6 +18,7 @@ package ordermatch
 import (
 	"bufio"
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"gateway/internal/user/model"
 	"gateway/pkg/utils"
@@ -40,6 +41,8 @@ import (
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 
+	_producer "gateway/pkg/kafka/producer/order"
+
 	"github.com/quickfixgo/quickfix"
 )
 
@@ -49,6 +52,15 @@ type Application struct {
 	*OrderMatcher
 	execID int
 	*gorm.DB
+}
+
+type KafkaOrder struct {
+	UserID   string    `json:"user_id"`
+	ClientID string    `json:"client_id"`
+	Symbol   string    `json:"symbol"`
+	Side     enum.Side `json:"side"`
+	Price    float64   `json:"price"`
+	Quantity float64   `json:"quantity"`
 }
 
 func newApplication() *Application {
@@ -169,6 +181,17 @@ func (a *Application) onNewOrderSingle(msg newordersingle.NewOrderSingle, sessio
 		Quantity:     orderQty,
 	}
 
+	data := KafkaOrder{
+		UserID:   order.SenderCompID,
+		ClientID: order.TargetCompID,
+		Symbol:   order.Symbol,
+		Side:     order.Side,
+		Price:    order.Price.InexactFloat64(),
+		Quantity: order.Quantity.Tan().Copy().InexactFloat64(),
+	}
+	dataStr, _ := json.Marshal(data)
+	fmt.Println(data)
+	_producer.ProduceOrder(string(dataStr))
 	a.Insert(order)
 	a.acceptOrder(order)
 
