@@ -82,7 +82,7 @@ func isClientConnected(a string, client *Client) bool {
 	return false
 }
 
-func SendOrderMessage(msgType string, a string, payload interface{}) {
+func SendOrderMessage(a string, payload interface{}) {
 	conn := GetOrderConnections(a)
 	if conn == nil {
 		return

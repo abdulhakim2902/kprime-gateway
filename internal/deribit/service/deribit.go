@@ -2,7 +2,9 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"gateway/internal/deribit/model"
+	"gateway/pkg/kafka/producer/order"
 	"strings"
 )
 
@@ -30,6 +32,12 @@ func (svc deribitService) DeribitParseBuy(ctx context.Context, userId string, da
 		Amount:         data.Amount,
 	}
 
+	_buy, err := json.Marshal(buy)
+	if err != nil {
+		panic(err)
+	}
+	order.ProduceOrder(string(_buy))
+
 	return buy, nil
 }
 
@@ -48,6 +56,12 @@ func (svc deribitService) DeribitParseSell(ctx context.Context, userId string, d
 		Price:          data.Price,
 		Amount:         data.Amount,
 	}
+
+	_sell, err := json.Marshal(sell)
+	if err != nil {
+		panic(err)
+	}
+	order.ProduceOrder(string(_sell))
 
 	return sell, nil
 }
