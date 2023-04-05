@@ -7,6 +7,14 @@ type DeribitRequest struct {
 	Price          float64 `json:"price"`
 }
 
+type DeribitEditRequest struct {
+	OrderId        string  `json:"order_id"`
+	InstrumentName string  `json:"instrument_name"`
+	Amount         float64 `json:"amount"`
+	Type           string  `json:"type"`
+	Price          float64 `json:"price"`
+}
+
 type DeribitResponse struct {
 	UserId         string  `json:"user_id"`
 	ClientId       string  `json:"client_id"`
