@@ -11,6 +11,7 @@ import (
 	_authModel "gateway/internal/auth/model"
 	"gateway/internal/ordermatch"
 	"gateway/internal/user/model"
+	"gateway/pkg/kafka/consumer"
 	"log"
 	"net/http"
 	"os"
@@ -20,9 +21,7 @@ import (
 	"syscall"
 	"time"
 
-	"gateway/pkg/kafka/consumer/order"
-	"gateway/pkg/kafka/consumer/orderbook"
-	"gateway/pkg/kafka/consumer/trade"
+	// "gateway/pkg/kafka/consumer"
 
 	_authCtrl "gateway/internal/auth/controller"
 	_authRepo "gateway/internal/auth/repository"
@@ -123,9 +122,7 @@ func main() {
 	}()
 
 	//kafka listener
-	order.ConsumeOrder()
-	trade.ConsumeTrade()
-	orderbook.ConsumeOrderbook()
+	consumer.KafkaConsumer()
 
 	// Wait for interrupt signal to gracefully shutdown the server with
 	// a timeout of 5 seconds.
