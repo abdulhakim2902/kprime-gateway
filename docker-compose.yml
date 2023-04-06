@@ -1,9 +1,9 @@
 version: '3.1'
 services:
-  exchage-gateway:
-    image: exchage-gateway
-    ports:
-      - "8080:8080"
+  # exchage-gateway:
+  #   image: exchage-gateway
+  #   ports:
+  #     - "8080:8080"
   zookeeper:
     image: confluentinc/cp-zookeeper:latest
     environment:
