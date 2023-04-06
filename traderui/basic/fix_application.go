@@ -26,8 +26,8 @@ func (a *FIXApplication) OnLogout(sessionID quickfix.SessionID) {}
 // ToAdmin is ignored
 func (a *FIXApplication) ToAdmin(msg *quickfix.Message, sessionID quickfix.SessionID) {
 	if msg.IsMsgTypeOf(string(enum.MsgType_LOGON)) {
-		msg.Body.Set(field.NewPassword("password"))
-		msg.Body.Set(field.NewUsername("username"))
+		msg.Body.SetString(tag.Password, "password")
+		msg.Body.SetString(tag.Username, "username")
 	}
 }
 

@@ -1,49 +1,58 @@
 package service
 
 import (
+	"encoding/json"
+	"gateway/internal/orderbook/types"
+	"gateway/pkg/redis"
 	"gateway/pkg/ws"
-
-	"github.com/gin-gonic/gin"
 )
 
 type wsOrderbookService struct {
-	//
+	redis *redis.RedisConnection
 }
 
-func NewwsOrderbookService() IwsOrderbookService {
-	return &wsOrderbookService{}
+func NewwsOrderbookService(redis *redis.RedisConnection) IwsOrderbookService {
+	return &wsOrderbookService{redis}
 }
 
 func (svc wsOrderbookService) Subscribe(c *ws.Client, instrument string) {
 	socket := ws.GetOrderBookSocket()
 
-	// TODO: Read from REDIS
-	ob := gin.H{"todo": "read from redis"}
+	// Get initial data from the redis
+	res, err := svc.redis.GetValue("ORDERBOOK-" + instrument)
+	if res == "" || err != nil {
+		socket.SendInitMessage(c, &types.Message{
+			Instrument: instrument,
+		})
+		return
+	}
 
+	// Subscribe
 	id := instrument
-
-	err := socket.Subscribe(id, c)
+	err = socket.Subscribe(id, c)
 	if err != nil {
 		msg := map[string]string{"Message": err.Error()}
 		socket.SendErrorMessage(c, msg)
 		return
 	}
 
+	// JSON Parse
+	var initData types.Message
+	err = json.Unmarshal([]byte(res), &initData)
+	if err != nil {
+		msg := map[string]string{"Message": err.Error()}
+		socket.SendErrorMessage(c, msg)
+		return
+	}
+
+	// Prepare when user is doing unsubscribe
 	ws.RegisterConnectionUnsubscribeHandler(c, socket.UnsubscribeHandler(id))
-	socket.SendInitMessage(c, ob)
+
+	// Send initial data from the redis
+	socket.SendInitMessage(c, initData)
 }
 
 func (svc wsOrderbookService) Unsubscribe(c *ws.Client) {
 	socket := ws.GetOrderBookSocket()
 	socket.Unsubscribe(c)
-}
-
-func (svc wsOrderbookService) Consume() {
-	// This function will be a handler from Kafka consumer for orderbook
-	// We can broadcast using this method
-	// ws.GetOrderBookSocket().BroadcastMessage(id, map[string]interface{}{
-	// 	"pairName": orders[0].PairName,
-	// 	"bids":     bids,
-	// 	"asks":     asks,
-	// })
 }

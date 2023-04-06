@@ -110,7 +110,6 @@ func (a Application) FromAdmin(msg *quickfix.Message, sessionID quickfix.Session
 		if err := msg.Body.Get(&uname); err != nil {
 			return err
 		}
-
 		var user model.Client
 		res := a.DB.Where(model.Client{
 			Name: uname.String(),
