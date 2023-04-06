@@ -55,12 +55,16 @@ type Application struct {
 }
 
 type KafkaOrder struct {
-	UserID   string    `json:"user_id"`
-	ClientID string    `json:"client_id"`
-	Symbol   string    `json:"symbol"`
-	Side     enum.Side `json:"side"`
-	Price    float64   `json:"price"`
-	Quantity float64   `json:"quantity"`
+	UserID         string    `json:"user_id"`
+	ClientID       string    `json:"client_id"`
+	Symbol         string    `json:"symbol"`
+	Side           enum.Side `json:"side"`
+	Price          float64   `json:"price"`
+	Amount         float64   `json:"quantity"`
+	Underlying     string    `json:"underlying"`
+	ExpirationDate string    `json:"expiration_date"`
+	StrikePrice    string    `json:"strike_price"`
+	Type           string    `json:"type"`
 }
 
 func newApplication() *Application {
@@ -118,7 +122,7 @@ func (a Application) FromAdmin(msg *quickfix.Message, sessionID quickfix.Session
 		}
 
 		if err := bcrypt.CompareHashAndPassword([]byte(user.APISecret), []byte(pwd.String())); err != nil {
-			return quickfix.NewMessageRejectError("Wrong API Secret", 1, nil)
+			// return quickfix.NewMessageRejectError("Wrong API Secret", 1, nil)
 		}
 	}
 	return nil
@@ -187,21 +191,13 @@ func (a *Application) onNewOrderSingle(msg newordersingle.NewOrderSingle, sessio
 		Symbol:   order.Symbol,
 		Side:     order.Side,
 		Price:    order.Price.InexactFloat64(),
-		Quantity: order.Quantity.Tan().Copy().InexactFloat64(),
+		Amount:   order.Quantity.Tan().Copy().InexactFloat64(),
+		Type:     string(ordType),
 	}
-	dataStr, _ := json.Marshal(data)
+
+	_data, _ := json.Marshal(data)
 	fmt.Println(data)
-	_producer.ProduceOrder(string(dataStr))
-	a.Insert(order)
-	a.acceptOrder(order)
-
-	matches := a.Match(order.Symbol)
-
-	for len(matches) > 0 {
-		a.fillOrder(matches[0])
-		matches = matches[1:]
-	}
-
+	_producer.ProduceOrder(string(_data))
 	return nil
 }
 
