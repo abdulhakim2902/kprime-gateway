@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"bufio"
 	"fmt"
 	"io"
 
@@ -28,12 +27,4 @@ func PrintInfo(line string) {
 
 func PrintConfig(side string, reader io.Reader) {
 	PrintInfo(fmt.Sprintf("starting FIX %s with config:", side))
-
-	scanner := bufio.NewScanner(reader)
-	color.Set(color.FgHiBlue)
-	for scanner.Scan() {
-		line := scanner.Text()
-		fmt.Println(" " + line)
-	}
-	color.Unset()
 }

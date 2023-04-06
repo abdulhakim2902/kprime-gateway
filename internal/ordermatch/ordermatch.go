@@ -16,7 +16,6 @@
 package ordermatch
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -342,15 +341,5 @@ func execute(cmd *cobra.Command, args []string) error {
 		os.Exit(0)
 	}()
 
-	scanner := bufio.NewScanner(os.Stdin)
-	for {
-		scanner.Scan()
-
-		switch value := scanner.Text(); value {
-		case "#symbols":
-			app.Display()
-		default:
-			app.DisplayMarket(value)
-		}
-	}
+	return nil
 }
