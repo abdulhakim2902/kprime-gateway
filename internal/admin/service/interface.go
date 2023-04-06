@@ -4,7 +4,7 @@ import (
 	"context"
 	"gateway/internal/admin/model"
 	_adminModel "gateway/internal/admin/model"
-	_roleModel "gateway/internal/role/model"
+	_roleModel "gateway/internal/admin/model"
 	_userModel "gateway/internal/user/model"
 	"net/url"
 )

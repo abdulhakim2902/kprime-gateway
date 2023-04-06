@@ -4,7 +4,7 @@ import (
 	"context"
 	"gateway/internal/admin/model"
 	_adminModel "gateway/internal/admin/model"
-	_roleModel "gateway/internal/role/model"
+	_roleModel "gateway/internal/admin/model"
 	_userModel "gateway/internal/user/model"
 
 	"gorm.io/gorm"
@@ -35,8 +35,16 @@ func (repo *adminRepo) CreateNewRole(ctx context.Context, data _roleModel.Role) 
 	return _roleModel.ResponseRole{}, nil
 }
 
+func (repo *adminRepo) DetailRole(ctx context.Context, id int) (roles []_adminModel.Role, err error) {
+	_ = repo.db.Where("id = ?", id)
+
+	return roles, nil
+}
+
 func (repo *adminRepo) DeleteRole(ctx context.Context, id int) (_roleModel.ResponseRole, error) {
-	_ = repo.db.Delete(&_roleModel.Role{ID: uint(id)})
+	_ = repo.db.Delete(&_roleModel.Role{
+		Model: gorm.Model{ID: uint(id)},
+	})
 
 	return _roleModel.ResponseRole{}, nil
 }

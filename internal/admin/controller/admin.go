@@ -3,8 +3,8 @@ package controller
 import (
 	"encoding/json"
 	_adminModel "gateway/internal/admin/model"
+	_roleModel "gateway/internal/admin/model"
 	"gateway/internal/admin/service"
-	_roleModel "gateway/internal/role/model"
 	_userModel "gateway/internal/user/model"
 	"gateway/pkg/model"
 	"gateway/pkg/rbac/middleware"
