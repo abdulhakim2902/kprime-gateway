@@ -40,7 +40,6 @@ func NewWebsocketHandler(r *gin.Engine, authSvc service.IAuthService, deribitSvc
 
 	ws.RegisterChannel("/public/subscribe", handler.SubscribeHandler)
 	ws.RegisterChannel("/public/unsubscribe", handler.UnsubscribeHandler)
-
 }
 
 func (svc wsHandler) PublicAuth(input interface{}, c *ws.Client) {

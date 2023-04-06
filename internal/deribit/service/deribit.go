@@ -94,7 +94,7 @@ func (svc deribitService) DeribitParseEdit(ctx context.Context, userId string, d
 	return edit, nil
 }
 
-func (svc deribitService) DeribitParseCancel(ctx context.Context, userId string, data model.DeribitEditRequest) (model.DeribitResponse, error) {
+func (svc deribitService) DeribitParseCancel(ctx context.Context, userId string, data model.DeribitCancelRequest) (model.DeribitResponse, error) {
 	_string := data.InstrumentName
 	substring := strings.Split(_string, "-")
 
