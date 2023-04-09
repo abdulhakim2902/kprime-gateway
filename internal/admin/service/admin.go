@@ -11,6 +11,8 @@ import (
 	"math/rand"
 	"net/url"
 
+	"gateway/pkg/email"
+
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -47,6 +49,9 @@ func (svc adminService) CreateNewClient(ctx context.Context, data _userModel.Cre
 	clientId := generateClientId()
 	password := generateClientSecret(clientId)
 	clientSecret := generateClientSecret(clientId)
+
+	email.SendMail(data.Email, password, clientId, clientSecret)
+
 	hashedSecret, err := bcrypt.GenerateFromPassword([]byte(clientSecret), bcrypt.DefaultCost)
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(data.Password), 14)
 	if err != nil {
