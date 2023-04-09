@@ -92,19 +92,19 @@ func Test_adminRepo_CreateNewClient(t *testing.T) {
 			args: args{
 				ctx: context.TODO(),
 				data: _userModel.Client{
-					Name:               "Client A",
-					Email:              "a@client.com",
-					Password:           "123",
-					ClientId:           "cla123",
-					HashedClientSecret: "asdnui1231273",
+					Name:      "Client A",
+					Email:     "a@client.com",
+					Password:  "123",
+					APIKey:    "cla123",
+					APISecret: "asdnui1231273",
 				},
 			},
 			want: _userModel.Client{
-				Name:               "Client A",
-				Email:              "a@client.com",
-				Password:           "123",
-				ClientId:           "cla123",
-				HashedClientSecret: "asdnui1231273",
+				Name:      "Client A",
+				Email:     "a@client.com",
+				Password:  "123",
+				APIKey:    "cla123",
+				APISecret: "asdnui1231273",
 			},
 			wantErr: false,
 		},
@@ -126,7 +126,7 @@ func Test_adminRepo_CreateNewClient(t *testing.T) {
 			}
 			mock.ExpectBegin()
 			mock.ExpectQuery(regexp.QuoteMeta(`INSERT INTO 'clients' ('"name"','"email"','"password"','"client_id"', '"hashed_client_secret"', '"role_id"','"created_at"','"updated_at"') 
-			VALUES ($1,$2,$3,$4,$5,$6,$7)`)).WithArgs(tt.args.data.Name, tt.args.data.Email, tt.args.data.Password, tt.args.data.ClientId, tt.args.data.HashedClientSecret, nil, "2023-03-30 10:41:24.845", "2023-03-30 10:41:24.845")
+			VALUES ($1,$2,$3,$4,$5,$6,$7)`)).WithArgs(tt.args.data.Name, tt.args.data.Email, tt.args.data.Password, tt.args.data.APIKey, tt.args.data.APISecret, nil, "2023-03-30 10:41:24.845", "2023-03-30 10:41:24.845")
 			got, err := repo.CreateNewClient(tt.args.ctx, tt.args.data)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("adminRepo.CreateNewClient() error = %v, wantErr %v", err, tt.wantErr)

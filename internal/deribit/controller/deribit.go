@@ -6,7 +6,6 @@ import (
 	_deribitModel "gateway/internal/deribit/model"
 	"gateway/internal/deribit/service"
 	"gateway/pkg/model"
-	"gateway/pkg/rbac/middleware"
 	"net/http"
 	"strconv"
 
