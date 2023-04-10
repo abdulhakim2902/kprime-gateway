@@ -43,6 +43,8 @@ import (
 	"github.com/quickfixgo/quickfix"
 )
 
+var userSession map[string]*quickfix.SessionID
+
 // Application implements the quickfix.Application interface
 type Application struct {
 	*quickfix.MessageRouter
@@ -103,6 +105,7 @@ func (a Application) FromAdmin(msg *quickfix.Message, sessionID quickfix.Session
 		if res.Error != nil {
 			return quickfix.NewMessageRejectError("Failed getting user", 1, nil)
 		}
+		userSession[uname.String()] = &sessionID
 
 		if err := bcrypt.CompareHashAndPassword([]byte(user.APISecret), []byte(pwd.String())); err != nil {
 			return quickfix.NewMessageRejectError("Wrong API Secret", 1, nil)
@@ -261,6 +264,21 @@ func (a *Application) updateOrder(order Order, status enum.OrdStatus) {
 		fmt.Println(sendErr)
 	}
 
+}
+
+func OrderConfirmation(userId string, data map[string]interface{}) {
+	sessionId := userSession[userId]
+	msg := quickfix.NewMessage()
+	msg.Header.SetString(quickfix.Tag(8), "FIX.4.2")
+	msg.Body.SetString(quickfix.Tag(44), data["price"].(string))
+	msg.Body.SetString(quickfix.Tag(38), data["quantity"].(string))
+	msg.Body.SetString(quickfix.Tag(54), data["side"].(string))
+	msg.Body.SetString(quickfix.Tag(55), data["symbol"].(string))
+	msg.Body.SetString(quickfix.Tag(11), data["clOrdID"].(string))
+	msg.Body.SetString(quickfix.Tag(37), data["orderID"].(string))
+	msg.Body.SetString(quickfix.Tag(39), data["status"].(string))
+	msg.Body.SetString(quickfix.Tag(151), data["executedQuantity"].(string))
+	quickfix.SendToTarget(msg, *sessionId)
 }
 
 const (
