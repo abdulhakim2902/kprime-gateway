@@ -278,7 +278,10 @@ func OrderConfirmation(userId string, data map[string]interface{}) {
 	msg.Body.SetString(quickfix.Tag(37), data["orderID"].(string))
 	msg.Body.SetString(quickfix.Tag(39), data["status"].(string))
 	msg.Body.SetString(quickfix.Tag(151), data["executedQuantity"].(string))
-	quickfix.SendToTarget(msg, *sessionId)
+	err := quickfix.SendToTarget(msg, *sessionId)
+	if err != nil {
+		fmt.Print(err.Error())
+	}
 }
 
 const (
