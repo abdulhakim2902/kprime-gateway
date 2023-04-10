@@ -48,6 +48,7 @@ import (
 
 var userSession map[string]*quickfix.SessionID
 var orderSubs map[string][]quickfix.SessionID
+var userSession map[string]*quickfix.SessionID
 
 // Application implements the quickfix.Application interface
 type Application struct {
