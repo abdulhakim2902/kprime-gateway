@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	obInt "gateway/internal/orderbook/service"
+	"gateway/internal/ordermatch"
 	"gateway/pkg/ws"
 	"log"
 	"os"
@@ -63,6 +64,7 @@ func handleTopicOrder(message *sarama.ConsumerMessage) {
 	// Send message to websocket
 	userIDStr := fmt.Sprintf("%v", data["user_id"])
 	ws.SendOrderMessage(userIDStr, data)
+	ordermatch.OrderConfirmation(userIDStr, data)
 }
 
 func handleTopicTrade(message *sarama.ConsumerMessage) {
