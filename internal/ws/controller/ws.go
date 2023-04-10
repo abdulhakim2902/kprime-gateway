@@ -37,10 +37,11 @@ func NewWebsocketHandler(r *gin.Engine, authSvc service.IAuthService, deribitSvc
 	ws.RegisterChannel("/public/auth", handler.PublicAuth)
 	ws.RegisterChannel("/private/buy", handler.PrivateBuy)
 	ws.RegisterChannel("/private/sell", handler.PrivateSell)
+	ws.RegisterChannel("/private/edit", handler.PrivateEdit)
+	ws.RegisterChannel("/private/cancel", handler.PrivateCancel)
 
 	ws.RegisterChannel("/public/subscribe", handler.SubscribeHandler)
 	ws.RegisterChannel("/public/unsubscribe", handler.UnsubscribeHandler)
-
 }
 
 func (svc wsHandler) PublicAuth(input interface{}, c *ws.Client) {
@@ -139,6 +140,90 @@ func (svc wsHandler) PrivateSell(input interface{}, c *ws.Client) {
 
 	// Parse the Deribit Sell
 	res, err := svc.deribitSvc.DeribitParseSell(context.TODO(), JWTData.UserID, deribitModel.DeribitRequest{
+		InstrumentName: msg.InstrumentName,
+		Amount:         msg.Amount,
+		Type:           msg.Type,
+		Price:          msg.Price,
+	})
+
+	//register order connection
+	ws.RegisterOrderConnection(JWTData.UserID, c)
+
+	c.SendMessage(res)
+	return
+}
+
+func (svc wsHandler) PrivateEdit(input interface{}, c *ws.Client) {
+	type Req struct {
+		OrderId        string  `json:"order_id"`
+		AccessToken    string  `json:"access_token"`
+		InstrumentName string  `json:"instrument_name"`
+		Amount         float64 `json:"amount"`
+		Type           string  `json:"type"`
+		Price          float64 `json:"price"`
+	}
+
+	msg := &Req{}
+	bytes, _ := json.Marshal(input)
+	if err := json.Unmarshal(bytes, &msg); err != nil {
+		c.SendMessage(gin.H{"err": err})
+		return
+	}
+
+	// Check the Access Token
+	JWTData, err := svc.authSvc.JWTCheck(msg.AccessToken)
+	if err != nil {
+		c.SendMessage(gin.H{"err": err.Error()})
+		return
+	}
+
+	// TODO: Validation
+
+	// Parse the Deribit Sell
+	res, err := svc.deribitSvc.DeribitParseEdit(context.TODO(), JWTData.UserID, deribitModel.DeribitEditRequest{
+		OrderId:        msg.OrderId,
+		InstrumentName: msg.InstrumentName,
+		Amount:         msg.Amount,
+		Type:           msg.Type,
+		Price:          msg.Price,
+	})
+
+	//register order connection
+	ws.RegisterOrderConnection(JWTData.UserID, c)
+
+	c.SendMessage(res)
+	return
+}
+
+func (svc wsHandler) PrivateCancel(input interface{}, c *ws.Client) {
+	type Req struct {
+		OrderId        string  `json:"order_id"`
+		AccessToken    string  `json:"access_token"`
+		InstrumentName string  `json:"instrument_name"`
+		Amount         float64 `json:"amount"`
+		Type           string  `json:"type"`
+		Price          float64 `json:"price"`
+	}
+
+	msg := &Req{}
+	bytes, _ := json.Marshal(input)
+	if err := json.Unmarshal(bytes, &msg); err != nil {
+		c.SendMessage(gin.H{"err": err})
+		return
+	}
+
+	// Check the Access Token
+	JWTData, err := svc.authSvc.JWTCheck(msg.AccessToken)
+	if err != nil {
+		c.SendMessage(gin.H{"err": err.Error()})
+		return
+	}
+
+	// TODO: Validation
+
+	// Parse the Deribit Sell
+	res, err := svc.deribitSvc.DeribitParseCancel(context.TODO(), JWTData.UserID, deribitModel.DeribitCancelRequest{
+		OrderId:        msg.OrderId,
 		InstrumentName: msg.InstrumentName,
 		Amount:         msg.Amount,
 		Type:           msg.Type,

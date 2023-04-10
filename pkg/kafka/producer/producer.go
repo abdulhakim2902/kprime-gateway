@@ -1,4 +1,4 @@
-package order
+package producer
 
 import (
 	"fmt"
@@ -7,7 +7,7 @@ import (
 	"github.com/Shopify/sarama"
 )
 
-func ProduceOrder(obj string) {
+func KafkaProducer(obj string, topic string) {
 	config := sarama.NewConfig()
 	config.Producer.Return.Successes = true
 
@@ -17,10 +17,10 @@ func ProduceOrder(obj string) {
 	}
 	defer producer.Close()
 
-	topic := "NEWORDER"
+	_topic := topic
 
 	message := &sarama.ProducerMessage{
-		Topic: topic,
+		Topic: _topic,
 		Value: sarama.StringEncoder(obj),
 	}
 
