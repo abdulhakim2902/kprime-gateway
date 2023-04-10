@@ -37,7 +37,7 @@ func (svc deribitService) DeribitParseBuy(ctx context.Context, userId string, da
 		panic(err)
 	}
 	//send to kafka
-	producer.KafkaProducer(string(_buy), "NEWORDER")
+	producer.KafkaProducer(string(_buy), "NEW_ORDER")
 
 	return buy, nil
 }
@@ -63,7 +63,7 @@ func (svc deribitService) DeribitParseSell(ctx context.Context, userId string, d
 		panic(err)
 	}
 	//send to kafka
-	producer.KafkaProducer(string(_sell), "NEWORDER")
+	producer.KafkaProducer(string(_sell), "NEW_ORDER")
 
 	return sell, nil
 }
@@ -89,7 +89,7 @@ func (svc deribitService) DeribitParseEdit(ctx context.Context, userId string, d
 		panic(err)
 	}
 	//send to kafka
-	producer.KafkaProducer(string(_edit), "NEWORDER")
+	producer.KafkaProducer(string(_edit), "NEW_ORDER")
 
 	return edit, nil
 }
@@ -115,7 +115,7 @@ func (svc deribitService) DeribitParseCancel(ctx context.Context, userId string,
 		panic(err)
 	}
 	//send to kafka
-	producer.KafkaProducer(string(_cancel), "NEWORDER")
+	producer.KafkaProducer(string(_cancel), "NEW_ORDER")
 
 	return cancel, nil
 }
