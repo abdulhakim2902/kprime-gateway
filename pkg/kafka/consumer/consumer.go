@@ -5,14 +5,17 @@ import (
 	"fmt"
 	obInt "gateway/internal/orderbook/service"
 	"gateway/internal/ordermatch"
+	"gateway/internal/repositories"
 	"gateway/pkg/ws"
 	"log"
 	"os"
 
 	"github.com/Shopify/sarama"
+
+	oInt "gateway/internal/ws/service"
 )
 
-func KafkaConsumer(obSvc obInt.IOrderbookService) {
+func KafkaConsumer(repo *repositories.OrderRepository, obSvc obInt.IOrderbookService, oSvc oInt.IwsOrderService) {
 	config := sarama.NewConfig()
 	config.Consumer.Return.Errors = true
 
@@ -35,7 +38,7 @@ func KafkaConsumer(obSvc obInt.IOrderbookService) {
 			for message := range partitionConsumer.Messages() {
 				switch topic {
 				case "ORDER":
-					handleTopicOrder(message)
+					handleTopicOrder(oSvc, message)
 				case "TRADE":
 					handleTopicTrade(message)
 				case "ORDERBOOK":
@@ -50,7 +53,7 @@ func KafkaConsumer(obSvc obInt.IOrderbookService) {
 	select {}
 }
 
-func handleTopicOrder(message *sarama.ConsumerMessage) {
+func handleTopicOrder(oSvc oInt.IwsOrderService, message *sarama.ConsumerMessage) {
 	fmt.Printf("Received message from ORDER: %s\n", string(message.Value))
 
 	str := string(message.Value)
@@ -64,6 +67,14 @@ func handleTopicOrder(message *sarama.ConsumerMessage) {
 	// Send message to websocket
 	userIDStr := fmt.Sprintf("%v", data["userId"])
 	ws.SendOrderMessage(userIDStr, data)
+
+	userId, ok := data["userId"].(string)
+	if !ok {
+		fmt.Println("Failed to convert interface{} to string")
+		return
+	}
+
+	oSvc.HandleConsume(message, userId)
 	ordermatch.OrderConfirmation(userIDStr, data)
 }
 
