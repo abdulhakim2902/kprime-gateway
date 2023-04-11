@@ -28,14 +28,18 @@ import (
 	"runtime"
 	"strconv"
 	"syscall"
+	"time"
 
 	"github.com/quickfixgo/enum"
 	"github.com/quickfixgo/field"
 	"github.com/quickfixgo/fix42/executionreport"
 	"github.com/quickfixgo/fix42/marketdatarequest"
+	"github.com/quickfixgo/fix42/marketdatasnapshotfullrefresh"
 	"github.com/quickfixgo/fix42/newordersingle"
 	"github.com/quickfixgo/fix42/ordercancelrequest"
+	"github.com/shopspring/decimal"
 	"github.com/spf13/cobra"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -46,6 +50,7 @@ import (
 )
 
 var userSession map[string]*quickfix.SessionID
+var orderSubs map[string][]quickfix.SessionID
 
 // Application implements the quickfix.Application interface
 type Application struct {
@@ -53,6 +58,30 @@ type Application struct {
 	*OrderMatcher
 	execID int
 	*gorm.DB
+}
+
+type Orderbook struct {
+	InstrumentName string    `json:"instrumentName" bson:"instrumentName"`
+	Bids           []*Orderb `json:"bids" bson:"bids"`
+	Asks           []*Orderb `json:"asks" bson:"asks"`
+}
+
+type Orderb struct {
+	ID           primitive.ObjectID `json:"id" bson:"_id"`
+	UserID       string             `json:"userId" bson:"userId"`
+	ClientID     string             `json:"clientId" bson:"clientId"`
+	Underlying   string             `json:"underlying" bson:"underlying"`
+	ExpiryDate   string             `json:"expiryDate" bson:"expiryDate"`
+	StrikePrice  float64            `json:"strikePrice" bson:"strikePrice"`
+	Type         string             `json:"type" bson:"type"`
+	Side         string             `json:"side" bson:"side"`
+	Price        float64            `json:"price" bson:"price"`
+	Amount       float64            `json:"amount" bson:"amount"`
+	FilledAmount float64            `json:"filledAmount" bson:"filledAmount"`
+	Contracts    string             `json:"contracts" bson:"contracts"`
+	Status       string             `json:"status" bson:"status"`
+	CreatedAt    time.Time          `json:"createdAt" bson:"createdAt"`
+	UpdatedAt    time.Time          `json:"updatedAt" bson:"updatedAt"`
 }
 
 type KafkaOrder struct {
@@ -228,7 +257,79 @@ func (a *Application) onOrderCancelRequest(msg ordercancelrequest.OrderCancelReq
 
 func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataRequest, sessionID quickfix.SessionID) (err quickfix.MessageRejectError) {
 	fmt.Printf("%+v\n", msg)
+	var symbol field.SymbolField
+	msg.Body.GetField(quickfix.Tag(55), &symbol)
+	subs, _ := msg.Body.GetInt(quickfix.Tag(263))
+	if subs == 1 { // subscribe
+		orderSubs[symbol.String()] = append(orderSubs[symbol.String()], sessionID)
+	} else if subs == 2 { // unsubscribe
+		for i, sess := range orderSubs[symbol.String()] {
+			if sess == sessionID {
+				orderSubs[symbol.String()] = append(orderSubs[symbol.String()][:i], orderSubs[symbol.String()][i+1:]...)
+			}
+		}
+	}
 	return
+}
+
+func OnOrderboookUpdate(symbol string, data map[string]interface{}) {
+
+	bids := data["bids"].([]Orderb)
+	asks := data["asks"].([]Orderb)
+
+	msg := marketdatasnapshotfullrefresh.New(field.SymbolField{quickfix.FIXString(symbol)})
+
+	for _, bid := range bids {
+		mdBid := field.NewNoMDEntryTypes(1)
+		underlying := field.NewUnderlyingSymbol(bid.Underlying)
+		strike := field.NewStrikePrice(decimal.NewFromFloat(bid.StrikePrice), 10)
+		side := field.NewSide(enum.Side(bid.Side))
+		amount := field.NewQuantity(decimal.NewFromFloat(bid.Amount), 10)
+		filled := field.NewFillQty(decimal.NewFromFloat(bid.FilledAmount), 10)
+		exp := field.NewExDate(bid.ExpiryDate)
+		price := field.NewPrice(decimal.NewFromFloat(bid.Price), 10)
+		status := field.NewStatusText(bid.Status)
+
+		grp := marketdatasnapshotfullrefresh.NewNoMDEntriesRepeatingGroup()
+		grp.Add().Set(mdBid)
+		grp.Add().Set(underlying)
+		grp.Add().Set(strike)
+		grp.Add().Set(side)
+		grp.Add().Set(amount)
+		grp.Add().Set(filled)
+		grp.Add().Set(exp)
+		grp.Add().Set(price)
+		grp.Add().Set(status)
+		msg.SetNoMDEntries(grp)
+	}
+
+	for _, ask := range asks {
+		mdAsk := field.NewNoMDEntryTypes(2)
+		underlying := field.NewUnderlyingSymbol(ask.Underlying)
+		strike := field.NewStrikePrice(decimal.NewFromFloat(ask.StrikePrice), 10)
+		side := field.NewSide(enum.Side(ask.Side))
+		amount := field.NewQuantity(decimal.NewFromFloat(ask.Amount), 10)
+		filled := field.NewFillQty(decimal.NewFromFloat(ask.FilledAmount), 10)
+		exp := field.NewExDate(ask.ExpiryDate)
+		price := field.NewPrice(decimal.NewFromFloat(ask.Price), 10)
+		status := field.NewStatusText(ask.Status)
+
+		grp := marketdatasnapshotfullrefresh.NewNoMDEntriesRepeatingGroup()
+		grp.Add().Set(mdAsk)
+		grp.Add().Set(underlying)
+		grp.Add().Set(strike)
+		grp.Add().Set(side)
+		grp.Add().Set(amount)
+		grp.Add().Set(filled)
+		grp.Add().Set(exp)
+		grp.Add().Set(price)
+		grp.Add().Set(status)
+		msg.SetNoMDEntries(grp)
+	}
+
+	for _, sess := range orderSubs[symbol] {
+		quickfix.SendToTarget(msg, sess)
+	}
 }
 
 func (a *Application) acceptOrder(order Order) {
