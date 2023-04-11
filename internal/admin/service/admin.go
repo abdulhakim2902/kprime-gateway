@@ -96,13 +96,24 @@ func (svc adminService) DeleteRole(ctx context.Context, id int) (_roleModel.Resp
 	}, nil
 }
 
-func (svc adminService) DetailRole(ctx context.Context, id int) (roles []_adminModel.Role, err error) {
-	svc.repo.DetailRole(ctx, id)
+func (svc adminService) DetailRole(ctx context.Context, query url.Values, id int) (roles []_adminModel.Role, err error) {
+	roles, err = svc.repo.DetailRole(ctx, id)
 	if err != nil {
 		log.Println(err.Error())
 		return []_adminModel.Role{}, err
 	}
 	return roles, nil
+}
+
+func (svc adminService) UpdateRole(ctx context.Context, data _roleModel.UpdateRole, id int) (_roleModel.ResponseRole, error) {
+	role := _roleModel.Role{
+		Name: data.Name,
+		Data: data.Data,
+	}
+	svc.repo.UpdateRole(ctx, role, id)
+	return _roleModel.ResponseRole{
+		Response: "Update Success!",
+	}, nil
 }
 
 func (svc adminService) DeleteClient(ctx context.Context, id int) (_userModel.ResponseClient, error) {
