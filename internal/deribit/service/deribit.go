@@ -19,6 +19,12 @@ func NewDeribitService() IDeribitService {
 func (svc deribitService) DeribitParseBuy(ctx context.Context, userId string, data model.DeribitRequest) (model.DeribitResponse, error) {
 	_string := data.InstrumentName
 	substring := strings.Split(_string, "-")
+	_contracts := ""
+	if substring[3] == "P" {
+		_contracts = "PUT"
+	} else {
+		_contracts = "CALL"
+	}
 
 	buy := model.DeribitResponse{
 		UserId:         userId,
@@ -27,9 +33,10 @@ func (svc deribitService) DeribitParseBuy(ctx context.Context, userId string, da
 		ExpirationDate: substring[1],
 		StrikePrice:    substring[2],
 		Type:           data.Type,
-		Side:           "buy",
+		Side:           "BUY",
 		Price:          data.Price,
 		Amount:         data.Amount,
+		Contracts:      _contracts,
 	}
 
 	_buy, err := json.Marshal(buy)
@@ -45,6 +52,12 @@ func (svc deribitService) DeribitParseBuy(ctx context.Context, userId string, da
 func (svc deribitService) DeribitParseSell(ctx context.Context, userId string, data model.DeribitRequest) (model.DeribitResponse, error) {
 	_string := data.InstrumentName
 	substring := strings.Split(_string, "-")
+	_contracts := ""
+	if substring[3] == "P" {
+		_contracts = "PUT"
+	} else {
+		_contracts = "CALL"
+	}
 
 	sell := model.DeribitResponse{
 		UserId:         userId,
@@ -53,9 +66,10 @@ func (svc deribitService) DeribitParseSell(ctx context.Context, userId string, d
 		ExpirationDate: substring[1],
 		StrikePrice:    substring[2],
 		Type:           data.Type,
-		Side:           "sell",
+		Side:           "SELL",
 		Price:          data.Price,
 		Amount:         data.Amount,
+		Contracts:      _contracts,
 	}
 
 	_sell, err := json.Marshal(sell)
@@ -71,6 +85,12 @@ func (svc deribitService) DeribitParseSell(ctx context.Context, userId string, d
 func (svc deribitService) DeribitParseEdit(ctx context.Context, userId string, data model.DeribitEditRequest) (model.DeribitResponse, error) {
 	_string := data.InstrumentName
 	substring := strings.Split(_string, "-")
+	_contracts := ""
+	if substring[3] == "P" {
+		_contracts = "PUT"
+	} else {
+		_contracts = "CALL"
+	}
 
 	edit := model.DeribitResponse{
 		UserId:         userId,
@@ -79,9 +99,10 @@ func (svc deribitService) DeribitParseEdit(ctx context.Context, userId string, d
 		ExpirationDate: substring[1],
 		StrikePrice:    substring[2],
 		Type:           data.Type,
-		Side:           "edit",
+		Side:           "EDIT",
 		Price:          data.Price,
 		Amount:         data.Amount,
+		Contracts:      _contracts,
 	}
 
 	_edit, err := json.Marshal(edit)
@@ -97,6 +118,12 @@ func (svc deribitService) DeribitParseEdit(ctx context.Context, userId string, d
 func (svc deribitService) DeribitParseCancel(ctx context.Context, userId string, data model.DeribitCancelRequest) (model.DeribitResponse, error) {
 	_string := data.InstrumentName
 	substring := strings.Split(_string, "-")
+	_contracts := ""
+	if substring[3] == "P" {
+		_contracts = "PUT"
+	} else {
+		_contracts = "CALL"
+	}
 
 	cancel := model.DeribitResponse{
 		UserId:         userId,
@@ -105,9 +132,10 @@ func (svc deribitService) DeribitParseCancel(ctx context.Context, userId string,
 		ExpirationDate: substring[1],
 		StrikePrice:    substring[2],
 		Type:           data.Type,
-		Side:           "cancel",
+		Side:           "CANCEL",
 		Price:          data.Price,
 		Amount:         data.Amount,
+		Contracts:      _contracts,
 	}
 
 	_cancel, err := json.Marshal(cancel)

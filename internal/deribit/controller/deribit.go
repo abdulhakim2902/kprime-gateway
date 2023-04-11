@@ -70,6 +70,15 @@ func (h DeribitHandler) DeribitParseBuy(r *gin.Context) {
 		return
 	}
 
+	// Perform validation
+	if err := validate.Struct(req); err != nil {
+		r.JSON(http.StatusBadRequest, &model.Response{
+			Error:   true,
+			Message: err.Error(),
+		})
+		return
+	}
+
 	// Call service
 	order, errJson := h.svc.DeribitParseBuy(r.Request.Context(), userIDStr, req)
 	if errJson != nil {
@@ -114,6 +123,15 @@ func (h DeribitHandler) DeribitParseSell(r *gin.Context) {
 	var req _deribitModel.DeribitRequest
 	err := json.NewDecoder(r.Request.Body).Decode(&req)
 	if err != nil {
+		r.JSON(http.StatusBadRequest, &model.Response{
+			Error:   true,
+			Message: err.Error(),
+		})
+		return
+	}
+
+	// Perform validation
+	if err := validate.Struct(req); err != nil {
 		r.JSON(http.StatusBadRequest, &model.Response{
 			Error:   true,
 			Message: err.Error(),
