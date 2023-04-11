@@ -3,8 +3,8 @@ package controller
 import (
 	"encoding/json"
 	_adminModel "gateway/internal/admin/model"
+	_roleModel "gateway/internal/admin/model"
 	"gateway/internal/admin/service"
-	_roleModel "gateway/internal/role/model"
 	_userModel "gateway/internal/user/model"
 	"gateway/pkg/model"
 	"gateway/pkg/rbac/middleware"
@@ -35,6 +35,8 @@ func NewAdminHandler(r *gin.Engine, svc service.IAdminService, enforcer *casbin.
 	adminRoute.DELETE("/client/:id", middleware.Authorize("user", "write", enforcer), handler.DeleteClient)
 
 	adminRoute.GET("/role", middleware.Authorize("user", "read", enforcer), handler.GetAllRole)
+	adminRoute.GET("/role/:id", middleware.Authorize("user", "read", enforcer), handler.DetailRole)
+	adminRoute.PUT("/role/:id", middleware.Authorize("user", "write", enforcer), handler.UpdateRole)
 	adminRoute.POST("/role", middleware.Authorize("user", "write", enforcer), handler.CreateNewRole)
 	adminRoute.DELETE("/role/:id", middleware.Authorize("user", "write", enforcer), handler.DeleteRole)
 }
@@ -153,6 +155,47 @@ func (h *adminHandler) GetAllClient(r *gin.Context) {
 	}
 	r.JSON(http.StatusOK, &model.Response{
 		Data: clients,
+	})
+	return
+}
+
+func (h *adminHandler) UpdateRole(r *gin.Context) {
+	var req _roleModel.UpdateRole
+	err := json.NewDecoder(r.Request.Body).Decode(&req)
+	if err != nil {
+		r.JSON(http.StatusBadRequest, &model.Response{
+			Error:   true,
+			Message: err.Error(),
+		})
+		return
+	}
+	id, err := strconv.Atoi(r.Param("id"))
+	role, err := h.svc.UpdateRole(r.Request.Context(), req, id)
+	if err != nil {
+		r.JSON(http.StatusInternalServerError, &model.Response{
+			Error:   true,
+			Message: err.Error(),
+		})
+		return
+	}
+	r.JSON(http.StatusAccepted, &model.Response{
+		Data: role,
+	})
+	return
+}
+
+func (h *adminHandler) DetailRole(r *gin.Context) {
+	id, err := strconv.Atoi(r.Param("id"))
+	roles, err := h.svc.DetailRole(r.Request.Context(), r.Request.URL.Query(), id)
+	if err != nil {
+		r.JSON(http.StatusInternalServerError, &model.Response{
+			Error:   true,
+			Message: err.Error(),
+		})
+		return
+	}
+	r.JSON(http.StatusOK, &model.Response{
+		Data: roles,
 	})
 	return
 }

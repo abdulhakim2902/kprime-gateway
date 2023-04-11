@@ -4,8 +4,8 @@ import (
 	"context"
 	"gateway/internal/admin/model"
 	_adminModel "gateway/internal/admin/model"
+	_roleModel "gateway/internal/admin/model"
 	"gateway/internal/admin/repository"
-	_roleModel "gateway/internal/role/model"
 	_userModel "gateway/internal/user/model"
 	"log"
 	"math/rand"
@@ -76,6 +76,7 @@ func (svc adminService) CreateNewClient(ctx context.Context, data _userModel.Cre
 func (svc adminService) CreateNewRole(ctx context.Context, data _roleModel.CreateRole) (_roleModel.ResponseRole, error) {
 	role := _roleModel.Role{
 		Name: data.Name,
+		Data: data.Data,
 	}
 	svc.repo.CreateNewRole(ctx, role)
 	return _roleModel.ResponseRole{
@@ -87,6 +88,26 @@ func (svc adminService) DeleteRole(ctx context.Context, id int) (_roleModel.Resp
 	svc.repo.DeleteRole(ctx, id)
 	return _roleModel.ResponseRole{
 		Response: "Delete Success!",
+	}, nil
+}
+
+func (svc adminService) DetailRole(ctx context.Context, query url.Values, id int) (roles []_adminModel.Role, err error) {
+	roles, err = svc.repo.DetailRole(ctx, id)
+	if err != nil {
+		log.Println(err.Error())
+		return []_adminModel.Role{}, err
+	}
+	return roles, nil
+}
+
+func (svc adminService) UpdateRole(ctx context.Context, data _roleModel.UpdateRole, id int) (_roleModel.ResponseRole, error) {
+	role := _roleModel.Role{
+		Name: data.Name,
+		Data: data.Data,
+	}
+	svc.repo.UpdateRole(ctx, role, id)
+	return _roleModel.ResponseRole{
+		Response: "Update Success!",
 	}, nil
 }
 
