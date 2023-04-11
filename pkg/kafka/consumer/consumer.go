@@ -65,7 +65,7 @@ func handleTopicOrder(message *sarama.ConsumerMessage) {
 	}
 
 	// Send message to websocket
-	userIDStr := fmt.Sprintf("%v", data["user_id"])
+	userIDStr := fmt.Sprintf("%v", data["userId"])
 	ws.SendOrderMessage(userIDStr, data)
 	ordermatch.OrderConfirmation(userIDStr, data)
 }
