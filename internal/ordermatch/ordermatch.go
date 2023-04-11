@@ -28,6 +28,7 @@ import (
 	"runtime"
 	"strconv"
 	"syscall"
+	"time"
 
 	"github.com/quickfixgo/enum"
 	"github.com/quickfixgo/field"
@@ -36,6 +37,7 @@ import (
 	"github.com/quickfixgo/fix42/newordersingle"
 	"github.com/quickfixgo/fix42/ordercancelrequest"
 	"github.com/spf13/cobra"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -46,6 +48,24 @@ import (
 )
 
 var userSession map[string]*quickfix.SessionID
+
+type Orderb struct {
+	ID           primitive.ObjectID `json:"id" bson:"_id"`
+	UserID       string             `json:"userId" bson:"userId"`
+	ClientID     string             `json:"clientId" bson:"clientId"`
+	Underlying   string             `json:"underlying" bson:"underlying"`
+	ExpiryDate   string             `json:"expiryDate" bson:"expiryDate"`
+	StrikePrice  float64            `json:"strikePrice" bson:"strikePrice"`
+	Type         string             `json:"type" bson:"type"`
+	Side         string             `json:"side" bson:"side"`
+	Price        float64            `json:"price" bson:"price"`
+	Amount       float64            `json:"amount" bson:"amount"`
+	FilledAmount float64            `json:"filledAmount" bson:"filledAmount"`
+	Contracts    string             `json:"contracts" bson:"contracts"`
+	Status       string             `json:"status" bson:"status"`
+	CreatedAt    time.Time          `json:"createdAt" bson:"createdAt"`
+	UpdatedAt    time.Time          `json:"updatedAt" bson:"updatedAt"`
+}
 
 // Application implements the quickfix.Application interface
 type Application struct {
@@ -284,9 +304,21 @@ func (a *Application) updateOrder(order Order, status enum.OrdStatus) {
 
 }
 
-func OrderConfirmation(userId string, data map[string]interface{}) {
+func OrderConfirmation(userId string, data interface{}, symbol string) {
+	order := data.(Orderb)
 	sessionId := userSession[userId]
-	msg := quickfix.NewMessage()
+	msg := executionreport.New(
+		field.NewOrderID(order.ID.String()),
+		field.NewExecID(a.genExecID()),
+		field.NewExecTransType(enum.ExecTransType_NEW),
+		field.NewExecType(enum.ExecType(order.Status)),
+		field.NewOrdStatus(status),
+		field.NewSymbol(order.symbol),
+		field.NewSide(order.Side),
+		field.NewLeavesQty(order.OpenQuantity(), 2),
+		field.NewCumQty(order.ExecutedQuantity, 2),
+		field.NewAvgPx(order.AvgPx, 2),
+	)
 	msg.Header.SetString(quickfix.Tag(8), "FIX.4.2")
 	msg.Body.SetString(quickfix.Tag(44), data["price"].(string))
 	msg.Body.SetString(quickfix.Tag(38), data["quantity"].(string))
