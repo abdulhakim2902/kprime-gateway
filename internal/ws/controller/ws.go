@@ -22,13 +22,15 @@ type wsHandler struct {
 	authSvc    service.IAuthService
 	deribitSvc deribitService.IDeribitService
 	wsOBSvc    wsService.IwsOrderbookService
+	wsOSvc     wsService.IwsOrderService
 }
 
-func NewWebsocketHandler(r *gin.Engine, authSvc service.IAuthService, deribitSvc deribitService.IDeribitService, wsOBSvc wsService.IwsOrderbookService) {
+func NewWebsocketHandler(r *gin.Engine, authSvc service.IAuthService, deribitSvc deribitService.IDeribitService, wsOBSvc wsService.IwsOrderbookService, wsOSvc wsService.IwsOrderService) {
 	handler := &wsHandler{
 		authSvc:    authSvc,
 		deribitSvc: deribitSvc,
 		wsOBSvc:    wsOBSvc,
+		wsOSvc:     wsOSvc,
 	}
 	r.Use(cors.AllowAll())
 
@@ -255,7 +257,10 @@ func (svc wsHandler) SubscribeHandler(input interface{}, c *ws.Client) {
 		switch s[0] {
 		case "orderbook":
 			svc.wsOBSvc.Subscribe(c, s[1])
+		case "order":
+			svc.wsOSvc.Subscribe(c, s[1])
 		}
+
 	}
 }
 
@@ -272,69 +277,13 @@ func (svc wsHandler) UnsubscribeHandler(input interface{}, c *ws.Client) {
 	}
 
 	for _, channel := range msg.Channels {
-		fmt.Println(channel)
 		s := strings.Split(channel, ".")
 		switch s[0] {
 		case "orderbook":
 			svc.wsOBSvc.Unsubscribe(c)
+		case "order":
+			svc.wsOSvc.Unsubscribe(c)
 		}
+
 	}
 }
-
-// func hn(input interface{}, c *ws.Client) {
-// 	fmt.Println("hn")
-// 	fmt.Println(c)
-
-// 	msg := &ws.WebsocketEvent{}
-
-// 	ws.RegisterOrderConnection("aa", c)
-
-// 	bytes, _ := json.Marshal(input)
-// 	if err := json.Unmarshal(bytes, &msg); err != nil {
-// 		fmt.Println("Error")
-// 		c.SendMessage(ws.OrderChannel, "ERROR", err.Error())
-// 	}
-
-// 	ws.SendOrderMessage("ERROR", "aa", errors.New("Account is blocked2"))
-
-// 	c.SendMessage(errors.New("Account is blocked"))
-// 	fmt.Println(msg.Type)
-// }
-
-// func handler(c *gin.Context) {
-// 	var upgrader = websocket.Upgrader{
-// 		ReadBufferSize:  1024,
-// 		WriteBufferSize: 1024,
-// 		CheckOrigin: func(r *http.Request) bool {
-// 			return true
-// 		},
-// 	}
-// 	ws, err := upgrader.Upgrade(c.Writer, c.Request, nil)
-// 	if err != nil {
-// 		fmt.Println(err)
-// 		return
-// 	}
-// 	defer ws.Close()
-
-// 	for {
-// 		//Read Message from client
-// 		mt, message, err := ws.ReadMessage()
-// 		fmt.Println(mt)
-// 		fmt.Println(message)
-// 		if err != nil {
-// 			fmt.Println(err)
-// 			break
-// 		}
-// 		//If client message is ping will return pong
-// 		if string(message) == "ping" {
-// 			message = []byte("pong")
-// 		}
-// 		//Response message to client
-// 		err = ws.WriteMessage(mt, message)
-// 		if err != nil {
-// 			fmt.Println(err)
-// 			break
-// 		}
-// 	}
-
-// }
