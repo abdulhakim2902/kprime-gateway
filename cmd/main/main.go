@@ -9,6 +9,7 @@ import (
 	"gateway/internal/admin/repository"
 	"gateway/internal/admin/service"
 	_authModel "gateway/internal/auth/model"
+	"gateway/internal/ordermatch"
 	"gateway/internal/user/model"
 	"gateway/pkg/kafka/consumer"
 	"gateway/pkg/redis"
@@ -21,18 +22,16 @@ import (
 	"syscall"
 	"time"
 
-	"gateway/internal/ordermatch"
-
-	// "gateway/pkg/kafka/consumer"
-
 	_authCtrl "gateway/internal/auth/controller"
 	_authRepo "gateway/internal/auth/repository"
 	_authSvc "gateway/internal/auth/service"
 
 	_deribitCtrl "gateway/internal/deribit/controller"
 	_deribitSvc "gateway/internal/deribit/service"
+	_wsEngineSvc "gateway/internal/ws/engine/service"
 	_wsOrderbookSvc "gateway/internal/ws/service"
 
+	_engSvc "gateway/internal/engine/service"
 	_obSvc "gateway/internal/orderbook/service"
 
 	_wsCtrl "gateway/internal/ws/controller"
@@ -108,8 +107,9 @@ func main() {
 	//qf
 	go ordermatch.Cmd.Execute()
 	_wsOrderbookSvc := _wsOrderbookSvc.NewwsOrderbookService(redis)
+	_wsEngineSvc := _wsEngineSvc.NewwsEngineService(redis)
 
-	_wsCtrl.NewWebsocketHandler(r, authSvc, _deribitSvc, _wsOrderbookSvc)
+	_wsCtrl.NewWebsocketHandler(r, authSvc, _deribitSvc, _wsOrderbookSvc, _wsEngineSvc)
 
 	fmt.Printf("Server is running on %s \n", os.Getenv("PORT"))
 
@@ -126,9 +126,10 @@ func main() {
 	}()
 
 	_obSvc := _obSvc.NewOrderbookHandler(r, redis)
+	_engSvc := _engSvc.NewEngineHandler(r, redis)
 
 	//kafka listener
-	consumer.KafkaConsumer(_obSvc)
+	consumer.KafkaConsumer(_obSvc, _engSvc)
 
 	// Wait for interrupt signal to gracefully shutdown the server with
 	// a timeout of 5 seconds.
