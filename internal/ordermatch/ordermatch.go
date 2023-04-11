@@ -52,6 +52,24 @@ import (
 var userSession map[string]*quickfix.SessionID
 var orderSubs map[string][]quickfix.SessionID
 
+type Orderb struct {
+	ID           primitive.ObjectID `json:"id" bson:"_id"`
+	UserID       string             `json:"userId" bson:"userId"`
+	ClientID     string             `json:"clientId" bson:"clientId"`
+	Underlying   string             `json:"underlying" bson:"underlying"`
+	ExpiryDate   string             `json:"expiryDate" bson:"expiryDate"`
+	StrikePrice  float64            `json:"strikePrice" bson:"strikePrice"`
+	Type         string             `json:"type" bson:"type"`
+	Side         string             `json:"side" bson:"side"`
+	Price        float64            `json:"price" bson:"price"`
+	Amount       float64            `json:"amount" bson:"amount"`
+	FilledAmount float64            `json:"filledAmount" bson:"filledAmount"`
+	Contracts    string             `json:"contracts" bson:"contracts"`
+	Status       string             `json:"status" bson:"status"`
+	CreatedAt    time.Time          `json:"createdAt" bson:"createdAt"`
+	UpdatedAt    time.Time          `json:"updatedAt" bson:"updatedAt"`
+}
+
 // Application implements the quickfix.Application interface
 type Application struct {
 	*quickfix.MessageRouter
@@ -385,18 +403,31 @@ func (a *Application) updateOrder(order Order, status enum.OrdStatus) {
 
 }
 
-func OrderConfirmation(userId string, data map[string]interface{}) {
+func OrderConfirmation(userId string, data interface{}, symbol string) {
+	order := data.(Orderb)
 	sessionId := userSession[userId]
-	msg := quickfix.NewMessage()
-	msg.Header.SetString(quickfix.Tag(8), "FIX.4.2")
-	msg.Body.SetString(quickfix.Tag(44), data["price"].(string))
-	msg.Body.SetString(quickfix.Tag(38), data["quantity"].(string))
-	msg.Body.SetString(quickfix.Tag(54), data["side"].(string))
-	msg.Body.SetString(quickfix.Tag(55), data["symbol"].(string))
-	msg.Body.SetString(quickfix.Tag(11), data["clOrdID"].(string))
-	msg.Body.SetString(quickfix.Tag(37), data["orderID"].(string))
-	msg.Body.SetString(quickfix.Tag(39), data["status"].(string))
-	msg.Body.SetString(quickfix.Tag(151), data["executedQuantity"].(string))
+	exec := 0
+	switch order.Status {
+	case "FILLED":
+		exec = 2
+		break
+	case "PARTIALLY FILLED":
+		exec = 1
+		break
+	}
+
+	msg := executionreport.New(
+		field.NewOrderID(order.ID.String()),
+		field.NewExecID(strconv.Itoa(exec)),
+		field.NewExecTransType(enum.ExecTransType_NEW),
+		field.NewExecType(enum.ExecType(order.Status)),
+		field.NewOrdStatus(enum.OrdStatus(order.Status)),
+		field.NewSymbol(symbol),
+		field.NewSide(enum.Side(order.Side)),
+		field.NewLeavesQty(decimal.NewFromFloat(order.Amount-order.FilledAmount), 2),
+		field.NewCumQty(decimal.NewFromFloat(order.FilledAmount), 2),
+		field.NewAvgPx(decimal.NewFromFloat(order.Price), 2),
+	)
 	err := quickfix.SendToTarget(msg, *sessionId)
 	if err != nil {
 		fmt.Print(err.Error())
