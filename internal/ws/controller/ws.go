@@ -8,6 +8,7 @@ import (
 	"gateway/internal/auth/service"
 	deribitModel "gateway/internal/deribit/model"
 	deribitService "gateway/internal/deribit/service"
+	engService "gateway/internal/ws/engine/service"
 	wsService "gateway/internal/ws/service"
 	"strings"
 
@@ -22,13 +23,15 @@ type wsHandler struct {
 	authSvc    service.IAuthService
 	deribitSvc deribitService.IDeribitService
 	wsOBSvc    wsService.IwsOrderbookService
+	wsEngSvc   engService.IwsEngineService
 }
 
-func NewWebsocketHandler(r *gin.Engine, authSvc service.IAuthService, deribitSvc deribitService.IDeribitService, wsOBSvc wsService.IwsOrderbookService) {
+func NewWebsocketHandler(r *gin.Engine, authSvc service.IAuthService, deribitSvc deribitService.IDeribitService, wsOBSvc wsService.IwsOrderbookService, wsEngSvc engService.IwsEngineService) {
 	handler := &wsHandler{
 		authSvc:    authSvc,
 		deribitSvc: deribitSvc,
 		wsOBSvc:    wsOBSvc,
+		wsEngSvc:   wsEngSvc,
 	}
 	r.Use(cors.AllowAll())
 
@@ -255,6 +258,8 @@ func (svc wsHandler) SubscribeHandler(input interface{}, c *ws.Client) {
 		switch s[0] {
 		case "orderbook":
 			svc.wsOBSvc.Subscribe(c, s[1])
+		case "engine":
+			svc.wsEngSvc.Subscribe(c, s[1])
 		}
 	}
 }
@@ -277,6 +282,8 @@ func (svc wsHandler) UnsubscribeHandler(input interface{}, c *ws.Client) {
 		switch s[0] {
 		case "orderbook":
 			svc.wsOBSvc.Unsubscribe(c)
+		case "engine":
+			svc.wsEngSvc.Unsubscribe(c)
 		}
 	}
 }
