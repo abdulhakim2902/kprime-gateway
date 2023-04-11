@@ -33,6 +33,7 @@ import (
 	"github.com/quickfixgo/field"
 	"github.com/quickfixgo/fix42/executionreport"
 	"github.com/quickfixgo/fix42/marketdatarequest"
+	"github.com/quickfixgo/fix42/marketdatasnapshotfullrefresh"
 	"github.com/quickfixgo/fix42/newordersingle"
 	"github.com/quickfixgo/fix42/ordercancelrequest"
 	"github.com/spf13/cobra"
@@ -45,7 +46,6 @@ import (
 	"github.com/quickfixgo/quickfix"
 )
 
-var orderSubs map[string][]quickfix.SessionID
 var userSession map[string]*quickfix.SessionID
 var orderSubs map[string][]quickfix.SessionID
 
@@ -232,8 +232,45 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 	fmt.Printf("%+v\n", msg)
 	var symbol field.SymbolField
 	msg.Body.GetField(quickfix.Tag(55), &symbol)
-	orderSubs[symbol.String()] = []quickfix.SessionID{sessionID}
+	subs, _ := msg.Body.GetInt(quickfix.Tag(263))
+	if subs == 1 { // subscribe
+		orderSubs[symbol.String()] = append(orderSubs[symbol.String()], sessionID)
+	} else if subs == 2 { // unsubscribe
+		for i, sess := range orderSubs[symbol.String()] {
+			if sess == sessionID {
+				orderSubs[symbol.String()] = append(orderSubs[symbol.String()][:i], orderSubs[symbol.String()][i+1:]...)
+			}
+		}
+	}
 	return
+}
+
+func OnOrderboookUpdate(symbol string, data map[string]interface{}) {
+	type OrderBook struct {
+		order_id string
+	}
+	bids := data["bids"].([]OrderBook)
+	asks := data["asks"].([]OrderBook)
+
+	msg := marketdatasnapshotfullrefresh.New(field.SymbolField{quickfix.FIXString(symbol)})
+
+	for _, _ = range bids {
+		mdBid := field.NewNoMDEntryTypes(1)
+		grp := marketdatasnapshotfullrefresh.NewNoMDEntriesRepeatingGroup()
+		grp.Add().Set(mdBid)
+		msg.SetNoMDEntries(grp)
+	}
+
+	for _, _ = range asks {
+		mdAsk := field.NewNoMDEntryTypes(2)
+		grp := marketdatasnapshotfullrefresh.NewNoMDEntriesRepeatingGroup()
+		grp.Add().Set(mdAsk)
+		msg.SetNoMDEntries(grp)
+	}
+
+	for _, sess := range orderSubs[symbol] {
+		quickfix.SendToTarget(msg, sess)
+	}
 }
 
 func (a *Application) acceptOrder(order Order) {

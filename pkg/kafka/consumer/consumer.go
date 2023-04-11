@@ -8,6 +8,7 @@ import (
 	"gateway/pkg/ws"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/Shopify/sarama"
 )
@@ -73,4 +74,14 @@ func handleTopicTrade(message *sarama.ConsumerMessage) {
 
 func handleTopicOrderbook(message *sarama.ConsumerMessage) {
 	fmt.Printf("Received message from ORDERBOOK: %s\n", string(message.Value))
+
+	str := string(message.Value)
+	var data map[string]interface{}
+	err := json.Unmarshal([]byte(str), &data)
+	if err != nil {
+		fmt.Println("Error parsing JSON:", err)
+		return
+	}
+	symbol := strings.Split(data["instrument_name"].(string), "-")[0]
+	ordermatch.OnOrderboookUpdate(symbol, data)
 }
