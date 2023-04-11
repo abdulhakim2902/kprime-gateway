@@ -40,7 +40,7 @@ import (
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 
-	_producer "gateway/pkg/kafka/producer/order"
+	_producer "gateway/pkg/kafka/producer"
 
 	"github.com/quickfixgo/quickfix"
 )
@@ -198,7 +198,7 @@ func (a *Application) onNewOrderSingle(msg newordersingle.NewOrderSingle, sessio
 
 	_data, _ := json.Marshal(data)
 	fmt.Println(data)
-	_producer.ProduceOrder(string(_data))
+	_producer.KafkaProducer(string(_data), "ORDER")
 	return nil
 }
 
