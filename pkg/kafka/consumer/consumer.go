@@ -8,6 +8,7 @@ import (
 	"gateway/pkg/ws"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/Shopify/sarama"
 )
@@ -64,7 +65,9 @@ func handleTopicOrder(message *sarama.ConsumerMessage) {
 	// Send message to websocket
 	userIDStr := fmt.Sprintf("%v", data["userId"])
 	ws.SendOrderMessage(userIDStr, data)
-	ordermatch.OrderConfirmation(userIDStr, data)
+
+	symbol := strings.Split(data["instrument_name"].(string), "-")[0]
+	ordermatch.OrderConfirmation(userIDStr, data, symbol)
 }
 
 func handleTopicTrade(message *sarama.ConsumerMessage) {

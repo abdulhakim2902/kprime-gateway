@@ -36,6 +36,7 @@ import (
 	"github.com/quickfixgo/fix42/marketdatarequest"
 	"github.com/quickfixgo/fix42/newordersingle"
 	"github.com/quickfixgo/fix42/ordercancelrequest"
+	"github.com/shopspring/decimal"
 	"github.com/spf13/cobra"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/crypto/bcrypt"
@@ -307,27 +308,28 @@ func (a *Application) updateOrder(order Order, status enum.OrdStatus) {
 func OrderConfirmation(userId string, data interface{}, symbol string) {
 	order := data.(Orderb)
 	sessionId := userSession[userId]
+	exec := 0
+	switch order.Status {
+	case "FILLED":
+		exec = 2
+		break
+	case "PARTIALLY FILLED":
+		exec = 1
+		break
+	}
+
 	msg := executionreport.New(
 		field.NewOrderID(order.ID.String()),
-		field.NewExecID(a.genExecID()),
+		field.NewExecID(strconv.Itoa(exec)),
 		field.NewExecTransType(enum.ExecTransType_NEW),
 		field.NewExecType(enum.ExecType(order.Status)),
-		field.NewOrdStatus(status),
-		field.NewSymbol(order.symbol),
-		field.NewSide(order.Side),
-		field.NewLeavesQty(order.OpenQuantity(), 2),
-		field.NewCumQty(order.ExecutedQuantity, 2),
-		field.NewAvgPx(order.AvgPx, 2),
+		field.NewOrdStatus(enum.OrdStatus(order.Status)),
+		field.NewSymbol(symbol),
+		field.NewSide(enum.Side(order.Side)),
+		field.NewLeavesQty(decimal.NewFromFloat(order.Amount-order.FilledAmount), 2),
+		field.NewCumQty(decimal.NewFromFloat(order.FilledAmount), 2),
+		field.NewAvgPx(decimal.NewFromFloat(order.Price), 2),
 	)
-	msg.Header.SetString(quickfix.Tag(8), "FIX.4.2")
-	msg.Body.SetString(quickfix.Tag(44), data["price"].(string))
-	msg.Body.SetString(quickfix.Tag(38), data["quantity"].(string))
-	msg.Body.SetString(quickfix.Tag(54), data["side"].(string))
-	msg.Body.SetString(quickfix.Tag(55), data["symbol"].(string))
-	msg.Body.SetString(quickfix.Tag(11), data["clOrdID"].(string))
-	msg.Body.SetString(quickfix.Tag(37), data["orderID"].(string))
-	msg.Body.SetString(quickfix.Tag(39), data["status"].(string))
-	msg.Body.SetString(quickfix.Tag(151), data["executedQuantity"].(string))
 	err := quickfix.SendToTarget(msg, *sessionId)
 	if err != nil {
 		fmt.Print(err.Error())
