@@ -45,6 +45,8 @@ import (
 	"github.com/quickfixgo/quickfix"
 )
 
+var orderSubs map[string][]quickfix.SessionID
+
 // Application implements the quickfix.Application interface
 type Application struct {
 	*quickfix.MessageRouter
@@ -225,6 +227,9 @@ func (a *Application) onOrderCancelRequest(msg ordercancelrequest.OrderCancelReq
 
 func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataRequest, sessionID quickfix.SessionID) (err quickfix.MessageRejectError) {
 	fmt.Printf("%+v\n", msg)
+	var symbol field.SymbolField
+	msg.Body.GetField(quickfix.Tag(55), &symbol)
+	orderSubs[symbol.String()] = []quickfix.SessionID{sessionID}
 	return
 }
 
