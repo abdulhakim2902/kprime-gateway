@@ -28,6 +28,7 @@ import (
 	"runtime"
 	"strconv"
 	"syscall"
+	"time"
 
 	"github.com/quickfixgo/enum"
 	"github.com/quickfixgo/field"
@@ -36,7 +37,9 @@ import (
 	"github.com/quickfixgo/fix42/marketdatasnapshotfullrefresh"
 	"github.com/quickfixgo/fix42/newordersingle"
 	"github.com/quickfixgo/fix42/ordercancelrequest"
+	"github.com/shopspring/decimal"
 	"github.com/spf13/cobra"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -55,6 +58,30 @@ type Application struct {
 	*OrderMatcher
 	execID int
 	*gorm.DB
+}
+
+type Orderbook struct {
+	InstrumentName string    `json:"instrumentName" bson:"instrumentName"`
+	Bids           []*Orderb `json:"bids" bson:"bids"`
+	Asks           []*Orderb `json:"asks" bson:"asks"`
+}
+
+type Orderb struct {
+	ID           primitive.ObjectID `json:"id" bson:"_id"`
+	UserID       string             `json:"userId" bson:"userId"`
+	ClientID     string             `json:"clientId" bson:"clientId"`
+	Underlying   string             `json:"underlying" bson:"underlying"`
+	ExpiryDate   string             `json:"expiryDate" bson:"expiryDate"`
+	StrikePrice  float64            `json:"strikePrice" bson:"strikePrice"`
+	Type         string             `json:"type" bson:"type"`
+	Side         string             `json:"side" bson:"side"`
+	Price        float64            `json:"price" bson:"price"`
+	Amount       float64            `json:"amount" bson:"amount"`
+	FilledAmount float64            `json:"filledAmount" bson:"filledAmount"`
+	Contracts    string             `json:"contracts" bson:"contracts"`
+	Status       string             `json:"status" bson:"status"`
+	CreatedAt    time.Time          `json:"createdAt" bson:"createdAt"`
+	UpdatedAt    time.Time          `json:"updatedAt" bson:"updatedAt"`
 }
 
 type KafkaOrder struct {
@@ -246,25 +273,57 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 }
 
 func OnOrderboookUpdate(symbol string, data map[string]interface{}) {
-	type OrderBook struct {
-		order_id string
-	}
-	bids := data["bids"].([]OrderBook)
-	asks := data["asks"].([]OrderBook)
+
+	bids := data["bids"].([]Orderb)
+	asks := data["asks"].([]Orderb)
 
 	msg := marketdatasnapshotfullrefresh.New(field.SymbolField{quickfix.FIXString(symbol)})
 
-	for _, _ = range bids {
+	for _, bid := range bids {
 		mdBid := field.NewNoMDEntryTypes(1)
+		underlying := field.NewUnderlyingSymbol(bid.Underlying)
+		strike := field.NewStrikePrice(decimal.NewFromFloat(bid.StrikePrice), 10)
+		side := field.NewSide(enum.Side(bid.Side))
+		amount := field.NewQuantity(decimal.NewFromFloat(bid.Amount), 10)
+		filled := field.NewFillQty(decimal.NewFromFloat(bid.FilledAmount), 10)
+		exp := field.NewExDate(bid.ExpiryDate)
+		price := field.NewPrice(decimal.NewFromFloat(bid.Price), 10)
+		status := field.NewStatusText(bid.Status)
+
 		grp := marketdatasnapshotfullrefresh.NewNoMDEntriesRepeatingGroup()
 		grp.Add().Set(mdBid)
+		grp.Add().Set(underlying)
+		grp.Add().Set(strike)
+		grp.Add().Set(side)
+		grp.Add().Set(amount)
+		grp.Add().Set(filled)
+		grp.Add().Set(exp)
+		grp.Add().Set(price)
+		grp.Add().Set(status)
 		msg.SetNoMDEntries(grp)
 	}
 
-	for _, _ = range asks {
+	for _, ask := range asks {
 		mdAsk := field.NewNoMDEntryTypes(2)
+		underlying := field.NewUnderlyingSymbol(ask.Underlying)
+		strike := field.NewStrikePrice(decimal.NewFromFloat(ask.StrikePrice), 10)
+		side := field.NewSide(enum.Side(ask.Side))
+		amount := field.NewQuantity(decimal.NewFromFloat(ask.Amount), 10)
+		filled := field.NewFillQty(decimal.NewFromFloat(ask.FilledAmount), 10)
+		exp := field.NewExDate(ask.ExpiryDate)
+		price := field.NewPrice(decimal.NewFromFloat(ask.Price), 10)
+		status := field.NewStatusText(ask.Status)
+
 		grp := marketdatasnapshotfullrefresh.NewNoMDEntriesRepeatingGroup()
 		grp.Add().Set(mdAsk)
+		grp.Add().Set(underlying)
+		grp.Add().Set(strike)
+		grp.Add().Set(side)
+		grp.Add().Set(amount)
+		grp.Add().Set(filled)
+		grp.Add().Set(exp)
+		grp.Add().Set(price)
+		grp.Add().Set(status)
 		msg.SetNoMDEntries(grp)
 	}
 
