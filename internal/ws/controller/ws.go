@@ -69,14 +69,14 @@ func (svc wsHandler) PublicAuth(input interface{}, c *ws.Client) {
 		return
 	}
 
-	c.SendMessage(gin.H{"access_token": signedToken})
+	c.SendMessage(gin.H{"accessToken": signedToken})
 	return
 }
 
 func (svc wsHandler) PrivateBuy(input interface{}, c *ws.Client) {
 	type Req struct {
-		AccessToken    string  `json:"access_token"`
-		InstrumentName string  `json:"instrument_name"`
+		AccessToken    string  `json:"accessToken"`
+		InstrumentName string  `json:"instrumentName"`
 		Amount         float64 `json:"amount"`
 		Type           string  `json:"type"`
 		Price          float64 `json:"price"`
@@ -99,7 +99,7 @@ func (svc wsHandler) PrivateBuy(input interface{}, c *ws.Client) {
 	// TODO: Validation
 
 	// Parse the Deribit BUY
-	res, err := svc.deribitSvc.DeribitParseBuy(context.TODO(), JWTData.UserID, deribitModel.DeribitRequest{
+	_, err = svc.deribitSvc.DeribitParseBuy(context.TODO(), JWTData.UserID, deribitModel.DeribitRequest{
 		InstrumentName: msg.InstrumentName,
 		Amount:         msg.Amount,
 		Type:           msg.Type,
@@ -109,14 +109,14 @@ func (svc wsHandler) PrivateBuy(input interface{}, c *ws.Client) {
 	//register order connection
 	ws.RegisterOrderConnection(JWTData.UserID, c)
 
-	c.SendMessage(res)
+	// c.SendMessage(res)
 	return
 }
 
 func (svc wsHandler) PrivateSell(input interface{}, c *ws.Client) {
 	type Req struct {
-		AccessToken    string  `json:"access_token"`
-		InstrumentName string  `json:"instrument_name"`
+		AccessToken    string  `json:"accessToken"`
+		InstrumentName string  `json:"instrumentName"`
 		Amount         float64 `json:"amount"`
 		Type           string  `json:"type"`
 		Price          float64 `json:"price"`
@@ -139,7 +139,7 @@ func (svc wsHandler) PrivateSell(input interface{}, c *ws.Client) {
 	// TODO: Validation
 
 	// Parse the Deribit Sell
-	res, err := svc.deribitSvc.DeribitParseSell(context.TODO(), JWTData.UserID, deribitModel.DeribitRequest{
+	_, err = svc.deribitSvc.DeribitParseSell(context.TODO(), JWTData.UserID, deribitModel.DeribitRequest{
 		InstrumentName: msg.InstrumentName,
 		Amount:         msg.Amount,
 		Type:           msg.Type,
@@ -149,15 +149,15 @@ func (svc wsHandler) PrivateSell(input interface{}, c *ws.Client) {
 	//register order connection
 	ws.RegisterOrderConnection(JWTData.UserID, c)
 
-	c.SendMessage(res)
+	// c.SendMessage(res)
 	return
 }
 
 func (svc wsHandler) PrivateEdit(input interface{}, c *ws.Client) {
 	type Req struct {
-		OrderId        string  `json:"order_id"`
-		AccessToken    string  `json:"access_token"`
-		InstrumentName string  `json:"instrument_name"`
+		OrderId        string  `json:"orderId"`
+		AccessToken    string  `json:"accessToken"`
+		InstrumentName string  `json:"instrumentName"`
 		Amount         float64 `json:"amount"`
 		Type           string  `json:"type"`
 		Price          float64 `json:"price"`
@@ -197,9 +197,9 @@ func (svc wsHandler) PrivateEdit(input interface{}, c *ws.Client) {
 
 func (svc wsHandler) PrivateCancel(input interface{}, c *ws.Client) {
 	type Req struct {
-		OrderId        string  `json:"order_id"`
-		AccessToken    string  `json:"access_token"`
-		InstrumentName string  `json:"instrument_name"`
+		OrderId        string  `json:"orderId"`
+		AccessToken    string  `json:"accessToken"`
+		InstrumentName string  `json:"instrumentName"`
 		Amount         float64 `json:"amount"`
 		Type           string  `json:"type"`
 		Price          float64 `json:"price"`

@@ -3,8 +3,10 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"gateway/internal/deribit/model"
 	"gateway/pkg/kafka/producer"
+	"strconv"
 	"strings"
 )
 
@@ -19,6 +21,9 @@ func NewDeribitService() IDeribitService {
 func (svc deribitService) DeribitParseBuy(ctx context.Context, userId string, data model.DeribitRequest) (model.DeribitResponse, error) {
 	_string := data.InstrumentName
 	substring := strings.Split(_string, "-")
+	fmt.Println("data.InstrumentName")
+	fmt.Println(data)
+	fmt.Println(substring)
 	_contracts := ""
 	if substring[3] == "P" {
 		_contracts = "PUT"
@@ -26,12 +31,17 @@ func (svc deribitService) DeribitParseBuy(ctx context.Context, userId string, da
 		_contracts = "CALL"
 	}
 
+	strikePrice, err := strconv.ParseFloat(substring[2], 64)
+	if err != nil {
+		panic(err)
+	}
+
 	buy := model.DeribitResponse{
 		UserId:         userId,
 		ClientId:       "",
 		Underlying:     substring[0],
 		ExpirationDate: substring[1],
-		StrikePrice:    substring[2],
+		StrikePrice:    strikePrice,
 		Type:           data.Type,
 		Side:           "BUY",
 		Price:          data.Price,
@@ -59,12 +69,17 @@ func (svc deribitService) DeribitParseSell(ctx context.Context, userId string, d
 		_contracts = "CALL"
 	}
 
+	strikePrice, err := strconv.ParseFloat(substring[2], 64)
+	if err != nil {
+		panic(err)
+	}
+
 	sell := model.DeribitResponse{
 		UserId:         userId,
 		ClientId:       "",
 		Underlying:     substring[0],
 		ExpirationDate: substring[1],
-		StrikePrice:    substring[2],
+		StrikePrice:    strikePrice,
 		Type:           data.Type,
 		Side:           "SELL",
 		Price:          data.Price,
@@ -92,12 +107,17 @@ func (svc deribitService) DeribitParseEdit(ctx context.Context, userId string, d
 		_contracts = "CALL"
 	}
 
+	strikePrice, err := strconv.ParseFloat(substring[2], 64)
+	if err != nil {
+		panic(err)
+	}
+
 	edit := model.DeribitResponse{
 		UserId:         userId,
 		ClientId:       "",
 		Underlying:     substring[0],
 		ExpirationDate: substring[1],
-		StrikePrice:    substring[2],
+		StrikePrice:    strikePrice,
 		Type:           data.Type,
 		Side:           "EDIT",
 		Price:          data.Price,
@@ -125,12 +145,17 @@ func (svc deribitService) DeribitParseCancel(ctx context.Context, userId string,
 		_contracts = "CALL"
 	}
 
+	strikePrice, err := strconv.ParseFloat(substring[2], 64)
+	if err != nil {
+		panic(err)
+	}
+
 	cancel := model.DeribitResponse{
 		UserId:         userId,
 		ClientId:       "",
 		Underlying:     substring[0],
 		ExpirationDate: substring[1],
-		StrikePrice:    substring[2],
+		StrikePrice:    strikePrice,
 		Type:           data.Type,
 		Side:           "CANCEL",
 		Price:          data.Price,

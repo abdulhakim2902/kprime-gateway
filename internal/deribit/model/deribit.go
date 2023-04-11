@@ -24,11 +24,12 @@ type DeribitCancelRequest struct {
 }
 
 type DeribitResponse struct {
-	UserId         string  `json:"orderId"`
+	ID             string  `json:"id"`
+	UserId         string  `json:"userId"`
 	ClientId       string  `json:"clientId"`
 	Underlying     string  `json:"underlying"`
 	ExpirationDate string  `json:"expiryDate"`
-	StrikePrice    string  `json:"strikePrice"`
+	StrikePrice    float64 `json:"strikePrice"`
 	Type           string  `json:"type"`
 	Side           string  `json:"side"`
 	Price          float64 `json:"price"`
