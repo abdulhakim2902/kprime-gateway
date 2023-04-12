@@ -146,22 +146,22 @@ func (a Application) FromAdmin(msg *quickfix.Message, sessionID quickfix.Session
 		}
 		var user model.Client
 		res := a.DB.Where(model.Client{
-			Name: uname.String(),
+			APIKey: uname.String(),
 		}).Find(&user)
 
 		if res.Error != nil {
 			return quickfix.NewMessageRejectError("Failed getting user", 1, nil)
 		}
-		fmt.Println(uname.String())
+
+		if err := bcrypt.CompareHashAndPassword([]byte(user.APISecret), []byte(pwd.String())); err != nil {
+			return quickfix.NewMessageRejectError("Wrong API Secret", 1, nil)
+		}
 
 		if userSession == nil {
 			userSession = make(map[string]*quickfix.SessionID)
 		}
 		userSession[uname.String()] = &sessionID
 
-		if err := bcrypt.CompareHashAndPassword([]byte(user.APISecret), []byte(pwd.String())); err != nil {
-			// return quickfix.NewMessageRejectError("Wrong API Secret", 1, nil)
-		}
 	}
 	return nil
 }
