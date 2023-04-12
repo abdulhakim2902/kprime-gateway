@@ -149,6 +149,11 @@ func (a Application) FromAdmin(msg *quickfix.Message, sessionID quickfix.Session
 		if res.Error != nil {
 			return quickfix.NewMessageRejectError("Failed getting user", 1, nil)
 		}
+		fmt.Println(uname.String())
+
+		if userSession == nil {
+			userSession = make(map[string]*quickfix.SessionID)
+		}
 		userSession[uname.String()] = &sessionID
 
 		if err := bcrypt.CompareHashAndPassword([]byte(user.APISecret), []byte(pwd.String())); err != nil {
