@@ -53,7 +53,6 @@ func (svc adminService) CreateNewClient(ctx context.Context, data _userModel.Cre
 	email.SendMail(data.Email, password, clientId, clientSecret)
 
 	hashedSecret, err := bcrypt.GenerateFromPassword([]byte(clientSecret), bcrypt.DefaultCost)
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(data.Password), 14)
 	if err != nil {
 		log.Println(err.Error())
 		return _userModel.APIKeys{
@@ -65,7 +64,6 @@ func (svc adminService) CreateNewClient(ctx context.Context, data _userModel.Cre
 		Name:      data.Name,
 		Email:     data.Email,
 		Company:   data.Company,
-		Password:  string(hashedPassword),
 		APIKey:    clientId,
 		APISecret: string(hashedSecret),
 		RoleId:    data.RoleId,
