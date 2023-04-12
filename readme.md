@@ -7,19 +7,22 @@ for gin related docs please visit https://gin-gonic.com/docs/
 for clean architecture concepts you can visit these links:
 
 1. https://evrone.com/go-clean-template
-2. xxx
+
 
 ### Setup the application
 
 to setup the application, please copy file `.env.example` and rename it to `.env`
 modify `.env` file based on your local requirement
 
+### Database
+We're using 2 databases. MySQL database is used only for gateway application, to store users' credentials. And MongoDB Database is connected to the orderbook's MongoDB, using replica set feature. So for local development, make sure that the orderbook app and the gateway app has the same mongoDB database.
+
 ### Start the application
 
 to start running the application, simply run
 
 ```bash
-go run main.go
+go run cmd/main/main.go
 ```
 
 under cmd/main directory
