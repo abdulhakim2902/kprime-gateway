@@ -39,7 +39,6 @@ import (
 	"github.com/quickfixgo/fix42/ordercancelrequest"
 	"github.com/shopspring/decimal"
 	"github.com/spf13/cobra"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -52,36 +51,41 @@ import (
 var userSession map[string]*quickfix.SessionID
 var orderSubs map[string][]quickfix.SessionID
 
-// Application implements the quickfix.Application interface
-type Application struct {
-	*quickfix.MessageRouter
-	*OrderMatcher
-	execID int
-	*gorm.DB
+type Order struct {
+	ID                   string          `json:"id" bson:"_id"`
+	Symbol               string          `json:"symbol" bson:"symbol"`
+	SenderCompID         string          `json:"sender_comp_id" bson:"sender_comp_id"`
+	TargetCompID         string          `json:"target_comp_id" bson:"target_comp_id"`
+	UserID               string          `json:"userId" bson:"userId"`
+	ClientID             string          `json:"clientId" bson:"clientId"`
+	Underlying           string          `json:"underlying" bson:"underlying"`
+	ExpiryDate           string          `json:"expiryDate" bson:"expiryDate"`
+	StrikePrice          float64         `json:"strikePrice" bson:"strikePrice"`
+	Type                 enum.OrdType    `json:"type" bson:"type"`
+	Side                 enum.Side       `json:"side" bson:"side"`
+	Price                decimal.Decimal `json:"price" bson:"price"` //avgpx
+	Amount               decimal.Decimal `json:"amount" bson:"amount"`
+	FilledAmount         decimal.Decimal `json:"filledAmount" bson:"filledAmount"`
+	Contracts            string          `json:"contracts" bson:"contracts"`
+	Status               string          `json:"status" bson:"status"`
+	CreatedAt            time.Time       `json:"createdAt" bson:"createdAt"`
+	UpdatedAt            time.Time       `json:"updatedAt" bson:"updatedAt"`
+	insertTime           time.Time
+	LastExecutedQuantity decimal.Decimal
+	LastExecutedPrice    decimal.Decimal
 }
 
 type Orderbook struct {
-	InstrumentName string    `json:"instrumentName" bson:"instrumentName"`
-	Bids           []*Orderb `json:"bids" bson:"bids"`
-	Asks           []*Orderb `json:"asks" bson:"asks"`
+	InstrumentName string   `json:"instrumentName" bson:"instrumentName"`
+	Bids           []*Order `json:"bids" bson:"bids"`
+	Asks           []*Order `json:"asks" bson:"asks"`
 }
 
-type Orderb struct {
-	ID           primitive.ObjectID `json:"id" bson:"_id"`
-	UserID       string             `json:"userId" bson:"userId"`
-	ClientID     string             `json:"clientId" bson:"clientId"`
-	Underlying   string             `json:"underlying" bson:"underlying"`
-	ExpiryDate   string             `json:"expiryDate" bson:"expiryDate"`
-	StrikePrice  float64            `json:"strikePrice" bson:"strikePrice"`
-	Type         string             `json:"type" bson:"type"`
-	Side         string             `json:"side" bson:"side"`
-	Price        float64            `json:"price" bson:"price"`
-	Amount       float64            `json:"amount" bson:"amount"`
-	FilledAmount float64            `json:"filledAmount" bson:"filledAmount"`
-	Contracts    string             `json:"contracts" bson:"contracts"`
-	Status       string             `json:"status" bson:"status"`
-	CreatedAt    time.Time          `json:"createdAt" bson:"createdAt"`
-	UpdatedAt    time.Time          `json:"updatedAt" bson:"updatedAt"`
+// Application implements the quickfix.Application interface
+type Application struct {
+	*quickfix.MessageRouter
+	execID int
+	*gorm.DB
 }
 
 type KafkaOrder struct {
@@ -102,7 +106,6 @@ func newApplication() *Application {
 	db, _ := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	app := &Application{
 		MessageRouter: quickfix.NewMessageRouter(),
-		OrderMatcher:  NewOrderMatcher(),
 		DB:            db,
 	}
 	app.AddRoute(newordersingle.Route(app.onNewOrderSingle))
@@ -205,14 +208,14 @@ func (a *Application) onNewOrderSingle(msg newordersingle.NewOrderSingle, sessio
 	}
 
 	order := Order{
-		ClOrdID:      clOrdID,
+		ID:           clOrdID,
 		Symbol:       symbol,
 		SenderCompID: senderCompID,
 		TargetCompID: targetCompID,
 		Side:         side,
-		OrdType:      ordType,
+		Type:         ordType,
 		Price:        price,
-		Quantity:     orderQty,
+		Amount:       orderQty,
 	}
 
 	data := KafkaOrder{
@@ -221,7 +224,7 @@ func (a *Application) onNewOrderSingle(msg newordersingle.NewOrderSingle, sessio
 		Symbol:   order.Symbol,
 		Side:     order.Side,
 		Price:    order.Price.InexactFloat64(),
-		Amount:   order.Quantity.Tan().Copy().InexactFloat64(),
+		Amount:   order.Amount.Tan().Copy().InexactFloat64(),
 		Type:     string(ordType),
 	}
 
@@ -247,11 +250,7 @@ func (a *Application) onOrderCancelRequest(msg ordercancelrequest.OrderCancelReq
 		return err
 	}
 
-	order := a.Cancel(origClOrdID, symbol, side)
-	if order != nil {
-		a.cancelOrder(*order)
-	}
-
+	fmt.Println(origClOrdID, symbol, side)
 	return nil
 }
 
@@ -274,8 +273,8 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 
 func OnOrderboookUpdate(symbol string, data map[string]interface{}) {
 
-	bids := data["bids"].([]Orderb)
-	asks := data["asks"].([]Orderb)
+	bids := data["bids"].([]Order)
+	asks := data["asks"].([]Order)
 
 	msg := marketdatasnapshotfullrefresh.New(field.SymbolField{quickfix.FIXString(symbol)})
 
@@ -284,10 +283,10 @@ func OnOrderboookUpdate(symbol string, data map[string]interface{}) {
 		underlying := field.NewUnderlyingSymbol(bid.Underlying)
 		strike := field.NewStrikePrice(decimal.NewFromFloat(bid.StrikePrice), 10)
 		side := field.NewSide(enum.Side(bid.Side))
-		amount := field.NewQuantity(decimal.NewFromFloat(bid.Amount), 10)
-		filled := field.NewFillQty(decimal.NewFromFloat(bid.FilledAmount), 10)
+		amount := field.NewQuantity(bid.Amount, 10)
+		filled := field.NewFillQty(bid.FilledAmount, 10)
 		exp := field.NewExDate(bid.ExpiryDate)
-		price := field.NewPrice(decimal.NewFromFloat(bid.Price), 10)
+		price := field.NewPrice(bid.Amount, 10)
 		status := field.NewStatusText(bid.Status)
 
 		grp := marketdatasnapshotfullrefresh.NewNoMDEntriesRepeatingGroup()
@@ -308,10 +307,10 @@ func OnOrderboookUpdate(symbol string, data map[string]interface{}) {
 		underlying := field.NewUnderlyingSymbol(ask.Underlying)
 		strike := field.NewStrikePrice(decimal.NewFromFloat(ask.StrikePrice), 10)
 		side := field.NewSide(enum.Side(ask.Side))
-		amount := field.NewQuantity(decimal.NewFromFloat(ask.Amount), 10)
-		filled := field.NewFillQty(decimal.NewFromFloat(ask.FilledAmount), 10)
+		amount := field.NewQuantity(ask.Amount, 10)
+		filled := field.NewFillQty(ask.FilledAmount, 10)
 		exp := field.NewExDate(ask.ExpiryDate)
-		price := field.NewPrice(decimal.NewFromFloat(ask.Price), 10)
+		price := field.NewPrice(ask.Price, 10)
 		status := field.NewStatusText(ask.Status)
 
 		grp := marketdatasnapshotfullrefresh.NewNoMDEntriesRepeatingGroup()
@@ -338,9 +337,9 @@ func (a *Application) acceptOrder(order Order) {
 
 func (a *Application) fillOrder(order Order) {
 	status := enum.OrdStatus_FILLED
-	if !order.IsClosed() {
-		status = enum.OrdStatus_PARTIALLY_FILLED
-	}
+	// if !order.IsClosed() {
+	// 	status = enum.OrdStatus_PARTIALLY_FILLED
+	// }
 	a.updateOrder(order, status)
 }
 
@@ -355,19 +354,19 @@ func (a *Application) genExecID() string {
 
 func (a *Application) updateOrder(order Order, status enum.OrdStatus) {
 	execReport := executionreport.New(
-		field.NewOrderID(order.ClOrdID),
+		field.NewOrderID(order.ID),
 		field.NewExecID(a.genExecID()),
 		field.NewExecTransType(enum.ExecTransType_NEW),
 		field.NewExecType(enum.ExecType(status)),
 		field.NewOrdStatus(status),
 		field.NewSymbol(order.Symbol),
 		field.NewSide(order.Side),
-		field.NewLeavesQty(order.OpenQuantity(), 2),
-		field.NewCumQty(order.ExecutedQuantity, 2),
-		field.NewAvgPx(order.AvgPx, 2),
+		field.NewLeavesQty(order.Amount.Sub(order.FilledAmount), 2),
+		field.NewCumQty(order.FilledAmount, 2),
+		field.NewAvgPx(order.Price, 2),
 	)
-	execReport.SetOrderQty(order.Quantity, 2)
-	execReport.SetClOrdID(order.ClOrdID)
+	execReport.SetOrderQty(order.Amount, 2)
+	execReport.SetClOrdID(order.ID)
 
 	switch status {
 	case enum.OrdStatus_FILLED, enum.OrdStatus_PARTIALLY_FILLED:
@@ -386,7 +385,7 @@ func (a *Application) updateOrder(order Order, status enum.OrdStatus) {
 }
 
 func OrderConfirmation(userId string, data interface{}, symbol string) {
-	order := data.(Orderb)
+	order := data.(Order)
 	sessionId := userSession[userId]
 	exec := 0
 	switch order.Status {
@@ -399,16 +398,16 @@ func OrderConfirmation(userId string, data interface{}, symbol string) {
 	}
 
 	msg := executionreport.New(
-		field.NewOrderID(order.ID.String()),
+		field.NewOrderID(order.ID),
 		field.NewExecID(strconv.Itoa(exec)),
 		field.NewExecTransType(enum.ExecTransType_NEW),
 		field.NewExecType(enum.ExecType(order.Status)),
 		field.NewOrdStatus(enum.OrdStatus(order.Status)),
 		field.NewSymbol(symbol),
 		field.NewSide(enum.Side(order.Side)),
-		field.NewLeavesQty(decimal.NewFromFloat(order.Amount-order.FilledAmount), 2),
-		field.NewCumQty(decimal.NewFromFloat(order.FilledAmount), 2),
-		field.NewAvgPx(decimal.NewFromFloat(order.Price), 2),
+		field.NewLeavesQty(order.Amount.Sub(order.FilledAmount), 2),
+		field.NewCumQty(order.FilledAmount, 2),
+		field.NewAvgPx(order.Price, 2),
 	)
 	err := quickfix.SendToTarget(msg, *sessionId)
 	if err != nil {
