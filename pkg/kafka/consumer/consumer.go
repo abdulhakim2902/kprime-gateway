@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	engInt "gateway/internal/engine/service"
+	ordermatch "gateway/internal/fix-acceptor"
 	obInt "gateway/internal/orderbook/service"
-	"gateway/internal/ordermatch"
 	"gateway/internal/repositories"
 	"gateway/pkg/ws"
 	"log"
@@ -24,6 +24,7 @@ func KafkaConsumer(repo *repositories.OrderRepository, engSvc engInt.IEngineServ
 	brokers := []string{os.Getenv("KAFKA_BROKER")}
 	topics := []string{"ORDER", "TRADE", "ORDERBOOK"}
 
+	fmt.Println(brokers)
 	consumer, err := sarama.NewConsumer(brokers, config)
 	if err != nil {
 		log.Fatalf("Failed to create consumer: %s", err)
