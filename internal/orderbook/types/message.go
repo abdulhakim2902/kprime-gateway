@@ -5,3 +5,7 @@ type Message struct {
 	Bids       interface{} `json:"bids"`
 	Asks       interface{} `json:"asks"`
 }
+
+type ErrorMessage struct {
+	Error string `json:"error"`
+}

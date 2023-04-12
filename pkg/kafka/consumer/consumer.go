@@ -6,15 +6,18 @@ import (
 	engInt "gateway/internal/engine/service"
 	obInt "gateway/internal/orderbook/service"
 	"gateway/internal/ordermatch"
+	"gateway/internal/repositories"
 	"gateway/pkg/ws"
 	"log"
 	"os"
 	"strings"
 
 	"github.com/Shopify/sarama"
+
+	oInt "gateway/internal/ws/service"
 )
 
-func KafkaConsumer(obSvc obInt.IOrderbookService, engSvc engInt.IEngineService) {
+func KafkaConsumer(repo *repositories.OrderRepository, engSvc engInt.IEngineService, obSvc obInt.IOrderbookService, oSvc oInt.IwsOrderService) {
 	config := sarama.NewConfig()
 	config.Consumer.Return.Errors = true
 
@@ -37,7 +40,7 @@ func KafkaConsumer(obSvc obInt.IOrderbookService, engSvc engInt.IEngineService) 
 			for message := range partitionConsumer.Messages() {
 				switch topic {
 				case "ORDER":
-					handleTopicOrder(message)
+					handleTopicOrder(oSvc, message)
 				case "TRADE":
 					handleTopicTrade(message)
 				case "ORDERBOOK":
@@ -54,7 +57,7 @@ func KafkaConsumer(obSvc obInt.IOrderbookService, engSvc engInt.IEngineService) 
 	select {}
 }
 
-func handleTopicOrder(message *sarama.ConsumerMessage) {
+func handleTopicOrder(oSvc oInt.IwsOrderService, message *sarama.ConsumerMessage) {
 	fmt.Printf("Received message from ORDER: %s\n", string(message.Value))
 
 	str := string(message.Value)
@@ -69,8 +72,17 @@ func handleTopicOrder(message *sarama.ConsumerMessage) {
 	userIDStr := fmt.Sprintf("%v", data["userId"])
 	ws.SendOrderMessage(userIDStr, data)
 
-	symbol := strings.Split(data["instrument_name"].(string), "-")[0]
+	// symbol := strings.Split(data["underlying"].(string), "-")[0]
+	symbol := data["underlying"].(string)
 	ordermatch.OrderConfirmation(userIDStr, data, symbol)
+
+	userId, ok := data["userId"].(string)
+	if !ok {
+		fmt.Println("Failed to convert interface{} to string")
+		return
+	}
+
+	oSvc.HandleConsume(message, userId)
 }
 
 func handleTopicTrade(message *sarama.ConsumerMessage) {
