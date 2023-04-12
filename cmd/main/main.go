@@ -9,8 +9,10 @@ import (
 	"gateway/internal/admin/repository"
 	"gateway/internal/admin/service"
 	_authModel "gateway/internal/auth/model"
+	"gateway/internal/repositories"
 	"gateway/internal/user/model"
 	"gateway/pkg/kafka/consumer"
+	"gateway/pkg/mongo"
 	"gateway/pkg/redis"
 	"log"
 	"net/http"
@@ -31,8 +33,11 @@ import (
 
 	_deribitCtrl "gateway/internal/deribit/controller"
 	_deribitSvc "gateway/internal/deribit/service"
+	_wsEngineSvc "gateway/internal/ws/engine/service"
 	_wsOrderbookSvc "gateway/internal/ws/service"
+	_wsSvc "gateway/internal/ws/service"
 
+	_engSvc "gateway/internal/engine/service"
 	_obSvc "gateway/internal/orderbook/service"
 
 	_wsCtrl "gateway/internal/ws/controller"
@@ -94,6 +99,12 @@ func main() {
 	// Initiate Redis Connection Here
 	redis := redis.NewRedisConnection(os.Getenv("REDIS_URL"))
 
+	// Mongo DB Init
+	mongoDb, err := mongo.InitConnection(os.Getenv("MONGO_URL"))
+	if err != nil {
+		panic(err)
+	}
+
 	adminRepo := repository.NewAdminRepo(db)
 	adminSvc := service.NewAdminService(adminRepo)
 	controller.NewAdminHandler(r, adminSvc, enforcer)
@@ -107,9 +118,15 @@ func main() {
 
 	//qf
 	go ordermatch.Cmd.Execute()
-	_wsOrderbookSvc := _wsOrderbookSvc.NewwsOrderbookService(redis)
 
-	_wsCtrl.NewWebsocketHandler(r, authSvc, _deribitSvc, _wsOrderbookSvc)
+	// Websocket handlers
+	_wsOrderbookSvc := _wsOrderbookSvc.NewwsOrderbookService(redis)
+	_wsEngineSvc := _wsEngineSvc.NewwsEngineService(redis)
+
+	orderRepo := repositories.NewOrderRepository(mongoDb)
+
+	_wsOrderSvc := _wsSvc.NewWSOrderService(redis, orderRepo)
+	_wsCtrl.NewWebsocketHandler(r, authSvc, _deribitSvc, _wsOrderbookSvc, _wsEngineSvc, _wsOrderSvc)
 
 	fmt.Printf("Server is running on %s \n", os.Getenv("PORT"))
 
@@ -126,9 +143,10 @@ func main() {
 	}()
 
 	_obSvc := _obSvc.NewOrderbookHandler(r, redis)
+	_engSvc := _engSvc.NewEngineHandler(r, redis)
 
 	//kafka listener
-	consumer.KafkaConsumer(_obSvc)
+	consumer.KafkaConsumer(orderRepo, _engSvc, _obSvc, _wsOrderSvc)
 
 	// Wait for interrupt signal to gracefully shutdown the server with
 	// a timeout of 5 seconds.

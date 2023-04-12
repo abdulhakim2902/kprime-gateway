@@ -3,6 +3,7 @@ package service
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/Shopify/sarama"
 	"github.com/gin-gonic/gin"
@@ -30,14 +31,24 @@ func (svc orderbookHandler) HandleConsume(msg *sarama.ConsumerMessage) {
 		return
 	}
 
+	// Convert BTC-28JAN22-50000.000000-C to BTC-28JAN22-50000-C"
+	parts := strings.Split(data.Instrument, "-")
+	// Parse the float value and convert it to an integer
+	var floatValue float64
+	fmt.Sscanf(parts[2], "%f", &floatValue)
+	intValue := int(floatValue)
+	instrument := fmt.Sprintf("%s-%s-%d-%s", parts[0], parts[1], intValue, parts[3])
+
+	data.Instrument = instrument
+
 	// Save to redis
 	jsonBytes, err := json.Marshal(data)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	svc.redis.Set("ORDERBOOK-"+data.Instrument, string(jsonBytes))
+	svc.redis.Set("ORDERBOOK-"+instrument, string(jsonBytes))
 
 	// Broadcast
-	ws.GetOrderBookSocket().BroadcastMessage(data.Instrument, data)
+	ws.GetOrderBookSocket().BroadcastMessage(instrument, data)
 }
