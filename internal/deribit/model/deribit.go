@@ -16,11 +16,12 @@ type DeribitEditRequest struct {
 }
 
 type DeribitCancelRequest struct {
-	OrderId        string  `json:"orderId" validate:"required"`
-	InstrumentName string  `json:"instrumentName"`
-	Amount         float64 `json:"amount"`
-	Type           string  `json:"type"`
-	Price          float64 `json:"price"`
+	Id string `json:"id" validate:"required"`
+}
+
+type DeribitCancelResponse struct {
+	Id   string `json:"id"`
+	Side string `json:"side"`
 }
 
 type DeribitResponse struct {
