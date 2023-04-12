@@ -143,7 +143,7 @@ func main() {
 	_engSvc := _engSvc.NewEngineHandler(r, redis)
 
 	//kafka listener
-	consumer.KafkaConsumer(orderRepo, _obSvc, _engSvc, _wsOrderSvc)
+	consumer.KafkaConsumer(orderRepo, _engSvc, _obSvc, _wsOrderSvc)
 
 	// Wait for interrupt signal to gracefully shutdown the server with
 	// a timeout of 5 seconds.
