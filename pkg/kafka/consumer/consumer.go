@@ -3,8 +3,8 @@ package consumer
 import (
 	"encoding/json"
 	"fmt"
+	ordermatch "gateway/internal/fix-acceptor"
 	obInt "gateway/internal/orderbook/service"
-	"gateway/internal/ordermatch"
 	"gateway/pkg/ws"
 	"log"
 	"os"
@@ -20,6 +20,7 @@ func KafkaConsumer(obSvc obInt.IOrderbookService) {
 	brokers := []string{os.Getenv("KAFKA_BROKER")}
 	topics := []string{"ORDER", "TRADE", "ORDERBOOK"}
 
+	fmt.Println(brokers)
 	consumer, err := sarama.NewConsumer(brokers, config)
 	if err != nil {
 		log.Fatalf("Failed to create consumer: %s", err)

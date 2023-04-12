@@ -71,7 +71,6 @@ type Orderb struct {
 // Application implements the quickfix.Application interface
 type Application struct {
 	*quickfix.MessageRouter
-	*OrderMatcher
 	execID int
 	*gorm.DB
 }
@@ -94,7 +93,6 @@ func newApplication() *Application {
 	db, _ := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	app := &Application{
 		MessageRouter: quickfix.NewMessageRouter(),
-		OrderMatcher:  NewOrderMatcher(),
 		DB:            db,
 	}
 	app.AddRoute(newordersingle.Route(app.onNewOrderSingle))
@@ -239,11 +237,7 @@ func (a *Application) onOrderCancelRequest(msg ordercancelrequest.OrderCancelReq
 		return err
 	}
 
-	order := a.Cancel(origClOrdID, symbol, side)
-	if order != nil {
-		a.cancelOrder(*order)
-	}
-
+	fmt.Println(origClOrdID, symbol, side)
 	return nil
 }
 
