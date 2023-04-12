@@ -10,8 +10,10 @@ import (
 	"gateway/internal/admin/service"
 	_authModel "gateway/internal/auth/model"
 	"gateway/internal/ordermatch"
+	"gateway/internal/repositories"
 	"gateway/internal/user/model"
 	"gateway/pkg/kafka/consumer"
+	"gateway/pkg/mongo"
 	"gateway/pkg/redis"
 	"log"
 	"net/http"
@@ -30,6 +32,7 @@ import (
 	_deribitSvc "gateway/internal/deribit/service"
 	_wsEngineSvc "gateway/internal/ws/engine/service"
 	_wsOrderbookSvc "gateway/internal/ws/service"
+	_wsSvc "gateway/internal/ws/service"
 
 	_engSvc "gateway/internal/engine/service"
 	_obSvc "gateway/internal/orderbook/service"
@@ -93,6 +96,12 @@ func main() {
 	// Initiate Redis Connection Here
 	redis := redis.NewRedisConnection(os.Getenv("REDIS_URL"))
 
+	// Mongo DB Init
+	mongoDb, err := mongo.InitConnection(os.Getenv("MONGO_URL"))
+	if err != nil {
+		panic(err)
+	}
+
 	adminRepo := repository.NewAdminRepo(db)
 	adminSvc := service.NewAdminService(adminRepo)
 	controller.NewAdminHandler(r, adminSvc, enforcer)
@@ -106,10 +115,15 @@ func main() {
 
 	//qf
 	go ordermatch.Cmd.Execute()
+
+	// Websocket handlers
 	_wsOrderbookSvc := _wsOrderbookSvc.NewwsOrderbookService(redis)
 	_wsEngineSvc := _wsEngineSvc.NewwsEngineService(redis)
 
-	_wsCtrl.NewWebsocketHandler(r, authSvc, _deribitSvc, _wsOrderbookSvc, _wsEngineSvc)
+	orderRepo := repositories.NewOrderRepository(mongoDb)
+
+	_wsOrderSvc := _wsSvc.NewWSOrderService(redis, orderRepo)
+	_wsCtrl.NewWebsocketHandler(r, authSvc, _deribitSvc, _wsOrderbookSvc, _wsEngineSvc, _wsOrderSvc)
 
 	fmt.Printf("Server is running on %s \n", os.Getenv("PORT"))
 
@@ -129,7 +143,7 @@ func main() {
 	_engSvc := _engSvc.NewEngineHandler(r, redis)
 
 	//kafka listener
-	consumer.KafkaConsumer(_obSvc, _engSvc)
+	consumer.KafkaConsumer(orderRepo, _engSvc, _obSvc, _wsOrderSvc)
 
 	// Wait for interrupt signal to gracefully shutdown the server with
 	// a timeout of 5 seconds.
