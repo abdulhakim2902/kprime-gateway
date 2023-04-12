@@ -97,32 +97,13 @@ func (svc deribitService) DeribitParseSell(ctx context.Context, userId string, d
 	return sell, nil
 }
 
-func (svc deribitService) DeribitParseEdit(ctx context.Context, userId string, data model.DeribitEditRequest) (model.DeribitResponse, error) {
-	_string := data.InstrumentName
-	substring := strings.Split(_string, "-")
-	_contracts := ""
-	if substring[3] == "P" {
-		_contracts = "PUT"
-	} else {
-		_contracts = "CALL"
-	}
+func (svc deribitService) DeribitParseEdit(ctx context.Context, userId string, data model.DeribitEditRequest) (model.DeribitEditResponse, error) {
 
-	strikePrice, err := strconv.ParseFloat(substring[2], 64)
-	if err != nil {
-		panic(err)
-	}
-
-	edit := model.DeribitResponse{
-		UserId:         userId,
-		ClientId:       "",
-		Underlying:     substring[0],
-		ExpirationDate: substring[1],
-		StrikePrice:    strikePrice,
-		Type:           data.Type,
-		Side:           "EDIT",
-		Price:          data.Price,
-		Amount:         data.Amount,
-		Contracts:      _contracts,
+	edit := model.DeribitEditResponse{
+		Id:     data.Id,
+		Side:   "EDIT",
+		Price:  data.Price,
+		Amount: data.Amount,
 	}
 
 	_edit, err := json.Marshal(edit)
