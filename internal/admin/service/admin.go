@@ -158,3 +158,15 @@ func generateClientSecret(clientId string) string {
 	}
 	return string(secret)
 }
+
+func (svc adminService) RequestNewPassword(ctx context.Context, data model.RequestKeyPassword) (client interface{}, err error) {
+	_clientId := data.Id
+	//select client by _clientId
+	_client, err := svc.repo.GetById(ctx, _clientId)
+	if err != nil {
+		log.Println(err.Error())
+		return _userModel.Client{}, err
+	}
+
+	return _client, nil
+}

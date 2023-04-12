@@ -18,4 +18,5 @@ type IAdminRepo interface {
 	GetAllClient(context.Context, map[string]interface{}) ([]_userModel.Client, error)
 	GetAllRole(context.Context, map[string]interface{}) ([]_adminModel.Role, error)
 	GetByName(context.Context, string) (model.Admin, error)
+	GetById(context.Context, int) (client _userModel.Client, err error)
 }

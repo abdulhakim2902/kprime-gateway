@@ -15,7 +15,11 @@ import (
 
 	"github.com/casbin/casbin/v2"
 	"github.com/gin-gonic/gin"
+	"github.com/go-playground/validator/v10"
 )
+
+// Create a new instance of the validator
+var validate = validator.New()
 
 type adminHandler struct {
 	svc service.IAdminService
@@ -39,6 +43,8 @@ func NewAdminHandler(r *gin.Engine, svc service.IAdminService, enforcer *casbin.
 	adminRoute.PUT("/role/:id", middleware.Authorize("user", "write", enforcer), handler.UpdateRole)
 	adminRoute.POST("/role", middleware.Authorize("user", "write", enforcer), handler.CreateNewRole)
 	adminRoute.DELETE("/role/:id", middleware.Authorize("user", "write", enforcer), handler.DeleteRole)
+
+	adminRoute.POST("/request-password", middleware.Authorize("user", "write", enforcer), handler.RequestNewPassword)
 }
 
 func (h *adminHandler) Register(r *gin.Context) {
@@ -213,4 +219,40 @@ func (h *adminHandler) GetAllRole(r *gin.Context) {
 		Data: roles,
 	})
 	return
+}
+
+func (h *adminHandler) RequestNewPassword(r *gin.Context) {
+	// Get request body
+	var req _adminModel.RequestKeyPassword
+	err := json.NewDecoder(r.Request.Body).Decode(&req)
+	if err != nil {
+		r.JSON(http.StatusBadRequest, &model.Response{
+			Error:   true,
+			Message: err.Error(),
+		})
+		return
+	}
+
+	// Perform validation
+	if err := validate.Struct(req); err != nil {
+		r.JSON(http.StatusBadRequest, &model.Response{
+			Error:   true,
+			Message: err.Error(),
+		})
+		return
+	}
+
+	// Call service
+	_data, errJson := h.svc.RequestNewPassword(r.Request.Context(), req)
+	if errJson != nil {
+		r.JSON(http.StatusInternalServerError, &model.Response{
+			Error:   true,
+			Message: errJson.Error(),
+		})
+		return
+	}
+
+	r.JSON(http.StatusAccepted, &model.Response{
+		Data: _data,
+	})
 }
