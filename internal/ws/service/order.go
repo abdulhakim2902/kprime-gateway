@@ -16,11 +16,11 @@ import (
 )
 
 type wsOrderService struct {
-	redis *redis.RedisConnection
+	redis *redis.RedisConnectionPool
 	repo  *repositories.OrderRepository
 }
 
-func NewWSOrderService(redis *redis.RedisConnection, repo *repositories.OrderRepository) IwsOrderService {
+func NewWSOrderService(redis *redis.RedisConnectionPool, repo *repositories.OrderRepository) IwsOrderService {
 	return &wsOrderService{redis, repo}
 }
 

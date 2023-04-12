@@ -8,10 +8,10 @@ import (
 )
 
 type wsOrderbookService struct {
-	redis *redis.RedisConnection
+	redis *redis.RedisConnectionPool
 }
 
-func NewwsOrderbookService(redis *redis.RedisConnection) IwsOrderbookService {
+func NewwsOrderbookService(redis *redis.RedisConnectionPool) IwsOrderbookService {
 	return &wsOrderbookService{redis}
 }
 

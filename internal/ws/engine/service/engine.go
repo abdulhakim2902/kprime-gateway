@@ -8,16 +8,15 @@ import (
 )
 
 type wsEngineService struct {
-	redis *redis.RedisConnection
+	redis *redis.RedisConnectionPool
 }
 
-func NewwsEngineService(redis *redis.RedisConnection) IwsEngineService {
+func NewwsEngineService(redis *redis.RedisConnectionPool) IwsEngineService {
 	return &wsEngineService{redis}
 }
 
 func (svc wsEngineService) Subscribe(c *ws.Client, instrument string) {
 	socket := ws.GetEngineSocket()
-
 	// Get initial data from the redis
 	res, err := svc.redis.GetValue("ENGINE-" + instrument)
 	if res == "" || err != nil {
