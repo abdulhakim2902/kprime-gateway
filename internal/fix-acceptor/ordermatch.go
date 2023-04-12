@@ -52,14 +52,6 @@ import (
 var userSession map[string]*quickfix.SessionID
 var orderSubs map[string][]quickfix.SessionID
 
-// Application implements the quickfix.Application interface
-type Application struct {
-	*quickfix.MessageRouter
-	*OrderMatcher
-	execID int
-	*gorm.DB
-}
-
 type Orderbook struct {
 	InstrumentName string    `json:"instrumentName" bson:"instrumentName"`
 	Bids           []*Orderb `json:"bids" bson:"bids"`
@@ -84,6 +76,13 @@ type Orderb struct {
 	UpdatedAt    time.Time          `json:"updatedAt" bson:"updatedAt"`
 }
 
+// Application implements the quickfix.Application interface
+type Application struct {
+	*quickfix.MessageRouter
+	execID int
+	*gorm.DB
+}
+
 type KafkaOrder struct {
 	UserID         string    `json:"user_id"`
 	ClientID       string    `json:"client_id"`
@@ -102,7 +101,6 @@ func newApplication() *Application {
 	db, _ := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	app := &Application{
 		MessageRouter: quickfix.NewMessageRouter(),
-		OrderMatcher:  NewOrderMatcher(),
 		DB:            db,
 	}
 	app.AddRoute(newordersingle.Route(app.onNewOrderSingle))
@@ -247,11 +245,7 @@ func (a *Application) onOrderCancelRequest(msg ordercancelrequest.OrderCancelReq
 		return err
 	}
 
-	order := a.Cancel(origClOrdID, symbol, side)
-	if order != nil {
-		a.cancelOrder(*order)
-	}
-
+	fmt.Println(origClOrdID, symbol, side)
 	return nil
 }
 
