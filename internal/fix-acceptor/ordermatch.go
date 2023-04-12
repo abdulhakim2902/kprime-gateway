@@ -27,6 +27,7 @@ import (
 	"path"
 	"runtime"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -90,16 +91,17 @@ type Application struct {
 }
 
 type KafkaOrder struct {
-	UserID         string    `json:"user_id"`
-	ClientID       string    `json:"client_id"`
-	Symbol         string    `json:"symbol"`
-	Side           enum.Side `json:"side"`
-	Price          float64   `json:"price"`
-	Amount         float64   `json:"quantity"`
-	Underlying     string    `json:"underlying"`
-	ExpirationDate string    `json:"expiration_date"`
-	StrikePrice    string    `json:"strike_price"`
-	Type           string    `json:"type"`
+	UserID         string          `json:"userId"`
+	ClientID       string          `json:"clientId"`
+	Symbol         string          `json:"symbol"`
+	Side           enum.Side       `json:"side"`
+	Price          decimal.Decimal `json:"price"`
+	Amount         decimal.Decimal `json:"quantity"`
+	Underlying     string          `json:"underlying"`
+	ExpirationDate string          `json:"expiration_date"`
+	StrikePrice    string          `json:"strike_price"`
+	Type           string          `json:"type"`
+	Contracts      string          `json:"contracts"`
 }
 
 func newApplication() *Application {
@@ -173,22 +175,22 @@ func (a *Application) FromApp(msg *quickfix.Message, sessionID quickfix.SessionI
 }
 
 func (a *Application) onNewOrderSingle(msg newordersingle.NewOrderSingle, sessionID quickfix.SessionID) quickfix.MessageRejectError {
-	clOrdID, err := msg.GetClOrdID()
-	if err != nil {
-		return err
+	if userSession == nil {
+		return quickfix.NewMessageRejectError("User not logged in", 1, nil)
+	}
+	clientApiKey := ""
+	for i, v := range userSession {
+		if v == &sessionID {
+			clientApiKey = i
+		}
 	}
 
+	var client model.Client
+	res := a.DB.Where(model.Client{APIKey: clientApiKey}).Find(&client)
+	if res.Error != nil {
+		return quickfix.NewMessageRejectError("Failed getting user", 1, nil)
+	}
 	symbol, err := msg.GetSymbol()
-	if err != nil {
-		return err
-	}
-
-	senderCompID, err := msg.Header.GetSenderCompID()
-	if err != nil {
-		return err
-	}
-
-	targetCompID, err := msg.Header.GetTargetCompID()
 	if err != nil {
 		return err
 	}
@@ -213,30 +215,26 @@ func (a *Application) onNewOrderSingle(msg newordersingle.NewOrderSingle, sessio
 		return err
 	}
 
-	order := Order{
-		ID:           clOrdID,
-		Symbol:       symbol,
-		SenderCompID: senderCompID,
-		TargetCompID: targetCompID,
-		Side:         side,
-		Type:         ordType,
-		Price:        price,
-		Amount:       orderQty,
-	}
-
+	details := strings.Split(symbol, "-")
+	underlying := details[0]
+	expiryDate := details[1]
+	strikePrice := details[2]
+	options := details[3]
 	data := KafkaOrder{
-		UserID:   order.SenderCompID,
-		ClientID: order.TargetCompID,
-		Symbol:   order.Symbol,
-		Side:     order.Side,
-		Price:    order.Price.InexactFloat64(),
-		Amount:   order.Amount.Tan().Copy().InexactFloat64(),
-		Type:     string(ordType),
+		ClientID:       "",
+		UserID:         strconv.Itoa(int(client.ID)),
+		Underlying:     underlying,
+		ExpirationDate: expiryDate,
+		StrikePrice:    strikePrice,
+		Type:           string(ordType),
+		Side:           side,
+		Price:          price,
+		Amount:         orderQty,
+		Contracts:      options,
 	}
 
 	_data, _ := json.Marshal(data)
-	fmt.Println(data)
-	_producer.KafkaProducer(string(_data), "ORDER")
+	_producer.KafkaProducer(string(_data), "NEW_ORDER")
 	return nil
 }
 
@@ -391,7 +389,9 @@ func (a *Application) updateOrder(order Order, status enum.OrdStatus) {
 }
 
 func OrderConfirmation(userId string, order Order, symbol string) {
-	fmt.Println(userSession)
+	if userSession == nil {
+		return
+	}
 	sessionId := userSession[userId]
 	exec := 0
 	switch order.Status {
