@@ -53,6 +53,7 @@ var orderSubs map[string][]quickfix.SessionID
 
 type Order struct {
 	ID                   string          `json:"id" bson:"_id"`
+	InstrumentName       string          `json:"instrumentName" bson:"instrumentName"`
 	Symbol               string          `json:"symbol" bson:"symbol"`
 	SenderCompID         string          `json:"sender_comp_id" bson:"sender_comp_id"`
 	TargetCompID         string          `json:"target_comp_id" bson:"target_comp_id"`
@@ -389,8 +390,8 @@ func (a *Application) updateOrder(order Order, status enum.OrdStatus) {
 
 }
 
-func OrderConfirmation(userId string, data interface{}, symbol string) {
-	order := data.(Order)
+func OrderConfirmation(userId string, order Order, symbol string) {
+	fmt.Println(userSession)
 	sessionId := userSession[userId]
 	exec := 0
 	switch order.Status {
@@ -414,6 +415,7 @@ func OrderConfirmation(userId string, data interface{}, symbol string) {
 		field.NewCumQty(order.FilledAmount, 2),
 		field.NewAvgPx(order.Price, 2),
 	)
+	msg.SetString(quickfix.Tag(11), order.ID)
 	err := quickfix.SendToTarget(msg, *sessionId)
 	if err != nil {
 		fmt.Print(err.Error())
