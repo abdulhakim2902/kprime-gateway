@@ -221,8 +221,8 @@ func (a *Application) onNewOrderSingle(msg newordersingle.NewOrderSingle, sessio
 	strikePrice := details[2]
 	options := details[3]
 	data := KafkaOrder{
-		UserID:         "",
-		ClientID:       strconv.Itoa(int(client.ID)),
+		ClientID:       "",
+		UserID:         strconv.Itoa(int(client.ID)),
 		Underlying:     underlying,
 		ExpirationDate: expiryDate,
 		StrikePrice:    strikePrice,
