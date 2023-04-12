@@ -52,24 +52,6 @@ import (
 var userSession map[string]*quickfix.SessionID
 var orderSubs map[string][]quickfix.SessionID
 
-type Orderb struct {
-	ID           primitive.ObjectID `json:"id" bson:"_id"`
-	UserID       string             `json:"userId" bson:"userId"`
-	ClientID     string             `json:"clientId" bson:"clientId"`
-	Underlying   string             `json:"underlying" bson:"underlying"`
-	ExpiryDate   string             `json:"expiryDate" bson:"expiryDate"`
-	StrikePrice  float64            `json:"strikePrice" bson:"strikePrice"`
-	Type         string             `json:"type" bson:"type"`
-	Side         string             `json:"side" bson:"side"`
-	Price        float64            `json:"price" bson:"price"`
-	Amount       float64            `json:"amount" bson:"amount"`
-	FilledAmount float64            `json:"filledAmount" bson:"filledAmount"`
-	Contracts    string             `json:"contracts" bson:"contracts"`
-	Status       string             `json:"status" bson:"status"`
-	CreatedAt    time.Time          `json:"createdAt" bson:"createdAt"`
-	UpdatedAt    time.Time          `json:"updatedAt" bson:"updatedAt"`
-}
-
 // Application implements the quickfix.Application interface
 type Application struct {
 	*quickfix.MessageRouter
