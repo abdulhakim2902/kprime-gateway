@@ -10,11 +10,14 @@ import (
 	"log"
 	"math/rand"
 	"net/url"
+	"time"
 
 	"gateway/pkg/email"
 
 	"golang.org/x/crypto/bcrypt"
 )
+
+const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 type adminService struct {
 	repo repository.IAdminRepo
@@ -52,7 +55,17 @@ func (svc adminService) CreateNewClient(ctx context.Context, data _userModel.Cre
 
 	email.SendMail(data.Email, password, clientId, clientSecret)
 
+	rand.Seed(time.Now().UnixNano())
+	n := 10
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = letterBytes[rand.Intn(len(letterBytes))]
+	}
+	genratePasword := string(b)
+
 	hashedSecret, err := bcrypt.GenerateFromPassword([]byte(clientSecret), bcrypt.DefaultCost)
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(genratePasword), 14)
+
 	if err != nil {
 		log.Println(err.Error())
 		return _userModel.APIKeys{
@@ -64,6 +77,7 @@ func (svc adminService) CreateNewClient(ctx context.Context, data _userModel.Cre
 		Name:      data.Name,
 		Email:     data.Email,
 		Company:   data.Company,
+		Password:  string(hashedPassword),
 		APIKey:    clientId,
 		APISecret: string(hashedSecret),
 		RoleId:    data.RoleId,
