@@ -92,13 +92,14 @@ type Application struct {
 }
 
 type KafkaOrder struct {
+	ID             string    `json:"id"`
 	UserID         string    `json:"userId"`
 	ClientID       string    `json:"clientId"`
 	Side           enum.Side `json:"side"`
 	Price          float64   `json:"price"`
-	Amount         float64   `json:"quantity"`
+	Amount         float64   `json:"amount"`
 	Underlying     string    `json:"underlying"`
-	ExpirationDate string    `json:"expirationDate"`
+	ExpirationDate string    `json:"expiryDate"`
 	StrikePrice    float64   `json:"strikePrice"`
 	Type           string    `json:"type"`
 	Contracts      string    `json:"contracts"`
