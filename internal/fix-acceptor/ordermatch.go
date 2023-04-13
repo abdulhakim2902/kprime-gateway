@@ -38,6 +38,7 @@ import (
 	"github.com/quickfixgo/fix42/marketdatasnapshotfullrefresh"
 	"github.com/quickfixgo/fix42/newordersingle"
 	"github.com/quickfixgo/fix42/ordercancelrequest"
+	"github.com/quickfixgo/tag"
 	"github.com/shopspring/decimal"
 	"github.com/spf13/cobra"
 	"golang.org/x/crypto/bcrypt"
@@ -58,8 +59,8 @@ type Order struct {
 	Symbol               string          `json:"symbol" bson:"symbol"`
 	SenderCompID         string          `json:"sender_comp_id" bson:"sender_comp_id"`
 	TargetCompID         string          `json:"target_comp_id" bson:"target_comp_id"`
-	UserID               string          `json:"userId" bson:"userId"`
-	ClientID             string          `json:"clientId" bson:"clientId"`
+	UserID               string          `json:"userId" bson:"userId"`     // our own client id
+	ClientID             string          `json:"clientId" bson:"clientId"` // party id, user from client
 	Underlying           string          `json:"underlying" bson:"underlying"`
 	ExpiryDate           string          `json:"expiryDate" bson:"expiryDate"`
 	StrikePrice          float64         `json:"strikePrice" bson:"strikePrice"`
@@ -220,17 +221,32 @@ func (a *Application) onNewOrderSingle(msg newordersingle.NewOrderSingle, sessio
 	strikePrice := details[2]
 	options := details[3]
 
+	var partyId quickfix.FIXString
+	err = msg.GetField(tag.PartyID, &partyId)
+	if err != nil {
+		return err
+	}
+
+	strType := enum.OrdType_LIMIT
+	if ordType == enum.OrdType_MARKET {
+		strType = enum.OrdType_MARKET
+	}
+
+	putOrCall := enum.PutOrCall_CALL
+	if options == string(enum.PutOrCall_PUT) {
+		putOrCall = enum.PutOrCall_PUT
+	}
 	data := KafkaOrder{
-		ClientID:       "",
+		ClientID:       partyId.String(),
 		UserID:         strconv.Itoa(int(client.ID)),
 		Underlying:     underlying,
 		ExpirationDate: expiryDate,
 		StrikePrice:    strikePrice,
-		Type:           string(ordType),
+		Type:           string(strType),
 		Side:           side,
 		Price:          price,
 		Amount:         orderQty,
-		Contracts:      options,
+		Contracts:      string(putOrCall),
 	}
 
 	_data, _ := json.Marshal(data)
@@ -253,6 +269,8 @@ func (a *Application) onOrderCancelRequest(msg ordercancelrequest.OrderCancelReq
 	if err != nil {
 		return err
 	}
+	var partyId quickfix.FIXString
+	msg.GetField(tag.PartyID, &partyId)
 
 	fmt.Println(origClOrdID, symbol, side)
 	return nil
@@ -371,6 +389,7 @@ func (a *Application) updateOrder(order Order, status enum.OrdStatus) {
 	)
 	execReport.SetOrderQty(order.Amount, 2)
 	execReport.SetClOrdID(order.ID)
+	execReport.SetString(quickfix.Tag(448), order.ClientID)
 
 	switch status {
 	case enum.OrdStatus_FILLED, enum.OrdStatus_PARTIALLY_FILLED:
