@@ -45,6 +45,7 @@ func NewAdminHandler(r *gin.Engine, svc service.IAdminService, enforcer *casbin.
 	adminRoute.DELETE("/role/:id", middleware.Authorize("user", "write", enforcer), handler.DeleteRole)
 
 	adminRoute.POST("/request-password", middleware.Authorize("user", "write", enforcer), handler.RequestNewPassword)
+	adminRoute.POST("/request-api-secret", middleware.Authorize("user", "write", enforcer), handler.RequestNewApiSecret)
 }
 
 func (h *adminHandler) Register(r *gin.Context) {
@@ -244,6 +245,42 @@ func (h *adminHandler) RequestNewPassword(r *gin.Context) {
 
 	// Call service
 	_data, errJson := h.svc.RequestNewPassword(r.Request.Context(), req)
+	if errJson != nil {
+		r.JSON(http.StatusInternalServerError, &model.Response{
+			Error:   true,
+			Message: errJson.Error(),
+		})
+		return
+	}
+
+	r.JSON(http.StatusAccepted, &model.Response{
+		Data: _data,
+	})
+}
+
+func (h *adminHandler) RequestNewApiSecret(r *gin.Context) {
+	// Get request body
+	var req _adminModel.RequestKeyPassword
+	err := json.NewDecoder(r.Request.Body).Decode(&req)
+	if err != nil {
+		r.JSON(http.StatusBadRequest, &model.Response{
+			Error:   true,
+			Message: err.Error(),
+		})
+		return
+	}
+
+	// Perform validation
+	if err := validate.Struct(req); err != nil {
+		r.JSON(http.StatusBadRequest, &model.Response{
+			Error:   true,
+			Message: err.Error(),
+		})
+		return
+	}
+
+	// Call service
+	_data, errJson := h.svc.RequestNewApiSecret(r.Request.Context(), req)
 	if errJson != nil {
 		r.JSON(http.StatusInternalServerError, &model.Response{
 			Error:   true,
