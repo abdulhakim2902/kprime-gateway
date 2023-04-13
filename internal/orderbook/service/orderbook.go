@@ -15,10 +15,10 @@ import (
 )
 
 type orderbookHandler struct {
-	redis *redis.RedisConnection
+	redis *redis.RedisConnectionPool
 }
 
-func NewOrderbookHandler(r *gin.Engine, redis *redis.RedisConnection) IOrderbookService {
+func NewOrderbookHandler(r *gin.Engine, redis *redis.RedisConnectionPool) IOrderbookService {
 	return &orderbookHandler{redis}
 
 }

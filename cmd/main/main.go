@@ -97,7 +97,7 @@ func main() {
 	setupRBAC(enforcer)
 
 	// Initiate Redis Connection Here
-	redis := redis.NewRedisConnection(os.Getenv("REDIS_URL"))
+	redis := redis.NewRedisConnectionPool(os.Getenv("REDIS_URL"))
 
 	// Mongo DB Init
 	mongoDb, err := mongo.InitConnection(os.Getenv("MONGO_URL"))

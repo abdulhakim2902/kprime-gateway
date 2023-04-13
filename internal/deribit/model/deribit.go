@@ -7,14 +7,6 @@ type DeribitRequest struct {
 	Price          float64 `json:"price"`
 }
 
-type DeribitEditRequest struct {
-	OrderId        string  `json:"orderId" validate:"required"`
-	InstrumentName string  `json:"instrumentName" validate:"required"`
-	Amount         float64 `json:"amount" validate:"required"`
-	Type           string  `json:"type"`
-	Price          float64 `json:"price" validate:"required"`
-}
-
 type DeribitCancelRequest struct {
 	Id string `json:"id" validate:"required"`
 }
@@ -22,6 +14,20 @@ type DeribitCancelRequest struct {
 type DeribitCancelResponse struct {
 	Id   string `json:"id"`
 	Side string `json:"side"`
+}
+
+type DeribitEditRequest struct {
+	Id     string  `json:"id" validate:"required"`
+	Side   string  `json:"side"`
+	Price  float64 `json:"price"`
+	Amount float64 `json:"amount"`
+}
+
+type DeribitEditResponse struct {
+	Id     string  `json:"id"`
+	Side   string  `json:"side"`
+	Price  float64 `json:"price"`
+	Amount float64 `json:"amount"`
 }
 
 type DeribitResponse struct {
