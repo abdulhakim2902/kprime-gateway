@@ -164,7 +164,7 @@ func (a Application) FromAdmin(msg *quickfix.Message, sessionID quickfix.Session
 		if userSession == nil {
 			userSession = make(map[string]*quickfix.SessionID)
 		}
-		userSession[uname.String()] = &sessionID
+		userSession[strconv.Itoa(int(user.ID))] = &sessionID
 
 	}
 	return nil
@@ -419,6 +419,9 @@ func (a *Application) updateOrder(order Order, status enum.OrdStatus) {
 
 func OrderConfirmation(userId string, order Order, symbol string) {
 	if userSession == nil {
+		if userSession[userId] == nil {
+			return
+		}
 		return
 	}
 	sessionId := userSession[userId]
