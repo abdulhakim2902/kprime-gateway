@@ -86,3 +86,9 @@ func (repo *adminRepo) GetById(ctx context.Context, id int) (client _userModel.C
 
 	return client, err
 }
+
+func (repo *adminRepo) UpdateClient(ctx context.Context, data _userModel.Client, id int) (_userModel.ResponseClient, error) {
+	_ = repo.db.Where("ID = ? ", id).Updates(&data)
+
+	return _userModel.ResponseClient{}, nil
+}
