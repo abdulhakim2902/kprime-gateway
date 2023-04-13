@@ -38,6 +38,7 @@ import (
 	"github.com/quickfixgo/fix42/marketdatasnapshotfullrefresh"
 	"github.com/quickfixgo/fix42/newordersingle"
 	"github.com/quickfixgo/fix42/ordercancelrequest"
+	"github.com/quickfixgo/tag"
 	"github.com/shopspring/decimal"
 	"github.com/spf13/cobra"
 	"golang.org/x/crypto/bcrypt"
@@ -58,8 +59,8 @@ type Order struct {
 	Symbol               string          `json:"symbol" bson:"symbol"`
 	SenderCompID         string          `json:"sender_comp_id" bson:"sender_comp_id"`
 	TargetCompID         string          `json:"target_comp_id" bson:"target_comp_id"`
-	UserID               string          `json:"userId" bson:"userId"`
-	ClientID             string          `json:"clientId" bson:"clientId"`
+	UserID               string          `json:"userId" bson:"userId"`     // our own client id
+	ClientID             string          `json:"clientId" bson:"clientId"` // party id, user from client
 	Underlying           string          `json:"underlying" bson:"underlying"`
 	ExpiryDate           string          `json:"expiryDate" bson:"expiryDate"`
 	StrikePrice          float64         `json:"strikePrice" bson:"strikePrice"`
@@ -91,17 +92,16 @@ type Application struct {
 }
 
 type KafkaOrder struct {
-	UserID         string          `json:"userId"`
-	ClientID       string          `json:"clientId"`
-	Symbol         string          `json:"symbol"`
-	Side           enum.Side       `json:"side"`
-	Price          decimal.Decimal `json:"price"`
-	Amount         decimal.Decimal `json:"quantity"`
-	Underlying     string          `json:"underlying"`
-	ExpirationDate string          `json:"expiration_date"`
-	StrikePrice    string          `json:"strike_price"`
-	Type           string          `json:"type"`
-	Contracts      string          `json:"contracts"`
+	UserID         string    `json:"userId"`
+	ClientID       string    `json:"clientId"`
+	Side           enum.Side `json:"side"`
+	Price          float64   `json:"price"`
+	Amount         float64   `json:"quantity"`
+	Underlying     string    `json:"underlying"`
+	ExpirationDate string    `json:"expirationDate"`
+	StrikePrice    float64   `json:"strikePrice"`
+	Type           string    `json:"type"`
+	Contracts      string    `json:"contracts"`
 }
 
 func newApplication() *Application {
@@ -220,20 +220,45 @@ func (a *Application) onNewOrderSingle(msg newordersingle.NewOrderSingle, sessio
 	expiryDate := details[1]
 	strikePrice := details[2]
 	options := details[3]
+
+	var partyId quickfix.FIXString
+	err = msg.GetField(tag.PartyID, &partyId)
+	if err != nil {
+		// return err
+	}
+
+	strType := "LIMIT"
+	if ordType == enum.OrdType_MARKET {
+		strType = "MARKET"
+	}
+
+	putOrCall := "CALL"
+	if options == string(enum.PutOrCall_PUT) {
+		putOrCall = "PUT"
+	}
+
+	side = "BUY"
+	if side == enum.Side_SELL {
+		side = "SELL"
+	}
+	strikePriceFloat, _ := strconv.ParseFloat(strikePrice, 64)
+	priceFloat, _ := strconv.ParseFloat(price.String(), 64)
+	amountFloat, _ := strconv.ParseFloat(orderQty.String(), 64)
 	data := KafkaOrder{
-		ClientID:       "",
+		ClientID:       partyId.String(),
 		UserID:         strconv.Itoa(int(client.ID)),
 		Underlying:     underlying,
 		ExpirationDate: expiryDate,
-		StrikePrice:    strikePrice,
-		Type:           string(ordType),
+		StrikePrice:    strikePriceFloat,
+		Type:           string(strType),
 		Side:           side,
-		Price:          price,
-		Amount:         orderQty,
-		Contracts:      options,
+		Price:          priceFloat,
+		Amount:         amountFloat,
+		Contracts:      string(putOrCall),
 	}
 
 	_data, _ := json.Marshal(data)
+	fmt.Println(string(_data))
 	_producer.KafkaProducer(string(_data), "NEW_ORDER")
 	return nil
 }
@@ -253,6 +278,8 @@ func (a *Application) onOrderCancelRequest(msg ordercancelrequest.OrderCancelReq
 	if err != nil {
 		return err
 	}
+	var partyId quickfix.FIXString
+	msg.GetField(tag.PartyID, &partyId)
 
 	fmt.Println(origClOrdID, symbol, side)
 	return nil
@@ -371,6 +398,7 @@ func (a *Application) updateOrder(order Order, status enum.OrdStatus) {
 	)
 	execReport.SetOrderQty(order.Amount, 2)
 	execReport.SetClOrdID(order.ID)
+	execReport.SetString(quickfix.Tag(448), order.ClientID)
 
 	switch status {
 	case enum.OrdStatus_FILLED, enum.OrdStatus_PARTIALLY_FILLED:
