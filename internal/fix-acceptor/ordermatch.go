@@ -419,6 +419,9 @@ func (a *Application) updateOrder(order Order, status enum.OrdStatus) {
 
 func OrderConfirmation(userId string, order Order, symbol string) {
 	if userSession == nil {
+		if userSession[userId] == nil {
+			return
+		}
 		return
 	}
 	sessionId := userSession[userId]
