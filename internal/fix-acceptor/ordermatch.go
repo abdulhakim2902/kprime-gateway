@@ -227,14 +227,19 @@ func (a *Application) onNewOrderSingle(msg newordersingle.NewOrderSingle, sessio
 		return err
 	}
 
-	strType := enum.OrdType_LIMIT
+	strType := "LIMIT"
 	if ordType == enum.OrdType_MARKET {
-		strType = enum.OrdType_MARKET
+		strType = "MARKET"
 	}
 
-	putOrCall := enum.PutOrCall_CALL
+	putOrCall := "CALL"
 	if options == string(enum.PutOrCall_PUT) {
-		putOrCall = enum.PutOrCall_PUT
+		putOrCall = "PUT"
+	}
+
+	side = "BUY"
+	if side == enum.Side_SELL {
+		side = "SELL"
 	}
 	data := KafkaOrder{
 		ClientID:       partyId.String(),
@@ -250,6 +255,7 @@ func (a *Application) onNewOrderSingle(msg newordersingle.NewOrderSingle, sessio
 	}
 
 	_data, _ := json.Marshal(data)
+	fmt.Println(string(_data))
 	_producer.KafkaProducer(string(_data), "NEW_ORDER")
 	return nil
 }
