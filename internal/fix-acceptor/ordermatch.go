@@ -92,16 +92,16 @@ type Application struct {
 }
 
 type KafkaOrder struct {
-	UserID         string          `json:"userId"`
-	ClientID       string          `json:"clientId"`
-	Side           enum.Side       `json:"side"`
-	Price          decimal.Decimal `json:"price"`
-	Amount         decimal.Decimal `json:"quantity"`
-	Underlying     string          `json:"underlying"`
-	ExpirationDate string          `json:"expirationDate"`
-	StrikePrice    string          `json:"strikePrice"`
-	Type           string          `json:"type"`
-	Contracts      string          `json:"contracts"`
+	UserID         string    `json:"userId"`
+	ClientID       string    `json:"clientId"`
+	Side           enum.Side `json:"side"`
+	Price          float64   `json:"price"`
+	Amount         float64   `json:"quantity"`
+	Underlying     string    `json:"underlying"`
+	ExpirationDate string    `json:"expirationDate"`
+	StrikePrice    float64   `json:"strikePrice"`
+	Type           string    `json:"type"`
+	Contracts      string    `json:"contracts"`
 }
 
 func newApplication() *Application {
@@ -224,7 +224,7 @@ func (a *Application) onNewOrderSingle(msg newordersingle.NewOrderSingle, sessio
 	var partyId quickfix.FIXString
 	err = msg.GetField(tag.PartyID, &partyId)
 	if err != nil {
-		return err
+		// return err
 	}
 
 	strType := "LIMIT"
@@ -241,16 +241,19 @@ func (a *Application) onNewOrderSingle(msg newordersingle.NewOrderSingle, sessio
 	if side == enum.Side_SELL {
 		side = "SELL"
 	}
+	strikePriceFloat, _ := strconv.ParseFloat(strikePrice, 64)
+	priceFloat, _ := strconv.ParseFloat(price.String(), 64)
+	amountFloat, _ := strconv.ParseFloat(orderQty.String(), 64)
 	data := KafkaOrder{
 		ClientID:       partyId.String(),
 		UserID:         strconv.Itoa(int(client.ID)),
 		Underlying:     underlying,
 		ExpirationDate: expiryDate,
-		StrikePrice:    strikePrice,
+		StrikePrice:    strikePriceFloat,
 		Type:           string(strType),
 		Side:           side,
-		Price:          price,
-		Amount:         orderQty,
+		Price:          priceFloat,
+		Amount:         amountFloat,
 		Contracts:      string(putOrCall),
 	}
 
