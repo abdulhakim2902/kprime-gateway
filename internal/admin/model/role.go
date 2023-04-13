@@ -17,6 +17,11 @@ type CreateRole struct {
 	Data string `json:"data"`
 }
 
+type UpdateRole struct {
+	Name string `json:"name"`
+	Data string `json:"data"`
+}
+
 type DetailRole struct {
 	Name string `json:"name"`
 	Data string `json:"data"`

@@ -40,7 +40,7 @@ func (svc deribitService) DeribitParseBuy(ctx context.Context, userId string, da
 		UserId:         userId,
 		ClientId:       "",
 		Underlying:     substring[0],
-		ExpirationDate: substring[1],
+		ExpirationDate: strings.ToUpper(substring[1]),
 		StrikePrice:    strikePrice,
 		Type:           data.Type,
 		Side:           "BUY",
@@ -78,7 +78,7 @@ func (svc deribitService) DeribitParseSell(ctx context.Context, userId string, d
 		UserId:         userId,
 		ClientId:       "",
 		Underlying:     substring[0],
-		ExpirationDate: substring[1],
+		ExpirationDate: strings.ToUpper(substring[1]),
 		StrikePrice:    strikePrice,
 		Type:           data.Type,
 		Side:           "SELL",
@@ -97,32 +97,13 @@ func (svc deribitService) DeribitParseSell(ctx context.Context, userId string, d
 	return sell, nil
 }
 
-func (svc deribitService) DeribitParseEdit(ctx context.Context, userId string, data model.DeribitEditRequest) (model.DeribitResponse, error) {
-	_string := data.InstrumentName
-	substring := strings.Split(_string, "-")
-	_contracts := ""
-	if substring[3] == "P" {
-		_contracts = "PUT"
-	} else {
-		_contracts = "CALL"
-	}
+func (svc deribitService) DeribitParseEdit(ctx context.Context, userId string, data model.DeribitEditRequest) (model.DeribitEditResponse, error) {
 
-	strikePrice, err := strconv.ParseFloat(substring[2], 64)
-	if err != nil {
-		panic(err)
-	}
-
-	edit := model.DeribitResponse{
-		UserId:         userId,
-		ClientId:       "",
-		Underlying:     substring[0],
-		ExpirationDate: substring[1],
-		StrikePrice:    strikePrice,
-		Type:           data.Type,
-		Side:           "EDIT",
-		Price:          data.Price,
-		Amount:         data.Amount,
-		Contracts:      _contracts,
+	edit := model.DeribitEditResponse{
+		Id:     data.Id,
+		Side:   "EDIT",
+		Price:  data.Price,
+		Amount: data.Amount,
 	}
 
 	_edit, err := json.Marshal(edit)
@@ -135,32 +116,10 @@ func (svc deribitService) DeribitParseEdit(ctx context.Context, userId string, d
 	return edit, nil
 }
 
-func (svc deribitService) DeribitParseCancel(ctx context.Context, userId string, data model.DeribitCancelRequest) (model.DeribitResponse, error) {
-	_string := data.InstrumentName
-	substring := strings.Split(_string, "-")
-	_contracts := ""
-	if substring[3] == "P" {
-		_contracts = "PUT"
-	} else {
-		_contracts = "CALL"
-	}
-
-	strikePrice, err := strconv.ParseFloat(substring[2], 64)
-	if err != nil {
-		panic(err)
-	}
-
-	cancel := model.DeribitResponse{
-		UserId:         userId,
-		ClientId:       "",
-		Underlying:     substring[0],
-		ExpirationDate: substring[1],
-		StrikePrice:    strikePrice,
-		Type:           data.Type,
-		Side:           "CANCEL",
-		Price:          data.Price,
-		Amount:         data.Amount,
-		Contracts:      _contracts,
+func (svc deribitService) DeribitParseCancel(ctx context.Context, userId string, data model.DeribitCancelRequest) (model.DeribitCancelResponse, error) {
+	cancel := model.DeribitCancelResponse{
+		Id:   data.Id,
+		Side: "CANCEL",
 	}
 
 	_cancel, err := json.Marshal(cancel)

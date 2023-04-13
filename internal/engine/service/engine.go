@@ -14,10 +14,10 @@ import (
 )
 
 type engineHandler struct {
-	redis *redis.RedisConnection
+	redis *redis.RedisConnectionPool
 }
 
-func NewEngineHandler(r *gin.Engine, redis *redis.RedisConnection) IEngineService {
+func NewEngineHandler(r *gin.Engine, redis *redis.RedisConnectionPool) IEngineService {
 	return &engineHandler{redis}
 
 }

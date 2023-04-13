@@ -16,11 +16,11 @@ import (
 )
 
 type wsOrderService struct {
-	redis *redis.RedisConnection
+	redis *redis.RedisConnectionPool
 	repo  *repositories.OrderRepository
 }
 
-func NewWSOrderService(redis *redis.RedisConnection, repo *repositories.OrderRepository) IwsOrderService {
+func NewWSOrderService(redis *redis.RedisConnectionPool, repo *repositories.OrderRepository) IwsOrderService {
 	return &wsOrderService{redis, repo}
 }
 
@@ -46,7 +46,7 @@ func (svc wsOrderService) HandleConsume(msg *sarama.ConsumerMessage, userId stri
 		fmt.Println(err)
 		return
 	}
-	svc.redis.Set("ORDERS", string(jsonBytes))
+	svc.redis.Set("ORDER-all", string(jsonBytes))
 	// Then broadcast
 
 	ws.GetOrderSocket().BroadcastMessage("all", orders)
@@ -58,7 +58,7 @@ func (svc wsOrderService) HandleConsume(msg *sarama.ConsumerMessage, userId stri
 		fmt.Println(err)
 		return
 	}
-	svc.redis.Set("ORDERS-"+userId, string(jsonBytes))
+	svc.redis.Set("ORDER-"+userId, string(jsonBytes))
 
 	// Then broadcast
 

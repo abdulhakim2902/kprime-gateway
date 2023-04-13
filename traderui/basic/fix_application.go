@@ -29,6 +29,7 @@ func (a *FIXApplication) ToAdmin(msg *quickfix.Message, sessionID quickfix.Sessi
 		msg.Body.SetString(tag.Password, "nA.lnwHu0$Avdd!pSV9Pw*gD7H1fWUzY")
 		msg.Body.SetString(tag.Username, "QGarZ8DYPs")
 	}
+
 }
 
 // OnCreate initialized SessionIDs

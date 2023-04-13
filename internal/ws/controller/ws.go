@@ -160,12 +160,10 @@ func (svc wsHandler) PrivateSell(input interface{}, c *ws.Client) {
 
 func (svc wsHandler) PrivateEdit(input interface{}, c *ws.Client) {
 	type Req struct {
-		OrderId        string  `json:"orderId"`
-		AccessToken    string  `json:"accessToken"`
-		InstrumentName string  `json:"instrumentName"`
-		Amount         float64 `json:"amount"`
-		Type           string  `json:"type"`
-		Price          float64 `json:"price"`
+		AccessToken string  `json:"accessToken"`
+		Id          string  `json:"id"`
+		Amount      float64 `json:"amount"`
+		Price       float64 `json:"price"`
 	}
 
 	msg := &Req{}
@@ -186,11 +184,9 @@ func (svc wsHandler) PrivateEdit(input interface{}, c *ws.Client) {
 
 	// Parse the Deribit Sell
 	res, err := svc.deribitSvc.DeribitParseEdit(context.TODO(), JWTData.UserID, deribitModel.DeribitEditRequest{
-		OrderId:        msg.OrderId,
-		InstrumentName: msg.InstrumentName,
-		Amount:         msg.Amount,
-		Type:           msg.Type,
-		Price:          msg.Price,
+		Id:     msg.Id,
+		Price:  msg.Price,
+		Amount: msg.Amount,
 	})
 
 	//register order connection
@@ -202,12 +198,8 @@ func (svc wsHandler) PrivateEdit(input interface{}, c *ws.Client) {
 
 func (svc wsHandler) PrivateCancel(input interface{}, c *ws.Client) {
 	type Req struct {
-		OrderId        string  `json:"orderId"`
-		AccessToken    string  `json:"accessToken"`
-		InstrumentName string  `json:"instrumentName"`
-		Amount         float64 `json:"amount"`
-		Type           string  `json:"type"`
-		Price          float64 `json:"price"`
+		AccessToken string `json:"accessToken"`
+		Id          string `json:"id"`
 	}
 
 	msg := &Req{}
@@ -228,11 +220,7 @@ func (svc wsHandler) PrivateCancel(input interface{}, c *ws.Client) {
 
 	// Parse the Deribit Sell
 	res, err := svc.deribitSvc.DeribitParseCancel(context.TODO(), JWTData.UserID, deribitModel.DeribitCancelRequest{
-		OrderId:        msg.OrderId,
-		InstrumentName: msg.InstrumentName,
-		Amount:         msg.Amount,
-		Type:           msg.Type,
-		Price:          msg.Price,
+		Id: msg.Id,
 	})
 
 	//register order connection
