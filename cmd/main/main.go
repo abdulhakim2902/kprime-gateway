@@ -23,6 +23,8 @@ import (
 	"syscall"
 	"time"
 
+	ordermatch "gateway/internal/fix-acceptor"
+
 	// "gateway/pkg/kafka/consumer"
 
 	_authCtrl "gateway/internal/auth/controller"
@@ -115,7 +117,7 @@ func main() {
 	_deribitCtrl.NewDeribitHandler(r, _deribitSvc)
 
 	//qf
-	// go ordermatch.Cmd.Execute()
+	go ordermatch.Cmd.Execute()
 
 	// Websocket handlers
 	_wsOrderbookSvc := _wsOrderbookSvc.NewwsOrderbookService(redis)
