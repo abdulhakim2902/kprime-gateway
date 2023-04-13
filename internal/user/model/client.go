@@ -6,11 +6,10 @@ import (
 )
 
 type CreateClient struct {
-	Name     string `json:"name"`
-	Email    string `json:"email"`
-	Company  string `json:"company"`
-	Password string `json:"password"`
-	RoleId   int    `json:"role_id"`
+	Name    string `json:"name"`
+	Email   string `json:"email"`
+	Company string `json:"company"`
+	RoleId  int    `json:"role_id"`
 }
 
 type DeleteClient struct {
@@ -26,7 +25,7 @@ type Client struct {
 	Company   string     `json:"company"`
 	APISecret string     `json:"api_secret"`
 	RoleId    int        `json:"role_id"`
-	Role      model.Role `gorm:"foreignKey:RoleId"`
+	Role      model.Role `gorm:"foreignKey:ID"`
 	CreatedAt time.Time  `json:"created_at"`
 	UpdatedAt time.Time  `json:"updated_at"`
 }
