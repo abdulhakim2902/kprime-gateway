@@ -27,6 +27,7 @@ import (
 	"path"
 	"runtime"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -37,7 +38,6 @@ import (
 	"github.com/quickfixgo/fix42/marketdatasnapshotfullrefresh"
 	"github.com/quickfixgo/fix42/newordersingle"
 	"github.com/quickfixgo/fix42/ordercancelrequest"
-	"github.com/quickfixgo/tag"
 	"github.com/shopspring/decimal"
 	"github.com/spf13/cobra"
 	"golang.org/x/crypto/bcrypt"
@@ -214,23 +214,23 @@ func (a *Application) onNewOrderSingle(msg newordersingle.NewOrderSingle, sessio
 		return err
 	}
 
-	var expiryDate quickfix.FIXString
-	err = msg.GetField(tag.ExpireDate, &expiryDate)
-	var strikePrice quickfix.FIXDecimal
-	err = msg.GetField(tag.StrikePrice, &strikePrice)
-	var options quickfix.FIXString
-	err = msg.GetField(tag.PutOrCall, &options)
+	details := strings.Split(symbol, "-")
+	underlying := details[0]
+	expiryDate := details[1]
+	strikePrice := details[2]
+	options := details[3]
+
 	data := KafkaOrder{
 		ClientID:       "",
 		UserID:         strconv.Itoa(int(client.ID)),
-		Underlying:     symbol,
-		ExpirationDate: expiryDate.String(),
-		StrikePrice:    strikePrice.String(),
+		Underlying:     underlying,
+		ExpirationDate: expiryDate,
+		StrikePrice:    strikePrice,
 		Type:           string(ordType),
 		Side:           side,
 		Price:          price,
 		Amount:         orderQty,
-		Contracts:      options.String(),
+		Contracts:      options,
 	}
 
 	_data, _ := json.Marshal(data)
