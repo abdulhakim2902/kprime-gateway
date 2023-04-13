@@ -164,7 +164,7 @@ func (a Application) FromAdmin(msg *quickfix.Message, sessionID quickfix.Session
 		if userSession == nil {
 			userSession = make(map[string]*quickfix.SessionID)
 		}
-		userSession[uname.String()] = &sessionID
+		userSession[strconv.Itoa(int(user.ID))] = &sessionID
 
 	}
 	return nil
