@@ -93,13 +93,12 @@ type Application struct {
 type KafkaOrder struct {
 	UserID         string          `json:"userId"`
 	ClientID       string          `json:"clientId"`
-	Symbol         string          `json:"symbol"`
 	Side           enum.Side       `json:"side"`
 	Price          decimal.Decimal `json:"price"`
 	Amount         decimal.Decimal `json:"quantity"`
 	Underlying     string          `json:"underlying"`
-	ExpirationDate string          `json:"expiration_date"`
-	StrikePrice    string          `json:"strike_price"`
+	ExpirationDate string          `json:"expirationDate"`
+	StrikePrice    string          `json:"strikePrice"`
 	Type           string          `json:"type"`
 	Contracts      string          `json:"contracts"`
 }
