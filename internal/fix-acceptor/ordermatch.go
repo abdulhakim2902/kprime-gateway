@@ -179,15 +179,16 @@ func (a *Application) onNewOrderSingle(msg newordersingle.NewOrderSingle, sessio
 	if userSession == nil {
 		return quickfix.NewMessageRejectError("User not logged in", 1, nil)
 	}
-	clientApiKey := ""
+	clientId := ""
 	for i, v := range userSession {
 		if v == &sessionID {
-			clientApiKey = i
+			clientId = i
 		}
 	}
 
+	strClientId, _ := strconv.Atoi(clientId)
 	var client model.Client
-	res := a.DB.Where(model.Client{APIKey: clientApiKey}).Find(&client)
+	res := a.DB.Where(model.Client{ID: uint(strClientId)}).Find(&client)
 	if res.Error != nil {
 		return quickfix.NewMessageRejectError("Failed getting user", 1, nil)
 	}
