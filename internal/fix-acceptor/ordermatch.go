@@ -283,7 +283,11 @@ func (a *Application) onOrderCancelRequest(msg ordercancelrequest.OrderCancelReq
 	var partyId quickfix.FIXString
 	msg.GetField(tag.PartyID, &partyId)
 
+	if r := quickfix.SendToTarget(msg, sessionID); r != nil {
+		return quickfix.NewMessageRejectError("Failed to send cancel request", 1, nil)
+	}
 	fmt.Println(origClOrdID, symbol, side)
+
 	return nil
 }
 
