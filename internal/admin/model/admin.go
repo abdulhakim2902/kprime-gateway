@@ -16,3 +16,7 @@ type Admin struct {
 	RoleId   int    `json:"role_id"`
 	Role     Role   `gorm:"foreignKey:RoleId"`
 }
+
+type RequestKeyPassword struct {
+	Id int `json:"id" validate:"required"`
+}

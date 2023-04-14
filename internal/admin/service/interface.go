@@ -19,4 +19,6 @@ type IAdminService interface {
 	DeleteClient(context.Context, int) (_userModel.ResponseClient, error)
 	GetAllClient(context.Context, url.Values) ([]_userModel.Client, error)
 	GetAllRole(context.Context, url.Values) ([]_adminModel.Role, error)
+	RequestNewPassword(ctx context.Context, data model.RequestKeyPassword) (client interface{}, err error)
+	RequestNewApiSecret(ctx context.Context, data model.RequestKeyPassword) (client interface{}, err error)
 }
