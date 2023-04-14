@@ -181,7 +181,7 @@ func (a *Application) onNewOrderSingle(msg newordersingle.NewOrderSingle, sessio
 	}
 	clientId := ""
 	for i, v := range userSession {
-		if v == &sessionID {
+		if v.String() == sessionID.String() {
 			clientId = i
 		}
 	}

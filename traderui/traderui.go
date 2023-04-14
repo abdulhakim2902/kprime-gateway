@@ -262,7 +262,7 @@ func (c tradeClient) newOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	msg.ToMessage().Body.SetString(quickfix.Tag(448), "1234567890") // clientid
+	msg.ToMessage().Body.SetString(quickfix.Tag(448), "2") // clientid
 	err = quickfix.SendToTarget(msg, order.SessionID)
 
 	if err != nil {
