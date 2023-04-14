@@ -159,3 +159,101 @@ func generateClientSecret(clientId string) string {
 	}
 	return string(secret)
 }
+
+func (svc adminService) RequestNewPassword(ctx context.Context, data model.RequestKeyPassword) (client interface{}, err error) {
+	//get client id from request
+	_clientId := data.Id
+
+	//select client by _clientId
+	_client, err := svc.repo.GetById(ctx, _clientId)
+	if err != nil {
+		log.Println(err.Error())
+		return _userModel.Client{}, err
+	}
+
+	//get api_key
+	clientApiKey := _client.APIKey
+
+	//generate new password
+	password := generateClientSecret(clientApiKey)
+
+	//send email
+	email.SendMail(_client.Email, password, "", "")
+
+	//hash password
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), 14)
+	if err != nil {
+		log.Println(err.Error())
+		return _userModel.APIKeys{
+			APIKey:    "",
+			APISecret: "",
+		}, err
+	}
+
+	//update client password
+	updateClient := _userModel.Client{
+		Name:      _client.Name,
+		Email:     _client.Email,
+		Company:   _client.Company,
+		Password:  string(hashedPassword),
+		APIKey:    _client.APIKey,
+		APISecret: _client.APISecret,
+		RoleId:    _client.RoleId,
+	}
+	svc.repo.UpdateClient(ctx, updateClient, _clientId)
+
+	//return api key and api secret
+	return _userModel.APIKeys{
+		Password:  password,
+		APIKey:    _client.APIKey,
+		APISecret: _client.APISecret,
+	}, nil
+}
+
+func (svc adminService) RequestNewApiSecret(ctx context.Context, data model.RequestKeyPassword) (client interface{}, err error) {
+	//generate new api key
+	clientApiKey := generateClientId()
+	clientSecret := generateClientSecret(clientApiKey)
+
+	//get client id from request
+	_clientId := data.Id
+
+	//select client by _clientId
+	_client, err := svc.repo.GetById(ctx, _clientId)
+	if err != nil {
+		log.Println(err.Error())
+		return _userModel.Client{}, err
+	}
+
+	//send email
+	email.SendMail(_client.Email, "", clientApiKey, clientSecret)
+
+	//hash api secret
+	hashedSecret, err := bcrypt.GenerateFromPassword([]byte(clientSecret), bcrypt.DefaultCost)
+	if err != nil {
+		log.Println(err.Error())
+		return _userModel.APIKeys{
+			APIKey:    "",
+			APISecret: "",
+		}, err
+	}
+
+	//update client password
+	updateClient := _userModel.Client{
+		Name:      _client.Name,
+		Email:     _client.Email,
+		Company:   _client.Company,
+		Password:  _client.Password,
+		APIKey:    clientApiKey,
+		APISecret: string(hashedSecret),
+		RoleId:    _client.RoleId,
+	}
+	svc.repo.UpdateClient(ctx, updateClient, _clientId)
+
+	//return api key and api secret
+	return _userModel.APIKeys{
+		Password:  _client.Password,
+		APIKey:    clientApiKey,
+		APISecret: clientSecret,
+	}, nil
+}

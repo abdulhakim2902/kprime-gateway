@@ -226,7 +226,7 @@ func (a *Application) onNewOrderSingle(msg newordersingle.NewOrderSingle, sessio
 	var partyId quickfix.FIXString
 	err = msg.GetField(tag.PartyID, &partyId)
 	if err != nil {
-		// return err
+		return err
 	}
 
 	strType := "LIMIT"
@@ -398,6 +398,7 @@ func (a *Application) updateOrder(order Order, status enum.OrdStatus) {
 		field.NewCumQty(order.FilledAmount, 2),
 		field.NewAvgPx(order.Price, 2),
 	)
+	execReport.SetString(quickfix.Tag(448), order.ClientID)
 	execReport.SetOrderQty(order.Amount, 2)
 	execReport.SetClOrdID(order.ID)
 	execReport.SetString(quickfix.Tag(448), order.ClientID)

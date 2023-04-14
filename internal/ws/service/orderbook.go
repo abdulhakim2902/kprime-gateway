@@ -24,7 +24,6 @@ func (svc wsOrderbookService) Subscribe(c *ws.Client, instrument string) {
 		socket.SendInitMessage(c, &types.Message{
 			Instrument: instrument,
 		})
-		return
 	}
 
 	// Subscribe
@@ -36,6 +35,14 @@ func (svc wsOrderbookService) Subscribe(c *ws.Client, instrument string) {
 		return
 	}
 
+	// Prepare when user is doing unsubscribe
+	ws.RegisterConnectionUnsubscribeHandler(c, socket.UnsubscribeHandler(id))
+
+	// If redis is null, then stop here
+	if res == "" || err != nil {
+		return
+	}
+
 	// JSON Parse
 	var initData types.Message
 	err = json.Unmarshal([]byte(res), &initData)
@@ -44,9 +51,6 @@ func (svc wsOrderbookService) Subscribe(c *ws.Client, instrument string) {
 		socket.SendErrorMessage(c, msg)
 		return
 	}
-
-	// Prepare when user is doing unsubscribe
-	ws.RegisterConnectionUnsubscribeHandler(c, socket.UnsubscribeHandler(id))
 
 	// Send initial data from the redis
 	socket.SendInitMessage(c, initData)

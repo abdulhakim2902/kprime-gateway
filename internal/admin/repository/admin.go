@@ -80,3 +80,15 @@ func (repo *adminRepo) GetByName(ctx context.Context, name string) (admin model.
 
 	return admin, result.Error
 }
+
+func (repo *adminRepo) GetById(ctx context.Context, id int) (client _userModel.Client, err error) {
+	_ = repo.db.Where("ID = ?", id).First(&client)
+
+	return client, err
+}
+
+func (repo *adminRepo) UpdateClient(ctx context.Context, data _userModel.Client, id int) (_userModel.ResponseClient, error) {
+	_ = repo.db.Where("ID = ? ", id).Updates(&data)
+
+	return _userModel.ResponseClient{}, nil
+}
