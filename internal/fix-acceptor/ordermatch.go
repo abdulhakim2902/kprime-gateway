@@ -287,6 +287,7 @@ func (a *Application) onOrderCancelRequest(msg ordercancelrequest.OrderCancelReq
 		return quickfix.NewMessageRejectError("Failed to send cancel request", 1, nil)
 	}
 	fmt.Println(origClOrdID, symbol, side)
+	_producer.KafkaProducer(origClOrdID.String(), "CANCEL_ORDER")
 
 	return nil
 }
