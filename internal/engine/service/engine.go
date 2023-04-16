@@ -22,7 +22,7 @@ func NewEngineHandler(r *gin.Engine, redis *redis.RedisConnectionPool) IEngineSe
 
 }
 func (svc engineHandler) HandleConsume(msg *sarama.ConsumerMessage) {
-	var data types.Message
+	var data types.EngineResponse
 
 	err := json.Unmarshal(msg.Value, &data)
 	if err != nil {
@@ -30,14 +30,17 @@ func (svc engineHandler) HandleConsume(msg *sarama.ConsumerMessage) {
 		return
 	}
 
+	//convert instrument name
+	_instrument := data.Order.Underlying + "-" + data.Order.ExpiryDate + "-" + fmt.Sprintf("%f", data.Order.StrikePrice) + "-" + string(data.Order.Type)
+
 	// Save to redis
 	jsonBytes, err := json.Marshal(data)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	svc.redis.Set("ENGINE-"+data.Instrument, string(jsonBytes))
+	svc.redis.Set("ENGINE-"+_instrument, string(jsonBytes))
 
 	// Broadcast
-	ws.GetEngineSocket().BroadcastMessage(data.Instrument, data)
+	ws.GetEngineSocket().BroadcastMessage(_instrument, data)
 }
