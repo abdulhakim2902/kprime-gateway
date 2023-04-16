@@ -2,7 +2,6 @@ package repository
 
 import (
 	"context"
-	"fmt"
 	"gateway/internal/admin/model"
 	_adminModel "gateway/internal/admin/model"
 	_userModel "gateway/internal/user/model"
@@ -35,6 +34,12 @@ func (repo *adminRepo) CreateNewRole(ctx context.Context, data _adminModel.Role)
 	return _adminModel.ResponseRole{}, nil
 }
 
+func (repo *adminRepo) CreateNewPermission(ctx context.Context, data _adminModel.Permission) (_adminModel.ResponsePermission, error) {
+	_ = repo.db.Create(&data)
+
+	return _adminModel.ResponsePermission{}, nil
+}
+
 func (repo *adminRepo) DetailRole(ctx context.Context, id int) (roles []_adminModel.Role, err error) {
 	_ = repo.db.Raw("SELECT * FROM roles WHERE ID = ?", id).Scan(&roles)
 
@@ -44,9 +49,13 @@ func (repo *adminRepo) DetailRole(ctx context.Context, id int) (roles []_adminMo
 func (repo *adminRepo) UpdateRole(ctx context.Context, data _adminModel.Role, id int) (_adminModel.ResponseRole, error) {
 	_ = repo.db.Where("ID = ? ", id).Updates(&data)
 
-	fmt.Println("data : ", &data)
-
 	return _adminModel.ResponseRole{}, nil
+}
+
+func (repo *adminRepo) UpdatePermission(ctx context.Context, data _adminModel.Permission, id int) (_adminModel.ResponsePermission, error) {
+	_ = repo.db.Where("ID = ? ", id).Updates(&data)
+
+	return _adminModel.ResponsePermission{}, nil
 }
 
 func (repo *adminRepo) DeleteRole(ctx context.Context, id int) (_adminModel.ResponseRole, error) {
@@ -61,6 +70,12 @@ func (repo *adminRepo) DeleteClient(ctx context.Context, id int) (_userModel.Res
 	_ = repo.db.Delete(&_userModel.Client{ID: uint(id)})
 
 	return _userModel.ResponseClient{}, nil
+}
+
+func (repo *adminRepo) GetAllPermission(ctx context.Context, query map[string]interface{}) (permissions []_adminModel.Permission, err error) {
+	_ = repo.db.Find(&permissions)
+
+	return permissions, err
 }
 
 func (repo *adminRepo) GetAllClient(ctx context.Context, query map[string]interface{}) (clients []_userModel.Client, err error) {

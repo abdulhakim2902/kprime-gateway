@@ -44,6 +44,10 @@ func NewAdminHandler(r *gin.Engine, svc service.IAdminService, enforcer *casbin.
 	adminRoute.POST("/role", middleware.Authorize("user", "write", enforcer), handler.CreateNewRole)
 	adminRoute.DELETE("/role/:id", middleware.Authorize("user", "write", enforcer), handler.DeleteRole)
 
+	adminRoute.GET("/permission", middleware.Authorize("user", "read", enforcer), handler.GetAllPermission)
+	adminRoute.PUT("/permission/:id", middleware.Authorize("user", "write", enforcer), handler.UpdatePermission)
+	adminRoute.POST("/permission", middleware.Authorize("user", "write", enforcer), handler.CreateNewPermission)
+
 	adminRoute.POST("/request-password", middleware.Authorize("user", "write", enforcer), handler.RequestNewPassword)
 	adminRoute.POST("/request-api-secret", middleware.Authorize("user", "write", enforcer), handler.RequestNewApiSecret)
 }
@@ -191,6 +195,31 @@ func (h *adminHandler) UpdateRole(r *gin.Context) {
 	return
 }
 
+func (h *adminHandler) UpdatePermission(r *gin.Context) {
+	var req _adminModel.UpdatePermission
+	err := json.NewDecoder(r.Request.Body).Decode(&req)
+	if err != nil {
+		r.JSON(http.StatusBadRequest, &model.Response{
+			Error:   true,
+			Message: err.Error(),
+		})
+		return
+	}
+	id, err := strconv.Atoi(r.Param("id"))
+	permission, err := h.svc.UpdatePermission(r.Request.Context(), req, id)
+	if err != nil {
+		r.JSON(http.StatusInternalServerError, &model.Response{
+			Error:   true,
+			Message: err.Error(),
+		})
+		return
+	}
+	r.JSON(http.StatusAccepted, &model.Response{
+		Data: permission,
+	})
+	return
+}
+
 func (h *adminHandler) DetailRole(r *gin.Context) {
 	id, err := strconv.Atoi(r.Param("id"))
 	roles, err := h.svc.DetailRole(r.Request.Context(), r.Request.URL.Query(), id)
@@ -292,4 +321,43 @@ func (h *adminHandler) RequestNewApiSecret(r *gin.Context) {
 	r.JSON(http.StatusAccepted, &model.Response{
 		Data: _data,
 	})
+}
+
+func (h *adminHandler) GetAllPermission(r *gin.Context) {
+	permissions, err := h.svc.GetAllPermission(r.Request.Context(), r.Request.URL.Query())
+	if err != nil {
+		r.JSON(http.StatusInternalServerError, &model.Response{
+			Error:   true,
+			Message: err.Error(),
+		})
+		return
+	}
+	r.JSON(http.StatusOK, &model.Response{
+		Data: permissions,
+	})
+	return
+}
+
+func (h *adminHandler) CreateNewPermission(r *gin.Context) {
+	var req _adminModel.CreatePermission
+	err := json.NewDecoder(r.Request.Body).Decode(&req)
+	if err != nil {
+		r.JSON(http.StatusBadRequest, &model.Response{
+			Error:   true,
+			Message: err.Error(),
+		})
+		return
+	}
+	permission, err := h.svc.CreateNewPermission(r.Request.Context(), req)
+	if err != nil {
+		r.JSON(http.StatusInternalServerError, &model.Response{
+			Error:   true,
+			Message: err.Error(),
+		})
+		return
+	}
+	r.JSON(http.StatusAccepted, &model.Response{
+		Data: permission,
+	})
+	return
 }
