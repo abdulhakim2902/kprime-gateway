@@ -12,8 +12,10 @@ type DeribitCancelRequest struct {
 }
 
 type DeribitCancelResponse struct {
-	Id   string `json:"id"`
-	Side string `json:"side"`
+	Id       string `json:"id"`
+	UserId   string `json:"userId"`
+	ClientId string `json:"clientId"`
+	Side     string `json:"side"`
 }
 
 type DeribitEditRequest struct {
@@ -24,10 +26,12 @@ type DeribitEditRequest struct {
 }
 
 type DeribitEditResponse struct {
-	Id     string  `json:"id"`
-	Side   string  `json:"side"`
-	Price  float64 `json:"price"`
-	Amount float64 `json:"amount"`
+	Id       string  `json:"id"`
+	UserId   string  `json:"userId"`
+	ClientId string  `json:"clientId"`
+	Side     string  `json:"side"`
+	Price    float64 `json:"price"`
+	Amount   float64 `json:"amount"`
 }
 
 type DeribitResponse struct {
