@@ -100,10 +100,12 @@ func (svc deribitService) DeribitParseSell(ctx context.Context, userId string, d
 func (svc deribitService) DeribitParseEdit(ctx context.Context, userId string, data model.DeribitEditRequest) (model.DeribitEditResponse, error) {
 
 	edit := model.DeribitEditResponse{
-		Id:     data.Id,
-		Side:   "EDIT",
-		Price:  data.Price,
-		Amount: data.Amount,
+		Id:       data.Id,
+		UserId:   userId,
+		ClientId: "",
+		Side:     "EDIT",
+		Price:    data.Price,
+		Amount:   data.Amount,
 	}
 
 	_edit, err := json.Marshal(edit)
@@ -118,8 +120,10 @@ func (svc deribitService) DeribitParseEdit(ctx context.Context, userId string, d
 
 func (svc deribitService) DeribitParseCancel(ctx context.Context, userId string, data model.DeribitCancelRequest) (model.DeribitCancelResponse, error) {
 	cancel := model.DeribitCancelResponse{
-		Id:   data.Id,
-		Side: "CANCEL",
+		Id:       data.Id,
+		UserId:   userId,
+		ClientId: "",
+		Side:     "CANCEL",
 	}
 
 	_cancel, err := json.Marshal(cancel)

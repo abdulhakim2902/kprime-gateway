@@ -22,9 +22,11 @@ require (
 	github.com/quickfixgo/field v0.1.0
 	github.com/quickfixgo/fix42 v0.1.0
 	github.com/quickfixgo/quickfix v0.7.0
+	github.com/quickfixgo/tag v0.1.0
 	github.com/rs/cors/wrapper/gin v0.0.0-20230301160956-5c2b877d2a03
 	github.com/shopspring/decimal v1.3.1
 	github.com/spf13/cobra v1.6.1
+	go.mongodb.org/mongo-driver v1.11.3
 	golang.org/x/crypto v0.7.0
 	gorm.io/driver/mysql v1.4.7
 	gorm.io/gorm v1.24.6
@@ -82,7 +84,6 @@ require (
 	github.com/pelletier/go-toml/v2 v2.0.7 // indirect
 	github.com/pierrec/lz4/v4 v4.1.17 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
-	github.com/quickfixgo/tag v0.1.0 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20200410134404-eec4a21b6bb0 // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
@@ -95,7 +96,6 @@ require (
 	github.com/xdg-go/scram v1.1.2 // indirect
 	github.com/xdg-go/stringprep v1.0.4 // indirect
 	github.com/youmark/pkcs8 v0.0.0-20201027041543-1326539a0a0a // indirect
-	go.mongodb.org/mongo-driver v1.11.3 // indirect
 	golang.org/x/arch v0.3.0 // indirect
 	golang.org/x/net v0.8.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect
