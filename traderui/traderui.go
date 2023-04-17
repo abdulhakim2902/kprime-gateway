@@ -160,6 +160,7 @@ func (c tradeClient) deleteOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	msg.ToMessage().Body.SetString(quickfix.Tag(448), "2") // clientid
 	err = quickfix.SendToTarget(msg, order.SessionID)
 	if err != nil {
 		log.Printf("[ERROR] err = %+v\n", err)
