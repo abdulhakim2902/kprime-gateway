@@ -1,9 +1,8 @@
 package model
 
 import (
-	"time"
-
 	"gateway/internal/admin/model"
+	"time"
 )
 
 type CreateClient struct {
