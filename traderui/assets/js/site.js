@@ -1,6 +1,6 @@
-$(function() {
+$(function () {
   var form = $('#order-ticket');
-  $(form).submit(function(event) {
+  $(form).submit(function (event) {
     event.preventDefault();
 
     var formData = $(form).serialize();
@@ -12,43 +12,43 @@ $(function() {
   });
 });
 
-setInterval(function() {
-  App.orders.fetch({reset: true});
-  App.executions.fetch({reset: true});
-  
+setInterval(function () {
+  App.orders.fetch({ reset: true });
+  App.executions.fetch({ reset: true });
+
 }, 1000);
 
-var App = new( Backbone.View.extend({
+var App = new (Backbone.View.extend({
   Models: {},
   Views: {},
   Collections: {},
 
   events: {
-    'click a[data-internal]': function(e) {
+    'click a[data-internal]': function (e) {
       e.preventDefault();
-      Backbone.history.navigate(e.target.pathname, {trigger: true});
+      Backbone.history.navigate(e.target.pathname, { trigger: true });
     }
   },
 
-  start: function(options) {
+  start: function (options) {
     this.orderTicket = new App.Models.OrderTicket({
-      session_ids: options.session_ids  
+      session_ids: options.session_ids
     });
 
     this.securityDefinitionForm = new App.Models.SecurityDefinitionForm({
-      session_ids: options.session_ids  
+      session_ids: options.session_ids
     });
 
     this.orders = new App.Collections.Orders(options.orders);
     this.executions = new App.Collections.Executions(options.executions);
     this.router = new App.Router();
 
-    Backbone.history.start({pushState: true});
+    Backbone.history.start({ pushState: true });
   },
 
-  showOrders: function() {
-    var orderTicketView = new App.Views.OrderTicket({model: this.orderTicket});
-    var ordersView = new App.Views.OrdersView({collection: this.orders});
+  showOrders: function () {
+    var orderTicketView = new App.Views.OrderTicket({ model: this.orderTicket });
+    var ordersView = new App.Views.OrdersView({ collection: this.orders });
 
     $("#app").html(orderTicketView.render().el);
     $("#app").append(ordersView.render().el);
@@ -57,9 +57,9 @@ var App = new( Backbone.View.extend({
     $("#nav-secdef").removeClass("active");
   },
 
-  showExecutions: function() {
-    var orderTicketView = new App.Views.OrderTicket({model: this.orderTicket});
-    var executionsView = new App.Views.Executions({collection: this.executions});
+  showExecutions: function () {
+    var orderTicketView = new App.Views.OrderTicket({ model: this.orderTicket });
+    var executionsView = new App.Views.Executions({ collection: this.executions });
 
     $("#app").html(orderTicketView.render().el);
     $("#app").append(executionsView.render().el);
@@ -68,43 +68,43 @@ var App = new( Backbone.View.extend({
     $("#nav-secdef").removeClass("active");
   },
 
-  showSecurityDefinitions: function() {
-    var secDefReq = new App.Views.SecurityDefinitionRequest({model: this.securityDefinitionForm});
+  showSecurityDefinitions: function () {
+    var secDefReq = new App.Views.SecurityDefinitionRequest({ model: this.securityDefinitionForm });
     $("#app").html(secDefReq.render().el);
     $("#nav-order").removeClass("active");
     $("#nav-execution").removeClass("active");
     $("#nav-secdef").addClass("active");
   },
 
-  showOrderDetails: function(id) {
-    var order = new App.Models.Order({id: id});
+  showOrderDetails: function (id) {
+    var order = new App.Models.Order({ id: id });
     order.fetch({
-      success: function() {
-        var orderView = new App.Views.OrderDetails({model: order});
+      success: function () {
+        var orderView = new App.Views.OrderDetails({ model: order });
         $("#app").html(orderView.render().el);
       },
-      error: function() {
+      error: function () {
         console.log('Failed to fetch!');
       }
     });
   },
-  showExecutionDetails: function(id) {
-    var execution = new App.Models.Execution({id: id});
+  showExecutionDetails: function (id) {
+    var execution = new App.Models.Execution({ id: id });
     execution.fetch({
-      success: function() {
-        var executionView = new App.Views.ExecutionDetails({model: execution});
+      success: function () {
+        var executionView = new App.Views.ExecutionDetails({ model: execution });
         $("#app").html(executionView.render().el);
       },
-      error: function() {
+      error: function () {
         console.log('Failed to fetch!');
       }
     });
   }
-}))({el: document.body});
+}))({ el: document.body });
 
 App.Router = Backbone.Router.extend({
   routes: {
-    "": "index", 
+    "": "index",
     "orders": "index",
     "executions": "executions",
     "secdefs": "secdefs",
@@ -112,23 +112,23 @@ App.Router = Backbone.Router.extend({
     "executions/:id": "executionDetails",
   },
 
-  index: function(){
+  index: function () {
     App.showOrders();
   },
 
-  executions: function() {
+  executions: function () {
     App.showExecutions();
   },
 
-  secdefs: function() {
+  secdefs: function () {
     App.showSecurityDefinitions();
   },
 
-  orderDetails: function(id) {
+  orderDetails: function (id) {
     App.showOrderDetails(id)
   },
 
-  executionDetails: function(id) {
+  executionDetails: function (id) {
     App.showExecutionDetails(id)
   }
 });
@@ -173,12 +173,12 @@ App.Views.ExecutionDetails = Backbone.View.extend({
   <a href='#' data-internal='true'>Back</a>
 </div>
 `),
-  render: function() {
+  render: function () {
     this.$el.html(this.template(this.model.attributes));
     return this;
   },
   events: {
-    'click a[data-internal]': function(e) {
+    'click a[data-internal]': function (e) {
       e.preventDefault();
       window.history.back();
     }
@@ -330,21 +330,21 @@ App.Views.OrderDetails = Backbone.View.extend({
   <button class="btn btn-info back">Back</button>
 </div>
 `),
-  render: function() {
+  render: function () {
     this.$el.html(this.template(this.model.attributes));
     return this;
   },
   events: {
-    'click .back': function(e) {
+    'click .back': function (e) {
       window.history.back();
     },
 
-    'click .cancel': function(e) {
+    'click .cancel': function (e) {
       this.model.destroy({
-        success: function() {
-          Backbone.history.navigate("/orders", {trigger: true});
+        success: function () {
+          Backbone.history.navigate("/orders", { trigger: true });
         },
-        error: function(model, response) {
+        error: function (model, response) {
           console.log('Failed to cancel!');
           console.log(model);
           console.log(response);
@@ -352,8 +352,8 @@ App.Views.OrderDetails = Backbone.View.extend({
       });
     },
 
-    'click .amend': function(e) {
-      
+    'click .amend': function (e) {
+
     }
   },
 });
@@ -372,15 +372,15 @@ App.Views.ExecutionRowView = Backbone.View.extend({
 `),
 
 
-  render: function() {
+  render: function () {
     this.$el.html(this.template(this.model.attributes));
     return this;
   },
   events: {
     "click .details": "details"
   },
-  details: function(e) {
-    Backbone.history.navigate("/executions/" + this.model.get("id"), {trigger: true});
+  details: function (e) {
+    Backbone.history.navigate("/executions/" + this.model.get("id"), { trigger: true });
   }
 });
 
@@ -405,7 +405,7 @@ App.Views.OrderRowView = Backbone.View.extend({
 <td><%= session_id %></td>
 `),
 
-  render: function() {
+  render: function () {
     this.$el.html(this.template(this.model.attributes));
     return this;
   },
@@ -413,21 +413,21 @@ App.Views.OrderRowView = Backbone.View.extend({
     "click .cancel": "cancel",
     "click .details": "details"
   },
-  cancel: function(e) {
+  cancel: function (e) {
     this.model.destroy();
   },
 
-  details: function(e) {
-    Backbone.history.navigate("/orders/" + this.model.get("id"), {trigger: true});
+  details: function (e) {
+    Backbone.history.navigate("/orders/" + this.model.get("id"), { trigger: true });
   }
 });
 
 App.Views.Executions = Backbone.View.extend({
-  initialize: function() {
+  initialize: function () {
     this.listenTo(this.collection, 'reset', this.addAll);
   },
 
-  render: function() {
+  render: function () {
     this.$el.html(`
 <table class='table table-striped' id='executions'>
   <thead>
@@ -449,24 +449,24 @@ App.Views.Executions = Backbone.View.extend({
     return this;
   },
 
-  addAll: function() {
+  addAll: function () {
     this.$("tbody").empty();
     this.collection.forEach(this.addOne, this);
     return this;
   },
 
-  addOne: function(execution) {
-    var row = new App.Views.ExecutionRowView({model: execution});
+  addOne: function (execution) {
+    var row = new App.Views.ExecutionRowView({ model: execution });
     this.$("tbody").append(row.render().el);
   }
 });
 
 App.Views.OrdersView = Backbone.View.extend({
-  initialize: function() {
+  initialize: function () {
     this.listenTo(this.collection, 'reset', this.addAll);
   },
 
-  render: function() {
+  render: function () {
     this.$el.html(`
 <table class='table table-striped' id='orders'>
   <thead>
@@ -493,14 +493,14 @@ App.Views.OrdersView = Backbone.View.extend({
     return this;
   },
 
-  addAll: function() {
+  addAll: function () {
     this.$("tbody").empty();
     this.collection.forEach(this.addOne, this);
     return this;
   },
 
-  addOne: function(order) {
-    var row = new App.Views.OrderRowView({model: order});
+  addOne: function (order) {
+    var row = new App.Views.OrderRowView({ model: order });
     this.$("tbody").append(row.render().el);
   }
 });
@@ -543,6 +543,14 @@ App.Views.SecurityDefinitionRequest = Backbone.View.extend({
     </select>
   </div>
 
+  <div class='form-group'>
+    <label for='username'>Username</label>
+    <input type='text' class='form-control' name='username' placeholder='username'>
+
+    <label for='password'>Password</label>
+    <input type='password' class='form-control' name='password' placeholder='password'>
+  </div>
+
   <button type='submit' class='btn btn-default'>Submit</button>
   </p>
 </form>
@@ -552,19 +560,19 @@ App.Views.SecurityDefinitionRequest = Backbone.View.extend({
     submit: "submit"
   },
 
-  submit: function(e) {
+  submit: function (e) {
     e.preventDefault();
     var req = new App.Models.SecurityDefinitionRequest();
     req.set({
-      session_id:             this.$('select[name=session]').val(),
-      security_request_type:  this.$('select[name=security_request_type]').val(),
-      security_type:          this.$('select[name=security_type]').val(),
-      symbol:                 this.$('input[name=symbol]').val(),
+      session_id: this.$('select[name=session]').val(),
+      security_request_type: this.$('select[name=security_request_type]').val(),
+      security_type: this.$('select[name=security_type]').val(),
+      symbol: this.$('input[name=symbol]').val(),
     });
     req.save();
   },
 
-  render: function() {
+  render: function () {
     this.$el.html(this.template(this.model.attributes));
     return this;
   }
@@ -684,11 +692,18 @@ App.Views.OrderTicket = Backbone.View.extend({
         <% _.each(session_ids, function(i){ %><option><%= i %></option><% }); %>
       </select>
     </div>
+    <div class='form-group'>
+      <label for='username'>Username</label>
+      <input type='text' class='form-control' placeholder='username' name='username'>
+
+      <label for='password'>password</label>
+      <input type='password' class='form-control' placeholder='password' name='password'>
+    </div>
   </p>
   <button type='submit' class='btn btn-default'>Submit</button>
 </form>
 `),
-  render: function() {
+  render: function () {
     this.$el.html(this.template(this.model.attributes));
     return this;
   },
@@ -699,94 +714,96 @@ App.Views.OrderTicket = Backbone.View.extend({
     submit: "submit"
   },
 
-  submit: function(e) {
+  submit: function (e) {
     e.preventDefault();
     var order = new App.Models.Order();
     order.set({
-      side:                 this.$('select[name=side]').val(),
-      quantity:             this.$('input[name=quantity]').val(),
-      symbol:               this.$('input[name=symbol]').val(),
-      ord_type:             this.$('select[name=ordType]').val(),
-      price:                this.$('input[name=price]').val(),
-      stop_price:           this.$('input[name=stopPrice]').val(),
-      account:              this.$('input[name=account]').val(),
-      tif:                  this.$('select[name=tif]').val(),
-      session_id:           this.$('select[name=session]').val(),
-      security_type:        this.$('select[name=security_type]').val(),
-      security_desc:        this.$('select[name=security_desc]').val(),
-      maturity_month_year:  this.$('input[name=maturity_month_year]').val(),
-      maturity_day:         parseInt(this.$('input[name=maturity_day]').val()),
-      put_or_call:          this.$('select[name=put_or_call]').val(),
-      strike_price:         this.$('input[name=strike_price]').val(),
+      side: this.$('select[name=side]').val(),
+      quantity: this.$('input[name=quantity]').val(),
+      symbol: this.$('input[name=symbol]').val(),
+      ord_type: this.$('select[name=ordType]').val(),
+      price: this.$('input[name=price]').val(),
+      stop_price: this.$('input[name=stopPrice]').val(),
+      account: this.$('input[name=account]').val(),
+      tif: this.$('select[name=tif]').val(),
+      session_id: this.$('select[name=session]').val(),
+      security_type: this.$('select[name=security_type]').val(),
+      security_desc: this.$('select[name=security_desc]').val(),
+      maturity_month_year: this.$('input[name=maturity_month_year]').val(),
+      maturity_day: parseInt(this.$('input[name=maturity_day]').val()),
+      put_or_call: this.$('select[name=put_or_call]').val(),
+      strike_price: this.$('input[name=strike_price]').val(),
+      username: this.$('input[name=username]').val(),
+      password: this.$('input[name=password]').val(),
     });
 
     order.save();
   },
 
-  updateSecurityType: function() {
-    switch(this.$("#security_type option:selected").text()) {
+  updateSecurityType: function () {
+    switch (this.$("#security_type option:selected").text()) {
       case "Common Stock":
-        this.$("#maturity_month_year").attr({disabled: true, required: false});
-        this.$("#maturity_day").attr({disabled: true});
-        this.$("#put_or_call").attr({disabled: true, required: false});
-        this.$("#strike_price").attr({disabled: true, required: false});
+        this.$("#maturity_month_year").attr({ disabled: true, required: false });
+        this.$("#maturity_day").attr({ disabled: true });
+        this.$("#put_or_call").attr({ disabled: true, required: false });
+        this.$("#strike_price").attr({ disabled: true, required: false });
         break;
       case "Future":
-        this.$("#maturity_month_year").attr({disabled: false, required: true});
-        this.$("#maturity_day").attr({disabled: false});
-        this.$("#put_or_call").attr({disabled: true, required: false});
-        this.$("#strike_price").attr({disabled: true, required: false});
+        this.$("#maturity_month_year").attr({ disabled: false, required: true });
+        this.$("#maturity_day").attr({ disabled: false });
+        this.$("#put_or_call").attr({ disabled: true, required: false });
+        this.$("#strike_price").attr({ disabled: true, required: false });
         break;
       case "Option":
-        this.$("#maturity_month_year").attr({disabled: false, required: true});
-        this.$("#maturity_day").attr({disabled: false});
-        this.$("#put_or_call").attr({disabled: false, required: true});
-        this.$("#strike_price").attr({disabled: false, required: true});
+        this.$("#maturity_month_year").attr({ disabled: false, required: true });
+        this.$("#maturity_day").attr({ disabled: false });
+        this.$("#put_or_call").attr({ disabled: false, required: true });
+        this.$("#strike_price").attr({ disabled: false, required: true });
         break;
     }
   },
 
-  updateOrdType: function() {
-    switch(this.$("#ordType option:selected").text()) {
+  updateOrdType: function () {
+    switch (this.$("#ordType option:selected").text()) {
       case "Limit":
         this.$("#limit").prop("disabled", false);
         this.$("#limit").prop("required", true);
         this.$("#stop").prop("disabled", true);
         this.$("#stop").prop("required", false);
-      break;
+        break;
 
       case "Stop":
         this.$("#limit").prop("disabled", true);
         this.$("#limit").prop("required", false);
         this.$("#stop").prop("disabled", false);
         this.$("#stop").prop("required", true);
-      break;
+        break;
 
     }
   },
 
-  updateOrdType: function() {
-    switch(this.$("#ordType option:selected").text()) {
+  updateOrdType: function () {
+    switch (this.$("#ordType option:selected").text()) {
       case "Limit":
         this.$("#limit").prop("disabled", false);
         this.$("#limit").prop("required", true);
         this.$("#stop").prop("disabled", true);
         this.$("#stop").prop("required", false);
-      break;
+        break;
 
       case "Stop":
         this.$("#limit").prop("disabled", true);
         this.$("#limit").prop("required", false);
         this.$("#stop").prop("disabled", false);
         this.$("#stop").prop("required", true);
-      break;
+        break;
 
       case "Stop Limit":
         this.$("#limit").prop("disabled", false);
         this.$("#limit").prop("required", true);
         this.$("#stop").prop("disabled", false);
         this.$("#stop").prop("required", true);
-      break;
+        break;
 
       default:
         this.$("#limit").prop("disabled", true);
@@ -797,8 +814,8 @@ App.Views.OrderTicket = Backbone.View.extend({
   }
 });
 
-App.prettySide = function(sideEnum) {
-  switch(sideEnum) {
+App.prettySide = function (sideEnum) {
+  switch (sideEnum) {
     case "1":
       return "Buy";
     case "2":
@@ -818,7 +835,7 @@ App.prettySide = function(sideEnum) {
   return sideEnum;
 };
 
-App.prettyOrdType = function(ordTypeEnum) {
+App.prettyOrdType = function (ordTypeEnum) {
   switch (ordTypeEnum) {
     case "1": return "Market";
     case "2": return "Limit";

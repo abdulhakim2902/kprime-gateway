@@ -36,6 +36,8 @@ type Order struct {
 	PutOrCall          enum.PutOrCall     `json:"put_or_call"`
 	StrikePrice        string             `json:"strike_price"`
 	StrikePriceDecimal decimal.Decimal    `json:"-"`
+	Username           string             `json:"username"`
+	Password           string             `json:"password"`
 }
 
 // Init initialized computed fields on order from user input

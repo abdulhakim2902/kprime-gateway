@@ -12,6 +12,7 @@ import (
 	"text/template"
 
 	"github.com/gorilla/mux"
+	"github.com/quickfixgo/tag"
 	"github.com/quickfixgo/traderui/basic"
 	"github.com/quickfixgo/traderui/oms"
 	"github.com/quickfixgo/traderui/secmaster"
@@ -231,6 +232,7 @@ func (c tradeClient) newOrder(w http.ResponseWriter, r *http.Request) {
 	var order oms.Order
 	decoder := json.NewDecoder(r.Body)
 	err := decoder.Decode(&order)
+	fmt.Println("order", order)
 	if err != nil {
 		log.Printf("[ERROR] %v\n", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -262,6 +264,8 @@ func (c tradeClient) newOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	msg.ToMessage().Body.SetString(tag.Password, order.Password)
+	msg.ToMessage().Body.SetString(tag.Username, order.Username)
 	msg.ToMessage().Body.SetString(quickfix.Tag(448), "2") // clientid
 	err = quickfix.SendToTarget(msg, order.SessionID)
 
