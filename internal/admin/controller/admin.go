@@ -48,6 +48,10 @@ func NewAdminHandler(r *gin.Engine, svc service.IAdminService, enforcer *casbin.
 	adminRoute.PUT("/permission/:id", middleware.Authorize("user", "write", enforcer), handler.UpdatePermission)
 	adminRoute.POST("/permission", middleware.Authorize("user", "write", enforcer), handler.CreateNewPermission)
 
+	adminRoute.GET("/cashbin", middleware.Authorize("user", "read", enforcer), handler.GetAllCashbin)
+	// adminRoute.PUT("/permission/:id", middleware.Authorize("user", "write", enforcer), handler.UpdatePermission)
+	// adminRoute.POST("/permission", middleware.Authorize("user", "write", enforcer), handler.CreateNewPermission)
+
 	adminRoute.POST("/request-password", middleware.Authorize("user", "write", enforcer), handler.RequestNewPassword)
 	adminRoute.POST("/request-api-secret", middleware.Authorize("user", "write", enforcer), handler.RequestNewApiSecret)
 }
@@ -334,6 +338,21 @@ func (h *adminHandler) GetAllPermission(r *gin.Context) {
 	}
 	r.JSON(http.StatusOK, &model.Response{
 		Data: permissions,
+	})
+	return
+}
+
+func (h *adminHandler) GetAllCashbin(r *gin.Context) {
+	cashbins, err := h.svc.GetAllCashbin(r.Request.Context(), r.Request.URL.Query())
+	if err != nil {
+		r.JSON(http.StatusInternalServerError, &model.Response{
+			Error:   true,
+			Message: err.Error(),
+		})
+		return
+	}
+	r.JSON(http.StatusOK, &model.Response{
+		Data: cashbins,
 	})
 	return
 }

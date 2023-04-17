@@ -90,6 +90,12 @@ func (repo *adminRepo) GetAllRole(ctx context.Context, query map[string]interfac
 	return roles, err
 }
 
+func (repo *adminRepo) GetAllCashbin(ctx context.Context, query map[string]interface{}) (cashbins []_adminModel.Casbin, err error) {
+	_ = repo.db.Find(&cashbins)
+
+	return cashbins, err
+}
+
 func (repo *adminRepo) GetByName(ctx context.Context, name string) (admin model.Admin, err error) {
 	result := repo.db.Where("name = ?", name).First(&admin)
 

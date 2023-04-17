@@ -22,6 +22,7 @@ type IAdminService interface {
 	GetAllClient(context.Context, url.Values) ([]_userModel.Client, error)
 	GetAllRole(context.Context, url.Values) ([]_adminModel.Role, error)
 	GetAllPermission(context.Context, url.Values) ([]_adminModel.Permission, error)
+	GetAllCashbin(context.Context, url.Values) ([]_adminModel.Casbin, error)
 	RequestNewPassword(ctx context.Context, data model.RequestKeyPassword) (client interface{}, err error)
 	RequestNewApiSecret(ctx context.Context, data model.RequestKeyPassword) (client interface{}, err error)
 }

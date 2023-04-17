@@ -164,6 +164,15 @@ func (svc adminService) GetAllPermission(ctx context.Context, query url.Values) 
 	return permissions, nil
 }
 
+func (svc adminService) GetAllCashbin(ctx context.Context, query url.Values) (cashbins []_adminModel.Casbin, err error) {
+	cashbins, err = svc.repo.GetAllCashbin(ctx, nil)
+	if err != nil {
+		log.Println(err.Error())
+		return []_adminModel.Casbin{}, err
+	}
+	return cashbins, nil
+}
+
 func (svc adminService) GetAllRole(ctx context.Context, query url.Values) (roles []_adminModel.Role, err error) {
 	roles, err = svc.repo.GetAllRole(ctx, nil)
 	if err != nil {
