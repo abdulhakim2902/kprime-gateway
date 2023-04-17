@@ -37,6 +37,7 @@ import (
 	"github.com/quickfixgo/fix42/marketdatarequest"
 	"github.com/quickfixgo/fix42/marketdatasnapshotfullrefresh"
 	"github.com/quickfixgo/fix42/newordersingle"
+	"github.com/quickfixgo/fix42/ordercancelreplacerequest"
 	"github.com/quickfixgo/fix42/ordercancelrequest"
 	"github.com/quickfixgo/tag"
 	"github.com/shopspring/decimal"
@@ -93,6 +94,7 @@ type Application struct {
 
 type KafkaOrder struct {
 	ID             string    `json:"id"`
+	ClOrdID        string    `json:"clOrdID"`
 	UserID         string    `json:"userId"`
 	ClientID       string    `json:"clientId"`
 	Side           enum.Side `json:"side"`
@@ -115,6 +117,7 @@ func newApplication() *Application {
 	app.AddRoute(newordersingle.Route(app.onNewOrderSingle))
 	app.AddRoute(ordercancelrequest.Route(app.onOrderCancelRequest))
 	app.AddRoute(marketdatarequest.Route(app.onMarketDataRequest))
+	app.AddRoute(ordercancelreplacerequest.Route(app.onOrderUpdateRequest))
 
 	return app
 }
@@ -192,6 +195,12 @@ func (a *Application) onNewOrderSingle(msg newordersingle.NewOrderSingle, sessio
 	if res.Error != nil {
 		return quickfix.NewMessageRejectError("Failed getting user", 1, nil)
 	}
+
+	clOrId, err := msg.GetClOrdID()
+	if err != nil {
+		return err
+	}
+
 	symbol, err := msg.GetSymbol()
 	if err != nil {
 		return err
@@ -247,6 +256,7 @@ func (a *Application) onNewOrderSingle(msg newordersingle.NewOrderSingle, sessio
 	priceFloat, _ := strconv.ParseFloat(price.String(), 64)
 	amountFloat, _ := strconv.ParseFloat(orderQty.String(), 64)
 	data := KafkaOrder{
+		ClOrdID:        clOrId,
 		ClientID:       partyId.String(),
 		UserID:         strconv.Itoa(int(client.ID)),
 		Underlying:     underlying,
@@ -260,34 +270,93 @@ func (a *Application) onNewOrderSingle(msg newordersingle.NewOrderSingle, sessio
 	}
 
 	_data, _ := json.Marshal(data)
-	fmt.Println(string(_data))
 	_producer.KafkaProducer(string(_data), "NEW_ORDER")
 	return nil
 }
 
-func (a *Application) onOrderCancelRequest(msg ordercancelrequest.OrderCancelRequest, sessionID quickfix.SessionID) quickfix.MessageRejectError {
+func (a *Application) onOrderUpdateRequest(msg ordercancelreplacerequest.OrderCancelReplaceRequest, sessionID quickfix.SessionID) quickfix.MessageRejectError {
+	clientId := ""
+	for i, v := range userSession {
+		if v.String() == sessionID.String() {
+			clientId = i
+		}
+	}
+
+	strClientId, _ := strconv.Atoi(clientId)
+	var client model.Client
+	res := a.DB.Where(model.Client{ID: uint(strClientId)}).Find(&client)
+	if res.Error != nil {
+		return quickfix.NewMessageRejectError("Failed getting user", 1, nil)
+	}
+
+	price, err := msg.GetPrice()
+	if err != nil {
+		return err
+	}
+
+	amount, err := msg.GetOrderQty()
+	if err != nil {
+		return err
+	}
 	origClOrdID, err := msg.GetOrigClOrdID()
 	if err != nil {
 		return err
 	}
 
-	symbol, err := msg.GetSymbol()
-	if err != nil {
-		return err
-	}
-
-	side, err := msg.GetSide()
-	if err != nil {
-		return err
-	}
+	amountFloat, _ := amount.Float64()
+	priceFloat, _ := price.Float64()
 	var partyId quickfix.FIXString
 	msg.GetField(tag.PartyID, &partyId)
 
-	if r := quickfix.SendToTarget(msg, sessionID); r != nil {
+	data := KafkaOrder{
+		ClientID: partyId.String(),
+		ClOrdID:  origClOrdID,
+		UserID:   strconv.Itoa(int(client.ID)),
+		Amount:   amountFloat,
+		Price:    priceFloat,
+	}
+	if err := quickfix.SendToTarget(msg, sessionID); err != nil {
+		return quickfix.NewMessageRejectError("Failed to send update request", 1, nil)
+	}
+	_data, _ := json.Marshal(data)
+	_producer.KafkaProducer(string(_data), "UPDATE_ORDER")
+
+	return nil
+}
+
+func (a *Application) onOrderCancelRequest(msg ordercancelrequest.OrderCancelRequest, sessionID quickfix.SessionID) quickfix.MessageRejectError {
+	clientId := ""
+	for i, v := range userSession {
+		if v.String() == sessionID.String() {
+			clientId = i
+		}
+	}
+
+	strClientId, _ := strconv.Atoi(clientId)
+	var client model.Client
+	res := a.DB.Where(model.Client{ID: uint(strClientId)}).Find(&client)
+	if res.Error != nil {
+		return quickfix.NewMessageRejectError("Failed getting user", 1, nil)
+	}
+
+	origClOrdID, err := msg.GetOrigClOrdID()
+	if err != nil {
+		return err
+	}
+
+	var partyId quickfix.FIXString
+	msg.GetField(tag.PartyID, &partyId)
+
+	data := KafkaOrder{
+		ClientID: partyId.String(),
+		ClOrdID:  origClOrdID,
+		UserID:   strconv.Itoa(int(client.ID)),
+	}
+	if err := quickfix.SendToTarget(msg, sessionID); err != nil {
 		return quickfix.NewMessageRejectError("Failed to send cancel request", 1, nil)
 	}
-	fmt.Println(origClOrdID, symbol, side)
-	_producer.KafkaProducer(origClOrdID.String(), "CANCEL_ORDER")
+	_data, _ := json.Marshal(data)
+	_producer.KafkaProducer(string(_data), "CANCEL_ORDER")
 
 	return nil
 }
@@ -390,6 +459,7 @@ func (a *Application) genExecID() string {
 	return strconv.Itoa(a.execID)
 }
 
+// updateOrder sends an execution report to the client for the given order (fill/cancel)
 func (a *Application) updateOrder(order Order, status enum.OrdStatus) {
 	execReport := executionreport.New(
 		field.NewOrderID(order.ID),
