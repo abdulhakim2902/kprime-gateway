@@ -31,7 +31,7 @@ func (svc engineHandler) HandleConsume(msg *sarama.ConsumerMessage) {
 	}
 
 	//convert instrument name
-	_instrument := data.Order.Underlying + "-" + data.Order.ExpiryDate + "-" + fmt.Sprintf("%f", data.Order.StrikePrice) + "-" + string(data.Order.Type)
+	_instrument := data.Order.Underlying + "-" + data.Order.ExpiryDate + "-" + fmt.Sprintf("%.0f", data.Order.StrikePrice) + "-" + string(data.Order.Contracts[0])
 
 	// Save to redis
 	jsonBytes, err := json.Marshal(data)
@@ -39,6 +39,11 @@ func (svc engineHandler) HandleConsume(msg *sarama.ConsumerMessage) {
 		fmt.Println(err)
 		return
 	}
+
+	//get redis
+
+	//new variable with append data
+
 	svc.redis.Set("ENGINE-"+_instrument, string(jsonBytes))
 
 	// Broadcast
