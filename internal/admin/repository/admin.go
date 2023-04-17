@@ -40,6 +40,12 @@ func (repo *adminRepo) CreateNewPermission(ctx context.Context, data _adminModel
 	return _adminModel.ResponsePermission{}, nil
 }
 
+func (repo *adminRepo) CreateNewCasbin(ctx context.Context, data _adminModel.Casbin, id int) (_adminModel.ResponseCasbin, error) {
+	_ = repo.db.Create(&data)
+
+	return _adminModel.ResponseCasbin{}, nil
+}
+
 func (repo *adminRepo) DetailRole(ctx context.Context, id int) (roles []_adminModel.Role, err error) {
 	_ = repo.db.Raw("SELECT * FROM roles WHERE ID = ?", id).Scan(&roles)
 
@@ -64,6 +70,12 @@ func (repo *adminRepo) DeleteRole(ctx context.Context, id int) (_adminModel.Resp
 	})
 
 	return _adminModel.ResponseRole{}, nil
+}
+
+func (repo *adminRepo) DeleteCasbin(ctx context.Context, id int) (_adminModel.ResponseCasbin, error) {
+	_ = repo.db.Delete(&_adminModel.Casbin{ID: uint(id)})
+
+	return _adminModel.ResponseCasbin{}, nil
 }
 
 func (repo *adminRepo) DeleteClient(ctx context.Context, id int) (_userModel.ResponseClient, error) {

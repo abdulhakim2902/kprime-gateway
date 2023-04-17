@@ -49,8 +49,8 @@ func NewAdminHandler(r *gin.Engine, svc service.IAdminService, enforcer *casbin.
 	adminRoute.POST("/permission", middleware.Authorize("user", "write", enforcer), handler.CreateNewPermission)
 
 	adminRoute.GET("/cashbin", middleware.Authorize("user", "read", enforcer), handler.GetAllCashbin)
-	// adminRoute.PUT("/permission/:id", middleware.Authorize("user", "write", enforcer), handler.UpdatePermission)
-	// adminRoute.POST("/permission", middleware.Authorize("user", "write", enforcer), handler.CreateNewPermission)
+	adminRoute.POST("/cashbin", middleware.Authorize("user", "write", enforcer), handler.CreateNewCasbin)
+	adminRoute.DELETE("/cashbin/:id", middleware.Authorize("user", "write", enforcer), handler.DeleteCasbin)
 
 	adminRoute.POST("/request-password", middleware.Authorize("user", "write", enforcer), handler.RequestNewPassword)
 	adminRoute.POST("/request-api-secret", middleware.Authorize("user", "write", enforcer), handler.RequestNewApiSecret)
@@ -159,6 +159,22 @@ func (h *adminHandler) DeleteClient(r *gin.Context) {
 	return
 }
 
+func (h *adminHandler) DeleteCasbin(r *gin.Context) {
+	id, err := strconv.Atoi(r.Param("id"))
+	casbin, err := h.svc.DeleteCasbin(r.Request.Context(), id)
+	if err != nil {
+		r.JSON(http.StatusInternalServerError, &model.Response{
+			Error:   true,
+			Message: err.Error(),
+		})
+		return
+	}
+	r.JSON(http.StatusAccepted, &model.Response{
+		Data: casbin,
+	})
+	return
+}
+
 func (h *adminHandler) GetAllClient(r *gin.Context) {
 	clients, err := h.svc.GetAllClient(r.Request.Context(), r.Request.URL.Query())
 	if err != nil {
@@ -220,6 +236,31 @@ func (h *adminHandler) UpdatePermission(r *gin.Context) {
 	}
 	r.JSON(http.StatusAccepted, &model.Response{
 		Data: permission,
+	})
+	return
+}
+
+func (h *adminHandler) CreateNewCasbin(r *gin.Context) {
+	var req _adminModel.CreateCasbin
+	err := json.NewDecoder(r.Request.Body).Decode(&req)
+	if err != nil {
+		r.JSON(http.StatusBadRequest, &model.Response{
+			Error:   true,
+			Message: err.Error(),
+		})
+		return
+	}
+	id, err := strconv.Atoi(r.Param("id"))
+	casbin, err := h.svc.CreateNewCasbin(r.Request.Context(), req, id)
+	if err != nil {
+		r.JSON(http.StatusInternalServerError, &model.Response{
+			Error:   true,
+			Message: err.Error(),
+		})
+		return
+	}
+	r.JSON(http.StatusAccepted, &model.Response{
+		Data: casbin,
 	})
 	return
 }

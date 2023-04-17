@@ -139,9 +139,29 @@ func (svc adminService) UpdatePermission(ctx context.Context, data _adminModel.U
 	}, nil
 }
 
+func (svc adminService) CreateNewCasbin(ctx context.Context, data _adminModel.CreateCasbin, id int) (_adminModel.ResponseCasbin, error) {
+	casbin := _adminModel.Casbin{
+		Ptype: data.Ptype,
+		V0:    data.V0,
+		V1:    data.V1,
+		V2:    data.V2,
+	}
+	svc.repo.CreateNewCasbin(ctx, casbin, id)
+	return _adminModel.ResponseCasbin{
+		Response: "Success create data Casbin!",
+	}, nil
+}
+
 func (svc adminService) DeleteClient(ctx context.Context, id int) (_userModel.ResponseClient, error) {
 	svc.repo.DeleteClient(ctx, id)
 	return _userModel.ResponseClient{
+		Response: "Delete Success!",
+	}, nil
+}
+
+func (svc adminService) DeleteCasbin(ctx context.Context, id int) (_adminModel.ResponseCasbin, error) {
+	svc.repo.DeleteCasbin(ctx, id)
+	return _adminModel.ResponseCasbin{
 		Response: "Delete Success!",
 	}, nil
 }
