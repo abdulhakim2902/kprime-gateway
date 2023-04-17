@@ -84,6 +84,8 @@ func main() {
 	}
 
 	//dev only
+	db.AutoMigrate(&_adminModel.Permission{})
+
 	if gin.Mode() != gin.ReleaseMode {
 		db.AutoMigrate(&model.Client{}, &_adminModel.Admin{}, &_adminModel.Role{}, &_authModel.TokenAuth{})
 	}

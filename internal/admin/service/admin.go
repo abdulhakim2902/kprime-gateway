@@ -90,6 +90,17 @@ func (svc adminService) CreateNewRole(ctx context.Context, data _roleModel.Creat
 	}, nil
 }
 
+func (svc adminService) CreateNewPermission(ctx context.Context, data _adminModel.CreatePermission) (_adminModel.ResponsePermission, error) {
+	permission := _adminModel.Permission{
+		Name:      data.Name,
+		Abilities: data.Abilities,
+	}
+	svc.repo.CreateNewPermission(ctx, permission)
+	return _adminModel.ResponsePermission{
+		Response: "Create new permission Success!",
+	}, nil
+}
+
 func (svc adminService) DeleteRole(ctx context.Context, id int) (_roleModel.ResponseRole, error) {
 	svc.repo.DeleteRole(ctx, id)
 	return _roleModel.ResponseRole{
@@ -117,9 +128,40 @@ func (svc adminService) UpdateRole(ctx context.Context, data _roleModel.UpdateRo
 	}, nil
 }
 
+func (svc adminService) UpdatePermission(ctx context.Context, data _adminModel.UpdatePermission, id int) (_adminModel.ResponsePermission, error) {
+	permission := _adminModel.Permission{
+		Name:      data.Name,
+		Abilities: data.Abilities,
+	}
+	svc.repo.UpdatePermission(ctx, permission, id)
+	return _adminModel.ResponsePermission{
+		Response: "Update Success!",
+	}, nil
+}
+
+func (svc adminService) CreateNewCasbin(ctx context.Context, data _adminModel.CreateCasbin, id int) (_adminModel.ResponseCasbin, error) {
+	casbin := _adminModel.Casbin{
+		Ptype: data.Ptype,
+		V0:    data.V0,
+		V1:    data.V1,
+		V2:    data.V2,
+	}
+	svc.repo.CreateNewCasbin(ctx, casbin, id)
+	return _adminModel.ResponseCasbin{
+		Response: "Success create data Casbin!",
+	}, nil
+}
+
 func (svc adminService) DeleteClient(ctx context.Context, id int) (_userModel.ResponseClient, error) {
 	svc.repo.DeleteClient(ctx, id)
 	return _userModel.ResponseClient{
+		Response: "Delete Success!",
+	}, nil
+}
+
+func (svc adminService) DeleteCasbin(ctx context.Context, id int) (_adminModel.ResponseCasbin, error) {
+	svc.repo.DeleteCasbin(ctx, id)
+	return _adminModel.ResponseCasbin{
 		Response: "Delete Success!",
 	}, nil
 }
@@ -131,6 +173,24 @@ func (svc adminService) GetAllClient(ctx context.Context, query url.Values) (cli
 		return []_userModel.Client{}, err
 	}
 	return clients, nil
+}
+
+func (svc adminService) GetAllPermission(ctx context.Context, query url.Values) (permissions []_adminModel.Permission, err error) {
+	permissions, err = svc.repo.GetAllPermission(ctx, nil)
+	if err != nil {
+		log.Println(err.Error())
+		return []_adminModel.Permission{}, err
+	}
+	return permissions, nil
+}
+
+func (svc adminService) GetAllCashbin(ctx context.Context, query url.Values) (cashbins []_adminModel.Casbin, err error) {
+	cashbins, err = svc.repo.GetAllCashbin(ctx, nil)
+	if err != nil {
+		log.Println(err.Error())
+		return []_adminModel.Casbin{}, err
+	}
+	return cashbins, nil
 }
 
 func (svc adminService) GetAllRole(ctx context.Context, query url.Values) (roles []_adminModel.Role, err error) {

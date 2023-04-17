@@ -1,10 +1,11 @@
 package model
 
 type DeribitRequest struct {
-	InstrumentName string  `json:"instrumentName" validate:"required"`
+	InstrumentName string  `json:"instrument_name" validate:"required"`
 	Amount         float64 `json:"amount"`
 	Type           string  `json:"type"`
 	Price          float64 `json:"price"`
+	TimeInForce    string  `json:"time_in_force"`
 }
 
 type DeribitCancelRequest struct {
@@ -46,4 +47,5 @@ type DeribitResponse struct {
 	Price          float64 `json:"price"`
 	Amount         float64 `json:"amount"`
 	Contracts      string  `json:"contracts"`
+	TimeInForce    string  `json:"timeInForce"`
 }
