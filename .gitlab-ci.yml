@@ -1,23 +1,23 @@
 image: golang:latest
 
 stages:
-  #- test
+  - test
   - build
   - deploy
 
-# format:
-#   stage: test
-#   script:
-#     - go fmt $(go list ./... | grep -v /vendor/)
-#     - go vet $(go list ./... | grep -v /vendor/)
-#     - go test -race $(go list ./... | grep -v /vendor/)
+format:
+  stage: test
+  script:
+    - go fmt $(go list ./... | grep -v /vendor/)
+    - go vet $(go list ./... | grep -v /vendor/)
+    - go test -race $(go list ./... | grep -v /vendor/)
 
 compile:
   stage: build
   script:
-    - mkdir -p /home/ubuntu/gateway
-    - cd /home/ubuntu/gateway
-    - go build /home/ubuntu/gateway/cmd/main/main.go
+    # - mkdir -p /home/ubuntu/gateway
+    # - cd /home/ubuntu/gateway
+    - go build /cmd/main/main.go
   artifacts:
     paths:
       - /home/ubuntu/gateway
