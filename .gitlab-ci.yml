@@ -3,16 +3,16 @@ stages:
   - build
   - deploy
 
-pull_code_prod:
+pull_code_dev:
   stage: code_update
   environment:
-    name: production
+    name: development
   script:
     - "cd /home/ubuntu/gateway && git fetch && git stash && git checkout $CI_COMMIT_SHA"
   only:
     - master
   tags:
-    - production
+    - development
 
 build_prod:
   stage: build
@@ -21,7 +21,7 @@ build_prod:
   only:
     - master
   tags:
-    - production
+    - development
 
 deploy_prod:
   stage: deploy
