@@ -36,6 +36,13 @@ func (svc deribitService) DeribitParseBuy(ctx context.Context, userId string, da
 		panic(err)
 	}
 
+	_timeInForce := ""
+	if data.TimeInForce == "" {
+		_timeInForce = "good_til_canceled"
+	} else {
+		_timeInForce = data.TimeInForce
+	}
+
 	buy := model.DeribitResponse{
 		UserId:         userId,
 		ClientId:       "",
@@ -47,6 +54,7 @@ func (svc deribitService) DeribitParseBuy(ctx context.Context, userId string, da
 		Price:          data.Price,
 		Amount:         data.Amount,
 		Contracts:      _contracts,
+		TimeInForce:    _timeInForce,
 	}
 
 	_buy, err := json.Marshal(buy)
@@ -74,6 +82,13 @@ func (svc deribitService) DeribitParseSell(ctx context.Context, userId string, d
 		panic(err)
 	}
 
+	_timeInForce := ""
+	if data.TimeInForce == "" {
+		_timeInForce = "good_til_canceled"
+	} else {
+		_timeInForce = data.TimeInForce
+	}
+
 	sell := model.DeribitResponse{
 		UserId:         userId,
 		ClientId:       "",
@@ -85,6 +100,7 @@ func (svc deribitService) DeribitParseSell(ctx context.Context, userId string, d
 		Price:          data.Price,
 		Amount:         data.Amount,
 		Contracts:      _contracts,
+		TimeInForce:    _timeInForce,
 	}
 
 	_sell, err := json.Marshal(sell)
@@ -100,10 +116,12 @@ func (svc deribitService) DeribitParseSell(ctx context.Context, userId string, d
 func (svc deribitService) DeribitParseEdit(ctx context.Context, userId string, data model.DeribitEditRequest) (model.DeribitEditResponse, error) {
 
 	edit := model.DeribitEditResponse{
-		Id:     data.Id,
-		Side:   "EDIT",
-		Price:  data.Price,
-		Amount: data.Amount,
+		Id:       data.Id,
+		UserId:   userId,
+		ClientId: "",
+		Side:     "EDIT",
+		Price:    data.Price,
+		Amount:   data.Amount,
 	}
 
 	_edit, err := json.Marshal(edit)
@@ -118,8 +136,10 @@ func (svc deribitService) DeribitParseEdit(ctx context.Context, userId string, d
 
 func (svc deribitService) DeribitParseCancel(ctx context.Context, userId string, data model.DeribitCancelRequest) (model.DeribitCancelResponse, error) {
 	cancel := model.DeribitCancelResponse{
-		Id:   data.Id,
-		Side: "CANCEL",
+		Id:       data.Id,
+		UserId:   userId,
+		ClientId: "",
+		Side:     "CANCEL",
 	}
 
 	_cancel, err := json.Marshal(cancel)

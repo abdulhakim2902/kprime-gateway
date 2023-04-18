@@ -25,7 +25,7 @@ type Client struct {
 	Company   string     `json:"company"`
 	APISecret string     `json:"api_secret"`
 	RoleId    int        `json:"role_id"`
-	Role      model.Role `gorm:"foreignKey:ID"`
+	Role      model.Role `gorm:"foreignKey:RoleId"`
 	CreatedAt time.Time  `json:"created_at"`
 	UpdatedAt time.Time  `json:"updated_at"`
 }
