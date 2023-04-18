@@ -14,4 +14,6 @@ deploy:
   script:
     - cp /dev/null .env # create empty .env file
     - echo "env_dev=$env_dev" >> .env # add env_dev to .env file
+    - docker build -t gateway .
+    - docker tag gateway 
     - ./main # run project
