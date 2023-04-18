@@ -23,6 +23,7 @@ import (
 type fixFactory interface {
 	NewOrderSingle(ord oms.Order) (msg quickfix.Messagable, err error)
 	OrderCancelRequest(ord oms.Order, clOrdID string) (msg quickfix.Messagable, err error)
+	OrderCancelReplaceRequest(ord oms.Order, clOrdID string) (msg quickfix.Messagable, err error)
 	SecurityDefinitionRequest(req secmaster.SecurityDefinitionRequest) (msg quickfix.Messagable, err error)
 }
 
@@ -143,7 +144,40 @@ func (c tradeClient) getExecution(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, string(outgoingJSON))
 }
 
+func (c tradeClient) updateOrder(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("updateOrder")
+	c.Lock()
+	defer c.Unlock()
+
+	order, err := c.fetchRequestedOrder(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+
+	clOrdID := c.AssignNextClOrdID(order)
+	msg, err := c.OrderCancelReplaceRequest(*order, clOrdID)
+	if err != nil {
+		log.Printf("[ERROR] err = %+v\n", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	qty, _ := strconv.ParseInt(order.Quantity, 10, 16)
+	msg.ToMessage().Body.SetField(quickfix.Tag(44), quickfix.FIXDecimal{order.PriceDecimal, 2})
+	msg.ToMessage().Body.SetInt(quickfix.Tag(38), int(qty))
+	msg.ToMessage().Body.SetInt(quickfix.Tag(37), order.ID)
+	err = quickfix.SendToTarget(msg, order.SessionID)
+	if err != nil {
+		log.Printf("[ERROR] err = %+v\n", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	c.writeOrderJSON(w, order)
+}
+
 func (c tradeClient) deleteOrder(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("deletingggg")
 	c.Lock()
 	defer c.Unlock()
 
@@ -230,10 +264,11 @@ func (c tradeClient) newSecurityDefintionRequest(w http.ResponseWriter, r *http.
 }
 
 func (c tradeClient) newOrder(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("newOrder")
 	var order oms.Order
 	decoder := json.NewDecoder(r.Body)
 	err := decoder.Decode(&order)
-	fmt.Println("order", order)
+	fmt.Println("ordersss", order)
 	if err != nil {
 		log.Printf("[ERROR] %v\n", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -318,6 +353,7 @@ func main() {
 
 	router.HandleFunc("/orders", app.newOrder).Methods("POST")
 	router.HandleFunc("/orders", app.getOrders).Methods("GET")
+	router.HandleFunc("/orders/{id:[0-9]+}", app.updateOrder).Methods("PUT")
 	router.HandleFunc("/orders/{id:[0-9]+}", app.getOrder).Methods("GET")
 	router.HandleFunc("/orders/{id:[0-9]+}", app.deleteOrder).Methods("DELETE")
 

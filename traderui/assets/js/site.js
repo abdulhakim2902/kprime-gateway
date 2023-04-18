@@ -353,7 +353,18 @@ App.Views.OrderDetails = Backbone.View.extend({
     },
 
     'click .amend': function (e) {
-
+      console.log(e)
+      var quantity = this.$el.find('#quantity').val();
+      this.model.update({ quantity: quantity }, {
+        success: function () {
+          Backbone.history.navigate("/orders", { trigger: true });
+        },
+        error: function (model, response) {
+          console.log('Failed to amend!');
+          console.log(model);
+          console.log(response);
+        }
+      });
     }
   },
 });
