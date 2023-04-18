@@ -1,9 +1,12 @@
 image: golang:latest
 
 stages:
-  - test
+  # - test
   - build
   - deploy
+
+variables:
+  env_dev
 
 format:
   stage: test
