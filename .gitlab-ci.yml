@@ -15,13 +15,16 @@ format:
 compile:
   stage: build
   script:
-    - mkdir -p mybinaries
-    - go build cmd/main/main.go -o mybinaries ./...
+    - mkdir -p /home/ubuntu/gateway
+    - cd /home/ubuntu/gateway
+    - go build cmd/main/main.go
   artifacts:
     paths:
-      - mybinaries
+      - /home/ubuntu/gateway
 
 deploy:
   stage: deploy
-  script: echo "Define your deployment script!"
+  script: 
+    - cd/home/ubuntu/gateway
+    - ./main
   environment: production
