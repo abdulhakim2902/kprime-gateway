@@ -5,9 +5,6 @@ stages:
   - build
   - deploy
 
-variables:
-  env_dev
-
 format:
   stage: test
   script:
