@@ -10,6 +10,7 @@ build:
 deploy:
   stage: deploy
   script:
+    - apt-get update && sudo apt-get install golang
     - cp /dev/null .env # create empty .env file
     - echo "env_dev=$env_dev" >> .env # add env_dev to .env file
     - ./main # run project
