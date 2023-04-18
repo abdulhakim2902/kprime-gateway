@@ -1,31 +1,15 @@
-image: golang:latest
-
 stages:
-  # - test
   - build
   - deploy
 
-format:
-  stage: test
-  script:
-    - go fmt $(go list ./... | grep -v /vendor/)
-    - go vet $(go list ./... | grep -v /vendor/)
-    - go test -race $(go list ./... | grep -v /vendor/)
-
-compile:
+build:
   stage: build
   script:
-    - echo "$env_dev"
-    # - mkdir -p /home/ubuntu/gateway
-    # - cd /home/ubuntu/gateway
-    - go build /cmd/main/main.go
-  artifacts:
-    paths:
-      - /home/ubuntu/gateway
+    - go build cmd/main/main.go
 
 deploy:
   stage: deploy
-  script: 
-    - cd/home/ubuntu/gateway
-    - ./main
-  environment: production
+  script:
+    - cp /dev/null .env # create empty .env file
+    - echo "env_dev=$env_dev" >> .env # add env_dev to .env file
+    - ./main # run project
