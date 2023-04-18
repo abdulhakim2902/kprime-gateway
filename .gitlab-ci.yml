@@ -18,6 +18,7 @@ format:
 compile:
   stage: build
   script:
+    - echo "$env_dev"
     # - mkdir -p /home/ubuntu/gateway
     # - cd /home/ubuntu/gateway
     - go build /cmd/main/main.go
