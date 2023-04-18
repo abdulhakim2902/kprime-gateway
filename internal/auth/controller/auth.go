@@ -99,7 +99,7 @@ func (h authHandler) AdminLogin(r *gin.Context) {
 		})
 		return
 	}
-	token, err := h.svc.AdminLogin(r.Request.Context(), req)
+	token, idAdmin, err := h.svc.AdminLogin(r.Request.Context(), req)
 	if err != nil {
 		r.JSON(http.StatusBadRequest, &model.Response{
 			Error:   true,
@@ -108,7 +108,8 @@ func (h authHandler) AdminLogin(r *gin.Context) {
 		return
 	}
 	r.JSON(http.StatusOK, &model.Response{
-		Data: token,
+		Data:   token,
+		DataId: idAdmin,
 	})
 	return
 }
