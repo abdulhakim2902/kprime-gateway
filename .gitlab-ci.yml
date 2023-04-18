@@ -17,7 +17,7 @@ compile:
   script:
     - mkdir -p /home/ubuntu/gateway
     - cd /home/ubuntu/gateway
-    - go build cmd/main/main.go
+    - go build /home/ubuntu/gateway/cmd/main/main.go
   artifacts:
     paths:
       - /home/ubuntu/gateway
