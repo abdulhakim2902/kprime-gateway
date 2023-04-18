@@ -1,38 +1,27 @@
+image: golang:latest
+
 stages:
-  - code_update
+  - test
   - build
   - deploy
 
-pull_code_dev:
-  stage: code_update
-  environment:
-    name: development
+format:
+  stage: test
   script:
-    - "cd /home/ubuntu/gateway && git fetch && git stash && git checkout $CI_COMMIT_SHA"
-  only:
-    - master
-  tags:
-    - development
+    - go fmt $(go list ./... | grep -v /vendor/)
+    - go vet $(go list ./... | grep -v /vendor/)
+    - go test -race $(go list ./... | grep -v /vendor/)
 
-build_prod:
+compile:
   stage: build
   script:
-    - "cd /home/ubuntu/gateway && go build cmd/main/main.go"
-  only:
-    - master
-  tags:
-    - development
+    - mkdir -p mybinaries
+    - go build cmd/main/main.go -o mybinaries ./...
+  artifacts:
+    paths:
+      - mybinaries
 
-deploy_prod:
+deploy:
   stage: deploy
-  script:
-    - "cd /home/ubuntu/gateway && deployer@$SERVER_IP:/var/www/html/gateway/"
-    - |
-      ssh deployer@$SERVER_IP << EOF
-      sudo systemctl restart gateway.service
-      EOF
-      exit 0
-  only:
-    - master
-  tags:
-    - production
+  script: echo "Define your deployment script!"
+  environment: production
