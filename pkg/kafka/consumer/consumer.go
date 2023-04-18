@@ -71,7 +71,11 @@ func handleTopicOrder(oSvc oInt.IwsOrderService, message *sarama.ConsumerMessage
 
 	// Send message to websocket
 	userIDStr := fmt.Sprintf("%v", data["userId"])
-	ws.SendOrderMessage(userIDStr, data)
+	ClOrdID := fmt.Sprintf("%v", data["clOrdID"])
+	// Remove clOrdID
+	delete(data, "clOrdID")
+
+	ws.SendOrderMessage(userIDStr, data, ClOrdID)
 
 	// symbol := strings.Split(data["underlying"].(string), "-")[0]
 	var order ordermatch.Order

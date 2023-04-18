@@ -56,16 +56,21 @@ func NewClient(c *websocket.Conn) *Client {
 }
 
 // SendMessage constructs the message with proper structure to be sent over websocket
-func (c *Client) SendMessage(payload interface{}) {
+func (c *Client) SendMessage(payload interface{}, params ...string) {
 	// e := WebsocketEvent{
 	// 	Type:    msgType,
 	// 	Payload: payload,
 	// }
+	responseID := ""
+	// Read first parameter if it exists from optional params
+	if len(params) > 0 {
+		responseID = params[0]
+	}
 
 	m := WebsocketResponseMessage{
 		Result:  payload,
 		JSONRPC: "2.0",
-		ID:      "",
+		ID:      responseID,
 	}
 
 	c.mu.Lock()

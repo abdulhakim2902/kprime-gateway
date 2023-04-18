@@ -97,7 +97,7 @@ func readHandler(c *Client) {
 
 		fmt.Println("connection")
 		fmt.Println(msg.Params)
-		go socketChannels[msg.Method](msg.Params, c)
+		go socketChannels[msg.Method](msg, c)
 	}
 }
 
