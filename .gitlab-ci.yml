@@ -1,0 +1,38 @@
+stages:
+  - code_update
+  - build
+  - deploy
+
+pull_code_prod:
+  stage: code_update
+  environment:
+    name: production
+  script:
+    - "cd /home/ubuntu/gateway && git fetch && git stash && git checkout $CI_COMMIT_SHA"
+  only:
+    - master
+  tags:
+    - production
+
+build_prod:
+  stage: build
+  script:
+    - "cd /home/ubuntu/gateway && go build cmd/main/main.go"
+  only:
+    - master
+  tags:
+    - production
+
+deploy_prod:
+  stage: deploy
+  script:
+    - "cd /home/ubuntu/gateway && deployer@$SERVER_IP:/var/www/html/gateway/"
+    - |
+      ssh deployer@$SERVER_IP << EOF
+      sudo systemctl restart gateway.service
+      EOF
+      exit 0
+  only:
+    - master
+  tags:
+    - production
