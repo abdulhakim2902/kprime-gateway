@@ -23,7 +23,6 @@ func NewEngineHandler(r *gin.Engine, redis *redis.RedisConnectionPool) IEngineSe
 }
 func (svc engineHandler) HandleConsume(msg *sarama.ConsumerMessage) {
 	var data types.EngineResponse
-
 	err := json.Unmarshal(msg.Value, &data)
 	if err != nil {
 		fmt.Println(err)
@@ -33,19 +32,40 @@ func (svc engineHandler) HandleConsume(msg *sarama.ConsumerMessage) {
 	//convert instrument name
 	_instrument := data.Order.Underlying + "-" + data.Order.ExpiryDate + "-" + fmt.Sprintf("%.0f", data.Order.StrikePrice) + "-" + string(data.Order.Contracts[0])
 
-	// Save to redis
-	jsonBytes, err := json.Marshal(data)
+	//init redisDataArray variable
+	redisDataArray := []types.EngineResponse{}
+
+	//get redis
+	redisData, err := svc.redis.GetValue("ENGINE-" + _instrument)
+	if err != nil {
+		fmt.Println("error get redis or redis is empty")
+	}
+
+	//create new variable with array of object and append to redisDataArray
+	if redisData != "" {
+		var _redisDataArray []types.EngineResponse
+		err = json.Unmarshal([]byte(redisData), &_redisDataArray)
+		if err != nil {
+			fmt.Println("error unmarshal redisData")
+			fmt.Println(err)
+			return
+		}
+
+		redisDataArray = append(_redisDataArray, data)
+	} else {
+		redisDataArray = append(redisDataArray, data)
+	}
+
+	//convert redisDataArray to json
+	jsonBytes, err := json.Marshal(redisDataArray)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	//get redis
-
-	//new variable with append data
-
+	//save to redis
 	svc.redis.Set("ENGINE-"+_instrument, string(jsonBytes))
 
-	// Broadcast
+	//broadcast to websocket
 	ws.GetEngineSocket().BroadcastMessage(_instrument, data)
 }
