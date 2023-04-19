@@ -3,6 +3,7 @@ package service
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/Shopify/sarama"
 	"github.com/gin-gonic/gin"
@@ -31,6 +32,9 @@ func (svc engineHandler) HandleConsume(msg *sarama.ConsumerMessage) {
 
 	//convert instrument name
 	_instrument := data.Order.Underlying + "-" + data.Order.ExpiryDate + "-" + fmt.Sprintf("%.0f", data.Order.StrikePrice) + "-" + string(data.Order.Contracts[0])
+
+	//check date if more than 3 days ago, remove from redis
+	checkDateToRemoveRedis(data.Order.ExpiryDate, _instrument, svc)
 
 	//init redisDataArray variable
 	redisDataArray := []types.EngineResponse{}
@@ -68,4 +72,37 @@ func (svc engineHandler) HandleConsume(msg *sarama.ConsumerMessage) {
 
 	//broadcast to websocket
 	ws.GetEngineSocket().BroadcastMessage(_instrument, data)
+}
+
+func checkDateToRemoveRedis(_expiryDate string, _instrument string, svc engineHandler) {
+	layout := "02Jan06"
+	dateString := _expiryDate
+	date, err := time.Parse(layout, dateString)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+	formattedDate := date.Format("2006-01-02")
+
+	// Parse the given date string into a time.Time value
+	dateStr := formattedDate
+	_date, err := time.Parse("2006-01-02", dateStr)
+	if err != nil {
+		fmt.Println("Error parsing date:", err)
+		return
+	}
+
+	// Get the current time
+	currentTime := time.Now()
+
+	// Subtract 3 days from the current time
+	threeDaysAgo := currentTime.AddDate(0, 0, -3)
+
+	// Compare the dates
+	if _date.Before(threeDaysAgo) {
+		// Remove from redis
+		removeRedis := svc.redis.Del("ENGINE-" + _instrument)
+		fmt.Println("removeRedis", removeRedis)
+		return
+	}
 }
