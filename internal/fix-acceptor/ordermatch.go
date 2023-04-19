@@ -56,6 +56,7 @@ var orderSubs map[string][]quickfix.SessionID
 
 type Order struct {
 	ID                   string          `json:"id" bson:"_id"`
+	ClientOrderId        string          `json:"clOrdId" bson:"clOrdId"`
 	InstrumentName       string          `json:"instrumentName" bson:"instrumentName"`
 	Symbol               string          `json:"symbol" bson:"symbol"`
 	SenderCompID         string          `json:"sender_comp_id" bson:"sender_comp_id"`
@@ -524,7 +525,7 @@ func OrderConfirmation(userId string, order Order, symbol string) {
 	}
 
 	msg := executionreport.New(
-		field.NewOrderID(order.ID),
+		field.NewOrderID(order.ClientOrderId),
 		field.NewExecID(strconv.Itoa(exec)),
 		field.NewExecTransType(enum.ExecTransType_NEW),
 		field.NewExecType(enum.ExecType(order.Status)),
@@ -535,7 +536,8 @@ func OrderConfirmation(userId string, order Order, symbol string) {
 		field.NewCumQty(order.FilledAmount, 2),
 		field.NewAvgPx(order.Price, 2),
 	)
-	msg.SetString(quickfix.Tag(11), order.ID)
+	msg.SetString(tag.OrderID, order.ID)
+	msg.SetString(tag.ClOrdID, order.ClientOrderId)
 	err := quickfix.SendToTarget(msg, *sessionId)
 	if err != nil {
 		fmt.Print(err.Error())

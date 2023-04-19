@@ -80,6 +80,7 @@ var App = new (Backbone.View.extend({
     var order = new App.Models.Order({ id: id });
     order.fetch({
       success: function () {
+        console.log(order)
         var orderView = new App.Views.OrderDetails({ model: order });
         $("#app").html(orderView.render().el);
       },
@@ -205,7 +206,7 @@ App.Views.OrderDetails = Backbone.View.extend({
   <div class="form-group">
     <label class="col-sm-2 control-label">OrderID</label>
     <div class="col-sm-10">
-    <input type="number" class="form-control" id="order_id" placeholder="OrderID (obj id)" value="<%= order_id %>" required>
+    <p class="form-control-static"><%= order_id  %></p>
     </div>
   </div>
   <div class="form-group">
@@ -355,8 +356,7 @@ App.Views.OrderDetails = Backbone.View.extend({
     'click .amend': function (e) {
       console.log(e)
       var quantity = this.$el.find('#quantity').val();
-      var order_id = this.$el.find('#order_id').val();
-      this.model.update({ quantity: quantity, order_id: order_id }, {
+      this.model.update({ quantity: quantity }, {
         success: function () {
           Backbone.history.navigate("/orders", { trigger: true });
         },
@@ -366,6 +366,7 @@ App.Views.OrderDetails = Backbone.View.extend({
           console.log(response);
         }
       });
+
     }
   },
 });

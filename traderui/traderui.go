@@ -162,11 +162,11 @@ func (c tradeClient) updateOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Println("updateOrder", order)
+	fmt.Println("updateOrder", order.OrderID)
 	qty, _ := strconv.ParseInt(order.Quantity, 10, 16)
 	msg.ToMessage().Body.SetField(quickfix.Tag(44), quickfix.FIXDecimal{order.PriceDecimal, 2})
 	msg.ToMessage().Body.SetInt(quickfix.Tag(38), int(qty))
-	msg.ToMessage().Body.SetString(quickfix.Tag(37), "643f779fc5a3fc7c930c0162")
+	msg.ToMessage().Body.SetString(quickfix.Tag(37), order.OrderID)
 	err = quickfix.SendToTarget(msg, order.SessionID)
 	if err != nil {
 		log.Printf("[ERROR] err = %+v\n", err)
@@ -187,7 +187,7 @@ func (c tradeClient) deleteOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Println("deletingggg", order)
+	fmt.Println("deletingggg", order.OrderID)
 	clOrdID := c.AssignNextClOrdID(order)
 	msg, err := c.OrderCancelRequest(*order, clOrdID)
 	if err != nil {
@@ -197,7 +197,7 @@ func (c tradeClient) deleteOrder(w http.ResponseWriter, r *http.Request) {
 	}
 
 	msg.ToMessage().Body.SetString(quickfix.Tag(448), "2") // clientid
-	msg.ToMessage().Body.SetString(quickfix.Tag(37), "643f779fc5a3fc7c930c0162")
+	msg.ToMessage().Body.SetString(quickfix.Tag(37), order.OrderID)
 	err = quickfix.SendToTarget(msg, order.SessionID)
 	if err != nil {
 		log.Printf("[ERROR] err = %+v\n", err)

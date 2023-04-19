@@ -89,6 +89,8 @@ func (a *FIXApplication) onExecutionReport(msg *quickfix.Message, sessionID quic
 		return err
 	}
 
+	fmt.Println("OrderID: ", orderId.String())
+	fmt.Println("clordid: ", clOrdID.String())
 	var avgPx field.AvgPxField
 	if err := msg.Body.Get(&avgPx); err != nil {
 		return err

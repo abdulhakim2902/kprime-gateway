@@ -80,6 +80,7 @@ func handleTopicOrder(oSvc oInt.IwsOrderService, message *sarama.ConsumerMessage
 		fmt.Println("Error parsing order JSON:", err)
 		return
 	}
+	fmt.Println(data)
 	symbol := strings.Split(order.InstrumentName, "-")[0]
 	ordermatch.OrderConfirmation(userIDStr, order, symbol)
 
