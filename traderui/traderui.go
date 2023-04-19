@@ -264,11 +264,9 @@ func (c tradeClient) newSecurityDefintionRequest(w http.ResponseWriter, r *http.
 }
 
 func (c tradeClient) newOrder(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("newOrder")
 	var order oms.Order
 	decoder := json.NewDecoder(r.Body)
 	err := decoder.Decode(&order)
-	fmt.Println("ordersss", order)
 	if err != nil {
 		log.Printf("[ERROR] %v\n", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
