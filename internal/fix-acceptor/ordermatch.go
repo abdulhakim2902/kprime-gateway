@@ -94,17 +94,17 @@ type Application struct {
 
 type KafkaOrder struct {
 	ID             string    `json:"id"`
-	ClOrdID        string    `json:"clOrdID"`
-	UserID         string    `json:"userId"`
-	ClientID       string    `json:"clientId"`
-	Side           enum.Side `json:"side"`
-	Price          float64   `json:"price"`
-	Amount         float64   `json:"amount"`
-	Underlying     string    `json:"underlying"`
-	ExpirationDate string    `json:"expiryDate"`
-	StrikePrice    float64   `json:"strikePrice"`
-	Type           string    `json:"type"`
-	Contracts      string    `json:"contracts"`
+	ClOrdID        string    `json:"clOrdID,omitempty"`
+	UserID         string    `json:"userId,omitempty"`
+	ClientID       string    `json:"clientId,omitempty"`
+	Side           enum.Side `json:"side,omitempty"`
+	Price          float64   `json:"price,omitempty"`
+	Amount         float64   `json:"amount,omitempty"`
+	Underlying     string    `json:"underlying,omitempty"`
+	ExpirationDate string    `json:"expiryDate,omitempty"`
+	StrikePrice    float64   `json:"strikePrice,omitempty"`
+	Type           string    `json:"type,omitempty"`
+	Contracts      string    `json:"contracts,omitempty"`
 }
 
 func newApplication() *Application {
@@ -346,13 +346,18 @@ func (a *Application) onOrderCancelRequest(msg ordercancelrequest.OrderCancelReq
 		return err
 	}
 
+	clOrdID, err := msg.GetClOrdID()
+	if err != nil {
+		return err
+	}
+
 	var partyId quickfix.FIXString
 	msg.GetField(tag.PartyID, &partyId)
 
 	data := KafkaOrder{
 		ID:       origClOrdID,
+		ClOrdID:  clOrdID,
 		ClientID: partyId.String(),
-		ClOrdID:  origClOrdID,
 		UserID:   strconv.Itoa(int(client.ID)),
 		Side:     "CANCEL",
 	}
@@ -360,6 +365,7 @@ func (a *Application) onOrderCancelRequest(msg ordercancelrequest.OrderCancelReq
 		return quickfix.NewMessageRejectError("Failed to send cancel request", 1, nil)
 	}
 	_data, _ := json.Marshal(data)
+	fmt.Println(string(_data))
 	_producer.KafkaProducer(string(_data), "NEW_ORDER")
 
 	return nil
