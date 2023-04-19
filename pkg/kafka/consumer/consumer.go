@@ -71,9 +71,10 @@ func handleTopicOrder(oSvc oInt.IwsOrderService, message *sarama.ConsumerMessage
 
 	// Send message to websocket
 	userIDStr := fmt.Sprintf("%v", data["userId"])
-	ClOrdID := fmt.Sprintf("%v", data["clOrdID"])
+	ClOrdID := fmt.Sprintf("%v", data["clOrdId"])
+
 	// Remove clOrdID
-	delete(data, "clOrdID")
+	delete(data, "clOrdId")
 
 	ws.SendOrderMessage(userIDStr, data, ClOrdID)
 

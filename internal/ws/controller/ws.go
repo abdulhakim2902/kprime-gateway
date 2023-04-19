@@ -50,10 +50,14 @@ func NewWebsocketHandler(r *gin.Engine, authSvc service.IAuthService, deribitSvc
 }
 
 func (svc wsHandler) PublicAuth(input interface{}, c *ws.Client) {
-	type WebsocketAuth struct {
+	type Params struct {
 		GrantType    string `json:"grant_type"`
 		ClientID     string `json:"client_id"`
 		ClientSecret string `json:"client_secret"`
+	}
+
+	type WebsocketAuth struct {
+		Params Params `json:"params"`
 	}
 
 	msg := &WebsocketAuth{}
@@ -64,8 +68,8 @@ func (svc wsHandler) PublicAuth(input interface{}, c *ws.Client) {
 	}
 
 	signedToken, err := svc.authSvc.APILogin(context.TODO(), model.APILoginRequest{
-		APIKey:    msg.ClientID,
-		APISecret: msg.ClientSecret,
+		APIKey:    msg.Params.ClientID,
+		APISecret: msg.Params.ClientSecret,
 	})
 
 	if err != nil {
