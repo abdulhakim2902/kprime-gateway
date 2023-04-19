@@ -1,14 +1,17 @@
 package model
 
 type DeribitRequest struct {
-	InstrumentName string  `json:"instrumentName" validate:"required"`
+	InstrumentName string  `json:"instrument_name" validate:"required"`
 	Amount         float64 `json:"amount"`
 	Type           string  `json:"type"`
 	Price          float64 `json:"price"`
+	ClOrdID        string  `json:"clOrdID"`
+	TimeInForce    string  `json:"time_in_force"`
 }
 
 type DeribitCancelRequest struct {
-	Id string `json:"id" validate:"required"`
+	Id      string `json:"id" validate:"required"`
+	ClOrdID string `json:"clOrdID"`
 }
 
 type DeribitCancelResponse struct {
@@ -16,13 +19,15 @@ type DeribitCancelResponse struct {
 	UserId   string `json:"userId"`
 	ClientId string `json:"clientId"`
 	Side     string `json:"side"`
+	ClOrdID  string `json:"clOrdID"`
 }
 
 type DeribitEditRequest struct {
-	Id     string  `json:"id" validate:"required"`
-	Side   string  `json:"side"`
-	Price  float64 `json:"price"`
-	Amount float64 `json:"amount"`
+	Id      string  `json:"id" validate:"required"`
+	Side    string  `json:"side"`
+	Price   float64 `json:"price"`
+	Amount  float64 `json:"amount"`
+	ClOrdID string  `json:"clOrdID"`
 }
 
 type DeribitEditResponse struct {
@@ -32,6 +37,7 @@ type DeribitEditResponse struct {
 	Side     string  `json:"side"`
 	Price    float64 `json:"price"`
 	Amount   float64 `json:"amount"`
+	ClOrdID  string  `json:"clOrdID"`
 }
 
 type DeribitResponse struct {
@@ -46,4 +52,6 @@ type DeribitResponse struct {
 	Price          float64 `json:"price"`
 	Amount         float64 `json:"amount"`
 	Contracts      string  `json:"contracts"`
+	TimeInForce    string  `json:"timeInForce"`
+	ClOrdID        string  `json:"clOrdID"`
 }

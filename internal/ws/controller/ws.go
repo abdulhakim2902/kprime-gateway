@@ -50,10 +50,14 @@ func NewWebsocketHandler(r *gin.Engine, authSvc service.IAuthService, deribitSvc
 }
 
 func (svc wsHandler) PublicAuth(input interface{}, c *ws.Client) {
-	type WebsocketAuth struct {
+	type Params struct {
 		GrantType    string `json:"grant_type"`
 		ClientID     string `json:"client_id"`
 		ClientSecret string `json:"client_secret"`
+	}
+
+	type WebsocketAuth struct {
+		Params Params `json:"params"`
 	}
 
 	msg := &WebsocketAuth{}
@@ -64,8 +68,8 @@ func (svc wsHandler) PublicAuth(input interface{}, c *ws.Client) {
 	}
 
 	signedToken, err := svc.authSvc.APILogin(context.TODO(), model.APILoginRequest{
-		APIKey:    msg.ClientID,
-		APISecret: msg.ClientSecret,
+		APIKey:    msg.Params.ClientID,
+		APISecret: msg.Params.ClientSecret,
 	})
 
 	if err != nil {
@@ -79,12 +83,17 @@ func (svc wsHandler) PublicAuth(input interface{}, c *ws.Client) {
 }
 
 func (svc wsHandler) PrivateBuy(input interface{}, c *ws.Client) {
-	type Req struct {
+	type Params struct {
 		AccessToken    string  `json:"accessToken"`
 		InstrumentName string  `json:"instrumentName"`
 		Amount         float64 `json:"amount"`
 		Type           string  `json:"type"`
 		Price          float64 `json:"price"`
+	}
+
+	type Req struct {
+		Params Params `json:"params"`
+		Id     string `json:"id"`
 	}
 
 	msg := &Req{}
@@ -95,7 +104,7 @@ func (svc wsHandler) PrivateBuy(input interface{}, c *ws.Client) {
 	}
 
 	// Check the Access Token
-	JWTData, err := svc.authSvc.JWTCheck(msg.AccessToken)
+	JWTData, err := svc.authSvc.JWTCheck(msg.Params.AccessToken)
 	if err != nil {
 		c.SendMessage(gin.H{"err": err.Error()})
 		return
@@ -105,10 +114,11 @@ func (svc wsHandler) PrivateBuy(input interface{}, c *ws.Client) {
 
 	// Parse the Deribit BUY
 	_, err = svc.deribitSvc.DeribitParseBuy(context.TODO(), JWTData.UserID, deribitModel.DeribitRequest{
-		InstrumentName: msg.InstrumentName,
-		Amount:         msg.Amount,
-		Type:           msg.Type,
-		Price:          msg.Price,
+		InstrumentName: msg.Params.InstrumentName,
+		Amount:         msg.Params.Amount,
+		Type:           msg.Params.Type,
+		Price:          msg.Params.Price,
+		ClOrdID:        msg.Id,
 	})
 
 	//register order connection
@@ -119,12 +129,17 @@ func (svc wsHandler) PrivateBuy(input interface{}, c *ws.Client) {
 }
 
 func (svc wsHandler) PrivateSell(input interface{}, c *ws.Client) {
-	type Req struct {
+	type Params struct {
 		AccessToken    string  `json:"accessToken"`
 		InstrumentName string  `json:"instrumentName"`
 		Amount         float64 `json:"amount"`
 		Type           string  `json:"type"`
 		Price          float64 `json:"price"`
+	}
+
+	type Req struct {
+		Params Params `json:"params"`
+		Id     string `json:"id"`
 	}
 
 	msg := &Req{}
@@ -135,7 +150,7 @@ func (svc wsHandler) PrivateSell(input interface{}, c *ws.Client) {
 	}
 
 	// Check the Access Token
-	JWTData, err := svc.authSvc.JWTCheck(msg.AccessToken)
+	JWTData, err := svc.authSvc.JWTCheck(msg.Params.AccessToken)
 	if err != nil {
 		c.SendMessage(gin.H{"err": err.Error()})
 		return
@@ -145,10 +160,11 @@ func (svc wsHandler) PrivateSell(input interface{}, c *ws.Client) {
 
 	// Parse the Deribit Sell
 	_, err = svc.deribitSvc.DeribitParseSell(context.TODO(), JWTData.UserID, deribitModel.DeribitRequest{
-		InstrumentName: msg.InstrumentName,
-		Amount:         msg.Amount,
-		Type:           msg.Type,
-		Price:          msg.Price,
+		InstrumentName: msg.Params.InstrumentName,
+		Amount:         msg.Params.Amount,
+		Type:           msg.Params.Type,
+		Price:          msg.Params.Price,
+		ClOrdID:        msg.Id,
 	})
 
 	//register order connection
@@ -159,11 +175,16 @@ func (svc wsHandler) PrivateSell(input interface{}, c *ws.Client) {
 }
 
 func (svc wsHandler) PrivateEdit(input interface{}, c *ws.Client) {
-	type Req struct {
+	type Params struct {
 		AccessToken string  `json:"accessToken"`
 		Id          string  `json:"id"`
 		Amount      float64 `json:"amount"`
 		Price       float64 `json:"price"`
+	}
+
+	type Req struct {
+		Params Params `json:"params"`
+		Id     string `json:"id"`
 	}
 
 	msg := &Req{}
@@ -174,7 +195,7 @@ func (svc wsHandler) PrivateEdit(input interface{}, c *ws.Client) {
 	}
 
 	// Check the Access Token
-	JWTData, err := svc.authSvc.JWTCheck(msg.AccessToken)
+	JWTData, err := svc.authSvc.JWTCheck(msg.Params.AccessToken)
 	if err != nil {
 		c.SendMessage(gin.H{"err": err.Error()})
 		return
@@ -184,22 +205,34 @@ func (svc wsHandler) PrivateEdit(input interface{}, c *ws.Client) {
 
 	// Parse the Deribit Sell
 	res, err := svc.deribitSvc.DeribitParseEdit(context.TODO(), JWTData.UserID, deribitModel.DeribitEditRequest{
-		Id:     msg.Id,
-		Price:  msg.Price,
-		Amount: msg.Amount,
+		Id:      msg.Params.Id,
+		Price:   msg.Params.Price,
+		Amount:  msg.Params.Amount,
+		ClOrdID: msg.Id,
 	})
 
 	//register order connection
 	ws.RegisterOrderConnection(JWTData.UserID, c)
-
-	c.SendMessage(res)
+	c.SendMessage(map[string]interface{}{
+		"id":       res.Id,
+		"userId":   res.UserId,
+		"clientId": res.ClientId,
+		"side":     res.Side,
+		"price":    res.Price,
+		"amount":   res.Amount,
+	}, res.ClOrdID)
 	return
 }
 
 func (svc wsHandler) PrivateCancel(input interface{}, c *ws.Client) {
-	type Req struct {
+	type Params struct {
 		AccessToken string `json:"accessToken"`
 		Id          string `json:"id"`
+	}
+
+	type Req struct {
+		Params Params `json:"params"`
+		Id     string `json:"id"`
 	}
 
 	msg := &Req{}
@@ -210,7 +243,7 @@ func (svc wsHandler) PrivateCancel(input interface{}, c *ws.Client) {
 	}
 
 	// Check the Access Token
-	JWTData, err := svc.authSvc.JWTCheck(msg.AccessToken)
+	JWTData, err := svc.authSvc.JWTCheck(msg.Params.AccessToken)
 	if err != nil {
 		c.SendMessage(gin.H{"err": err.Error()})
 		return
@@ -220,19 +253,28 @@ func (svc wsHandler) PrivateCancel(input interface{}, c *ws.Client) {
 
 	// Parse the Deribit Sell
 	res, err := svc.deribitSvc.DeribitParseCancel(context.TODO(), JWTData.UserID, deribitModel.DeribitCancelRequest{
-		Id: msg.Id,
+		Id:      msg.Params.Id,
+		ClOrdID: msg.Id,
 	})
 
 	//register order connection
 	ws.RegisterOrderConnection(JWTData.UserID, c)
-
-	c.SendMessage(res)
+	c.SendMessage(map[string]interface{}{
+		"id":       res.Id,
+		"userId":   res.UserId,
+		"clientId": res.ClientId,
+		"side":     res.Side,
+	}, res.ClOrdID)
 	return
 }
 
 func (svc wsHandler) SubscribeHandler(input interface{}, c *ws.Client) {
-	type Req struct {
+	type Params struct {
 		Channels []string `json:"channels"`
+	}
+
+	type Req struct {
+		Params Params `json:"params"`
 	}
 
 	msg := &Req{}
@@ -242,7 +284,7 @@ func (svc wsHandler) SubscribeHandler(input interface{}, c *ws.Client) {
 		return
 	}
 
-	for _, channel := range msg.Channels {
+	for _, channel := range msg.Params.Channels {
 		fmt.Println(channel)
 		s := strings.Split(channel, ".")
 		switch s[0] {
@@ -258,8 +300,12 @@ func (svc wsHandler) SubscribeHandler(input interface{}, c *ws.Client) {
 }
 
 func (svc wsHandler) UnsubscribeHandler(input interface{}, c *ws.Client) {
-	type Req struct {
+	type Params struct {
 		Channels []string `json:"channels"`
+	}
+
+	type Req struct {
+		Params Params `json:"params"`
 	}
 
 	msg := &Req{}
@@ -269,7 +315,7 @@ func (svc wsHandler) UnsubscribeHandler(input interface{}, c *ws.Client) {
 		return
 	}
 
-	for _, channel := range msg.Channels {
+	for _, channel := range msg.Params.Channels {
 		s := strings.Split(channel, ".")
 		switch s[0] {
 		case "orderbook":
