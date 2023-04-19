@@ -275,6 +275,7 @@ func (a *Application) onNewOrderSingle(msg newordersingle.NewOrderSingle, sessio
 }
 
 func (a *Application) onOrderUpdateRequest(msg ordercancelreplacerequest.OrderCancelReplaceRequest, sessionID quickfix.SessionID) quickfix.MessageRejectError {
+	fmt.Println("onOrderUpdateRequest")
 	clientId := ""
 	for i, v := range userSession {
 		if v.String() == sessionID.String() {
@@ -291,15 +292,18 @@ func (a *Application) onOrderUpdateRequest(msg ordercancelreplacerequest.OrderCa
 
 	price, err := msg.GetPrice()
 	if err != nil {
+		fmt.Println("Error getting price")
 		return err
 	}
 
 	amount, err := msg.GetOrderQty()
 	if err != nil {
+		fmt.Println("Error getting amount")
 		return err
 	}
 	origClOrdID, err := msg.GetOrigClOrdID()
 	if err != nil {
+		fmt.Println("Error getting origClOrdID")
 		return err
 	}
 
@@ -309,17 +313,15 @@ func (a *Application) onOrderUpdateRequest(msg ordercancelreplacerequest.OrderCa
 	msg.GetField(tag.PartyID, &partyId)
 
 	data := KafkaOrder{
+		ID:       origClOrdID,
 		ClientID: partyId.String(),
-		ClOrdID:  origClOrdID,
 		UserID:   strconv.Itoa(int(client.ID)),
 		Amount:   amountFloat,
 		Price:    priceFloat,
 	}
-	if err := quickfix.SendToTarget(msg, sessionID); err != nil {
-		return quickfix.NewMessageRejectError("Failed to send update request", 1, nil)
-	}
+
 	_data, _ := json.Marshal(data)
-	_producer.KafkaProducer(string(_data), "UPDATE_ORDER")
+	_producer.KafkaProducer(string(_data), "NEW_ORDER")
 
 	return nil
 }
@@ -348,15 +350,17 @@ func (a *Application) onOrderCancelRequest(msg ordercancelrequest.OrderCancelReq
 	msg.GetField(tag.PartyID, &partyId)
 
 	data := KafkaOrder{
+		ID:       origClOrdID,
 		ClientID: partyId.String(),
 		ClOrdID:  origClOrdID,
 		UserID:   strconv.Itoa(int(client.ID)),
+		Side:     "CANCEL",
 	}
 	if err := quickfix.SendToTarget(msg, sessionID); err != nil {
 		return quickfix.NewMessageRejectError("Failed to send cancel request", 1, nil)
 	}
 	_data, _ := json.Marshal(data)
-	_producer.KafkaProducer(string(_data), "CANCEL_ORDER")
+	_producer.KafkaProducer(string(_data), "NEW_ORDER")
 
 	return nil
 }

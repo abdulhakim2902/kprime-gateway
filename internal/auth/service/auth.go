@@ -51,14 +51,14 @@ func (s AuthService) Login(ctx context.Context, data model.LoginRequest) (signed
 	return signedToken, nil
 }
 
-func (s AuthService) AdminLogin(ctx context.Context, data model.LoginRequest) (signedToken string, err error) {
+func (s AuthService) AdminLogin(ctx context.Context, data model.LoginRequest) (signedToken string, dataId uint, err error) {
 	admin, err := s.repo.GetAdminByEmail(ctx, data.Email)
 	if err != nil {
-		return "", err
+		return "", 0, err
 	}
 	err = bcrypt.CompareHashAndPassword([]byte(admin.Password), []byte(data.Password))
 	if err != nil {
-		return "", bcrypt.ErrMismatchedHashAndPassword
+		return "", 0, bcrypt.ErrMismatchedHashAndPassword
 	}
 	authToken, err := s.repo.GenerateAuthDetail(ctx, admin.ID)
 	claim := jwt.MapClaims{
@@ -73,9 +73,9 @@ func (s AuthService) AdminLogin(ctx context.Context, data model.LoginRequest) (s
 	jwtKey := os.Getenv("JWT_KEY")
 	signedToken, err = token.SignedString([]byte(jwtKey))
 	if err != nil {
-		return "", err
+		return "", 0, err
 	}
-	return signedToken, nil
+	return signedToken, admin.ID, nil
 }
 
 func (s AuthService) APILogin(ctx context.Context, data model.APILoginRequest) (signedToken string, err error) {
