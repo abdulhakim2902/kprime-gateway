@@ -4,13 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
+
 	"gateway/internal/auth/model"
 	"gateway/internal/auth/service"
 	deribitModel "gateway/internal/deribit/model"
 	deribitService "gateway/internal/deribit/service"
 	engService "gateway/internal/ws/engine/service"
 	wsService "gateway/internal/ws/service"
-	"strings"
 
 	cors "github.com/rs/cors/wrapper/gin"
 
@@ -25,15 +26,25 @@ type wsHandler struct {
 	wsOBSvc    wsService.IwsOrderbookService
 	wsOSvc     wsService.IwsOrderService
 	wsEngSvc   engService.IwsEngineService
+	wsTradeSvc wsService.IwsTradeService
 }
 
-func NewWebsocketHandler(r *gin.Engine, authSvc service.IAuthService, deribitSvc deribitService.IDeribitService, wsOBSvc wsService.IwsOrderbookService, wsEngSvc engService.IwsEngineService, wsOSvc wsService.IwsOrderService) {
+func NewWebsocketHandler(
+	r *gin.Engine,
+	authSvc service.IAuthService,
+	deribitSvc deribitService.IDeribitService,
+	wsOBSvc wsService.IwsOrderbookService,
+	wsEngSvc engService.IwsEngineService,
+	wsOSvc wsService.IwsOrderService,
+	wsTradeSvc wsService.IwsTradeService,
+) {
 	handler := &wsHandler{
 		authSvc:    authSvc,
 		deribitSvc: deribitSvc,
 		wsOBSvc:    wsOBSvc,
 		wsEngSvc:   wsEngSvc,
 		wsOSvc:     wsOSvc,
+		wsTradeSvc: wsTradeSvc,
 	}
 	r.Use(cors.AllowAll())
 
@@ -71,7 +82,6 @@ func (svc wsHandler) PublicAuth(input interface{}, c *ws.Client) {
 		APIKey:    msg.Params.ClientID,
 		APISecret: msg.Params.ClientSecret,
 	})
-
 	if err != nil {
 		fmt.Println(err)
 		c.SendMessage(gin.H{"err": err.Error()})
@@ -121,7 +131,7 @@ func (svc wsHandler) PrivateBuy(input interface{}, c *ws.Client) {
 		ClOrdID:        msg.Id,
 	})
 
-	//register order connection
+	// register order connection
 	ws.RegisterOrderConnection(JWTData.UserID, c)
 
 	// c.SendMessage(res)
@@ -167,7 +177,7 @@ func (svc wsHandler) PrivateSell(input interface{}, c *ws.Client) {
 		ClOrdID:        msg.Id,
 	})
 
-	//register order connection
+	// register order connection
 	ws.RegisterOrderConnection(JWTData.UserID, c)
 
 	// c.SendMessage(res)
@@ -211,7 +221,7 @@ func (svc wsHandler) PrivateEdit(input interface{}, c *ws.Client) {
 		ClOrdID: msg.Id,
 	})
 
-	//register order connection
+	// register order connection
 	ws.RegisterOrderConnection(JWTData.UserID, c)
 	c.SendMessage(map[string]interface{}{
 		"id":       res.Id,
@@ -257,7 +267,7 @@ func (svc wsHandler) PrivateCancel(input interface{}, c *ws.Client) {
 		ClOrdID: msg.Id,
 	})
 
-	//register order connection
+	// register order connection
 	ws.RegisterOrderConnection(JWTData.UserID, c)
 	c.SendMessage(map[string]interface{}{
 		"id":       res.Id,
@@ -294,6 +304,8 @@ func (svc wsHandler) SubscribeHandler(input interface{}, c *ws.Client) {
 			svc.wsEngSvc.Subscribe(c, s[1])
 		case "order":
 			svc.wsOSvc.Subscribe(c, s[1])
+		case "trade":
+			svc.wsTradeSvc.Subscribe(c, s[1])
 		}
 
 	}
@@ -324,6 +336,8 @@ func (svc wsHandler) UnsubscribeHandler(input interface{}, c *ws.Client) {
 			svc.wsEngSvc.Unsubscribe(c)
 		case "order":
 			svc.wsOSvc.Unsubscribe(c)
+		case "trade":
+			svc.wsTradeSvc.Unsubscribe(c)
 		}
 
 	}

@@ -3,11 +3,12 @@ package service
 import (
 	"encoding/json"
 	"fmt"
-	"gateway/internal/orderbook/types"
+
 	"gateway/internal/repositories"
 	"gateway/pkg/redis"
 	"gateway/pkg/ws"
 
+	engineType "gateway/internal/engine/types"
 	daoType "gateway/internal/repositories/types"
 
 	"github.com/Shopify/sarama"
@@ -76,7 +77,7 @@ func (svc wsOrderService) Subscribe(c *ws.Client, key string) {
 	if res == "" || err != nil {
 		initData, err := svc.initialData(key)
 		if err != nil {
-			socket.SendInitMessage(c, &types.ErrorMessage{
+			socket.SendInitMessage(c, &engineType.ErrorMessage{
 				Error: err.Error(),
 			})
 			return

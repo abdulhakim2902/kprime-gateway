@@ -3,21 +3,29 @@ package consumer
 import (
 	"encoding/json"
 	"fmt"
-	engInt "gateway/internal/engine/service"
-	ordermatch "gateway/internal/fix-acceptor"
-	obInt "gateway/internal/orderbook/service"
-	"gateway/internal/repositories"
-	"gateway/pkg/ws"
 	"log"
 	"os"
 	"strings"
+
+	"gateway/internal/repositories"
+	"gateway/pkg/ws"
+
+	engInt "gateway/internal/engine/service"
+	ordermatch "gateway/internal/fix-acceptor"
+	obInt "gateway/internal/orderbook/service"
 
 	"github.com/Shopify/sarama"
 
 	oInt "gateway/internal/ws/service"
 )
 
-func KafkaConsumer(repo *repositories.OrderRepository, engSvc engInt.IEngineService, obSvc obInt.IOrderbookService, oSvc oInt.IwsOrderService) {
+func KafkaConsumer(
+	repo *repositories.OrderRepository,
+	engSvc engInt.IEngineService,
+	obSvc obInt.IOrderbookService,
+	oSvc oInt.IwsOrderService,
+	tradeSvc oInt.IwsTradeService,
+) {
 	config := sarama.NewConfig()
 	config.Consumer.Return.Errors = true
 
@@ -43,7 +51,7 @@ func KafkaConsumer(repo *repositories.OrderRepository, engSvc engInt.IEngineServ
 				case "ORDER":
 					handleTopicOrder(oSvc, message)
 				case "TRADE":
-					handleTopicTrade(message)
+					handleTopicTrade(tradeSvc, message)
 				case "ORDERBOOK":
 					obSvc.HandleConsume(message)
 				case "ENGINE":
@@ -97,8 +105,10 @@ func handleTopicOrder(oSvc oInt.IwsOrderService, message *sarama.ConsumerMessage
 	oSvc.HandleConsume(message, userId)
 }
 
-func handleTopicTrade(message *sarama.ConsumerMessage) {
+func handleTopicTrade(tradeSvc oInt.IwsTradeService, message *sarama.ConsumerMessage) {
 	fmt.Printf("Received message from TRADE: %s\n", string(message.Value))
+
+	tradeSvc.HandleConsume(message)
 }
 
 func handleTopicOrderbook(message *sarama.ConsumerMessage) {
