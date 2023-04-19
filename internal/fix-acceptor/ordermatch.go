@@ -301,7 +301,7 @@ func (a *Application) onOrderUpdateRequest(msg ordercancelreplacerequest.OrderCa
 		fmt.Println("Error getting amount")
 		return err
 	}
-	origClOrdID, err := msg.GetOrigClOrdID()
+	orderId, err := msg.GetOrderID()
 	if err != nil {
 		fmt.Println("Error getting origClOrdID")
 		return err
@@ -313,7 +313,7 @@ func (a *Application) onOrderUpdateRequest(msg ordercancelreplacerequest.OrderCa
 	msg.GetField(tag.PartyID, &partyId)
 
 	data := KafkaOrder{
-		ID:       origClOrdID,
+		ID:       orderId,
 		ClientID: partyId.String(),
 		UserID:   strconv.Itoa(int(client.ID)),
 		Amount:   amountFloat,
@@ -341,11 +341,12 @@ func (a *Application) onOrderCancelRequest(msg ordercancelrequest.OrderCancelReq
 		return quickfix.NewMessageRejectError("Failed getting user", 1, nil)
 	}
 
-	origClOrdID, err := msg.GetOrigClOrdID()
+	orderId, err := msg.GetOrderID()
 	if err != nil {
 		return err
 	}
 
+	fmt.Println("origggg", orderId)
 	clOrdID, err := msg.GetClOrdID()
 	if err != nil {
 		return err
@@ -355,7 +356,7 @@ func (a *Application) onOrderCancelRequest(msg ordercancelrequest.OrderCancelReq
 	msg.GetField(tag.PartyID, &partyId)
 
 	data := KafkaOrder{
-		ID:       origClOrdID,
+		ID:       orderId,
 		ClOrdID:  clOrdID,
 		ClientID: partyId.String(),
 		UserID:   strconv.Itoa(int(client.ID)),

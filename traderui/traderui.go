@@ -165,7 +165,7 @@ func (c tradeClient) updateOrder(w http.ResponseWriter, r *http.Request) {
 	qty, _ := strconv.ParseInt(order.Quantity, 10, 16)
 	msg.ToMessage().Body.SetField(quickfix.Tag(44), quickfix.FIXDecimal{order.PriceDecimal, 2})
 	msg.ToMessage().Body.SetInt(quickfix.Tag(38), int(qty))
-	msg.ToMessage().Body.SetInt(quickfix.Tag(37), order.ID)
+	msg.ToMessage().Body.SetString(quickfix.Tag(37), order.OrderID)
 	err = quickfix.SendToTarget(msg, order.SessionID)
 	if err != nil {
 		log.Printf("[ERROR] err = %+v\n", err)
@@ -196,6 +196,7 @@ func (c tradeClient) deleteOrder(w http.ResponseWriter, r *http.Request) {
 	}
 
 	msg.ToMessage().Body.SetString(quickfix.Tag(448), "2") // clientid
+	msg.ToMessage().Body.SetString(quickfix.Tag(37), order.OrderID)
 	err = quickfix.SendToTarget(msg, order.SessionID)
 	if err != nil {
 		log.Printf("[ERROR] err = %+v\n", err)
@@ -293,6 +294,7 @@ func (c tradeClient) newOrder(w http.ResponseWriter, r *http.Request) {
 	_ = c.OrderManager.Save(&order)
 	c.Unlock()
 
+	fmt.Println(order)
 	msg, err := c.NewOrderSingle(order)
 	if err != nil {
 		log.Printf("[ERROR] %v\n", err)

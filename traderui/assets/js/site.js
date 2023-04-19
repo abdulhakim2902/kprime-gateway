@@ -205,7 +205,7 @@ App.Views.OrderDetails = Backbone.View.extend({
   <div class="form-group">
     <label class="col-sm-2 control-label">OrderID</label>
     <div class="col-sm-10">
-      <p class="form-control-static"><%= order_id %></p>
+    <input type="number" class="form-control" id="order_id" placeholder="OrderID (obj id)" value="<%= order_id %>" required>
     </div>
   </div>
   <div class="form-group">
@@ -744,6 +744,7 @@ App.Views.OrderTicket = Backbone.View.extend({
       maturity_day: parseInt(this.$('input[name=maturity_day]').val()),
       put_or_call: this.$('select[name=put_or_call]').val(),
       strike_price: this.$('input[name=strike_price]').val(),
+      order_id: this.$('input[name=order_id]').val(),
       username: this.$('input[name=username]').val(),
       password: this.$('input[name=password]').val(),
     });
