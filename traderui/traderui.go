@@ -145,7 +145,6 @@ func (c tradeClient) getExecution(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c tradeClient) updateOrder(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("updateOrder")
 	c.Lock()
 	defer c.Unlock()
 
@@ -162,10 +161,12 @@ func (c tradeClient) updateOrder(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	fmt.Println("updateOrder", order)
 	qty, _ := strconv.ParseInt(order.Quantity, 10, 16)
 	msg.ToMessage().Body.SetField(quickfix.Tag(44), quickfix.FIXDecimal{order.PriceDecimal, 2})
 	msg.ToMessage().Body.SetInt(quickfix.Tag(38), int(qty))
-	msg.ToMessage().Body.SetString(quickfix.Tag(37), order.OrderID)
+	msg.ToMessage().Body.SetString(quickfix.Tag(37), "643f779fc5a3fc7c930c0162")
 	err = quickfix.SendToTarget(msg, order.SessionID)
 	if err != nil {
 		log.Printf("[ERROR] err = %+v\n", err)
@@ -177,7 +178,6 @@ func (c tradeClient) updateOrder(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c tradeClient) deleteOrder(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("deletingggg")
 	c.Lock()
 	defer c.Unlock()
 
@@ -187,6 +187,7 @@ func (c tradeClient) deleteOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	fmt.Println("deletingggg", order)
 	clOrdID := c.AssignNextClOrdID(order)
 	msg, err := c.OrderCancelRequest(*order, clOrdID)
 	if err != nil {
@@ -196,7 +197,7 @@ func (c tradeClient) deleteOrder(w http.ResponseWriter, r *http.Request) {
 	}
 
 	msg.ToMessage().Body.SetString(quickfix.Tag(448), "2") // clientid
-	msg.ToMessage().Body.SetString(quickfix.Tag(37), order.OrderID)
+	msg.ToMessage().Body.SetString(quickfix.Tag(37), "643f779fc5a3fc7c930c0162")
 	err = quickfix.SendToTarget(msg, order.SessionID)
 	if err != nil {
 		log.Printf("[ERROR] err = %+v\n", err)
@@ -265,11 +266,9 @@ func (c tradeClient) newSecurityDefintionRequest(w http.ResponseWriter, r *http.
 }
 
 func (c tradeClient) newOrder(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("newOrder")
 	var order oms.Order
 	decoder := json.NewDecoder(r.Body)
 	err := decoder.Decode(&order)
-	fmt.Println("ordersss", order)
 	if err != nil {
 		log.Printf("[ERROR] %v\n", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -294,7 +293,7 @@ func (c tradeClient) newOrder(w http.ResponseWriter, r *http.Request) {
 	_ = c.OrderManager.Save(&order)
 	c.Unlock()
 
-	fmt.Println(order)
+	fmt.Println(order.ClOrdID)
 	msg, err := c.NewOrderSingle(order)
 	if err != nil {
 		log.Printf("[ERROR] %v\n", err)
@@ -302,8 +301,10 @@ func (c tradeClient) newOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	msg.ToMessage().Body.SetString(tag.ClOrdID, order.ClOrdID)
 	msg.ToMessage().Body.SetString(tag.Password, order.Password)
 	msg.ToMessage().Body.SetString(tag.Username, order.Username)
+	msg.ToMessage().Body.SetField(quickfix.Tag(44), quickfix.FIXDecimal{order.PriceDecimal, 2})
 	msg.ToMessage().Body.SetString(quickfix.Tag(448), "2") // clientid
 	err = quickfix.SendToTarget(msg, order.SessionID)
 

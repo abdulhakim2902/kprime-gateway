@@ -303,7 +303,7 @@ func (a *Application) onOrderUpdateRequest(msg ordercancelreplacerequest.OrderCa
 	}
 	orderId, err := msg.GetOrderID()
 	if err != nil {
-		fmt.Println("Error getting origClOrdID")
+		fmt.Println("Error getting orderid")
 		return err
 	}
 
@@ -321,6 +321,7 @@ func (a *Application) onOrderUpdateRequest(msg ordercancelreplacerequest.OrderCa
 	}
 
 	_data, _ := json.Marshal(data)
+	fmt.Println(_data)
 	_producer.KafkaProducer(string(_data), "NEW_ORDER")
 
 	return nil
@@ -346,7 +347,6 @@ func (a *Application) onOrderCancelRequest(msg ordercancelrequest.OrderCancelReq
 		return err
 	}
 
-	fmt.Println("origggg", orderId)
 	clOrdID, err := msg.GetClOrdID()
 	if err != nil {
 		return err

@@ -355,7 +355,8 @@ App.Views.OrderDetails = Backbone.View.extend({
     'click .amend': function (e) {
       console.log(e)
       var quantity = this.$el.find('#quantity').val();
-      this.model.update({ quantity: quantity }, {
+      var order_id = this.$el.find('#order_id').val();
+      this.model.update({ quantity: quantity, order_id: order_id }, {
         success: function () {
           Backbone.history.navigate("/orders", { trigger: true });
         },
