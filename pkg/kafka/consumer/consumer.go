@@ -22,7 +22,7 @@ func KafkaConsumer(repo *repositories.OrderRepository, engSvc engInt.IEngineServ
 	config.Consumer.Return.Errors = true
 
 	brokers := []string{os.Getenv("KAFKA_BROKER")}
-	topics := []string{"ORDER", "TRADE", "ORDERBOOK"}
+	topics := []string{"ORDER", "TRADE", "ORDERBOOK", "ENGINE"}
 
 	fmt.Println(brokers)
 	consumer, err := sarama.NewConsumer(brokers, config)
