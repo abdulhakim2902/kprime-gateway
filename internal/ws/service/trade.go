@@ -28,28 +28,8 @@ func (svc wsTradeService) initialData() ([]*types.Trade, error) {
 }
 
 func (svc wsTradeService) HandleConsume(msg *sarama.ConsumerMessage) {
-	// Get All Trades, and Save it to the redis
-	trades, err := svc.repo.Find(nil, nil, 0, -1)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	jsonBytes, err := json.Marshal(trades)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	// Save trades to redis
-	svc.redis.Set("TRADE-all", string(jsonBytes))
-
-	// Broadcast to users
-	ws.GetTradeSocket().BroadcastMessage("all", trades)
-
-	str := string(msg.Value)
 	var trade types.Trade
-	err = json.Unmarshal([]byte(str), &trade)
-	if err != nil {
+	if err := json.Unmarshal(msg.Value, &trade); err != nil {
 		fmt.Println("Error parsing JSON:", err)
 		return
 	}
@@ -69,14 +49,17 @@ func (svc wsTradeService) HandleConsume(msg *sarama.ConsumerMessage) {
 
 	newTrade = append(newTrade, trade)
 
-	jsonBytes, err = json.Marshal(newTrade)
+	data, err := json.Marshal(newTrade)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
 	// Save trade to redis
-	svc.redis.Set(instrument, string(jsonBytes))
+	svc.redis.Set(instrument, string(data))
+
+	// Broadcast to users
+	ws.GetTradeSocket().BroadcastMessage("all", newTrade)
 }
 
 func (svc wsTradeService) Subscribe(c *ws.Client, instrument string) {
