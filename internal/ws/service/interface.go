@@ -16,3 +16,9 @@ type IwsOrderService interface {
 	Unsubscribe(c *ws.Client)
 	HandleConsume(msg *sarama.ConsumerMessage, userId string)
 }
+
+type IwsTradeService interface {
+	Subscribe(c *ws.Client, instrument string)
+	Unsubscribe(c *ws.Client)
+	HandleConsume(msg *sarama.ConsumerMessage)
+}
