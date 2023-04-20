@@ -6,9 +6,6 @@ stages:
 
 deploy:
   stage: deploy
-  before script:
-    - cd /home/gitlab-runner/ && cp /dev/null .env # create empty .env file
-    - echo "env_dev=$env_dev" >> .env # add env_dev to .env file
   script:
     #- cp /dev/null .env # create empty .env file
     #- echo "env_dev=$env_dev" >> .env # add env_dev to .env file
