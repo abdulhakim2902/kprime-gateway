@@ -313,17 +313,6 @@ func (a *Application) onOrderUpdateRequest(msg ordercancelreplacerequest.OrderCa
 		return err
 	}
 
-	side, err := msg.GetSide()
-	if err != nil {
-		fmt.Println("Error getting side")
-		return err
-	}
-
-	side = "BUY"
-	if side == enum.Side_SELL {
-		side = "SELL"
-	}
-
 	strType := "LIMIT"
 	if ordType == enum.OrdType_MARKET {
 		strType = "MARKET"
@@ -358,7 +347,7 @@ func (a *Application) onOrderUpdateRequest(msg ordercancelreplacerequest.OrderCa
 		UserID:         strconv.Itoa(int(client.ID)),
 		Amount:         amountFloat,
 		Price:          priceFloat,
-		Side:           side,
+		Side:           "EDIT",
 		Underlying:     underlying,
 		ExpirationDate: expiryDate,
 		StrikePrice:    strikePriceFloat,
