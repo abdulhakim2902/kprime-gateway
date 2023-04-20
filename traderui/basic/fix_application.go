@@ -3,7 +3,11 @@ package basic
 import (
 	"fmt"
 	"log"
+	"os"
+	"path"
+	"runtime"
 
+	"github.com/joho/godotenv"
 	"github.com/quickfixgo/enum"
 	"github.com/quickfixgo/field"
 	"github.com/quickfixgo/tag"
@@ -27,8 +31,14 @@ func (a *FIXApplication) OnLogout(sessionID quickfix.SessionID) {}
 // ToAdmin is ignored
 func (a *FIXApplication) ToAdmin(msg *quickfix.Message, sessionID quickfix.SessionID) {
 	if msg.IsMsgTypeOf(string(enum.MsgType_LOGON)) {
-		msg.Body.SetString(tag.Password, "nA.lnwHu0$Avdd!pSV9Pw*gD7H1fWUzY")
-		msg.Body.SetString(tag.Username, "QGarZ8DYPs")
+		_, b, _, _ := runtime.Caller(0)
+		rootDir := path.Join(b, "../../")
+		err := godotenv.Load(path.Join(rootDir, ".env"))
+		if err != nil {
+			panic(err)
+		}
+		msg.Body.SetString(tag.Password, os.Getenv("CLIENT_API_SECRET"))
+		msg.Body.SetString(tag.Username, os.Getenv("CLIENT_API_KEY"))
 	}
 
 }

@@ -3,6 +3,15 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"path"
+	"runtime"
+	"syscall"
+	"time"
+
 	"gateway/database/seeder/seeds"
 	"gateway/internal/admin/controller"
 	_adminModel "gateway/internal/admin/model"
@@ -14,14 +23,6 @@ import (
 	"gateway/pkg/kafka/consumer"
 	"gateway/pkg/mongo"
 	"gateway/pkg/redis"
-	"log"
-	"net/http"
-	"os"
-	"os/signal"
-	"path"
-	"runtime"
-	"syscall"
-	"time"
 
 	ordermatch "gateway/internal/fix-acceptor"
 
@@ -83,7 +84,7 @@ func main() {
 		panic(err)
 	}
 
-	//dev only
+	// dev only
 	db.AutoMigrate(&_adminModel.Permission{})
 
 	if gin.Mode() != gin.ReleaseMode {
@@ -118,7 +119,7 @@ func main() {
 	_deribitSvc := _deribitSvc.NewDeribitService()
 	_deribitCtrl.NewDeribitHandler(r, _deribitSvc)
 
-	//qf
+	// qf
 	go ordermatch.Cmd.Execute()
 
 	// Websocket handlers
@@ -126,9 +127,20 @@ func main() {
 	_wsEngineSvc := _wsEngineSvc.NewwsEngineService(redis)
 
 	orderRepo := repositories.NewOrderRepository(mongoDb)
-
 	_wsOrderSvc := _wsSvc.NewWSOrderService(redis, orderRepo)
-	_wsCtrl.NewWebsocketHandler(r, authSvc, _deribitSvc, _wsOrderbookSvc, _wsEngineSvc, _wsOrderSvc)
+
+	tradeRepo := repositories.NewTradeRepository(mongoDb)
+	_wsTradeSvc := _wsSvc.NewWSTradeService(redis, tradeRepo)
+
+	_wsCtrl.NewWebsocketHandler(
+		r,
+		authSvc,
+		_deribitSvc,
+		_wsOrderbookSvc,
+		_wsEngineSvc,
+		_wsOrderSvc,
+		_wsTradeSvc,
+	)
 
 	fmt.Printf("Server is running on %s \n", os.Getenv("PORT"))
 
@@ -147,8 +159,8 @@ func main() {
 	_obSvc := _obSvc.NewOrderbookHandler(r, redis)
 	_engSvc := _engSvc.NewEngineHandler(r, redis)
 
-	//kafka listener
-	consumer.KafkaConsumer(orderRepo, _engSvc, _obSvc, _wsOrderSvc)
+	// kafka listener
+	consumer.KafkaConsumer(orderRepo, _engSvc, _obSvc, _wsOrderSvc, _wsTradeSvc)
 
 	// Wait for interrupt signal to gracefully shutdown the server with
 	// a timeout of 5 seconds.
