@@ -324,6 +324,53 @@ func (svc wsHandler) PrivateCancelByInstrument(input interface{}, c *ws.Client) 
 	}, res.ClOrdID)
 }
 
+func (svc wsHandler) PrivateCancelAll(input interface{}, c *ws.Client) {
+	type Params struct {
+		AccessToken string `json:"accessToken"`
+		Id          string `json:"id"`
+	}
+
+	type Req struct {
+		Params Params `json:"params"`
+		Id     string `json:"id"`
+	}
+
+	msg := &Req{}
+	bytes, _ := json.Marshal(input)
+	if err := json.Unmarshal(bytes, &msg); err != nil {
+		c.SendMessage(gin.H{"err": err})
+		return
+	}
+
+	// Check the Access Token
+	JWTData, err := svc.authSvc.JWTCheck(msg.Params.AccessToken)
+	if err != nil {
+		c.SendMessage(gin.H{"err": err.Error()})
+		return
+	}
+
+	// TODO: Validation
+
+	// Parse the Deribit Sell
+	res, err := svc.deribitSvc.DeribitCancelByInstrument(context.TODO(), JWTData.UserID, deribitModel.DeribitCancelByInstrumentRequest{
+		Id:      msg.Params.Id,
+		ClOrdID: msg.Id,
+	})
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	//register order connection
+	ws.RegisterOrderConnection(JWTData.UserID, c)
+	c.SendMessage(map[string]interface{}{
+		"id":       res.Id,
+		"userId":   res.UserId,
+		"clientId": res.ClientId,
+		"side":     res.Side,
+	}, res.ClOrdID)
+}
+
 func (svc wsHandler) SubscribeHandler(input interface{}, c *ws.Client) {
 	type Params struct {
 		Channels []string `json:"channels"`
