@@ -6,12 +6,14 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-type EngineStatus string
-type Type string
-type Side string
-type Contracts string
-type OrderStatus string
-type TradeStatus string
+type (
+	EngineStatus string
+	Type         string
+	Side         string
+	Contracts    string
+	OrderStatus  string
+	TradeStatus  string
+)
 
 type Message struct {
 	Instrument string      `json:"instrument_name"`
@@ -52,18 +54,23 @@ type Order struct {
 }
 
 type Trade struct {
-	ID          primitive.ObjectID `json:"id" bson:"_id"`
-	Underlying  string             `json:"underlying" bson:"underlying"`
-	ExpiryDate  string             `json:"expiryDate" bson:"expiryDate"`
-	StrikePrice float64            `json:"strikePrice" bson:"strikePrice"`
-	Side        Side               `json:"side" bson:"side"`
-	Price       float64            `json:"price" bson:"price"`
-	Amount      float64            `json:"amount" bson:"amount"`
-	Status      TradeStatus        `json:"status" bson:"status"`
-	TakerID     string             `json:"takerId" bson:"takerId"`
-	MakerID     string             `json:"makerId" bson:"makerId"`
-	CreatedAt   time.Time          `json:"createdAt" bson:"createdAt"`
-	UpdatedAt   time.Time          `json:"updatedAt" bson:"updatedAt"`
+	ID            primitive.ObjectID `json:"id" bson:"_id"`
+	Underlying    string             `json:"underlying" bson:"underlying"`
+	ExpiryDate    string             `json:"expiryDate" bson:"expiryDate"`
+	StrikePrice   float64            `json:"strikePrice" bson:"strikePrice"`
+	Side          Side               `json:"side" bson:"side"`
+	Price         float64            `json:"price" bson:"price"`
+	Amount        float64            `json:"amount" bson:"amount"`
+	Status        TradeStatus        `json:"status" bson:"status"`
+	Contracts     Contracts          `json:"contracts" bson:"contracts"`
+	TakerID       string             `json:"takerId" bson:"takerId"`
+	MakerID       string             `json:"makerId" bson:"makerId"`
+	TakerClientID string             `json:"takerClientId" bson:"takerClientId"`
+	MakerClientID string             `json:"makerClientId" bson:"makerClientId"`
+	TakerOrderID  primitive.ObjectID `json:"takerOrderId" bson:"takerOrderId"`
+	MakerOrderID  primitive.ObjectID `json:"makerOrderId" bson:"makerOrderId"`
+	CreatedAt     time.Time          `json:"createdAt" bson:"createdAt"`
+	UpdatedAt     time.Time          `json:"updatedAt" bson:"updatedAt"`
 }
 
 const (
@@ -103,3 +110,7 @@ const (
 	SUCCESS TradeStatus = "SUCCESS"
 	ADDED   TradeStatus = "ADDED"
 )
+
+type ErrorMessage struct {
+	Error string `json:"error"`
+}

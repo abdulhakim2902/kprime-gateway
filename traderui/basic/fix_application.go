@@ -1,8 +1,13 @@
 package basic
 
 import (
+	"fmt"
 	"log"
+	"os"
+	"path"
+	"runtime"
 
+	"github.com/joho/godotenv"
 	"github.com/quickfixgo/enum"
 	"github.com/quickfixgo/field"
 	"github.com/quickfixgo/tag"
@@ -26,8 +31,14 @@ func (a *FIXApplication) OnLogout(sessionID quickfix.SessionID) {}
 // ToAdmin is ignored
 func (a *FIXApplication) ToAdmin(msg *quickfix.Message, sessionID quickfix.SessionID) {
 	if msg.IsMsgTypeOf(string(enum.MsgType_LOGON)) {
-		msg.Body.SetString(tag.Password, "nA.lnwHu0$Avdd!pSV9Pw*gD7H1fWUzY")
-		msg.Body.SetString(tag.Username, "QGarZ8DYPs")
+		_, b, _, _ := runtime.Caller(0)
+		rootDir := path.Join(b, "../../")
+		err := godotenv.Load(path.Join(rootDir, ".env"))
+		if err != nil {
+			panic(err)
+		}
+		msg.Body.SetString(tag.Password, os.Getenv("CLIENT_API_SECRET"))
+		msg.Body.SetString(tag.Username, os.Getenv("CLIENT_API_KEY"))
 	}
 
 }
@@ -56,6 +67,7 @@ func (a *FIXApplication) FromApp(msg *quickfix.Message, sessionID quickfix.Sessi
 
 	switch enum.MsgType(msgType) {
 	case enum.MsgType_EXECUTION_REPORT:
+		fmt.Println("Execution Report")
 		return a.onExecutionReport(msg, sessionID)
 	}
 
@@ -82,6 +94,13 @@ func (a *FIXApplication) onExecutionReport(msg *quickfix.Message, sessionID quic
 		return err
 	}
 
+	var orderId field.OrderIDField
+	if err := msg.Body.Get(&orderId); err != nil {
+		return err
+	}
+
+	fmt.Println("OrderID: ", orderId.String())
+	fmt.Println("clordid: ", clOrdID.String())
 	var avgPx field.AvgPxField
 	if err := msg.Body.Get(&avgPx); err != nil {
 		return err
@@ -95,7 +114,9 @@ func (a *FIXApplication) onExecutionReport(msg *quickfix.Message, sessionID quic
 	order.Closed = cumQty.String()
 	order.Open = leavesQty.String()
 	order.AvgPx = avgPx.String()
-
+	order.OrderID = orderId.String()
+	a.Save(order)
+	fmt.Println(order)
 	if msg.Body.Has(tag.LastShares) {
 		var lastShares field.LastSharesField
 		if err := msg.Body.Get(&lastShares); err != nil {

@@ -19,3 +19,9 @@ type IwsOrderService interface {
 	HandleConsume(msg *sarama.ConsumerMessage, userId string)
 	GetInstruments(ctx context.Context, request deribitModel.DeribitGetInstrumentsRequest) []deribitModel.DeribitGetInstrumentsResponse
 }
+
+type IwsTradeService interface {
+	Subscribe(c *ws.Client, instrument string)
+	Unsubscribe(c *ws.Client)
+	HandleConsume(msg *sarama.ConsumerMessage)
+}
