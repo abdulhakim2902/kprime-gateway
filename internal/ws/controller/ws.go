@@ -94,11 +94,12 @@ func (svc wsHandler) PublicAuth(input interface{}, c *ws.Client) {
 
 func (svc wsHandler) PrivateBuy(input interface{}, c *ws.Client) {
 	type Params struct {
-		AccessToken    string  `json:"accessToken"`
-		InstrumentName string  `json:"instrumentName"`
+		AccessToken    string  `json:"access_token"`
+		InstrumentName string  `json:"instrument_name"`
 		Amount         float64 `json:"amount"`
 		Type           string  `json:"type"`
 		Price          float64 `json:"price"`
+		TimeInForce    string  `json:"time_in_force"`
 	}
 
 	type Req struct {
@@ -129,6 +130,7 @@ func (svc wsHandler) PrivateBuy(input interface{}, c *ws.Client) {
 		Type:           msg.Params.Type,
 		Price:          msg.Params.Price,
 		ClOrdID:        msg.Id,
+		TimeInForce:    msg.Params.TimeInForce,
 	})
 
 	// register order connection
@@ -140,11 +142,12 @@ func (svc wsHandler) PrivateBuy(input interface{}, c *ws.Client) {
 
 func (svc wsHandler) PrivateSell(input interface{}, c *ws.Client) {
 	type Params struct {
-		AccessToken    string  `json:"accessToken"`
-		InstrumentName string  `json:"instrumentName"`
+		AccessToken    string  `json:"access_token"`
+		InstrumentName string  `json:"instrument_name"`
 		Amount         float64 `json:"amount"`
 		Type           string  `json:"type"`
 		Price          float64 `json:"price"`
+		TimeInForce    string  `json:"time_in_force"`
 	}
 
 	type Req struct {
@@ -175,6 +178,7 @@ func (svc wsHandler) PrivateSell(input interface{}, c *ws.Client) {
 		Type:           msg.Params.Type,
 		Price:          msg.Params.Price,
 		ClOrdID:        msg.Id,
+		TimeInForce:    msg.Params.TimeInForce,
 	})
 
 	// register order connection
@@ -186,7 +190,7 @@ func (svc wsHandler) PrivateSell(input interface{}, c *ws.Client) {
 
 func (svc wsHandler) PrivateEdit(input interface{}, c *ws.Client) {
 	type Params struct {
-		AccessToken string  `json:"accessToken"`
+		AccessToken string  `json:"access_token"`
 		Id          string  `json:"id"`
 		Amount      float64 `json:"amount"`
 		Price       float64 `json:"price"`
@@ -236,7 +240,7 @@ func (svc wsHandler) PrivateEdit(input interface{}, c *ws.Client) {
 
 func (svc wsHandler) PrivateCancel(input interface{}, c *ws.Client) {
 	type Params struct {
-		AccessToken string `json:"accessToken"`
+		AccessToken string `json:"access_token"`
 		Id          string `json:"id"`
 	}
 
