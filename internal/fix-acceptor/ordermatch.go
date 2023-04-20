@@ -358,7 +358,7 @@ func (a *Application) onOrderUpdateRequest(msg ordercancelreplacerequest.OrderCa
 		UserID:         strconv.Itoa(int(client.ID)),
 		Amount:         amountFloat,
 		Price:          priceFloat,
-		Side:           side,
+		Side:           "EDIT",
 		Underlying:     underlying,
 		ExpirationDate: expiryDate,
 		StrikePrice:    strikePriceFloat,
