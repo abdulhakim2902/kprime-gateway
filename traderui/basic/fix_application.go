@@ -1,6 +1,7 @@
 package basic
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"path"
@@ -66,6 +67,7 @@ func (a *FIXApplication) FromApp(msg *quickfix.Message, sessionID quickfix.Sessi
 
 	switch enum.MsgType(msgType) {
 	case enum.MsgType_EXECUTION_REPORT:
+		fmt.Println("Execution Report")
 		return a.onExecutionReport(msg, sessionID)
 	}
 
@@ -92,6 +94,13 @@ func (a *FIXApplication) onExecutionReport(msg *quickfix.Message, sessionID quic
 		return err
 	}
 
+	var orderId field.OrderIDField
+	if err := msg.Body.Get(&orderId); err != nil {
+		return err
+	}
+
+	fmt.Println("OrderID: ", orderId.String())
+	fmt.Println("clordid: ", clOrdID.String())
 	var avgPx field.AvgPxField
 	if err := msg.Body.Get(&avgPx); err != nil {
 		return err
@@ -105,7 +114,9 @@ func (a *FIXApplication) onExecutionReport(msg *quickfix.Message, sessionID quic
 	order.Closed = cumQty.String()
 	order.Open = leavesQty.String()
 	order.AvgPx = avgPx.String()
-
+	order.OrderID = orderId.String()
+	a.Save(order)
+	fmt.Println(order)
 	if msg.Body.Has(tag.LastShares) {
 		var lastShares field.LastSharesField
 		if err := msg.Body.Get(&lastShares); err != nil {
