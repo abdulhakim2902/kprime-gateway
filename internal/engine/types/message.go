@@ -6,12 +6,14 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-type EngineStatus string
-type Type string
-type Side string
-type Contracts string
-type OrderStatus string
-type TradeStatus string
+type (
+	EngineStatus string
+	Type         string
+	Side         string
+	Contracts    string
+	OrderStatus  string
+	TradeStatus  string
+)
 
 type Message struct {
 	Instrument string      `json:"instrument_name"`
@@ -103,3 +105,7 @@ const (
 	SUCCESS TradeStatus = "SUCCESS"
 	ADDED   TradeStatus = "ADDED"
 )
+
+type ErrorMessage struct {
+	Error string `json:"error"`
+}

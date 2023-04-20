@@ -51,6 +51,7 @@ func (svc deribitService) DeribitParseBuy(ctx context.Context, userId string, da
 		StrikePrice:    strikePrice,
 		Type:           data.Type,
 		Side:           "BUY",
+		ClOrdID:        data.ClOrdID,
 		Price:          data.Price,
 		Amount:         data.Amount,
 		Contracts:      _contracts,
@@ -97,6 +98,7 @@ func (svc deribitService) DeribitParseSell(ctx context.Context, userId string, d
 		StrikePrice:    strikePrice,
 		Type:           data.Type,
 		Side:           "SELL",
+		ClOrdID:        data.ClOrdID,
 		Price:          data.Price,
 		Amount:         data.Amount,
 		Contracts:      _contracts,
@@ -120,6 +122,7 @@ func (svc deribitService) DeribitParseEdit(ctx context.Context, userId string, d
 		UserId:   userId,
 		ClientId: "",
 		Side:     "EDIT",
+		ClOrdID:  data.ClOrdID,
 		Price:    data.Price,
 		Amount:   data.Amount,
 	}
@@ -140,6 +143,7 @@ func (svc deribitService) DeribitParseCancel(ctx context.Context, userId string,
 		UserId:   userId,
 		ClientId: "",
 		Side:     "CANCEL",
+		ClOrdID:  data.ClOrdID,
 	}
 
 	_cancel, err := json.Marshal(cancel)
