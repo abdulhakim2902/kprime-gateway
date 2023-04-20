@@ -14,7 +14,7 @@ deploy:
     # - docker tag gateway:latest
     # - docker save gateway:latest > gateway.tar
     # - scp -i $ID_RSA gateway.tar deployer@18.139.123.236:/home/ubuntu/gateway-2/gateway.tar
-    - ssh -i $ID_RSA deployer@18.139.123.236 'cd /home/ubuntu/gateway-cicd/ && git checkout development && git pull origin development '
-    - ssh -i $ID_RSA user@18.139.123.236 'cp /dev/null .env && echo "env_dev=$env_dev" > .env'
-    - ssh -i $ID_RSA user@18.139.123.236 'go build cmd/main/main.go'
-    - ssh -i $ID_RSA user@18.139.123.236 './main'
+    - ssh -i $ID_RSA ubuntu@18.139.123.236 'cd /home/ubuntu/gateway-cicd/ && git checkout development && git pull origin development '
+    - ssh -i $ID_RSA ubuntu@18.139.123.236 'cp /dev/null .env && echo "env_dev=$env_dev" > .env'
+    - ssh -i $ID_RSA ubuntu@18.139.123.236 'go build cmd/main/main.go'
+    - ssh -i $ID_RSA ubuntu@18.139.123.236 './main'
