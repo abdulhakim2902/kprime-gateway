@@ -3,12 +3,13 @@ deploy_development:
   environment:
     name: development
   script:
-    - "cd /var/www/html/gateway-deploy && git checkout development && git pull origin development && rsync -avzr --delete /var/www/html/gateway-deploy/ /var/www/html/gateway-deploy/" 
-    - "cd /var/www/html/gateway-deploy"
-    - "cp /dev/null .env # create empty .env file
-    - "echo "env_dev=$env_dev" >> .env # add env_dev to .env file
-    - "go build cmd/main/main.go"
-    - "./main"
+    - cd /var/www/html/gateway-deploy && git checkout development && git pull origin development 
+    #&& rsync -avzr --delete /var/www/html/gateway-deploy/ /var/www/html/gateway-deploy/
+    - cd /var/www/html/gateway-deploy
+    - cp /dev/null .env # create empty .env file
+    - echo "env_dev=$env_dev" >> .env # add env_dev to .env file
+    - go build cmd/main/main.go
+    - ./main
     
   only:
     - development
