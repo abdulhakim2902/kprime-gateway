@@ -1,5 +1,5 @@
 deploy_development:
-  type: deploy
+  stage: deploy
   environment:
     name: development
   script:
