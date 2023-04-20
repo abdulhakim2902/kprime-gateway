@@ -297,6 +297,11 @@ func (a *Application) onOrderUpdateRequest(msg ordercancelreplacerequest.OrderCa
 		return err
 	}
 
+	ordType, err := msg.GetOrdType()
+	if err != nil {
+		return err
+	}
+
 	amount, err := msg.GetOrderQty()
 	if err != nil {
 		fmt.Println("Error getting amount")
@@ -308,17 +313,57 @@ func (a *Application) onOrderUpdateRequest(msg ordercancelreplacerequest.OrderCa
 		return err
 	}
 
+	side, err := msg.GetSide()
+	if err != nil {
+		fmt.Println("Error getting side")
+		return err
+	}
+
+	side = "BUY"
+	if side == enum.Side_SELL {
+		side = "SELL"
+	}
+
+	strType := "LIMIT"
+	if ordType == enum.OrdType_MARKET {
+		strType = "MARKET"
+	}
+
+	symbol, err := msg.GetSymbol()
+	if err != nil {
+		fmt.Println("Error getting symbol")
+		return err
+	}
+
+	details := strings.Split(symbol, "-")
+	underlying := details[0]
+	expiryDate := details[1]
+	strikePrice := details[2]
+	options := details[3]
+
+	putOrCall := "CALL"
+	if options == string(enum.PutOrCall_PUT) {
+		putOrCall = "PUT"
+	}
 	amountFloat, _ := amount.Float64()
 	priceFloat, _ := price.Float64()
+	strikePriceFloat, _ := strconv.ParseFloat(strikePrice, 64)
+
 	var partyId quickfix.FIXString
 	msg.GetField(tag.PartyID, &partyId)
 
 	data := KafkaOrder{
-		ID:       orderId,
-		ClientID: partyId.String(),
-		UserID:   strconv.Itoa(int(client.ID)),
-		Amount:   amountFloat,
-		Price:    priceFloat,
+		ID:             orderId,
+		ClientID:       partyId.String(),
+		UserID:         strconv.Itoa(int(client.ID)),
+		Amount:         amountFloat,
+		Price:          priceFloat,
+		Side:           side,
+		Underlying:     underlying,
+		ExpirationDate: expiryDate,
+		StrikePrice:    strikePriceFloat,
+		Type:           string(strType),
+		Contracts:      string(putOrCall),
 	}
 
 	_data, _ := json.Marshal(data)
