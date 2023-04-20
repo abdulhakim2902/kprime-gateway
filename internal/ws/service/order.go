@@ -1,12 +1,15 @@
 package service
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	deribitModel "gateway/internal/deribit/model"
 	"gateway/internal/orderbook/types"
 	"gateway/internal/repositories"
 	"gateway/pkg/redis"
 	"gateway/pkg/ws"
+	"strconv"
 
 	daoType "gateway/internal/repositories/types"
 
@@ -119,4 +122,39 @@ func (svc wsOrderService) Subscribe(c *ws.Client, key string) {
 func (svc wsOrderService) Unsubscribe(c *ws.Client) {
 	socket := ws.GetOrderSocket()
 	socket.Unsubscribe(c)
+}
+
+func (svc wsOrderService) GetInstruments(ctx context.Context, request deribitModel.DeribitGetInstrumentsRequest) []deribitModel.DeribitGetInstrumentsResponse {
+
+	key := "INSTRUMENTS-" + request.Currency + "" + strconv.FormatBool(request.Expired)
+
+	// Get initial data from the redis
+	res, err := svc.redis.GetValue(key)
+
+	// Handle the initial data
+	if res == "" || err != nil {
+		// Get All Orders, and Save it to the redis
+		orders, err := svc.repo.GetInstruments(request.Currency, request.Expired)
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		jsonBytes, err := json.Marshal(orders)
+		if err != nil {
+			fmt.Println(err)
+		}
+		// Expire in seconds
+		svc.redis.SetEx(key, string(jsonBytes), 3)
+
+		res, _ = svc.redis.GetValue(key)
+	}
+
+	var instrumentData []deribitModel.DeribitGetInstrumentsResponse
+	err = json.Unmarshal([]byte(res), &instrumentData)
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+
+	return instrumentData
 }

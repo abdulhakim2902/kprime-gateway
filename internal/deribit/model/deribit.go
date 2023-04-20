@@ -55,3 +55,20 @@ type DeribitResponse struct {
 	TimeInForce    string  `json:"timeInForce"`
 	ClOrdID        string  `json:"clOrdID"`
 }
+
+type DeribitGetInstrumentsRequest struct {
+	Currency string `json:"currency" validate:"required"`
+	Expired  bool   `json:"expired"`
+}
+
+type DeribitGetInstrumentsResponse struct {
+	QuoteCurrency       string `json:"quote_currency"`
+	PriceIndex          string `json:"price_index"`
+	Kind                string `json:"kind"`
+	IsActive            bool   `json:"is_active"`
+	InstrumentName      string `json:"instrument_name"`
+	ExpirationTimestamp int64  `json:"expiration_timestamp"`
+	CreationTimestamp   int64  `json:"creation_timestamp"`
+	ContractSize        uint64 `json:"contract_size"`
+	BaseCurrency        string `json:"base_currency"`
+}

@@ -47,6 +47,8 @@ func NewWebsocketHandler(r *gin.Engine, authSvc service.IAuthService, deribitSvc
 
 	ws.RegisterChannel("/public/subscribe", handler.SubscribeHandler)
 	ws.RegisterChannel("/public/unsubscribe", handler.UnsubscribeHandler)
+
+	ws.RegisterChannel("/public/get_instruments", handler.GetInstruments)
 }
 
 func (svc wsHandler) PublicAuth(input interface{}, c *ws.Client) {
@@ -327,4 +329,36 @@ func (svc wsHandler) UnsubscribeHandler(input interface{}, c *ws.Client) {
 		}
 
 	}
+}
+
+func (svc wsHandler) GetInstruments(input interface{}, c *ws.Client) {
+	type Params struct {
+		AccessToken string `json:"accessToken"`
+		Currency    string `json:"currency"`
+		Expired     bool   `json:"expired"`
+	}
+
+	type Req struct {
+		Params Params `json:"params"`
+	}
+
+	msg := &Req{}
+	bytes, _ := json.Marshal(input)
+	if err := json.Unmarshal(bytes, &msg); err != nil {
+		c.SendMessage(gin.H{"err": err})
+		return
+	}
+
+	if msg.Params.Currency == "" {
+		c.SendMessage(gin.H{"err": "Please provide currency"})
+		return
+	}
+
+	result := svc.wsOSvc.GetInstruments(context.TODO(), deribitModel.DeribitGetInstrumentsRequest{
+		Currency: msg.Params.Currency,
+		Expired:  msg.Params.Expired,
+	})
+
+	c.SendMessage(result)
+	return
 }
