@@ -1,29 +1,11 @@
-#image: golang:latest
-
 stages:
-  #- build
   - deploy
 
 deploy:
   stage: deploy
-  # before_script:
-  #   - mkdir -p ~/.ssh
-  #   - touch ~/.ssh/known_hosts
-  #   - cd ~/.ssh
-  #   - echo "${SSH_PRIVATE_KEY}" > id_rsa
-  #   - chmod 0400 id_rsa
     
   script:
-    #- cp /dev/null .env # create empty .env file
-    #- echo "env_dev=$env_dev" >> .env # add env_dev to .env file
-    #- /home/ubuntu/gateway/main
-    # - docker build -t gateway .
-    # - docker tag gateway:latest
-    # - docker save gateway:latest > gateway.tar
-    # - scp -i $ID_RSA gateway.tar deployer@18.139.123.236:/home/ubuntu/gateway-2/gateway.tar
-    # - ssh -o StrictHostKeyChecking=no gitlab-runner@18.139.123.236 'cd /home/gitlab-runner/gateway/ && cp /dev/null .env'
-    # - ssh -o StrictHostKeyChecking=no gitlab-runner@18.139.123.236 'echo "env_dev=$env_dev" >> .env'
-    - ssh  -o StrictHostKeyChecking=no gitlab-runner@18.139.123.236 'cd /home/gitlab-runner/gateway/ && git checkout development && git pull origin development && echo "$env_dev" > .env'
+    - ssh  -o StrictHostKeyChecking=no gitlab-runner@$SERVER_IP 'cd /home/gitlab-runner/gateway/ && git checkout development && git pull origin development && echo "$env_dev" > .env'
     #- ssh -o StrictHostKeyChecking=no gitlab-runner@18.139.123.236 'cp /dev/null .env && echo "$env_dev" > .env'
-    - ssh -o StrictHostKeyChecking=no gitlab-runner@18.139.123.236 'go build cmd/main/main.go'
-    - ssh -o StrictHostKeyChecking=no gitlab-runner@18.139.123.236 './main'
+    - ssh -o StrictHostKeyChecking=no gitlab-runner@$SERVER_IP 'go build cmd/main/main.go'
+    - ssh -o StrictHostKeyChecking=no gitlab-runner@$SERVER_IP './main'
