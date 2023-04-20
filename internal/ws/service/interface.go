@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+
 	deribitModel "gateway/internal/deribit/model"
 	"gateway/pkg/ws"
 
@@ -11,6 +12,7 @@ import (
 type IwsOrderbookService interface {
 	Subscribe(c *ws.Client, instrument string)
 	Unsubscribe(c *ws.Client)
+	GetOrderBook(ctx context.Context, request deribitModel.DeribitGetOrderBookRequest) []deribitModel.DeribitGetOrderBookResponse
 }
 
 type IwsOrderService interface {

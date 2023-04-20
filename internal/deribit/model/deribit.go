@@ -72,3 +72,30 @@ type DeribitGetInstrumentsResponse struct {
 	ContractSize        uint64 `json:"contract_size"`
 	BaseCurrency        string `json:"base_currency"`
 }
+
+type DeribitGetOrderBookRequest struct {
+	InstrumentName string `json:"instrument_name"`
+	Depth          int64  `json:"depth"`
+}
+
+type DeribitGetOrderBookResponse struct {
+	Timestamp      int64          `json:"timestamp"`
+	Stats          OrderBookStats `json:"stats"`
+	State          string         `json:"state"`
+	LastPrice      float64        `json:"last_price"`
+	InstrumentName string         `json:"instrument_name"`
+	Bids           [][]float64    `json:"bids"`
+	BestBidPrice   float64        `json:"best_bid_price"`
+	BestBidAmount  int64          `json:"best_bid_amount"`
+	BestAskPrice   int64          `json:"best_ask_price"`
+	BestAskAmount  int64          `json:"best_ask_amount"`
+	Asks           []interface{}  `json:"asks"`
+}
+
+type OrderBookStats struct {
+	Volume      float64 `json:"volume"`
+	PriceChange float64 `json:"price_change"`
+	PriceUSD    float64 `json:"volume_usd"`
+	Low         float64 `json:"low"`
+	High        float64 `json:"high"`
+}

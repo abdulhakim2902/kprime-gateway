@@ -60,6 +60,7 @@ func NewWebsocketHandler(
 	ws.RegisterChannel("/public/unsubscribe", handler.UnsubscribeHandler)
 
 	ws.RegisterChannel("/public/get_instruments", handler.GetInstruments)
+	ws.RegisterChannel("/public/get_order_book", handler.GetOrderBook)
 }
 
 func (svc wsHandler) PublicAuth(input interface{}, c *ws.Client) {
@@ -378,5 +379,34 @@ func (svc wsHandler) GetInstruments(input interface{}, c *ws.Client) {
 	})
 
 	c.SendMessage(result)
-	return
+}
+
+func (svc wsHandler) GetOrderBook(input interface{}, c *ws.Client) {
+	type Params struct {
+		InstrumentName string `json:"instrument_name"`
+		Depth          int64  `json:"depth"`
+	}
+
+	type Req struct {
+		Params Params `json:"params"`
+	}
+
+	msg := &Req{}
+	bytes, _ := json.Marshal(input)
+	if err := json.Unmarshal(bytes, &msg); err != nil {
+		c.SendMessage(gin.H{"err": err})
+		return
+	}
+
+	if msg.Params.InstrumentName == "" {
+		c.SendMessage(gin.H{"err": "Please provide instrument_name"})
+		return
+	}
+
+	result := svc.wsOBSvc.GetOrderBook(context.TODO(), deribitModel.DeribitGetOrderBookRequest{
+		InstrumentName: msg.Params.InstrumentName,
+		Depth:          msg.Params.Depth,
+	})
+
+	c.SendMessage(result)
 }

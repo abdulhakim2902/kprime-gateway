@@ -1,7 +1,10 @@
 package service
 
 import (
+	"context"
 	"encoding/json"
+
+	deribitModel "gateway/internal/deribit/model"
 	"gateway/internal/orderbook/types"
 	"gateway/pkg/redis"
 	"gateway/pkg/ws"
@@ -59,4 +62,12 @@ func (svc wsOrderbookService) Subscribe(c *ws.Client, instrument string) {
 func (svc wsOrderbookService) Unsubscribe(c *ws.Client) {
 	socket := ws.GetOrderBookSocket()
 	socket.Unsubscribe(c)
+}
+
+func (svc wsOrderbookService) GetOrderBook(ctx context.Context, request deribitModel.DeribitGetOrderBookRequest) []deribitModel.DeribitGetOrderBookResponse {
+	var results []deribitModel.DeribitGetOrderBookResponse
+
+	// TODO query to orders collections
+
+	return results
 }
