@@ -56,6 +56,8 @@ func KafkaConsumer(
 					obSvc.HandleConsume(message)
 				case "ENGINE":
 					engSvc.HandleConsume(message)
+				case "CANCELLED_ORDERS":
+					handleTopicCancelledOrders(message)
 				default:
 					log.Printf("Unknown topic: %s", topic)
 				}
@@ -124,4 +126,36 @@ func handleTopicOrderbook(message *sarama.ConsumerMessage) {
 	}
 	symbol := strings.Split(data["instrument_name"].(string), "-")[0]
 	ordermatch.OnOrderboookUpdate(symbol, data)
+}
+
+func handleTopicCancelledOrders(message *sarama.ConsumerMessage) {
+	fmt.Printf("Received message from CANCELLED_ORDERS: %s\n", string(message.Value))
+
+	str := string(message.Value)
+	var data map[string]interface{}
+	err := json.Unmarshal([]byte(str), &data)
+	if err != nil {
+		fmt.Println("Error parsing JSON:", err)
+		return
+	}
+
+	// Send message to websocket
+	userIDStr := fmt.Sprintf("%v", data["userId"])
+	ClOrdID := fmt.Sprintf("%v", data["clOrdId"])
+	_id := fmt.Sprintf("%v", data["id"])
+	count := data["count"]
+
+	type CancelledData struct {
+		Id      string `json:"id"`
+		JsonRpc string `json:"jsonrpc"`
+		Result  int    `json:"result"`
+	}
+
+	_cancelledData := CancelledData{
+		Id:      _id,
+		JsonRpc: "2.0",
+		Result:  count.(int),
+	}
+
+	ws.SendOrderMessage(userIDStr, _cancelledData, ClOrdID)
 }

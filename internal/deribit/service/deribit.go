@@ -192,3 +192,22 @@ func (svc deribitService) DeribitCancelByInstrument(ctx context.Context, userId 
 
 	return cancel, nil
 }
+
+func (svc deribitService) DeribitParseCancelAll(ctx context.Context, userId string, data model.DeribitCancelRequest) (model.DeribitCancelResponse, error) {
+	cancel := model.DeribitCancelResponse{
+		Id:       data.Id,
+		UserId:   userId,
+		ClientId: "",
+		Side:     "CANCEL_ALL",
+		ClOrdID:  data.ClOrdID,
+	}
+
+	_cancel, err := json.Marshal(cancel)
+	if err != nil {
+		panic(err)
+	}
+	//send to kafka
+	producer.KafkaProducer(string(_cancel), "NEW_ORDER")
+
+	return cancel, nil
+}

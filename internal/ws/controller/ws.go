@@ -342,7 +342,7 @@ func (svc wsHandler) PrivateCancelByInstrument(input interface{}, c *ws.Client) 
 
 func (svc wsHandler) PrivateCancelAll(input interface{}, c *ws.Client) {
 	type Params struct {
-		AccessToken string `json:"accessToken"`
+		AccessToken string `json:"access_token"`
 		Id          string `json:"id"`
 	}
 
@@ -368,7 +368,7 @@ func (svc wsHandler) PrivateCancelAll(input interface{}, c *ws.Client) {
 	// TODO: Validation
 
 	// Parse the Deribit Sell
-	res, err := svc.deribitSvc.DeribitCancelByInstrument(context.TODO(), JWTData.UserID, deribitModel.DeribitCancelByInstrumentRequest{
+	res, err := svc.deribitSvc.DeribitParseCancel(context.TODO(), JWTData.UserID, deribitModel.DeribitCancelRequest{
 		Id:      msg.Params.Id,
 		ClOrdID: msg.Id,
 	})
@@ -377,7 +377,7 @@ func (svc wsHandler) PrivateCancelAll(input interface{}, c *ws.Client) {
 		return
 	}
 
-	//register order connection
+	// register order connection
 	ws.RegisterOrderConnection(JWTData.UserID, c)
 	c.SendMessage(map[string]interface{}{
 		"id":       res.Id,
