@@ -44,6 +44,7 @@ func NewWebsocketHandler(r *gin.Engine, authSvc service.IAuthService, deribitSvc
 	ws.RegisterChannel("/private/sell", handler.PrivateSell)
 	ws.RegisterChannel("/private/edit", handler.PrivateEdit)
 	ws.RegisterChannel("/private/cancel", handler.PrivateCancel)
+	ws.RegisterChannel("/private/cancel-by-instrument", handler.PrivateCancelByInstrument)
 
 	ws.RegisterChannel("/public/subscribe", handler.SubscribeHandler)
 	ws.RegisterChannel("/public/unsubscribe", handler.UnsubscribeHandler)
@@ -266,6 +267,61 @@ func (svc wsHandler) PrivateCancel(input interface{}, c *ws.Client) {
 		"side":     res.Side,
 	}, res.ClOrdID)
 	return
+}
+
+func (svc wsHandler) PrivateCancelByInstrument(input interface{}, c *ws.Client) {
+	type Params struct {
+		AccessToken    string  `json:"accessToken"`
+		Id             string  `json:"id"`
+		InstrumentName string  `json:"instrumentName"`
+		Amount         float64 `json:"amount"`
+		Type           string  `json:"type"`
+		Price          float64 `json:"price"`
+	}
+
+	type Req struct {
+		Params Params `json:"params"`
+		Id     string `json:"id"`
+	}
+
+	msg := &Req{}
+	bytes, _ := json.Marshal(input)
+	if err := json.Unmarshal(bytes, &msg); err != nil {
+		c.SendMessage(gin.H{"err": err})
+		return
+	}
+
+	// Check the Access Token
+	JWTData, err := svc.authSvc.JWTCheck(msg.Params.AccessToken)
+	if err != nil {
+		c.SendMessage(gin.H{"err": err.Error()})
+		return
+	}
+
+	// TODO: Validation
+
+	// Parse the Deribit Sell
+	res, err := svc.deribitSvc.DeribitCancelByInstrument(context.TODO(), JWTData.UserID, deribitModel.DeribitCancelByInstrumentRequest{
+		Id:             msg.Params.Id,
+		InstrumentName: msg.Params.InstrumentName,
+		Amount:         msg.Params.Amount,
+		Type:           msg.Params.Type,
+		Price:          msg.Params.Price,
+		ClOrdID:        msg.Id,
+	})
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	//register order connection
+	ws.RegisterOrderConnection(JWTData.UserID, c)
+	c.SendMessage(map[string]interface{}{
+		"id":       res.Id,
+		"userId":   res.UserId,
+		"clientId": res.ClientId,
+		"side":     res.Side,
+	}, res.ClOrdID)
 }
 
 func (svc wsHandler) SubscribeHandler(input interface{}, c *ws.Client) {
