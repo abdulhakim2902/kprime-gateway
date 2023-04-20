@@ -308,6 +308,17 @@ func (a *Application) onOrderUpdateRequest(msg ordercancelreplacerequest.OrderCa
 		return err
 	}
 
+	side, err := msg.GetSide()
+	if err != nil {
+		fmt.Println("Error getting side")
+		return err
+	}
+
+	side = "BUY"
+	if side == enum.Side_SELL {
+		side = "SELL"
+	}
+
 	amountFloat, _ := amount.Float64()
 	priceFloat, _ := price.Float64()
 	var partyId quickfix.FIXString
@@ -319,6 +330,7 @@ func (a *Application) onOrderUpdateRequest(msg ordercancelreplacerequest.OrderCa
 		UserID:   strconv.Itoa(int(client.ID)),
 		Amount:   amountFloat,
 		Price:    priceFloat,
+		Side:     side,
 	}
 
 	_data, _ := json.Marshal(data)
