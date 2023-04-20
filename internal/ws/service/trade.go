@@ -35,7 +35,19 @@ func (svc wsTradeService) HandleConsume(msg *sarama.ConsumerMessage) {
 	}
 
 	var newTrade []types.Trade
-	instrument := fmt.Sprintf("TRADE-%s-%s-%f-C", trade.Underlying, trade.ExpiryDate, trade.StrikePrice)
+	var optType string
+	switch trade.Contracts {
+	case types.CALL:
+		optType = "C"
+	case types.PUT:
+		optType = "P"
+	}
+	instrument := fmt.Sprintf("TRADE-%s-%s-%f-%s",
+		trade.Underlying,
+		trade.ExpiryDate,
+		trade.StrikePrice,
+		optType,
+	)
 
 	// Get existing data from the redis
 	res, err := svc.redis.GetValue(instrument)
