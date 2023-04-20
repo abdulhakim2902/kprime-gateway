@@ -56,6 +56,7 @@ var orderSubs map[string][]quickfix.SessionID
 
 type Order struct {
 	ID                   string          `json:"id" bson:"_id"`
+	ClientOrderId        string          `json:"clOrdId" bson:"clOrdId"`
 	InstrumentName       string          `json:"instrumentName" bson:"instrumentName"`
 	Symbol               string          `json:"symbol" bson:"symbol"`
 	SenderCompID         string          `json:"sender_comp_id" bson:"sender_comp_id"`
@@ -94,17 +95,17 @@ type Application struct {
 
 type KafkaOrder struct {
 	ID             string    `json:"id"`
-	ClOrdID        string    `json:"clOrdID"`
-	UserID         string    `json:"userId"`
-	ClientID       string    `json:"clientId"`
-	Side           enum.Side `json:"side"`
-	Price          float64   `json:"price"`
-	Amount         float64   `json:"amount"`
-	Underlying     string    `json:"underlying"`
-	ExpirationDate string    `json:"expiryDate"`
-	StrikePrice    float64   `json:"strikePrice"`
-	Type           string    `json:"type"`
-	Contracts      string    `json:"contracts"`
+	ClOrdID        string    `json:"clOrdID,omitempty"`
+	UserID         string    `json:"userId,omitempty"`
+	ClientID       string    `json:"clientId,omitempty"`
+	Side           enum.Side `json:"side,omitempty"`
+	Price          float64   `json:"price,omitempty"`
+	Amount         float64   `json:"amount,omitempty"`
+	Underlying     string    `json:"underlying,omitempty"`
+	ExpirationDate string    `json:"expiryDate,omitempty"`
+	StrikePrice    float64   `json:"strikePrice,omitempty"`
+	Type           string    `json:"type,omitempty"`
+	Contracts      string    `json:"contracts,omitempty"`
 }
 
 func newApplication() *Application {
@@ -296,31 +297,66 @@ func (a *Application) onOrderUpdateRequest(msg ordercancelreplacerequest.OrderCa
 		return err
 	}
 
+	ordType, err := msg.GetOrdType()
+	if err != nil {
+		return err
+	}
+
 	amount, err := msg.GetOrderQty()
 	if err != nil {
 		fmt.Println("Error getting amount")
 		return err
 	}
-	origClOrdID, err := msg.GetOrigClOrdID()
+	orderId, err := msg.GetOrderID()
 	if err != nil {
-		fmt.Println("Error getting origClOrdID")
+		fmt.Println("Error getting orderid")
 		return err
 	}
 
+	strType := "LIMIT"
+	if ordType == enum.OrdType_MARKET {
+		strType = "MARKET"
+	}
+
+	symbol, err := msg.GetSymbol()
+	if err != nil {
+		fmt.Println("Error getting symbol")
+		return err
+	}
+
+	details := strings.Split(symbol, "-")
+	underlying := details[0]
+	expiryDate := details[1]
+	strikePrice := details[2]
+	options := details[3]
+
+	putOrCall := "CALL"
+	if options == string(enum.PutOrCall_PUT) {
+		putOrCall = "PUT"
+	}
 	amountFloat, _ := amount.Float64()
 	priceFloat, _ := price.Float64()
+	strikePriceFloat, _ := strconv.ParseFloat(strikePrice, 64)
+
 	var partyId quickfix.FIXString
 	msg.GetField(tag.PartyID, &partyId)
 
 	data := KafkaOrder{
-		ID:       origClOrdID,
-		ClientID: partyId.String(),
-		UserID:   strconv.Itoa(int(client.ID)),
-		Amount:   amountFloat,
-		Price:    priceFloat,
+		ID:             orderId,
+		ClientID:       partyId.String(),
+		UserID:         strconv.Itoa(int(client.ID)),
+		Amount:         amountFloat,
+		Price:          priceFloat,
+		Side:           "EDIT",
+		Underlying:     underlying,
+		ExpirationDate: expiryDate,
+		StrikePrice:    strikePriceFloat,
+		Type:           string(strType),
+		Contracts:      string(putOrCall),
 	}
 
 	_data, _ := json.Marshal(data)
+	fmt.Println(_data)
 	_producer.KafkaProducer(string(_data), "NEW_ORDER")
 
 	return nil
@@ -341,7 +377,12 @@ func (a *Application) onOrderCancelRequest(msg ordercancelrequest.OrderCancelReq
 		return quickfix.NewMessageRejectError("Failed getting user", 1, nil)
 	}
 
-	origClOrdID, err := msg.GetOrigClOrdID()
+	orderId, err := msg.GetOrderID()
+	if err != nil {
+		return err
+	}
+
+	clOrdID, err := msg.GetClOrdID()
 	if err != nil {
 		return err
 	}
@@ -350,9 +391,9 @@ func (a *Application) onOrderCancelRequest(msg ordercancelrequest.OrderCancelReq
 	msg.GetField(tag.PartyID, &partyId)
 
 	data := KafkaOrder{
-		ID:       origClOrdID,
+		ID:       orderId,
+		ClOrdID:  clOrdID,
 		ClientID: partyId.String(),
-		ClOrdID:  origClOrdID,
 		UserID:   strconv.Itoa(int(client.ID)),
 		Side:     "CANCEL",
 	}
@@ -360,6 +401,7 @@ func (a *Application) onOrderCancelRequest(msg ordercancelrequest.OrderCancelReq
 		return quickfix.NewMessageRejectError("Failed to send cancel request", 1, nil)
 	}
 	_data, _ := json.Marshal(data)
+	fmt.Println(string(_data))
 	_producer.KafkaProducer(string(_data), "NEW_ORDER")
 
 	return nil
@@ -517,7 +559,7 @@ func OrderConfirmation(userId string, order Order, symbol string) {
 	}
 
 	msg := executionreport.New(
-		field.NewOrderID(order.ID),
+		field.NewOrderID(order.ClientOrderId),
 		field.NewExecID(strconv.Itoa(exec)),
 		field.NewExecTransType(enum.ExecTransType_NEW),
 		field.NewExecType(enum.ExecType(order.Status)),
@@ -528,7 +570,8 @@ func OrderConfirmation(userId string, order Order, symbol string) {
 		field.NewCumQty(order.FilledAmount, 2),
 		field.NewAvgPx(order.Price, 2),
 	)
-	msg.SetString(quickfix.Tag(11), order.ID)
+	msg.SetString(tag.OrderID, order.ID)
+	msg.SetString(tag.ClOrdID, order.ClientOrderId)
 	err := quickfix.SendToTarget(msg, *sessionId)
 	if err != nil {
 		fmt.Print(err.Error())

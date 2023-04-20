@@ -49,6 +49,20 @@ func (p *RedisConnectionPool) Set(key string, value string) error {
 	return nil
 }
 
+// Set sets a key to a given value and expire
+func (p *RedisConnectionPool) SetEx(key string, value string, expiry int) error {
+	conn := p.Get()
+	defer conn.Close()
+
+	ok, err := redis.String(conn.Do("SET", key, value, "EX", expiry))
+	if err != nil {
+		return err
+	} else if ok != "OK" {
+		return fmt.Errorf("Some error occurred while running SET command on key: %v", key)
+	}
+	return nil
+}
+
 // Del removes a given key from Redis
 // Cmd Returns: number of deletions and error
 // Returns: error

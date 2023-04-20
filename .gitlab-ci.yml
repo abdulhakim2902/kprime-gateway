@@ -1,28 +1,48 @@
-image: golang:latest
-
-stages:
-  - build
-  - deploy
-
-before_script:
-  - apt-get update -qq
-  - apt-get install -y docker.io
-
-build:
-  stage: build
-  script:
-    - go build -o main cmd/main/main.go
-
-deploy:
+deploy_development:
   stage: deploy
+  environment:
+    name: development
   script:
+    - mkdir /var/www/html/gateway-deploy
+    - cd /var/www/html/gateway-deploy && git checkout development && git pull origin development 
+    #&& rsync -avzr --delete /var/www/html/gateway-deploy/ /var/www/html/gateway-deploy/
+    - cd /var/www/html/gateway-deploy
     - cp /dev/null .env # create empty .env file
     - echo "env_dev=$env_dev" >> .env # add env_dev to .env file
-    - docker build -t gateway .
-    - docker tag gateway:latest
-    - docker save gateway:latest > gateway.tar
-    - scp -i $ID_RSA gateway.tar deployer@18.139.123.236:/home/ubuntu/gateway/gateway.tar
-    - ssh -i $ID_RSA deployer@18.139.123.236 'docker load < /path/to/save/gateway.tar'
-    - ssh -i $ID_RSA user@192.168.0.1 'docker run -d -p 80:80 --name gateway gateway:latest'
+    - go build cmd/main/main.go
+    - ./main
+    
+  only:
+    - development
+
+
+
+# image: golang:latest
+
+# stages:
+#   - build
+#   - deploy
+
+# before_script:
+#   - apt-get update -qq
+#   - apt-get install -y docker.io
+
+# build:
+#   stage: build
+#   script:
+#     - go build -o main cmd/main/main.go
+
+# deploy:
+#   stage: deploy
+#   script:
+#     - cp /dev/null .env # create empty .env file
+#     - echo "env_dev=$env_dev" >> .env # add env_dev to .env file
+#     - /home/ubuntu/gateway/main
+    # - docker build -t gateway .
+    # - docker tag gateway:latest
+    # - docker save gateway:latest > gateway.tar
+    # - scp -i $ID_RSA gateway.tar deployer@18.139.123.236:/home/ubuntu/gateway/gateway.tar
+    # - ssh -i $ID_RSA deployer@18.139.123.236 'docker load < /path/to/save/gateway.tar'
+    # - ssh -i $ID_RSA user@192.168.0.1 'docker run -d -p 80:80 --name gateway gateway:latest'
 
     #- ./main # run project

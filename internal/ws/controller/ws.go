@@ -4,13 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
+
 	"gateway/internal/auth/model"
 	"gateway/internal/auth/service"
 	deribitModel "gateway/internal/deribit/model"
 	deribitService "gateway/internal/deribit/service"
 	engService "gateway/internal/ws/engine/service"
 	wsService "gateway/internal/ws/service"
-	"strings"
 
 	cors "github.com/rs/cors/wrapper/gin"
 
@@ -25,15 +26,25 @@ type wsHandler struct {
 	wsOBSvc    wsService.IwsOrderbookService
 	wsOSvc     wsService.IwsOrderService
 	wsEngSvc   engService.IwsEngineService
+	wsTradeSvc wsService.IwsTradeService
 }
 
-func NewWebsocketHandler(r *gin.Engine, authSvc service.IAuthService, deribitSvc deribitService.IDeribitService, wsOBSvc wsService.IwsOrderbookService, wsEngSvc engService.IwsEngineService, wsOSvc wsService.IwsOrderService) {
+func NewWebsocketHandler(
+	r *gin.Engine,
+	authSvc service.IAuthService,
+	deribitSvc deribitService.IDeribitService,
+	wsOBSvc wsService.IwsOrderbookService,
+	wsEngSvc engService.IwsEngineService,
+	wsOSvc wsService.IwsOrderService,
+	wsTradeSvc wsService.IwsTradeService,
+) {
 	handler := &wsHandler{
 		authSvc:    authSvc,
 		deribitSvc: deribitSvc,
 		wsOBSvc:    wsOBSvc,
 		wsEngSvc:   wsEngSvc,
 		wsOSvc:     wsOSvc,
+		wsTradeSvc: wsTradeSvc,
 	}
 	r.Use(cors.AllowAll())
 
@@ -48,6 +59,8 @@ func NewWebsocketHandler(r *gin.Engine, authSvc service.IAuthService, deribitSvc
 
 	ws.RegisterChannel("/public/subscribe", handler.SubscribeHandler)
 	ws.RegisterChannel("/public/unsubscribe", handler.UnsubscribeHandler)
+
+	ws.RegisterChannel("/public/get_instruments", handler.GetInstruments)
 }
 
 func (svc wsHandler) PublicAuth(input interface{}, c *ws.Client) {
@@ -72,7 +85,6 @@ func (svc wsHandler) PublicAuth(input interface{}, c *ws.Client) {
 		APIKey:    msg.Params.ClientID,
 		APISecret: msg.Params.ClientSecret,
 	})
-
 	if err != nil {
 		fmt.Println(err)
 		c.SendMessage(gin.H{"err": err.Error()})
@@ -85,11 +97,12 @@ func (svc wsHandler) PublicAuth(input interface{}, c *ws.Client) {
 
 func (svc wsHandler) PrivateBuy(input interface{}, c *ws.Client) {
 	type Params struct {
-		AccessToken    string  `json:"accessToken"`
-		InstrumentName string  `json:"instrumentName"`
+		AccessToken    string  `json:"access_token"`
+		InstrumentName string  `json:"instrument_name"`
 		Amount         float64 `json:"amount"`
 		Type           string  `json:"type"`
 		Price          float64 `json:"price"`
+		TimeInForce    string  `json:"time_in_force"`
 	}
 
 	type Req struct {
@@ -120,9 +133,10 @@ func (svc wsHandler) PrivateBuy(input interface{}, c *ws.Client) {
 		Type:           msg.Params.Type,
 		Price:          msg.Params.Price,
 		ClOrdID:        msg.Id,
+		TimeInForce:    msg.Params.TimeInForce,
 	})
 
-	//register order connection
+	// register order connection
 	ws.RegisterOrderConnection(JWTData.UserID, c)
 
 	// c.SendMessage(res)
@@ -131,11 +145,12 @@ func (svc wsHandler) PrivateBuy(input interface{}, c *ws.Client) {
 
 func (svc wsHandler) PrivateSell(input interface{}, c *ws.Client) {
 	type Params struct {
-		AccessToken    string  `json:"accessToken"`
-		InstrumentName string  `json:"instrumentName"`
+		AccessToken    string  `json:"access_token"`
+		InstrumentName string  `json:"instrument_name"`
 		Amount         float64 `json:"amount"`
 		Type           string  `json:"type"`
 		Price          float64 `json:"price"`
+		TimeInForce    string  `json:"time_in_force"`
 	}
 
 	type Req struct {
@@ -166,9 +181,10 @@ func (svc wsHandler) PrivateSell(input interface{}, c *ws.Client) {
 		Type:           msg.Params.Type,
 		Price:          msg.Params.Price,
 		ClOrdID:        msg.Id,
+		TimeInForce:    msg.Params.TimeInForce,
 	})
 
-	//register order connection
+	// register order connection
 	ws.RegisterOrderConnection(JWTData.UserID, c)
 
 	// c.SendMessage(res)
@@ -177,7 +193,7 @@ func (svc wsHandler) PrivateSell(input interface{}, c *ws.Client) {
 
 func (svc wsHandler) PrivateEdit(input interface{}, c *ws.Client) {
 	type Params struct {
-		AccessToken string  `json:"accessToken"`
+		AccessToken string  `json:"access_token"`
 		Id          string  `json:"id"`
 		Amount      float64 `json:"amount"`
 		Price       float64 `json:"price"`
@@ -212,7 +228,7 @@ func (svc wsHandler) PrivateEdit(input interface{}, c *ws.Client) {
 		ClOrdID: msg.Id,
 	})
 
-	//register order connection
+	// register order connection
 	ws.RegisterOrderConnection(JWTData.UserID, c)
 	c.SendMessage(map[string]interface{}{
 		"id":       res.Id,
@@ -227,7 +243,7 @@ func (svc wsHandler) PrivateEdit(input interface{}, c *ws.Client) {
 
 func (svc wsHandler) PrivateCancel(input interface{}, c *ws.Client) {
 	type Params struct {
-		AccessToken string `json:"accessToken"`
+		AccessToken string `json:"access_token"`
 		Id          string `json:"id"`
 	}
 
@@ -258,7 +274,7 @@ func (svc wsHandler) PrivateCancel(input interface{}, c *ws.Client) {
 		ClOrdID: msg.Id,
 	})
 
-	//register order connection
+	// register order connection
 	ws.RegisterOrderConnection(JWTData.UserID, c)
 	c.SendMessage(map[string]interface{}{
 		"id":       res.Id,
@@ -397,6 +413,8 @@ func (svc wsHandler) SubscribeHandler(input interface{}, c *ws.Client) {
 			svc.wsEngSvc.Subscribe(c, s[1])
 		case "order":
 			svc.wsOSvc.Subscribe(c, s[1])
+		case "trade":
+			svc.wsTradeSvc.Subscribe(c, s[1])
 		}
 
 	}
@@ -427,7 +445,41 @@ func (svc wsHandler) UnsubscribeHandler(input interface{}, c *ws.Client) {
 			svc.wsEngSvc.Unsubscribe(c)
 		case "order":
 			svc.wsOSvc.Unsubscribe(c)
+		case "trade":
+			svc.wsTradeSvc.Unsubscribe(c)
 		}
 
 	}
+}
+
+func (svc wsHandler) GetInstruments(input interface{}, c *ws.Client) {
+	type Params struct {
+		AccessToken string `json:"accessToken"`
+		Currency    string `json:"currency"`
+		Expired     bool   `json:"expired"`
+	}
+
+	type Req struct {
+		Params Params `json:"params"`
+	}
+
+	msg := &Req{}
+	bytes, _ := json.Marshal(input)
+	if err := json.Unmarshal(bytes, &msg); err != nil {
+		c.SendMessage(gin.H{"err": err})
+		return
+	}
+
+	if msg.Params.Currency == "" {
+		c.SendMessage(gin.H{"err": "Please provide currency"})
+		return
+	}
+
+	result := svc.wsOSvc.GetInstruments(context.TODO(), deribitModel.DeribitGetInstrumentsRequest{
+		Currency: msg.Params.Currency,
+		Expired:  msg.Params.Expired,
+	})
+
+	c.SendMessage(result)
+	return
 }

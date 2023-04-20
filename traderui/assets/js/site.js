@@ -80,6 +80,7 @@ var App = new (Backbone.View.extend({
     var order = new App.Models.Order({ id: id });
     order.fetch({
       success: function () {
+        console.log(order)
         var orderView = new App.Views.OrderDetails({ model: order });
         $("#app").html(orderView.render().el);
       },
@@ -205,7 +206,7 @@ App.Views.OrderDetails = Backbone.View.extend({
   <div class="form-group">
     <label class="col-sm-2 control-label">OrderID</label>
     <div class="col-sm-10">
-      <p class="form-control-static"><%= order_id %></p>
+    <p class="form-control-static"><%= order_id  %></p>
     </div>
   </div>
   <div class="form-group">
@@ -355,7 +356,8 @@ App.Views.OrderDetails = Backbone.View.extend({
     'click .amend': function (e) {
       console.log(e)
       var quantity = this.$el.find('#quantity').val();
-      this.model.update({ quantity: quantity }, {
+
+      this.model.save({ quantity: quantity }, {
         success: function () {
           Backbone.history.navigate("/orders", { trigger: true });
         },
@@ -365,6 +367,7 @@ App.Views.OrderDetails = Backbone.View.extend({
           console.log(response);
         }
       });
+
     }
   },
 });
@@ -744,6 +747,7 @@ App.Views.OrderTicket = Backbone.View.extend({
       maturity_day: parseInt(this.$('input[name=maturity_day]').val()),
       put_or_call: this.$('select[name=put_or_call]').val(),
       strike_price: this.$('input[name=strike_price]').val(),
+      order_id: this.$('input[name=order_id]').val(),
       username: this.$('input[name=username]').val(),
       password: this.$('input[name=password]').val(),
     });

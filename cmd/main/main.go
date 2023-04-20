@@ -2,7 +2,18 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
+	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"path"
+	"runtime"
+	"strings"
+	"syscall"
+	"time"
+
 	"gateway/database/seeder/seeds"
 	"gateway/internal/admin/controller"
 	_adminModel "gateway/internal/admin/model"
@@ -14,14 +25,6 @@ import (
 	"gateway/pkg/kafka/consumer"
 	"gateway/pkg/mongo"
 	"gateway/pkg/redis"
-	"log"
-	"net/http"
-	"os"
-	"os/signal"
-	"path"
-	"runtime"
-	"syscall"
-	"time"
 
 	ordermatch "gateway/internal/fix-acceptor"
 
@@ -50,29 +53,82 @@ import (
 	"gorm.io/gorm"
 )
 
-func main() {
+var (
+	db      *gorm.DB
+	err     error
+	rootDir string
+	mode    string
+)
+
+func init() {
 	_, b, _, _ := runtime.Caller(0)
-	rootDir := path.Join(b, "../../../")
-	fmt.Println(b)
-	fmt.Println(rootDir)
-	err := godotenv.Load(path.Join(rootDir, ".env"))
+	rootDir = path.Join(b, "../../../")
+
+	if err = godotenv.Load(path.Join(rootDir, ".env")); err != nil {
+		panic(err)
+	}
+	mode = os.Getenv("NODE_ENV")
+
+	dsn := os.Getenv("DB_CONNECTION")
+	db, err = gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
 		panic(err)
 	}
+
+	// Flags
+	cmd := flag.String("migrate", "", "up or down")
+	flag.Parse()
+
+	if len(os.Args) > 1 {
+		arg := os.Args[1]
+
+		if strings.Contains(arg, "-migrate") {
+			argVal := *cmd
+			fmt.Println("Migration " + argVal)
+
+			switch argVal {
+			case "up":
+				db.AutoMigrate(
+					&_adminModel.Permission{},
+					&model.Client{},
+					&_adminModel.Admin{},
+					&_adminModel.Role{},
+					&_authModel.TokenAuth{},
+				)
+			case "down":
+				if mode == "production" {
+					fmt.Println("Migration down is not allowed while running production mode")
+				} else {
+					db.Migrator().DropTable(
+						&_adminModel.Permission{},
+						&model.Client{},
+						&_adminModel.Admin{},
+						&_adminModel.Role{},
+						&_authModel.TokenAuth{},
+					)
+				}
+
+			}
+
+		} else {
+			fmt.Println("Invalid arguments")
+		}
+
+		os.Exit(0)
+	}
+}
+
+func main() {
 	r := gin.New()
-	if os.Getenv("NODE_ENV") == "development" {
+	if mode == "development" {
 		gin.SetMode(gin.DebugMode)
-	} else if os.Getenv("NODE_ENV") == "staging" {
+	} else if mode == "staging" {
 		gin.SetMode(gin.TestMode)
-	} else if os.Getenv("NODE_ENV") == "production" {
+	} else if mode == "production" {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
-	dsn := os.Getenv("DB_CONNECTION")
-	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
-	if err != nil {
-		panic(err)
-	}
+	// Gorm adapter
 	adapter, err := gormadapter.NewAdapterByDB(db)
 	if err != nil {
 		panic("failed to load rbac config")
@@ -81,13 +137,6 @@ func main() {
 	enforcer, err := casbin.NewEnforcer(path.Join(rootDir, "pkg/rbac/config/model.conf"), adapter)
 	if err != nil {
 		panic(err)
-	}
-
-	//dev only
-	db.AutoMigrate(&_adminModel.Permission{})
-
-	if gin.Mode() != gin.ReleaseMode {
-		db.AutoMigrate(&model.Client{}, &_adminModel.Admin{}, &_adminModel.Role{}, &_authModel.TokenAuth{})
 	}
 
 	// Seed Database
@@ -118,7 +167,7 @@ func main() {
 	_deribitSvc := _deribitSvc.NewDeribitService()
 	_deribitCtrl.NewDeribitHandler(r, _deribitSvc)
 
-	//qf
+	// qf
 	go ordermatch.Cmd.Execute()
 
 	// Websocket handlers
@@ -126,9 +175,20 @@ func main() {
 	_wsEngineSvc := _wsEngineSvc.NewwsEngineService(redis)
 
 	orderRepo := repositories.NewOrderRepository(mongoDb)
-
 	_wsOrderSvc := _wsSvc.NewWSOrderService(redis, orderRepo)
-	_wsCtrl.NewWebsocketHandler(r, authSvc, _deribitSvc, _wsOrderbookSvc, _wsEngineSvc, _wsOrderSvc)
+
+	tradeRepo := repositories.NewTradeRepository(mongoDb)
+	_wsTradeSvc := _wsSvc.NewWSTradeService(redis, tradeRepo)
+
+	_wsCtrl.NewWebsocketHandler(
+		r,
+		authSvc,
+		_deribitSvc,
+		_wsOrderbookSvc,
+		_wsEngineSvc,
+		_wsOrderSvc,
+		_wsTradeSvc,
+	)
 
 	fmt.Printf("Server is running on %s \n", os.Getenv("PORT"))
 
@@ -147,8 +207,8 @@ func main() {
 	_obSvc := _obSvc.NewOrderbookHandler(r, redis)
 	_engSvc := _engSvc.NewEngineHandler(r, redis)
 
-	//kafka listener
-	consumer.KafkaConsumer(orderRepo, _engSvc, _obSvc, _wsOrderSvc)
+	// kafka listener
+	consumer.KafkaConsumer(orderRepo, _engSvc, _obSvc, _wsOrderSvc, _wsTradeSvc)
 
 	// Wait for interrupt signal to gracefully shutdown the server with
 	// a timeout of 5 seconds.
