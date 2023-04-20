@@ -1,24 +1,41 @@
-image: golang:latest
-
-stages:
-  - build
-  - deploy
-
-before_script:
-  - apt-get update -qq
-  - apt-get install -y docker.io
-
-build:
-  stage: build
+deploy_development:
+  type: deploy
+  environment:
+    name: development
   script:
-    - go build -o main cmd/main/main.go
+    - "cd /var/www/html/gateway-deploy && git checkout development && git pull origin development && rsync -avzr --delete /var/www/html/gateway-deploy/ /var/www/html/gateway-deploy/" 
+    - "cd /var/www/html/gateway-deploy"
+    - "cp /dev/null .env # create empty .env file
+    - "echo "env_dev=$env_dev" >> .env # add env_dev to .env file
+    - "go build cmd/main/main.go"
+    - "./main"
+    
+  only:
+    - development
 
-deploy:
-  stage: deploy
-  script:
-    - cp /dev/null .env # create empty .env file
-    - echo "env_dev=$env_dev" >> .env # add env_dev to .env file
-    - /home/ubuntu/gateway/main
+
+
+# image: golang:latest
+
+# stages:
+#   - build
+#   - deploy
+
+# before_script:
+#   - apt-get update -qq
+#   - apt-get install -y docker.io
+
+# build:
+#   stage: build
+#   script:
+#     - go build -o main cmd/main/main.go
+
+# deploy:
+#   stage: deploy
+#   script:
+#     - cp /dev/null .env # create empty .env file
+#     - echo "env_dev=$env_dev" >> .env # add env_dev to .env file
+#     - /home/ubuntu/gateway/main
     # - docker build -t gateway .
     # - docker tag gateway:latest
     # - docker save gateway:latest > gateway.tar
