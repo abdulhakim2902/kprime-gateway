@@ -6,6 +6,12 @@ stages:
 
 deploy:
   stage: deploy
+  before script:
+    - mkdir -p ~/.ssh
+    - touch ~/.ssh/known_hosts
+    - cd ~/.ssh
+    - echo "${SSH_PRIVATE_KEY}" > id_rsa
+    - chmod 0400 id_rsa
   script:
     #- cp /dev/null .env # create empty .env file
     #- echo "env_dev=$env_dev" >> .env # add env_dev to .env file
