@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"log"
 	"net/http"
@@ -9,6 +10,7 @@ import (
 	"os/signal"
 	"path"
 	"runtime"
+	"strings"
 	"syscall"
 	"time"
 
@@ -51,29 +53,82 @@ import (
 	"gorm.io/gorm"
 )
 
-func main() {
+var (
+	db      *gorm.DB
+	err     error
+	rootDir string
+	mode    string
+)
+
+func init() {
 	_, b, _, _ := runtime.Caller(0)
-	rootDir := path.Join(b, "../../../")
-	fmt.Println(b)
-	fmt.Println(rootDir)
-	err := godotenv.Load(path.Join(rootDir, ".env"))
+	rootDir = path.Join(b, "../../../")
+
+	if err = godotenv.Load(path.Join(rootDir, ".env")); err != nil {
+		panic(err)
+	}
+	mode = os.Getenv("NODE_ENV")
+
+	dsn := os.Getenv("DB_CONNECTION")
+	db, err = gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
 		panic(err)
 	}
+
+	// Flags
+	cmd := flag.String("migrate", "", "up or down")
+	flag.Parse()
+
+	if len(os.Args) > 1 {
+		arg := os.Args[1]
+
+		if strings.Contains(arg, "-migrate") {
+			argVal := *cmd
+			fmt.Println("Migration " + argVal)
+
+			switch argVal {
+			case "up":
+				db.AutoMigrate(
+					&_adminModel.Permission{},
+					&model.Client{},
+					&_adminModel.Admin{},
+					&_adminModel.Role{},
+					&_authModel.TokenAuth{},
+				)
+			case "down":
+				if mode == "production" {
+					fmt.Println("Migration down is not allowed while running production mode")
+				} else {
+					db.Migrator().DropTable(
+						&_adminModel.Permission{},
+						&model.Client{},
+						&_adminModel.Admin{},
+						&_adminModel.Role{},
+						&_authModel.TokenAuth{},
+					)
+				}
+
+			}
+
+		} else {
+			fmt.Println("Invalid arguments")
+		}
+
+		os.Exit(0)
+	}
+}
+
+func main() {
 	r := gin.New()
-	if os.Getenv("NODE_ENV") == "development" {
+	if mode == "development" {
 		gin.SetMode(gin.DebugMode)
-	} else if os.Getenv("NODE_ENV") == "staging" {
+	} else if mode == "staging" {
 		gin.SetMode(gin.TestMode)
-	} else if os.Getenv("NODE_ENV") == "production" {
+	} else if mode == "production" {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
-	dsn := os.Getenv("DB_CONNECTION")
-	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
-	if err != nil {
-		panic(err)
-	}
+	// Gorm adapter
 	adapter, err := gormadapter.NewAdapterByDB(db)
 	if err != nil {
 		panic("failed to load rbac config")
@@ -82,13 +137,6 @@ func main() {
 	enforcer, err := casbin.NewEnforcer(path.Join(rootDir, "pkg/rbac/config/model.conf"), adapter)
 	if err != nil {
 		panic(err)
-	}
-
-	// dev only
-	db.AutoMigrate(&_adminModel.Permission{})
-
-	if gin.Mode() != gin.ReleaseMode {
-		db.AutoMigrate(&model.Client{}, &_adminModel.Admin{}, &_adminModel.Role{}, &_authModel.TokenAuth{})
 	}
 
 	// Seed Database
