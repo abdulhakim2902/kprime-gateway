@@ -17,6 +17,33 @@ modify `.env` file based on your local requirement
 ### Database
 We're using 2 databases. MySQL database is used only for gateway application, to store users' credentials. And MongoDB Database is connected to the orderbook's MongoDB, using replica set feature. So for local development, make sure that the orderbook app and the gateway app has the same mongoDB database.
 
+### Migrate
+to run the migration, just follow the command below
+
+Migration up:
+
+```bash
+go run cmd/main/main.go --migrate up
+```
+
+or, for executable binary:
+
+```bash
+./main --migrate up
+```
+
+Migration down:
+
+```bash
+go run cmd/main/main.go --migrate down
+```
+
+or, for executable binary:
+
+```bash
+./main --migrate down
+```
+
 ### Start the application
 
 to start running the application, simply run
