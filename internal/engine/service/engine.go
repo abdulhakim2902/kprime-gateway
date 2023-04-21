@@ -36,7 +36,7 @@ func (svc engineHandler) HandleConsume(msg *sarama.ConsumerMessage) {
 
 	// Check if order filled or partially filled return response for user
 	if data.Status == types.ORDER_FILLED || data.Status == types.ORDER_PARTIALLY_FILLED {
-		svc.PublishOrder(data)
+		svc.PublishBuySellOrder(data)
 	}
 
 	//check date if more than 3 days ago, remove from redis
@@ -113,7 +113,7 @@ func checkDateToRemoveRedis(_expiryDate string, _instrument string, svc engineHa
 	}
 }
 
-func (svc engineHandler) PublishOrder(data types.EngineResponse) {
+func (svc engineHandler) PublishBuySellOrder(data types.EngineResponse) {
 	instrumentName := data.Order.Underlying + "-" + data.Order.ExpiryDate + "-" + fmt.Sprintf("%.0f", data.Order.StrikePrice) + "-" + string(data.Order.Contracts[0])
 	buySellResponse := types.BuySellResponse{
 		Order: types.BuySellOrder{
