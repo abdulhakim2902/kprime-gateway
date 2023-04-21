@@ -36,8 +36,8 @@ func (svc engineHandler) HandleConsume(msg *sarama.ConsumerMessage) {
 
 	// Publish actions
 	switch data.Status {
-	case types.ORDER_ADDED, types.ORDER_PARTIALLY_FILLED, types.ORDER_FILLED:
-		svc.PublishBuySellOrder(data)
+	case types.ORDER_ADDED, types.ORDER_PARTIALLY_FILLED, types.ORDER_FILLED, types.ORDER_CANCELLED, types.ORDER_AMENDED:
+		svc.PublishOrder(data)
 	}
 
 	//check date if more than 3 days ago, remove from redis
@@ -114,46 +114,54 @@ func checkDateToRemoveRedis(_expiryDate string, _instrument string, svc engineHa
 	}
 }
 
-func (svc engineHandler) PublishBuySellOrder(data types.EngineResponse) {
+func (svc engineHandler) PublishOrder(data types.EngineResponse) {
 	instrumentName := data.Order.Underlying + "-" + data.Order.ExpiryDate + "-" + fmt.Sprintf("%.0f", data.Order.StrikePrice) + "-" + string(data.Order.Contracts[0])
-	buySellResponse := types.BuySellResponse{
-		Order: types.BuySellOrder{
-			OrderState:          data.Order.Status,
-			Usd:                 data.Order.Price,
-			FilledAmount:        data.Order.FilledAmount,
-			InstrumentName:      instrumentName,
-			Direction:           data.Order.Side,
-			LastUpdateTimestamp: utils.MakeTimestamp(data.Order.UpdatedAt),
-			Price:               data.Order.Price,
-			Replaced:            len(data.Order.Amendments) > 0,
-			Amount:              data.Order.Amount,
-			OrderId:             data.Order.ID,
-			OrderType:           data.Order.Type,
-			TimeInForce:         data.Order.TimeInForce,
-			CreationTimestamp:   utils.MakeTimestamp(data.Order.CreatedAt),
-		},
-		Trades: []types.BuySellTrade{},
+	order := types.BuySellEditCancelOrder{
+		OrderState:          data.Order.Status,
+		Usd:                 data.Order.Price,
+		FilledAmount:        data.Order.FilledAmount,
+		InstrumentName:      instrumentName,
+		Direction:           data.Order.Side,
+		LastUpdateTimestamp: utils.MakeTimestamp(data.Order.UpdatedAt),
+		Price:               data.Order.Price,
+		Replaced:            len(data.Order.Amendments) > 0,
+		Amount:              data.Order.Amount,
+		OrderId:             data.Order.ID,
+		OrderType:           data.Order.Type,
+		TimeInForce:         data.Order.TimeInForce,
+		CreationTimestamp:   utils.MakeTimestamp(data.Order.CreatedAt),
 	}
-
-	if data.Matches != nil && data.Matches.Trades != nil && len(data.Matches.Trades) > 0 {
-		for _, element := range data.Matches.Trades {
-			buySellResponse.Trades = append(buySellResponse.Trades, types.BuySellTrade{
-				Advanced:       "usd",
-				Amount:         element.Amount,
-				Direction:      element.Side,
-				InstrumentName: instrumentName,
-				OrderId:        data.Order.ID,
-				OrderType:      data.Order.Type,
-				Price:          element.Price,
-				State:          element.Status,
-				Timestamp:      utils.MakeTimestamp(element.CreatedAt),
-				TradeId:        element.ID,
-			})
-		}
-	}
-
 	userIDStr := fmt.Sprintf("%v", data.Order.UserID)
 	ClOrdID := fmt.Sprintf("%v", data.Order.ClOrdID)
 
-	ws.SendOrderMessage(userIDStr, buySellResponse, ClOrdID)
+	switch data.Status {
+	case types.ORDER_CANCELLED:
+		ws.SendOrderMessage(userIDStr, types.CancelResponse{
+			Order: order,
+		}, ClOrdID)
+	default:
+		trades := []types.BuySellEditTrade{}
+		if data.Matches != nil && data.Matches.Trades != nil && len(data.Matches.Trades) > 0 {
+			for _, element := range data.Matches.Trades {
+				trades = append(trades, types.BuySellEditTrade{
+					Advanced:       "usd",
+					Amount:         element.Amount,
+					Direction:      element.Side,
+					InstrumentName: instrumentName,
+					OrderId:        data.Order.ID,
+					OrderType:      data.Order.Type,
+					Price:          element.Price,
+					State:          element.Status,
+					Timestamp:      utils.MakeTimestamp(element.CreatedAt),
+					TradeId:        element.ID,
+				})
+			}
+		}
+		ws.SendOrderMessage(userIDStr, types.BuySellEditResponse{
+			Order:  order,
+			Trades: trades,
+		}, ClOrdID)
+
+	}
+
 }
