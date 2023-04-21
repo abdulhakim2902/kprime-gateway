@@ -1,4 +1,3 @@
-# image: golang:1.13
 stages:
   - deploy
 
@@ -11,6 +10,5 @@ deploy:
     - "go build cmd/main/main.go" 
     - "/usr/bin/systemctl stop gateway.service"
     - "/usr/bin/systemctl start gateway.service"
-#    - "./main"
  
     
