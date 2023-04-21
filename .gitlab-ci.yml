@@ -1,48 +1,22 @@
-deploy_development:
+image: golang:1.13
+
+stages:
+  - deploy
+
+deploy:
   stage: deploy
-  environment:
-    name: development
-  script:
-    - mkdir /var/www/html/gateway-deploy
-    - cd /var/www/html/gateway-deploy && git checkout development && git pull origin development 
-    #&& rsync -avzr --delete /var/www/html/gateway-deploy/ /var/www/html/gateway-deploy/
-    - cd /var/www/html/gateway-deploy
-    - cp /dev/null .env # create empty .env file
-    - echo "env_dev=$env_dev" >> .env # add env_dev to .env file
-    - go build cmd/main/main.go
-    - ./main
     
-  only:
-    - development
-
-
-
-# image: golang:latest
-
-# stages:
-#   - build
-#   - deploy
-
-# before_script:
-#   - apt-get update -qq
-#   - apt-get install -y docker.io
-
-# build:
-#   stage: build
-#   script:
-#     - go build -o main cmd/main/main.go
-
-# deploy:
-#   stage: deploy
-#   script:
-#     - cp /dev/null .env # create empty .env file
-#     - echo "env_dev=$env_dev" >> .env # add env_dev to .env file
-#     - /home/ubuntu/gateway/main
-    # - docker build -t gateway .
-    # - docker tag gateway:latest
-    # - docker save gateway:latest > gateway.tar
-    # - scp -i $ID_RSA gateway.tar deployer@18.139.123.236:/home/ubuntu/gateway/gateway.tar
-    # - ssh -i $ID_RSA deployer@18.139.123.236 'docker load < /path/to/save/gateway.tar'
-    # - ssh -i $ID_RSA user@192.168.0.1 'docker run -d -p 80:80 --name gateway gateway:latest'
-
-    #- ./main # run project
+  script:
+    - cp $env_dev .env
+    # - ssh  -o StrictHostKeyChecking=no gitlab-runner@18.139.123.236 'cd /home/gitlab-runner/gateway/ && git checkout development && git pull origin development'
+    # #- ssh -o StrictHostKeyChecking=no gitlab-runner@18.139.123.236 'cp /dev/null .env && echo "$env_dev" > .env'
+    # - ssh -o StrictHostKeyChecking=no gitlab-runner@18.139.123.236 'go build cmd/main/main.go'
+    # - ssh -o StrictHostKeyChecking=no gitlab-runner@18.139.123.236 './main'
+    # - go env -w GOPRIVATE=git.devucc.name
+    # - git config - global url.”git@git.devucc.name”
+    # - env GIT_TERMINAL_PROMPT=1 go get git.devucc.name
+    # - git config --global url."git@git.devucc.name".insteadOf https://git.devucc.name/
+    # - cd /home/gitlab-runner/gateway/ && git checkout development && git pull origin development && env GIT_TERMINAL_PROMPT=1 go build cmd/main/main.go && ./main
+    - cd /home/gitlab-runner/gateway/ && git checkout development && git pull origin development
+    - go build cmd/main/main.go 
+    # && ./main

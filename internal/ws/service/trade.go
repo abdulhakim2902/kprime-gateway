@@ -42,10 +42,10 @@ func (svc wsTradeService) HandleConsume(msg *sarama.ConsumerMessage) {
 	case types.PUT:
 		optType = "P"
 	}
-	instrument := fmt.Sprintf("TRADE-%s-%s-%f-%s",
+	instrument := fmt.Sprintf("TRADE-%s-%s-%d-%s",
 		trade.Underlying,
 		trade.ExpiryDate,
-		trade.StrikePrice,
+		int(trade.StrikePrice),
 		optType,
 	)
 
@@ -71,7 +71,32 @@ func (svc wsTradeService) HandleConsume(msg *sarama.ConsumerMessage) {
 	svc.redis.Set(instrument, string(data))
 
 	// Broadcast to users
+	ws.GetTradeSocket().BroadcastMessage(instrument, newTrade)
+
+	// Handle All
+	// Get existing data from the redis
+	res, err = svc.redis.GetValue("TRADE-all")
+	if res != "" || err == nil {
+		err = json.Unmarshal([]byte(res), &newTrade)
+		if err != nil {
+			fmt.Println("Error parsing JSON:", err)
+			return
+		}
+	}
+	newTrade = append(newTrade, trade)
+
+	data, err = json.Marshal(newTrade)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	// Save trade to redis
+	svc.redis.Set("TRADE-all", string(data))
+
+	// Broadcast to users
 	ws.GetTradeSocket().BroadcastMessage("all", newTrade)
+
 }
 
 func (svc wsTradeService) Subscribe(c *ws.Client, instrument string) {
