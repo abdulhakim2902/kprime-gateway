@@ -11,6 +11,7 @@ import (
 	ordermatch "gateway/internal/fix-acceptor"
 	obInt "gateway/internal/orderbook/service"
 	"gateway/internal/repositories"
+	"gateway/pkg/ws"
 
 	"github.com/Shopify/sarama"
 
@@ -135,7 +136,7 @@ func handleTopicCancelledOrders(message *sarama.ConsumerMessage) {
 	userIDStr := fmt.Sprintf("%v", data["userId"])
 	ClOrdID := fmt.Sprintf("%v", data["clOrdId"])
 	_id := fmt.Sprintf("%v", data["id"])
-	count := data["count"]
+	count := data["total"]
 
 	type CancelledData struct {
 		Id      string `json:"id"`
