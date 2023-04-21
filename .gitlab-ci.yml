@@ -7,7 +7,7 @@ deploy:
   before_script:
     - cp ${env_dev} .env  
   script:
-    - "cd /home/gitlab-runner/gateway/ && git checkout development && git pull https://git.devucc.name/undercurrent-tech/options-exchange/gateway.git development"
+    - "cd /home/gitlab-runner/gateway/ && git checkout development && git pull git@git.devucc.name:undercurrent-tech/options-exchange/gateway.git"
     - "go build cmd/main/main.go" 
  
     
