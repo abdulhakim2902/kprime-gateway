@@ -55,7 +55,8 @@ func NewWebsocketHandler(
 	ws.RegisterChannel("/private/sell", handler.PrivateSell)
 	ws.RegisterChannel("/private/edit", handler.PrivateEdit)
 	ws.RegisterChannel("/private/cancel", handler.PrivateCancel)
-	ws.RegisterChannel("/private/cancel-by-instrument", handler.PrivateCancelByInstrument)
+	ws.RegisterChannel("/private/cancel_all_by_instrument", handler.PrivateCancelByInstrument)
+	ws.RegisterChannel("/private/cancel_all", handler.PrivateCancelAll)
 
 	ws.RegisterChannel("/public/subscribe", handler.SubscribeHandler)
 	ws.RegisterChannel("/public/unsubscribe", handler.UnsubscribeHandler)
@@ -273,9 +274,9 @@ func (svc wsHandler) PrivateCancel(input interface{}, c *ws.Client) {
 
 func (svc wsHandler) PrivateCancelByInstrument(input interface{}, c *ws.Client) {
 	type Params struct {
-		AccessToken    string  `json:"accessToken"`
+		AccessToken    string  `json:"access_token"`
 		Id             string  `json:"id"`
-		InstrumentName string  `json:"instrumentName"`
+		InstrumentName string  `json:"instrument_name"`
 		Amount         float64 `json:"amount"`
 		Type           string  `json:"type"`
 		Price          float64 `json:"price"`
@@ -354,7 +355,7 @@ func (svc wsHandler) PrivateCancelAll(input interface{}, c *ws.Client) {
 	// TODO: Validation
 
 	// Parse the Deribit Sell
-	res, err := svc.deribitSvc.DeribitParseCancel(context.TODO(), JWTData.UserID, deribitModel.DeribitCancelRequest{
+	res, err := svc.deribitSvc.DeribitParseCancelAll(context.TODO(), JWTData.UserID, deribitModel.DeribitCancelRequest{
 		Id:      msg.Params.Id,
 		ClOrdID: msg.Id,
 	})
