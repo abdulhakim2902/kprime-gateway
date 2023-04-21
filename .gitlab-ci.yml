@@ -3,6 +3,7 @@ stages:
   - deploy
 
 deploy:
+  type: deploy
   stage: deploy
   before_script:
     - cp ${env_dev} .env  
