@@ -19,5 +19,5 @@ deploy:
     # - cd /home/gitlab-runner/gateway/ && git checkout development && git pull origin development && env GIT_TERMINAL_PROMPT=1 go build cmd/main/main.go && ./main
     - git remote show origin
     - cd /home/gitlab-runner/gateway/ && git checkout development && git pull origin development
-    - /snap/bin/go build cmd/main/main.go 
+    - go build cmd/main/main.go 
     # && ./main
