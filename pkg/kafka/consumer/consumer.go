@@ -7,12 +7,10 @@ import (
 	"os"
 	"strings"
 
-	"gateway/internal/repositories"
-	"gateway/pkg/ws"
-
 	engInt "gateway/internal/engine/service"
 	ordermatch "gateway/internal/fix-acceptor"
 	obInt "gateway/internal/orderbook/service"
+	"gateway/internal/repositories"
 
 	"github.com/Shopify/sarama"
 
@@ -79,12 +77,6 @@ func handleTopicOrder(oSvc oInt.IwsOrderService, message *sarama.ConsumerMessage
 
 	// Send message to websocket
 	userIDStr := fmt.Sprintf("%v", data["userId"])
-	ClOrdID := fmt.Sprintf("%v", data["clOrdId"])
-
-	// Remove clOrdID
-	delete(data, "clOrdId")
-
-	ws.SendOrderMessage(userIDStr, data, ClOrdID)
 
 	// symbol := strings.Split(data["underlying"].(string), "-")[0]
 	var order ordermatch.Order
