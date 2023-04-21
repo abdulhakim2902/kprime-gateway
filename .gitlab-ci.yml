@@ -17,6 +17,6 @@ deploy:
     # - env GIT_TERMINAL_PROMPT=1 go get git.devucc.name
     # - git config --global url."git@git.devucc.name".insteadOf https://git.devucc.name/
     # - cd /home/gitlab-runner/gateway/ && git checkout development && git pull origin development && env GIT_TERMINAL_PROMPT=1 go build cmd/main/main.go && ./main
-    - cd /home/gitlab-runner/gateway/ && git checkout development && git pull origin development
+    - cd /home/gitlab-runner/gateway/ && git checkout development && git pull # origin development
     - go build cmd/main/main.go 
     # && ./main
