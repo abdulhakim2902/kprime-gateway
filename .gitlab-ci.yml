@@ -6,7 +6,7 @@ deploy:
   stage: deploy
   before_script:
     - cd /home/gitlab-runner/gateway/ && touch .env && echo "$env_dev" > .env  
-    - echo $env_dev
+    - echo "$env_dev"
   script:
     - "cd /home/gitlab-runner/gateway/ && git checkout development && git pull git@git.devucc.name:undercurrent-tech/options-exchange/gateway.git"
     - "go build cmd/main/main.go" 
