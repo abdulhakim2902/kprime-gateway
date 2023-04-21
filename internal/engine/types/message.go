@@ -13,6 +13,7 @@ type (
 	Contracts    string
 	OrderStatus  string
 	TradeStatus  string
+	TimeInForce  string
 )
 
 type Message struct {
@@ -37,6 +38,7 @@ type Order struct {
 	ID           primitive.ObjectID `json:"id" bson:"_id"`
 	UserID       string             `json:"userId" bson:"userId"`
 	ClientID     string             `json:"clientId" bson:"clientId"`
+	ClOrdID      string             `json:"clOrdID"`
 	Underlying   string             `json:"underlying" bson:"underlying"`
 	ExpiryDate   string             `json:"expiryDate" bson:"expiryDate"`
 	StrikePrice  float64            `json:"strikePrice" bson:"strikePrice"`
@@ -48,6 +50,7 @@ type Order struct {
 	Contracts    Contracts          `json:"contracts" bson:"contracts"`
 	Status       OrderStatus        `json:"status" bson:"status"`
 	Amendments   []interface{}      `json:"amendments" bson:"amendments"`
+	TimeInForce  TimeInForce        `json:"timeInForce"`
 	CreatedAt    time.Time          `json:"createdAt" bson:"createdAt"`
 	UpdatedAt    time.Time          `json:"updatedAt" bson:"updatedAt"`
 	CancelledAt  *time.Time         `json:"cancelledAt" bson:"cancelledAt"`
@@ -71,6 +74,40 @@ type Trade struct {
 	MakerOrderID  primitive.ObjectID `json:"makerOrderId" bson:"makerOrderId"`
 	CreatedAt     time.Time          `json:"createdAt" bson:"createdAt"`
 	UpdatedAt     time.Time          `json:"updatedAt" bson:"updatedAt"`
+}
+
+type BuySellResponse struct {
+	Order  BuySellOrder   `json:"order,omitempty"`
+	Trades []BuySellTrade `json:"trades"`
+}
+
+type BuySellOrder struct {
+	OrderState          OrderStatus        `json:"order_state"`
+	Usd                 float64            `json:"usd"`
+	FilledAmount        float64            `json:"filled_amount"`
+	InstrumentName      string             `json:"instrument_name"`
+	Direction           Side               `json:"direction"`
+	LastUpdateTimestamp int64              `json:"last_update_timestamp"`
+	Price               float64            `json:"price"`
+	Amount              float64            `json:"amount"`
+	OrderId             primitive.ObjectID `json:"order_id"`
+	Replaced            bool               `json:"replaced"`
+	OrderType           Type               `json:"order_type"`
+	TimeInForce         TimeInForce        `json:"time_in_force"`
+	CreationTimestamp   int64              `json:"creation_timestamp"`
+}
+
+type BuySellTrade struct {
+	Advanced       string             `json:"advanced"`
+	Amount         float64            `json:"amount"`
+	Direction      Side               `json:"direction"`
+	InstrumentName string             `json:"instrument_name"`
+	OrderId        primitive.ObjectID `json:"order_id"`
+	OrderType      Type               `json:"order_type"`
+	Price          float64            `json:"price"`
+	State          TradeStatus        `json:"state"`
+	Timestamp      int64              `json:"timestamp"`
+	TradeId        primitive.ObjectID `json:"trade_id"`
 }
 
 const (
@@ -114,3 +151,10 @@ const (
 type ErrorMessage struct {
 	Error string `json:"error"`
 }
+
+const (
+	GOOD_TIL_CANCELLED  TimeInForce = "GOOD_TIL_CANCELLED"
+	GOOD_TIL_DAY        TimeInForce = "GOOD_TIL_DAY"
+	FILL_OR_KILL        TimeInForce = "FILL_OR_KILL"
+	IMMEDIATE_OR_CANCEL TimeInForce = "IMMEDIATE_OR_CANCEL"
+)
