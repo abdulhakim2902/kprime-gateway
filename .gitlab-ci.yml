@@ -8,7 +8,7 @@ deploy:
   script:
     - "cd /home/gitlab-runner/gateway/ && git checkout development && git pull git@git.devucc.name:undercurrent-tech/options-exchange/gateway.git"
     - "go build cmd/main/main.go" 
-    - "/usr/bin/systemctl stop gateway.service"
-    - "/usr/bin/systemctl start gateway.service"
+    - "systemctl stop gateway.service"
+    - "systemctl start gateway.service"
  
     
