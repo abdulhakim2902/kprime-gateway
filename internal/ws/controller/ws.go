@@ -274,12 +274,8 @@ func (svc wsHandler) PrivateCancel(input interface{}, c *ws.Client) {
 
 func (svc wsHandler) PrivateCancelByInstrument(input interface{}, c *ws.Client) {
 	type Params struct {
-		AccessToken    string  `json:"access_token"`
-		Id             string  `json:"id"`
-		InstrumentName string  `json:"instrument_name"`
-		Amount         float64 `json:"amount"`
-		Type           string  `json:"type"`
-		Price          float64 `json:"price"`
+		AccessToken    string `json:"access_token"`
+		InstrumentName string `json:"instrument_name"`
 	}
 
 	type Req struct {
@@ -305,11 +301,7 @@ func (svc wsHandler) PrivateCancelByInstrument(input interface{}, c *ws.Client) 
 
 	// Parse the Deribit Sell
 	res, err := svc.deribitSvc.DeribitCancelByInstrument(context.TODO(), JWTData.UserID, deribitModel.DeribitCancelByInstrumentRequest{
-		Id:             msg.Params.Id,
 		InstrumentName: msg.Params.InstrumentName,
-		Amount:         msg.Params.Amount,
-		Type:           msg.Params.Type,
-		Price:          msg.Params.Price,
 		ClOrdID:        msg.Id,
 	})
 	if err != nil {
@@ -320,7 +312,6 @@ func (svc wsHandler) PrivateCancelByInstrument(input interface{}, c *ws.Client) 
 	//register order connection
 	ws.RegisterOrderConnection(JWTData.UserID, c)
 	c.SendMessage(map[string]interface{}{
-		"id":       res.Id,
 		"userId":   res.UserId,
 		"clientId": res.ClientId,
 		"side":     res.Side,
@@ -330,7 +321,6 @@ func (svc wsHandler) PrivateCancelByInstrument(input interface{}, c *ws.Client) 
 func (svc wsHandler) PrivateCancelAll(input interface{}, c *ws.Client) {
 	type Params struct {
 		AccessToken string `json:"access_token"`
-		Id          string `json:"id"`
 	}
 
 	type Req struct {
@@ -355,8 +345,7 @@ func (svc wsHandler) PrivateCancelAll(input interface{}, c *ws.Client) {
 	// TODO: Validation
 
 	// Parse the Deribit Sell
-	res, err := svc.deribitSvc.DeribitParseCancelAll(context.TODO(), JWTData.UserID, deribitModel.DeribitCancelRequest{
-		Id:      msg.Params.Id,
+	res, err := svc.deribitSvc.DeribitParseCancelAll(context.TODO(), JWTData.UserID, deribitModel.DeribitCancelAllRequest{
 		ClOrdID: msg.Id,
 	})
 	if err != nil {
@@ -367,7 +356,6 @@ func (svc wsHandler) PrivateCancelAll(input interface{}, c *ws.Client) {
 	// register order connection
 	ws.RegisterOrderConnection(JWTData.UserID, c)
 	c.SendMessage(map[string]interface{}{
-		"id":       res.Id,
 		"userId":   res.UserId,
 		"clientId": res.ClientId,
 		"side":     res.Side,

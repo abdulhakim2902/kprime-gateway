@@ -14,6 +14,11 @@ type DeribitCancelRequest struct {
 	ClOrdID string `json:"clOrdID"`
 }
 
+type DeribitCancelAllRequest struct {
+	Id      string `json:"id" validate:"required"`
+	ClOrdID string `json:"clOrdID"`
+}
+
 type DeribitCancelResponse struct {
 	Id       string `json:"id"`
 	UserId   string `json:"userId"`
@@ -22,8 +27,14 @@ type DeribitCancelResponse struct {
 	ClOrdID  string `json:"clOrdID"`
 }
 
+type DeribitCancelAllResponse struct {
+	UserId   string `json:"userId"`
+	ClientId string `json:"clientId"`
+	Side     string `json:"side"`
+	ClOrdID  string `json:"clOrdID"`
+}
+
 type DeribitCancelByInstrumentResponse struct {
-	Id             string  `json:"id"`
 	UserId         string  `json:"userId"`
 	ClientId       string  `json:"clientId"`
 	Underlying     string  `json:"underlying"`
@@ -35,13 +46,8 @@ type DeribitCancelByInstrumentResponse struct {
 }
 
 type DeribitCancelByInstrumentRequest struct {
-	Id             string  `json:"id"`
-	InstrumentName string  `json:"instrument_name" validate:"required"`
-	Amount         float64 `json:"amount"`
-	Type           string  `json:"type"`
-	Price          float64 `json:"price"`
-	ClOrdID        string  `json:"clOrdID"`
-	TimeInForce    string  `json:"time_in_force"`
+	InstrumentName string `json:"instrument_name" validate:"required"`
+	ClOrdID        string `json:"clOrdID"`
 }
 
 type DeribitEditRequest struct {

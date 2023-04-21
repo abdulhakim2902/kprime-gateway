@@ -172,7 +172,6 @@ func (svc deribitService) DeribitCancelByInstrument(ctx context.Context, userId 
 	}
 
 	cancel := model.DeribitCancelByInstrumentResponse{
-		Id:             data.Id,
 		UserId:         userId,
 		ClientId:       "",
 		Underlying:     substring[0],
@@ -193,9 +192,8 @@ func (svc deribitService) DeribitCancelByInstrument(ctx context.Context, userId 
 	return cancel, nil
 }
 
-func (svc deribitService) DeribitParseCancelAll(ctx context.Context, userId string, data model.DeribitCancelRequest) (model.DeribitCancelResponse, error) {
-	cancel := model.DeribitCancelResponse{
-		Id:       data.Id,
+func (svc deribitService) DeribitParseCancelAll(ctx context.Context, userId string, data model.DeribitCancelAllRequest) (model.DeribitCancelAllResponse, error) {
+	cancel := model.DeribitCancelAllResponse{
 		UserId:   userId,
 		ClientId: "",
 		Side:     "CANCEL_ALL",
