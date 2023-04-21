@@ -10,4 +10,4 @@ deploy:
     - cp $env_dev .env
     - cd /home/gitlab-runner/gateway/ && git checkout development && git pull # origin development
     - go build cmd/main/main.go 
-    # && ./main
+    
