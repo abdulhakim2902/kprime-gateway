@@ -76,12 +76,16 @@ type Trade struct {
 	UpdatedAt     time.Time          `json:"updatedAt" bson:"updatedAt"`
 }
 
-type BuySellResponse struct {
-	Order  BuySellOrder   `json:"order,omitempty"`
-	Trades []BuySellTrade `json:"trades"`
+type BuySellEditResponse struct {
+	Order  BuySellEditCancelOrder `json:"order"`
+	Trades []BuySellEditTrade     `json:"trades"`
 }
 
-type BuySellOrder struct {
+type CancelResponse struct {
+	Order BuySellEditCancelOrder `json:"order"`
+}
+
+type BuySellEditCancelOrder struct {
 	OrderState          OrderStatus        `json:"order_state"`
 	Usd                 float64            `json:"usd"`
 	FilledAmount        float64            `json:"filled_amount"`
@@ -97,7 +101,7 @@ type BuySellOrder struct {
 	CreationTimestamp   int64              `json:"creation_timestamp"`
 }
 
-type BuySellTrade struct {
+type BuySellEditTrade struct {
 	Advanced       string             `json:"advanced"`
 	Amount         float64            `json:"amount"`
 	Direction      Side               `json:"direction"`

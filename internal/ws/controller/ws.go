@@ -220,7 +220,7 @@ func (svc wsHandler) PrivateEdit(input interface{}, c *ws.Client) {
 	// TODO: Validation
 
 	// Parse the Deribit Sell
-	res, err := svc.deribitSvc.DeribitParseEdit(context.TODO(), JWTData.UserID, deribitModel.DeribitEditRequest{
+	_, err = svc.deribitSvc.DeribitParseEdit(context.TODO(), JWTData.UserID, deribitModel.DeribitEditRequest{
 		Id:      msg.Params.Id,
 		Price:   msg.Params.Price,
 		Amount:  msg.Params.Amount,
@@ -229,14 +229,6 @@ func (svc wsHandler) PrivateEdit(input interface{}, c *ws.Client) {
 
 	// register order connection
 	ws.RegisterOrderConnection(JWTData.UserID, c)
-	c.SendMessage(map[string]interface{}{
-		"id":       res.Id,
-		"userId":   res.UserId,
-		"clientId": res.ClientId,
-		"side":     res.Side,
-		"price":    res.Price,
-		"amount":   res.Amount,
-	}, res.ClOrdID)
 	return
 }
 
@@ -268,19 +260,13 @@ func (svc wsHandler) PrivateCancel(input interface{}, c *ws.Client) {
 	// TODO: Validation
 
 	// Parse the Deribit Sell
-	res, err := svc.deribitSvc.DeribitParseCancel(context.TODO(), JWTData.UserID, deribitModel.DeribitCancelRequest{
+	_, err = svc.deribitSvc.DeribitParseCancel(context.TODO(), JWTData.UserID, deribitModel.DeribitCancelRequest{
 		Id:      msg.Params.Id,
 		ClOrdID: msg.Id,
 	})
 
 	// register order connection
 	ws.RegisterOrderConnection(JWTData.UserID, c)
-	c.SendMessage(map[string]interface{}{
-		"id":       res.Id,
-		"userId":   res.UserId,
-		"clientId": res.ClientId,
-		"side":     res.Side,
-	}, res.ClOrdID)
 	return
 }
 
