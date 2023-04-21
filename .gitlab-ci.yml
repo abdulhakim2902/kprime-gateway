@@ -10,5 +10,5 @@ deploy:
     # #- ssh -o StrictHostKeyChecking=no gitlab-runner@18.139.123.236 'cp /dev/null .env && echo "$env_dev" > .env'
     # - ssh -o StrictHostKeyChecking=no gitlab-runner@18.139.123.236 'go build cmd/main/main.go'
     # - ssh -o StrictHostKeyChecking=no gitlab-runner@18.139.123.236 './main'
-    - env GIT_TERMINAL_PROMPT=1 go get ssh://git.devucc.name
+    - env GIT_TERMINAL_PROMPT=1 go get https://git.devucc.name
     - cd /home/gitlab-runner/gateway/ && git checkout development && git pull origin development && env GIT_TERMINAL_PROMPT=1 go build cmd/main/main.go && ./main
