@@ -55,6 +55,8 @@ func NewWebsocketHandler(
 	ws.RegisterChannel("/private/sell", handler.PrivateSell)
 	ws.RegisterChannel("/private/edit", handler.PrivateEdit)
 	ws.RegisterChannel("/private/cancel", handler.PrivateCancel)
+	ws.RegisterChannel("/private/cancel_all_by_instrument", handler.PrivateCancelByInstrument)
+	ws.RegisterChannel("/private/cancel_all", handler.PrivateCancelAll)
 
 	ws.RegisterChannel("/public/subscribe", handler.SubscribeHandler)
 	ws.RegisterChannel("/public/unsubscribe", handler.UnsubscribeHandler)
@@ -268,6 +270,96 @@ func (svc wsHandler) PrivateCancel(input interface{}, c *ws.Client) {
 	// register order connection
 	ws.RegisterOrderConnection(JWTData.UserID, c)
 	return
+}
+
+func (svc wsHandler) PrivateCancelByInstrument(input interface{}, c *ws.Client) {
+	type Params struct {
+		AccessToken    string `json:"access_token"`
+		InstrumentName string `json:"instrument_name"`
+	}
+
+	type Req struct {
+		Params Params `json:"params"`
+		Id     string `json:"id"`
+	}
+
+	msg := &Req{}
+	bytes, _ := json.Marshal(input)
+	if err := json.Unmarshal(bytes, &msg); err != nil {
+		c.SendMessage(gin.H{"err": err})
+		return
+	}
+
+	// Check the Access Token
+	JWTData, err := svc.authSvc.JWTCheck(msg.Params.AccessToken)
+	if err != nil {
+		c.SendMessage(gin.H{"err": err.Error()})
+		return
+	}
+
+	// TODO: Validation
+
+	// Parse the Deribit Sell
+	res, err := svc.deribitSvc.DeribitCancelByInstrument(context.TODO(), JWTData.UserID, deribitModel.DeribitCancelByInstrumentRequest{
+		InstrumentName: msg.Params.InstrumentName,
+		ClOrdID:        msg.Id,
+	})
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	//register order connection
+	ws.RegisterOrderConnection(JWTData.UserID, c)
+	c.SendMessage(map[string]interface{}{
+		"userId":   res.UserId,
+		"clientId": res.ClientId,
+		"side":     res.Side,
+	}, res.ClOrdID)
+}
+
+func (svc wsHandler) PrivateCancelAll(input interface{}, c *ws.Client) {
+	type Params struct {
+		AccessToken string `json:"access_token"`
+	}
+
+	type Req struct {
+		Params Params `json:"params"`
+		Id     string `json:"id"`
+	}
+
+	msg := &Req{}
+	bytes, _ := json.Marshal(input)
+	if err := json.Unmarshal(bytes, &msg); err != nil {
+		c.SendMessage(gin.H{"err": err})
+		return
+	}
+
+	// Check the Access Token
+	JWTData, err := svc.authSvc.JWTCheck(msg.Params.AccessToken)
+	if err != nil {
+		c.SendMessage(gin.H{"err": err.Error()})
+		return
+	}
+
+	// TODO: Validation
+
+	// Parse the Deribit Sell
+	res, err := svc.deribitSvc.DeribitParseCancelAll(context.TODO(), JWTData.UserID, deribitModel.DeribitCancelAllRequest{
+		ClOrdID: msg.Id,
+	})
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	// register order connection
+	ws.RegisterOrderConnection(JWTData.UserID, c)
+	c.SendMessage(map[string]interface{}{
+		"userId":   res.UserId,
+		"clientId": res.ClientId,
+		"side":     res.Side,
+	}, res.ClOrdID)
 }
 
 func (svc wsHandler) SubscribeHandler(input interface{}, c *ws.Client) {

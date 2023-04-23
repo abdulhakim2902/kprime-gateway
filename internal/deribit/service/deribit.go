@@ -155,3 +155,57 @@ func (svc deribitService) DeribitParseCancel(ctx context.Context, userId string,
 
 	return cancel, nil
 }
+
+func (svc deribitService) DeribitCancelByInstrument(ctx context.Context, userId string, data model.DeribitCancelByInstrumentRequest) (model.DeribitCancelByInstrumentResponse, error) {
+	_string := data.InstrumentName
+	substring := strings.Split(_string, "-")
+	_contracts := ""
+	if substring[3] == "P" {
+		_contracts = "PUT"
+	} else {
+		_contracts = "CALL"
+	}
+
+	strikePrice, err := strconv.ParseFloat(substring[2], 64)
+	if err != nil {
+		panic(err)
+	}
+
+	cancel := model.DeribitCancelByInstrumentResponse{
+		UserId:         userId,
+		ClientId:       "",
+		Underlying:     substring[0],
+		ExpirationDate: strings.ToUpper(substring[1]),
+		StrikePrice:    strikePrice,
+		Contracts:      _contracts,
+		Side:           "CANCEL_ALL_BY_INSTRUMENT",
+		ClOrdID:        data.ClOrdID,
+	}
+
+	_cancel, err := json.Marshal(cancel)
+	if err != nil {
+		panic(err)
+	}
+	//send to kafka
+	producer.KafkaProducer(string(_cancel), "NEW_ORDER")
+
+	return cancel, nil
+}
+
+func (svc deribitService) DeribitParseCancelAll(ctx context.Context, userId string, data model.DeribitCancelAllRequest) (model.DeribitCancelAllResponse, error) {
+	cancel := model.DeribitCancelAllResponse{
+		UserId:   userId,
+		ClientId: "",
+		Side:     "CANCEL_ALL",
+		ClOrdID:  data.ClOrdID,
+	}
+
+	_cancel, err := json.Marshal(cancel)
+	if err != nil {
+		panic(err)
+	}
+	//send to kafka
+	producer.KafkaProducer(string(_cancel), "NEW_ORDER")
+
+	return cancel, nil
+}
