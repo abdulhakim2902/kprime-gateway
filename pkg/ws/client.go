@@ -20,13 +20,13 @@ type Client struct {
 type WebsocketMessage struct {
 	JSONRPC string      `json:"jsonrpc"`
 	Method  string      `json:"method"`
-	ID      string      `json:"id"`
+	ID      uint64      `json:"id"`
 	Params  interface{} `json:"params"`
 }
 
 type WebsocketResponseMessage struct {
 	JSONRPC string      `json:"jsonrpc"`
-	ID      string      `json:"id"`
+	ID      uint64      `json:"id"`
 	Result  interface{} `json:"result"`
 }
 
@@ -56,12 +56,12 @@ func NewClient(c *websocket.Conn) *Client {
 }
 
 // SendMessage constructs the message with proper structure to be sent over websocket
-func (c *Client) SendMessage(payload interface{}, params ...string) {
+func (c *Client) SendMessage(payload interface{}, params ...uint64) {
 	// e := WebsocketEvent{
 	// 	Type:    msgType,
 	// 	Payload: payload,
 	// }
-	responseID := ""
+	responseID := uint64(0)
 	// Read first parameter if it exists from optional params
 	if len(params) > 0 {
 		responseID = params[0]
@@ -102,7 +102,7 @@ func (c *Client) SendOrderErrorMessage(err error) {
 	m := WebsocketResponseMessage{
 		Result:  e,
 		JSONRPC: "2.0",
-		ID:      "",
+		ID:      uint64(0),
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()

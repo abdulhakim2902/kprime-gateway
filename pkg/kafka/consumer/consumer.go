@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 
 	engInt "gateway/internal/engine/service"
@@ -149,6 +150,7 @@ func handleTopicCancelledOrders(message *sarama.ConsumerMessage) {
 		JsonRpc: "2.0",
 		Result:  count.(int),
 	}
+	ID, _ := strconv.ParseUint(ClOrdID, 0, 64)
 
-	ws.SendOrderMessage(userIDStr, _cancelledData, ClOrdID)
+	ws.SendOrderMessage(userIDStr, _cancelledData, ID)
 }
