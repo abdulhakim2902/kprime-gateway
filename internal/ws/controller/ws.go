@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"gateway/internal/auth/model"
@@ -48,16 +49,18 @@ func NewWebsocketHandler(
 	}
 	r.Use(cors.AllowAll())
 
-	r.GET("/socket", ws.ConnectionEndpoint)
+	r.GET("/ws/api/v2", ws.ConnectionEndpoint)
 
-	ws.RegisterChannel("/public/auth", handler.PublicAuth)
-	ws.RegisterChannel("/private/buy", handler.PrivateBuy)
-	ws.RegisterChannel("/private/sell", handler.PrivateSell)
-	ws.RegisterChannel("/private/edit", handler.PrivateEdit)
-	ws.RegisterChannel("/private/cancel", handler.PrivateCancel)
+	ws.RegisterChannel("public/auth", handler.PublicAuth)
+	ws.RegisterChannel("private/buy", handler.PrivateBuy)
+	ws.RegisterChannel("private/sell", handler.PrivateSell)
+	ws.RegisterChannel("private/edit", handler.PrivateEdit)
+	ws.RegisterChannel("private/cancel", handler.PrivateCancel)
+	ws.RegisterChannel("private/cancel_all_by_instrument", handler.PrivateCancelByInstrument)
+	ws.RegisterChannel("private/cancel_all", handler.PrivateCancelAll)
 
-	ws.RegisterChannel("/public/subscribe", handler.SubscribeHandler)
-	ws.RegisterChannel("/public/unsubscribe", handler.UnsubscribeHandler)
+	ws.RegisterChannel("public/subscribe", handler.SubscribeHandler)
+	ws.RegisterChannel("public/unsubscribe", handler.UnsubscribeHandler)
 
 	ws.RegisterChannel("/public/get_instruments", handler.GetInstruments)
 	ws.RegisterChannel("/public/get_order_book", handler.GetOrderBook)
@@ -72,6 +75,7 @@ func (svc wsHandler) PublicAuth(input interface{}, c *ws.Client) {
 
 	type WebsocketAuth struct {
 		Params Params `json:"params"`
+		Id     uint64 `json:"id"`
 	}
 
 	msg := &WebsocketAuth{}
@@ -91,7 +95,7 @@ func (svc wsHandler) PublicAuth(input interface{}, c *ws.Client) {
 		return
 	}
 
-	c.SendMessage(gin.H{"accessToken": signedToken})
+	c.SendMessage(gin.H{"access_token": signedToken}, msg.Id)
 	return
 }
 
@@ -269,6 +273,96 @@ func (svc wsHandler) PrivateCancel(input interface{}, c *ws.Client) {
 	// register order connection
 	ws.RegisterOrderConnection(JWTData.UserID, c)
 	return
+}
+
+func (svc wsHandler) PrivateCancelByInstrument(input interface{}, c *ws.Client) {
+	type Params struct {
+		AccessToken    string `json:"access_token"`
+		InstrumentName string `json:"instrument_name"`
+	}
+
+	type Req struct {
+		Params Params `json:"params"`
+		Id     uint64 `json:"id"`
+	}
+
+	msg := &Req{}
+	bytes, _ := json.Marshal(input)
+	if err := json.Unmarshal(bytes, &msg); err != nil {
+		c.SendMessage(gin.H{"err": err})
+		return
+	}
+
+	// Check the Access Token
+	JWTData, err := svc.authSvc.JWTCheck(msg.Params.AccessToken)
+	if err != nil {
+		c.SendMessage(gin.H{"err": err.Error()})
+		return
+	}
+
+	// TODO: Validation
+
+	// Parse the Deribit Sell
+	res, err := svc.deribitSvc.DeribitCancelByInstrument(context.TODO(), JWTData.UserID, deribitModel.DeribitCancelByInstrumentRequest{
+		InstrumentName: msg.Params.InstrumentName,
+		ClOrdID:        strconv.FormatUint(msg.Id, 10),
+	})
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	//register order connection
+	ws.RegisterOrderConnection(JWTData.UserID, c)
+	c.SendMessage(map[string]interface{}{
+		"userId":   res.UserId,
+		"clientId": res.ClientId,
+		"side":     res.Side,
+	}, msg.Id)
+}
+
+func (svc wsHandler) PrivateCancelAll(input interface{}, c *ws.Client) {
+	type Params struct {
+		AccessToken string `json:"access_token"`
+	}
+
+	type Req struct {
+		Params Params `json:"params"`
+		Id     uint64 `json:"id"`
+	}
+
+	msg := &Req{}
+	bytes, _ := json.Marshal(input)
+	if err := json.Unmarshal(bytes, &msg); err != nil {
+		c.SendMessage(gin.H{"err": err})
+		return
+	}
+
+	// Check the Access Token
+	JWTData, err := svc.authSvc.JWTCheck(msg.Params.AccessToken)
+	if err != nil {
+		c.SendMessage(gin.H{"err": err.Error()})
+		return
+	}
+
+	// TODO: Validation
+
+	// Parse the Deribit Sell
+	res, err := svc.deribitSvc.DeribitParseCancelAll(context.TODO(), JWTData.UserID, deribitModel.DeribitCancelAllRequest{
+		ClOrdID: strconv.FormatUint(msg.Id, 10),
+	})
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	// register order connection
+	ws.RegisterOrderConnection(JWTData.UserID, c)
+	c.SendMessage(map[string]interface{}{
+		"userId":   res.UserId,
+		"clientId": res.ClientId,
+		"side":     res.Side,
+	}, msg.Id)
 }
 
 func (svc wsHandler) SubscribeHandler(input interface{}, c *ws.Client) {

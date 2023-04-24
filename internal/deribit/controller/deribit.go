@@ -7,11 +7,10 @@ import (
 	"gateway/internal/deribit/service"
 	"gateway/pkg/model"
 	"gateway/pkg/rbac/middleware"
+	"github.com/gin-gonic/gin"
+	validator "github.com/go-playground/validator/v10"
 	"net/http"
 	"strconv"
-
-	"github.com/gin-gonic/gin"
-	"github.com/go-playground/validator/v10"
 )
 
 // Create a new instance of the validator
@@ -27,11 +26,13 @@ func NewDeribitHandler(r *gin.Engine, svc service.IDeribitService) {
 	}
 
 	private := r.Group("/private")
+	public := r.Group("/api/v2/public")
 
 	private.POST("buy", middleware.Authenticate(), handler.DeribitParseBuy)
 	private.POST("sell", middleware.Authenticate(), handler.DeribitParseSell)
 	private.POST("edit", middleware.Authenticate(), handler.DeribitParseEdit)
 	private.POST("cancel", middleware.Authenticate(), handler.DeribitParseCancel)
+	public.GET("test", handler.DeribitTest)
 }
 
 func (h DeribitHandler) DeribitParseBuy(r *gin.Context) {
@@ -271,5 +272,18 @@ func (h DeribitHandler) DeribitParseCancel(r *gin.Context) {
 
 	r.JSON(http.StatusAccepted, &model.Response{
 		Data: order,
+	})
+}
+
+func (h DeribitHandler) DeribitTest(r *gin.Context) {
+	r.JSON(http.StatusOK, gin.H{
+		"jsonrpc": "2.0",
+		"result": gin.H{
+			"version": "1.2.26",
+		},
+		"testnet": true,
+		"usIn":    0,
+		"usOut":   0,
+		"usDiff":  0,
 	})
 }
