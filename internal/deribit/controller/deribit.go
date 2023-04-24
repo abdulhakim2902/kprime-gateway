@@ -7,7 +7,6 @@ import (
 	"gateway/internal/deribit/service"
 	"gateway/pkg/model"
 	"gateway/pkg/rbac/middleware"
-	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	validator "github.com/go-playground/validator/v10"
 	"net/http"
@@ -27,24 +26,13 @@ func NewDeribitHandler(r *gin.Engine, svc service.IDeribitService) {
 	}
 
 	private := r.Group("/private")
-	public := gin.Default()
-
-	allowedOrigins := []string{"*"}
-
-	public.Use(cors.New(cors.Config{
-		AllowOrigins:  allowedOrigins,
-		AllowMethods:  []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"},
-		AllowHeaders:  []string{"X-Requested-With", "Origin", "Content-Length", "Content-Type", "Authorization"},
-		ExposeHeaders: []string{"Authorization"},
-	}))
+	public := r.Group("/api/v2/public")
 
 	private.POST("buy", middleware.Authenticate(), handler.DeribitParseBuy)
 	private.POST("sell", middleware.Authenticate(), handler.DeribitParseSell)
 	private.POST("edit", middleware.Authenticate(), handler.DeribitParseEdit)
 	private.POST("cancel", middleware.Authenticate(), handler.DeribitParseCancel)
-	public.GET("api/v2/public/test", handler.DeribitTest)
-
-	public.Use(cors.Default())
+	public.GET("test", handler.DeribitTest)
 }
 
 func (h DeribitHandler) DeribitParseBuy(r *gin.Context) {
