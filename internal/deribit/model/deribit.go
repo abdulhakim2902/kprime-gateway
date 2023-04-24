@@ -1,5 +1,9 @@
 package model
 
+import (
+	_types "gateway/internal/orderbook/types"
+)
+
 type DeribitRequest struct {
 	InstrumentName string  `json:"instrument_name" validate:"required"`
 	Amount         float64 `json:"amount"`
@@ -79,17 +83,17 @@ type DeribitGetOrderBookRequest struct {
 }
 
 type DeribitGetOrderBookResponse struct {
-	Timestamp      int64          `json:"timestamp"`
-	Stats          OrderBookStats `json:"stats"`
-	State          string         `json:"state"`
-	LastPrice      float64        `json:"last_price"`
-	InstrumentName string         `json:"instrument_name"`
-	Bids           [][]float64    `json:"bids"`
-	BestBidPrice   float64        `json:"best_bid_price"`
-	BestBidAmount  int64          `json:"best_bid_amount"`
-	BestAskPrice   int64          `json:"best_ask_price"`
-	BestAskAmount  int64          `json:"best_ask_amount"`
-	Asks           []interface{}  `json:"asks"`
+	Timestamp      int64           `json:"timestamp"`
+	Stats          OrderBookStats  `json:"stats"`
+	State          string          `json:"state"`
+	LastPrice      float64         `json:"last_price"`
+	InstrumentName string          `json:"instrument_name"`
+	Bids           []*_types.Order `json:"bids"`
+	BestBidPrice   float64         `json:"best_bid_price"`
+	BestBidAmount  int64           `json:"best_bid_amount"`
+	BestAskPrice   int64           `json:"best_ask_price"`
+	BestAskAmount  int64           `json:"best_ask_amount"`
+	Asks           []*_types.Order `json:"asks"`
 }
 
 type OrderBookStats struct {

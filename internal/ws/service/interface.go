@@ -12,7 +12,7 @@ import (
 type IwsOrderbookService interface {
 	Subscribe(c *ws.Client, instrument string)
 	Unsubscribe(c *ws.Client)
-	GetOrderBook(ctx context.Context, request deribitModel.DeribitGetOrderBookRequest) []deribitModel.DeribitGetOrderBookResponse
+	GetOrderBook(ctx context.Context, request deribitModel.DeribitGetOrderBookRequest) deribitModel.DeribitGetOrderBookResponse
 }
 
 type IwsOrderService interface {

@@ -8,6 +8,7 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson"
 
+	_types "gateway/internal/orderbook/types"
 	"gateway/internal/repositories/types"
 
 	"go.mongodb.org/mongo-driver/mongo"
@@ -208,4 +209,26 @@ func (r OrderRepository) GetInstruments(currency string, expired bool) ([]*derib
 	}
 
 	return orders, nil
+}
+
+func (r OrderRepository) Aggregate(pipeline interface{}) []*_types.Order {
+	opt := options.AggregateOptions{
+		MaxTime: &defaultTimeout,
+	}
+
+	cursor, err := r.collection.Aggregate(context.Background(), pipeline, &opt)
+	if err != nil {
+		return []*_types.Order{}
+	}
+
+	err = cursor.Err()
+	if err != nil {
+		return []*_types.Order{}
+	}
+
+	orders := []*_types.Order{}
+
+	cursor.All(context.Background(), &orders)
+
+	return orders
 }
