@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"gateway/internal/auth/model"
@@ -48,20 +49,20 @@ func NewWebsocketHandler(
 	}
 	r.Use(cors.AllowAll())
 
-	r.GET("/socket", ws.ConnectionEndpoint)
+	r.GET("/ws/api/v2", ws.ConnectionEndpoint)
 
-	ws.RegisterChannel("/public/auth", handler.PublicAuth)
-	ws.RegisterChannel("/private/buy", handler.PrivateBuy)
-	ws.RegisterChannel("/private/sell", handler.PrivateSell)
-	ws.RegisterChannel("/private/edit", handler.PrivateEdit)
-	ws.RegisterChannel("/private/cancel", handler.PrivateCancel)
-	ws.RegisterChannel("/private/cancel_all_by_instrument", handler.PrivateCancelByInstrument)
-	ws.RegisterChannel("/private/cancel_all", handler.PrivateCancelAll)
+	ws.RegisterChannel("public/auth", handler.PublicAuth)
+	ws.RegisterChannel("private/buy", handler.PrivateBuy)
+	ws.RegisterChannel("private/sell", handler.PrivateSell)
+	ws.RegisterChannel("private/edit", handler.PrivateEdit)
+	ws.RegisterChannel("private/cancel", handler.PrivateCancel)
+	ws.RegisterChannel("private/cancel_all_by_instrument", handler.PrivateCancelByInstrument)
+	ws.RegisterChannel("private/cancel_all", handler.PrivateCancelAll)
 
-	ws.RegisterChannel("/public/subscribe", handler.SubscribeHandler)
-	ws.RegisterChannel("/public/unsubscribe", handler.UnsubscribeHandler)
+	ws.RegisterChannel("public/subscribe", handler.SubscribeHandler)
+	ws.RegisterChannel("public/unsubscribe", handler.UnsubscribeHandler)
 
-	ws.RegisterChannel("/public/get_instruments", handler.GetInstruments)
+	ws.RegisterChannel("public/get_instruments", handler.GetInstruments)
 }
 
 func (svc wsHandler) PublicAuth(input interface{}, c *ws.Client) {
@@ -73,6 +74,7 @@ func (svc wsHandler) PublicAuth(input interface{}, c *ws.Client) {
 
 	type WebsocketAuth struct {
 		Params Params `json:"params"`
+		Id     uint64 `json:"id"`
 	}
 
 	msg := &WebsocketAuth{}
@@ -92,7 +94,7 @@ func (svc wsHandler) PublicAuth(input interface{}, c *ws.Client) {
 		return
 	}
 
-	c.SendMessage(gin.H{"accessToken": signedToken})
+	c.SendMessage(gin.H{"access_token": signedToken}, msg.Id)
 	return
 }
 
@@ -280,7 +282,7 @@ func (svc wsHandler) PrivateCancelByInstrument(input interface{}, c *ws.Client) 
 
 	type Req struct {
 		Params Params `json:"params"`
-		Id     string `json:"id"`
+		Id     uint64 `json:"id"`
 	}
 
 	msg := &Req{}
@@ -302,7 +304,7 @@ func (svc wsHandler) PrivateCancelByInstrument(input interface{}, c *ws.Client) 
 	// Parse the Deribit Sell
 	res, err := svc.deribitSvc.DeribitCancelByInstrument(context.TODO(), JWTData.UserID, deribitModel.DeribitCancelByInstrumentRequest{
 		InstrumentName: msg.Params.InstrumentName,
-		ClOrdID:        msg.Id,
+		ClOrdID:        strconv.FormatUint(msg.Id, 10),
 	})
 	if err != nil {
 		fmt.Println(err)
@@ -315,7 +317,7 @@ func (svc wsHandler) PrivateCancelByInstrument(input interface{}, c *ws.Client) 
 		"userId":   res.UserId,
 		"clientId": res.ClientId,
 		"side":     res.Side,
-	}, res.ClOrdID)
+	}, msg.Id)
 }
 
 func (svc wsHandler) PrivateCancelAll(input interface{}, c *ws.Client) {
@@ -325,7 +327,7 @@ func (svc wsHandler) PrivateCancelAll(input interface{}, c *ws.Client) {
 
 	type Req struct {
 		Params Params `json:"params"`
-		Id     string `json:"id"`
+		Id     uint64 `json:"id"`
 	}
 
 	msg := &Req{}
@@ -346,7 +348,7 @@ func (svc wsHandler) PrivateCancelAll(input interface{}, c *ws.Client) {
 
 	// Parse the Deribit Sell
 	res, err := svc.deribitSvc.DeribitParseCancelAll(context.TODO(), JWTData.UserID, deribitModel.DeribitCancelAllRequest{
-		ClOrdID: msg.Id,
+		ClOrdID: strconv.FormatUint(msg.Id, 10),
 	})
 	if err != nil {
 		fmt.Println(err)
@@ -359,7 +361,7 @@ func (svc wsHandler) PrivateCancelAll(input interface{}, c *ws.Client) {
 		"userId":   res.UserId,
 		"clientId": res.ClientId,
 		"side":     res.Side,
-	}, res.ClOrdID)
+	}, msg.Id)
 }
 
 func (svc wsHandler) SubscribeHandler(input interface{}, c *ws.Client) {
