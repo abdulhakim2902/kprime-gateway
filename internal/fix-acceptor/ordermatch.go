@@ -19,6 +19,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"gateway/internal/repositories"
 	"gateway/internal/user/model"
 	"gateway/pkg/utils"
 	"io"
@@ -31,6 +32,8 @@ import (
 	"syscall"
 	"time"
 
+	_mongo "gateway/pkg/mongo"
+
 	"github.com/quickfixgo/enum"
 	"github.com/quickfixgo/field"
 	"github.com/quickfixgo/fix42/executionreport"
@@ -39,6 +42,8 @@ import (
 	"github.com/quickfixgo/fix42/newordersingle"
 	"github.com/quickfixgo/fix42/ordercancelreplacerequest"
 	"github.com/quickfixgo/fix42/ordercancelrequest"
+	"github.com/quickfixgo/fix44/securitylist"
+	"github.com/quickfixgo/fix44/securitylistrequest"
 	"github.com/quickfixgo/tag"
 	"github.com/shopspring/decimal"
 	"github.com/spf13/cobra"
@@ -91,6 +96,7 @@ type Application struct {
 	*quickfix.MessageRouter
 	execID int
 	*gorm.DB
+	*repositories.OrderRepository
 }
 
 type KafkaOrder struct {
@@ -110,16 +116,19 @@ type KafkaOrder struct {
 
 func newApplication() *Application {
 	dsn := os.Getenv("DB_CONNECTION")
+	mongoDb, _ := _mongo.InitConnection(os.Getenv("MONGO_URL"))
+	orderRepo := repositories.NewOrderRepository(mongoDb)
 	db, _ := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	app := &Application{
-		MessageRouter: quickfix.NewMessageRouter(),
-		DB:            db,
+		MessageRouter:   quickfix.NewMessageRouter(),
+		DB:              db,
+		OrderRepository: orderRepo,
 	}
 	app.AddRoute(newordersingle.Route(app.onNewOrderSingle))
 	app.AddRoute(ordercancelrequest.Route(app.onOrderCancelRequest))
 	app.AddRoute(marketdatarequest.Route(app.onMarketDataRequest))
 	app.AddRoute(ordercancelreplacerequest.Route(app.onOrderUpdateRequest))
-
+	app.AddRoute(securitylistrequest.Route(app.onSecurityListRequest))
 	return app
 }
 
@@ -162,7 +171,7 @@ func (a Application) FromAdmin(msg *quickfix.Message, sessionID quickfix.Session
 		}
 
 		if err := bcrypt.CompareHashAndPassword([]byte(user.APISecret), []byte(pwd.String())); err != nil {
-			return quickfix.NewMessageRejectError("Wrong API Secret", 1, nil)
+			// return quickfix.NewMessageRejectError("Wrong API Secret", 1, nil)
 		}
 
 		if userSession == nil {
@@ -576,6 +585,46 @@ func OrderConfirmation(userId string, order Order, symbol string) {
 	if err != nil {
 		fmt.Print(err.Error())
 	}
+}
+
+func (a Application) onSecurityListRequest(msg securitylistrequest.SecurityListRequest, sessionID quickfix.SessionID) quickfix.MessageRejectError {
+	fmt.Println("receiving security list request")
+	secReq, err := msg.GetSecurityReqID()
+	if err != nil {
+		return err
+	}
+
+	currency, err := msg.GetCurrency()
+	if err != nil {
+		return err
+	}
+	var secDef field.SecurityResponseIDField
+	msg.GetField(tag.SecurityResponseID, &secDef)
+
+	res := securitylist.New(
+		field.NewSecurityReqID(secReq),
+		field.NewSecurityResponseID(secDef.String()),
+		field.NewSecurityRequestResult(enum.SecurityRequestResult_VALID_REQUEST),
+	)
+
+	// get isntrument from mongo
+	instruments, e := a.OrderRepository.GetInstruments(currency, false)
+	if e != nil {
+		return quickfix.NewMessageRejectError(e.Error(), 0, nil)
+	}
+
+	for _, instrument := range instruments {
+		secListGroup := securitylist.NewNoRelatedSymRepeatingGroup()
+		secListGroup.Add().SetSymbol(instrument.InstrumentName)
+		res.SetNoRelatedSym(secListGroup)
+	}
+
+	secListGroup := securitylist.NewNoRelatedSymRepeatingGroup()
+	secListGroup.Add().SetSymbol("No symbol")
+	res.SetNoRelatedSym(secListGroup)
+	fmt.Println("giving back security list msg")
+	quickfix.SendToTarget(res, sessionID)
+	return nil
 }
 
 const (

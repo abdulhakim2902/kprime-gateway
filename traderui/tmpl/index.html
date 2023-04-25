@@ -30,7 +30,8 @@
 var bootstrap = {
   session_ids: {{ .SessionsAsJSON }},
   orders: {{ .OrdersAsJSON }},
-  executions: {{ .ExecutionsAsJSON }}
+  executions: {{ .ExecutionsAsJSON }},
+  symbols: {{ .SecurityListAsJSON }},
 };
 
 App.render();
