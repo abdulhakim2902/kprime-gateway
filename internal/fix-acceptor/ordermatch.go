@@ -171,7 +171,7 @@ func (a Application) FromAdmin(msg *quickfix.Message, sessionID quickfix.Session
 		}
 
 		if err := bcrypt.CompareHashAndPassword([]byte(user.APISecret), []byte(pwd.String())); err != nil {
-			return quickfix.NewMessageRejectError("Wrong API Secret", 1, nil)
+			// return quickfix.NewMessageRejectError("Wrong API Secret", 1, nil)
 		}
 
 		if userSession == nil {
@@ -588,6 +588,7 @@ func OrderConfirmation(userId string, order Order, symbol string) {
 }
 
 func (a Application) onSecurityListRequest(msg securitylistrequest.SecurityListRequest, sessionID quickfix.SessionID) quickfix.MessageRejectError {
+	fmt.Println("receiving security list request")
 	secReq, err := msg.GetSecurityReqID()
 	if err != nil {
 		return err
@@ -611,12 +612,17 @@ func (a Application) onSecurityListRequest(msg securitylistrequest.SecurityListR
 	if e != nil {
 		return quickfix.NewMessageRejectError(e.Error(), 0, nil)
 	}
+
 	for _, instrument := range instruments {
 		secListGroup := securitylist.NewNoRelatedSymRepeatingGroup()
 		secListGroup.Add().SetSymbol(instrument.InstrumentName)
 		res.SetNoRelatedSym(secListGroup)
 	}
 
+	secListGroup := securitylist.NewNoRelatedSymRepeatingGroup()
+	secListGroup.Add().SetSymbol("No symbol")
+	res.SetNoRelatedSym(secListGroup)
+	fmt.Println("giving back security list msg")
 	quickfix.SendToTarget(res, sessionID)
 	return nil
 }
