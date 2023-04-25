@@ -12,6 +12,9 @@ import (
 	"text/template"
 
 	"github.com/gorilla/mux"
+	"github.com/quickfixgo/enum"
+	"github.com/quickfixgo/field"
+	"github.com/quickfixgo/fix44/securitylistrequest"
 	"github.com/quickfixgo/tag"
 	"github.com/quickfixgo/traderui/basic"
 	"github.com/quickfixgo/traderui/oms"
@@ -313,6 +316,17 @@ func (c tradeClient) newOrder(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (c tradeClient) getSecurityList(w http.ResponseWriter, r *http.Request) {
+	msg := securitylistrequest.New(
+		field.NewSecurityReqID("1"),
+		field.NewSecurityListRequestType(enum.SecurityListRequestType_SYMBOL),
+	)
+	err := quickfix.SendToTarget(msg, c.SessionIDs["FIX.4.4:FIXCLIENT->FIXSERVER"])
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+
+}
 func main() {
 	flag.Parse()
 
@@ -362,6 +376,8 @@ func main() {
 
 	router.HandleFunc("/executions", app.getExecutions).Methods("GET")
 	router.HandleFunc("/executions/{id:[0-9]+}", app.getExecution).Methods("GET")
+
+	router.HandleFunc("/security-list", app.getSecurityList).Methods("GET")
 
 	router.HandleFunc("/securitydefinitionrequest", app.newSecurityDefintionRequest).Methods("POST")
 

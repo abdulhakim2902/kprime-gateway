@@ -10,6 +10,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/quickfixgo/enum"
 	"github.com/quickfixgo/field"
+	"github.com/quickfixgo/fix44/securitylist"
 	"github.com/quickfixgo/tag"
 	"github.com/quickfixgo/traderui/oms"
 
@@ -69,9 +70,35 @@ func (a *FIXApplication) FromApp(msg *quickfix.Message, sessionID quickfix.Sessi
 	case enum.MsgType_EXECUTION_REPORT:
 		fmt.Println("Execution Report")
 		return a.onExecutionReport(msg, sessionID)
+	case enum.MsgType_SECURITY_LIST:
+		fmt.Println("Security List")
+		return a.onSecurityList(msg, sessionID)
 	}
 
 	return quickfix.UnsupportedMessageType()
+}
+
+func (a *FIXApplication) onSecurityList(msg *quickfix.Message, sessionID quickfix.SessionID) quickfix.MessageRejectError {
+	a.Lock()
+	defer a.Unlock()
+
+	var group securitylist.NoRelatedSymRepeatingGroup
+	err := msg.Body.GetGroup(group)
+	if err != nil {
+		return err
+	}
+	symbols := make([]string, group.Len())
+	for i := 1; i < group.Len(); i++ {
+		var symbol field.SymbolField
+		if err := group.Get(i).Get(&symbol); err != nil {
+			return err
+		}
+		fmt.Println("Symbol: ", symbol.String())
+		symbols[i] = symbol.String()
+	}
+
+	fmt.Println("Instrument List: ", symbols)
+	return nil
 }
 
 func (a *FIXApplication) onExecutionReport(msg *quickfix.Message, sessionID quickfix.SessionID) quickfix.MessageRejectError {
