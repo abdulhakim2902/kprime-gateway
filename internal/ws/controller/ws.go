@@ -110,7 +110,7 @@ func (svc wsHandler) PrivateBuy(input interface{}, c *ws.Client) {
 
 	type Req struct {
 		Params Params `json:"params"`
-		Id     string `json:"id"`
+		Id     uint64 `json:"id"`
 	}
 
 	msg := &Req{}
@@ -135,7 +135,7 @@ func (svc wsHandler) PrivateBuy(input interface{}, c *ws.Client) {
 		Amount:         msg.Params.Amount,
 		Type:           msg.Params.Type,
 		Price:          msg.Params.Price,
-		ClOrdID:        msg.Id,
+		ClOrdID:        strconv.FormatUint(msg.Id, 10),
 		TimeInForce:    msg.Params.TimeInForce,
 	})
 
@@ -158,7 +158,7 @@ func (svc wsHandler) PrivateSell(input interface{}, c *ws.Client) {
 
 	type Req struct {
 		Params Params `json:"params"`
-		Id     string `json:"id"`
+		Id     uint64 `json:"id"`
 	}
 
 	msg := &Req{}
@@ -183,7 +183,7 @@ func (svc wsHandler) PrivateSell(input interface{}, c *ws.Client) {
 		Amount:         msg.Params.Amount,
 		Type:           msg.Params.Type,
 		Price:          msg.Params.Price,
-		ClOrdID:        msg.Id,
+		ClOrdID:        strconv.FormatUint(msg.Id, 10),
 		TimeInForce:    msg.Params.TimeInForce,
 	})
 
@@ -204,7 +204,7 @@ func (svc wsHandler) PrivateEdit(input interface{}, c *ws.Client) {
 
 	type Req struct {
 		Params Params `json:"params"`
-		Id     string `json:"id"`
+		Id     uint64 `json:"id"`
 	}
 
 	msg := &Req{}
@@ -228,7 +228,7 @@ func (svc wsHandler) PrivateEdit(input interface{}, c *ws.Client) {
 		Id:      msg.Params.Id,
 		Price:   msg.Params.Price,
 		Amount:  msg.Params.Amount,
-		ClOrdID: msg.Id,
+		ClOrdID: strconv.FormatUint(msg.Id, 10),
 	})
 
 	// register order connection
@@ -244,7 +244,7 @@ func (svc wsHandler) PrivateCancel(input interface{}, c *ws.Client) {
 
 	type Req struct {
 		Params Params `json:"params"`
-		Id     string `json:"id"`
+		Id     uint64 `json:"id"`
 	}
 
 	msg := &Req{}
@@ -266,7 +266,7 @@ func (svc wsHandler) PrivateCancel(input interface{}, c *ws.Client) {
 	// Parse the Deribit Sell
 	_, err = svc.deribitSvc.DeribitParseCancel(context.TODO(), JWTData.UserID, deribitModel.DeribitCancelRequest{
 		Id:      msg.Params.Id,
-		ClOrdID: msg.Id,
+		ClOrdID: strconv.FormatUint(msg.Id, 10),
 	})
 
 	// register order connection
