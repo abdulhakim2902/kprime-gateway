@@ -99,7 +99,7 @@ func (svc wsTradeService) HandleConsume(msg *sarama.ConsumerMessage) {
 
 }
 
-func (svc wsTradeService) Subscribe(c *ws.Client, instrument string) {
+func (svc wsTradeService) Subscribe(c *ws.Client, instrument string, params ...uint64) {
 	socket := ws.GetTradeSocket()
 
 	// Get initial data from the redis
@@ -138,7 +138,7 @@ func (svc wsTradeService) Subscribe(c *ws.Client, instrument string) {
 	err = json.Unmarshal([]byte(res), &initData)
 	if err != nil {
 		msg := map[string]string{"Message": err.Error()}
-		socket.SendErrorMessage(c, msg)
+		socket.SendErrorMessage(c, msg, params[0])
 		return
 	}
 
@@ -146,7 +146,7 @@ func (svc wsTradeService) Subscribe(c *ws.Client, instrument string) {
 	ws.RegisterConnectionUnsubscribeHandler(c, socket.UnsubscribeHandler(id))
 
 	// Send initial data from the redis
-	socket.SendInitMessage(c, initData)
+	socket.SendInitMessage(c, initData, params[0])
 }
 
 func (svc wsTradeService) Unsubscribe(c *ws.Client) {

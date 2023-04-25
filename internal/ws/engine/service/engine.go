@@ -15,7 +15,7 @@ func NewwsEngineService(redis *redis.RedisConnectionPool) IwsEngineService {
 	return &wsEngineService{redis}
 }
 
-func (svc wsEngineService) Subscribe(c *ws.Client, instrument string) {
+func (svc wsEngineService) Subscribe(c *ws.Client, instrument string, params ...uint64) {
 	socket := ws.GetEngineSocket()
 	// Get initial data from the redis
 	res, err := svc.redis.GetValue("ENGINE-" + instrument)
@@ -31,7 +31,7 @@ func (svc wsEngineService) Subscribe(c *ws.Client, instrument string) {
 	err = socket.Subscribe(id, c)
 	if err != nil {
 		msg := map[string]string{"Message": err.Error()}
-		socket.SendErrorMessage(c, msg)
+		socket.SendErrorMessage(c, msg, params[0])
 		return
 	}
 
@@ -40,7 +40,7 @@ func (svc wsEngineService) Subscribe(c *ws.Client, instrument string) {
 	err = json.Unmarshal([]byte(res), &initData)
 	if err != nil {
 		msg := map[string]string{"Message": err.Error()}
-		socket.SendErrorMessage(c, msg)
+		socket.SendErrorMessage(c, msg, params[0])
 		return
 	}
 
@@ -48,7 +48,7 @@ func (svc wsEngineService) Subscribe(c *ws.Client, instrument string) {
 	ws.RegisterConnectionUnsubscribeHandler(c, socket.UnsubscribeHandler(id))
 
 	// Send initial data from the redis
-	socket.SendInitMessage(c, initData)
+	socket.SendInitMessage(c, initData, params[0])
 }
 
 func (svc wsEngineService) Unsubscribe(c *ws.Client) {

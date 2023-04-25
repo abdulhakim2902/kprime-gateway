@@ -1,7 +1,9 @@
 package ws
 
 import (
+	"strconv"
 	"sync"
+	"time"
 
 	"github.com/gorilla/websocket"
 )
@@ -28,6 +30,10 @@ type WebsocketResponseMessage struct {
 	JSONRPC string      `json:"jsonrpc"`
 	ID      uint64      `json:"id"`
 	Result  interface{} `json:"result"`
+	UsIn    uint64      `json:"usIn"`
+	UsOut   uint64      `json:"usOut"`
+	UsDiff  uint64      `json:"usDiff"`
+	Testnet bool        `json:"testnet"`
 }
 
 type WebsocketEvent struct {
@@ -38,6 +44,28 @@ type WebsocketEvent struct {
 
 var unsubscribeHandlers map[*Client][]func(*Client)
 var subscriptionMutex sync.Mutex
+
+// To Validate rps id-s and return usIn,usOut,usDiff
+var orderRequestRpcIDS map[string]uint64
+
+func (c *Client) RegisterRequestRpcIDS(id uint64, requestedTime uint64) (bool, string) {
+
+	if id == 0 {
+		return false, "Request id is required"
+	}
+
+	if orderRequestRpcIDS == nil {
+		orderRequestRpcIDS = make(map[string]uint64)
+	}
+
+	if orderRequestRpcIDS[strconv.FormatUint(id, 10)] == 0 {
+		// logger.Info("Registering a new order connection")
+		orderRequestRpcIDS[strconv.FormatUint(id, 10)] = requestedTime
+		return true, ""
+	}
+
+	return false, "Duplicated request id"
+}
 
 func NewClient(c *websocket.Conn) *Client {
 	subscriptionMutex.Lock()
@@ -57,20 +85,36 @@ func NewClient(c *websocket.Conn) *Client {
 
 // SendMessage constructs the message with proper structure to be sent over websocket
 func (c *Client) SendMessage(payload interface{}, params ...uint64) {
-	// e := WebsocketEvent{
-	// 	Type:    msgType,
-	// 	Payload: payload,
-	// }
+	var m WebsocketResponseMessage
 	responseID := uint64(0)
 	// Read first parameter if it exists from optional params
 	if len(params) > 0 {
 		responseID = params[0]
-	}
+		m = WebsocketResponseMessage{
+			Result:  payload,
+			JSONRPC: "2.0",
+			ID:      responseID,
+			Testnet: true,
+		}
+		// Read requested time
+		ID := strconv.FormatUint(params[0], 10)
+		requestedTime := orderRequestRpcIDS[ID]
+		// Return times
+		if requestedTime > 0 {
+			m.UsIn = requestedTime
+			m.UsOut = uint64(time.Now().UnixMicro())
+			m.UsDiff = m.UsOut - m.UsIn
 
-	m := WebsocketResponseMessage{
-		Result:  payload,
-		JSONRPC: "2.0",
-		ID:      responseID,
+			// Remove saved time
+			delete(orderRequestRpcIDS, ID)
+		}
+	} else {
+		m = WebsocketResponseMessage{
+			Result:  payload,
+			JSONRPC: "2.0",
+			ID:      responseID,
+			Testnet: true,
+		}
 	}
 
 	c.mu.Lock()

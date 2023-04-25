@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"gateway/internal/auth/model"
 	"gateway/internal/auth/service"
@@ -80,7 +81,14 @@ func (svc wsHandler) PublicAuth(input interface{}, c *ws.Client) {
 	msg := &WebsocketAuth{}
 	bytes, _ := json.Marshal(input)
 	if err := json.Unmarshal(bytes, &msg); err != nil {
-		c.SendMessage(gin.H{"err": err})
+		c.SendMessage(gin.H{"err": err}, msg.Id)
+		return
+	}
+
+	duplicateRpcID, errorMessage := c.RegisterRequestRpcIDS(msg.Id, uint64(time.Now().UnixMicro()))
+
+	if !duplicateRpcID {
+		c.SendMessage(gin.H{"err": errorMessage}, msg.Id)
 		return
 	}
 
@@ -90,7 +98,7 @@ func (svc wsHandler) PublicAuth(input interface{}, c *ws.Client) {
 	})
 	if err != nil {
 		fmt.Println(err)
-		c.SendMessage(gin.H{"err": err.Error()})
+		c.SendMessage(gin.H{"err": err.Error()}, msg.Id)
 		return
 	}
 
@@ -116,14 +124,21 @@ func (svc wsHandler) PrivateBuy(input interface{}, c *ws.Client) {
 	msg := &Req{}
 	bytes, _ := json.Marshal(input)
 	if err := json.Unmarshal(bytes, &msg); err != nil {
-		c.SendMessage(gin.H{"err": err})
+		c.SendMessage(gin.H{"err": err}, msg.Id)
+		return
+	}
+
+	duplicateRpcID, errorMessage := c.RegisterRequestRpcIDS(msg.Id, uint64(time.Now().UnixMicro()))
+
+	if !duplicateRpcID {
+		c.SendMessage(gin.H{"err": errorMessage}, msg.Id)
 		return
 	}
 
 	// Check the Access Token
 	JWTData, err := svc.authSvc.JWTCheck(msg.Params.AccessToken)
 	if err != nil {
-		c.SendMessage(gin.H{"err": err.Error()})
+		c.SendMessage(gin.H{"err": err.Error()}, msg.Id)
 		return
 	}
 
@@ -164,14 +179,21 @@ func (svc wsHandler) PrivateSell(input interface{}, c *ws.Client) {
 	msg := &Req{}
 	bytes, _ := json.Marshal(input)
 	if err := json.Unmarshal(bytes, &msg); err != nil {
-		c.SendMessage(gin.H{"err": err})
+		c.SendMessage(gin.H{"err": err}, msg.Id)
+		return
+	}
+
+	duplicateRpcID, errorMessage := c.RegisterRequestRpcIDS(msg.Id, uint64(time.Now().UnixMicro()))
+
+	if !duplicateRpcID {
+		c.SendMessage(gin.H{"err": errorMessage}, msg.Id)
 		return
 	}
 
 	// Check the Access Token
 	JWTData, err := svc.authSvc.JWTCheck(msg.Params.AccessToken)
 	if err != nil {
-		c.SendMessage(gin.H{"err": err.Error()})
+		c.SendMessage(gin.H{"err": err.Error()}, msg.Id)
 		return
 	}
 
@@ -210,14 +232,21 @@ func (svc wsHandler) PrivateEdit(input interface{}, c *ws.Client) {
 	msg := &Req{}
 	bytes, _ := json.Marshal(input)
 	if err := json.Unmarshal(bytes, &msg); err != nil {
-		c.SendMessage(gin.H{"err": err})
+		c.SendMessage(gin.H{"err": err}, msg.Id)
+		return
+	}
+
+	duplicateRpcID, errorMessage := c.RegisterRequestRpcIDS(msg.Id, uint64(time.Now().UnixMicro()))
+
+	if !duplicateRpcID {
+		c.SendMessage(gin.H{"err": errorMessage}, msg.Id)
 		return
 	}
 
 	// Check the Access Token
 	JWTData, err := svc.authSvc.JWTCheck(msg.Params.AccessToken)
 	if err != nil {
-		c.SendMessage(gin.H{"err": err.Error()})
+		c.SendMessage(gin.H{"err": err.Error()}, msg.Id)
 		return
 	}
 
@@ -250,14 +279,21 @@ func (svc wsHandler) PrivateCancel(input interface{}, c *ws.Client) {
 	msg := &Req{}
 	bytes, _ := json.Marshal(input)
 	if err := json.Unmarshal(bytes, &msg); err != nil {
-		c.SendMessage(gin.H{"err": err})
+		c.SendMessage(gin.H{"err": err}, msg.Id)
+		return
+	}
+
+	duplicateRpcID, errorMessage := c.RegisterRequestRpcIDS(msg.Id, uint64(time.Now().UnixMicro()))
+
+	if !duplicateRpcID {
+		c.SendMessage(gin.H{"err": errorMessage}, msg.Id)
 		return
 	}
 
 	// Check the Access Token
 	JWTData, err := svc.authSvc.JWTCheck(msg.Params.AccessToken)
 	if err != nil {
-		c.SendMessage(gin.H{"err": err.Error()})
+		c.SendMessage(gin.H{"err": err.Error()}, msg.Id)
 		return
 	}
 
@@ -288,14 +324,21 @@ func (svc wsHandler) PrivateCancelByInstrument(input interface{}, c *ws.Client) 
 	msg := &Req{}
 	bytes, _ := json.Marshal(input)
 	if err := json.Unmarshal(bytes, &msg); err != nil {
-		c.SendMessage(gin.H{"err": err})
+		c.SendMessage(gin.H{"err": err}, msg.Id)
+		return
+	}
+
+	duplicateRpcID, errorMessage := c.RegisterRequestRpcIDS(msg.Id, uint64(time.Now().UnixMicro()))
+
+	if !duplicateRpcID {
+		c.SendMessage(gin.H{"err": errorMessage}, msg.Id)
 		return
 	}
 
 	// Check the Access Token
 	JWTData, err := svc.authSvc.JWTCheck(msg.Params.AccessToken)
 	if err != nil {
-		c.SendMessage(gin.H{"err": err.Error()})
+		c.SendMessage(gin.H{"err": err.Error()}, msg.Id)
 		return
 	}
 
@@ -333,14 +376,21 @@ func (svc wsHandler) PrivateCancelAll(input interface{}, c *ws.Client) {
 	msg := &Req{}
 	bytes, _ := json.Marshal(input)
 	if err := json.Unmarshal(bytes, &msg); err != nil {
-		c.SendMessage(gin.H{"err": err})
+		c.SendMessage(gin.H{"err": err}, msg.Id)
+		return
+	}
+
+	duplicateRpcID, errorMessage := c.RegisterRequestRpcIDS(msg.Id, uint64(time.Now().UnixMicro()))
+
+	if !duplicateRpcID {
+		c.SendMessage(gin.H{"err": errorMessage}, msg.Id)
 		return
 	}
 
 	// Check the Access Token
 	JWTData, err := svc.authSvc.JWTCheck(msg.Params.AccessToken)
 	if err != nil {
-		c.SendMessage(gin.H{"err": err.Error()})
+		c.SendMessage(gin.H{"err": err.Error()}, msg.Id)
 		return
 	}
 
@@ -371,12 +421,20 @@ func (svc wsHandler) SubscribeHandler(input interface{}, c *ws.Client) {
 
 	type Req struct {
 		Params Params `json:"params"`
+		Id     uint64 `json:"id"`
 	}
 
 	msg := &Req{}
 	bytes, _ := json.Marshal(input)
 	if err := json.Unmarshal(bytes, &msg); err != nil {
-		c.SendMessage(gin.H{"err": err})
+		c.SendMessage(gin.H{"err": err}, msg.Id)
+		return
+	}
+
+	duplicateRpcID, errorMessage := c.RegisterRequestRpcIDS(msg.Id, uint64(time.Now().UnixMicro()))
+
+	if !duplicateRpcID {
+		c.SendMessage(gin.H{"err": errorMessage}, msg.Id)
 		return
 	}
 
@@ -385,13 +443,13 @@ func (svc wsHandler) SubscribeHandler(input interface{}, c *ws.Client) {
 		s := strings.Split(channel, ".")
 		switch s[0] {
 		case "orderbook":
-			svc.wsOBSvc.Subscribe(c, s[1])
+			svc.wsOBSvc.Subscribe(c, s[1], msg.Id)
 		case "engine":
-			svc.wsEngSvc.Subscribe(c, s[1])
+			svc.wsEngSvc.Subscribe(c, s[1], msg.Id)
 		case "order":
-			svc.wsOSvc.Subscribe(c, s[1])
+			svc.wsOSvc.Subscribe(c, s[1], msg.Id)
 		case "trade":
-			svc.wsTradeSvc.Subscribe(c, s[1])
+			svc.wsTradeSvc.Subscribe(c, s[1], msg.Id)
 		}
 
 	}
@@ -404,12 +462,13 @@ func (svc wsHandler) UnsubscribeHandler(input interface{}, c *ws.Client) {
 
 	type Req struct {
 		Params Params `json:"params"`
+		Id     uint64 `json:"id"`
 	}
 
 	msg := &Req{}
 	bytes, _ := json.Marshal(input)
 	if err := json.Unmarshal(bytes, &msg); err != nil {
-		c.SendMessage(gin.H{"err": err})
+		c.SendMessage(gin.H{"err": err}, msg.Id)
 		return
 	}
 
@@ -438,17 +497,25 @@ func (svc wsHandler) GetInstruments(input interface{}, c *ws.Client) {
 
 	type Req struct {
 		Params Params `json:"params"`
+		Id     uint64 `json:"id"`
 	}
 
 	msg := &Req{}
 	bytes, _ := json.Marshal(input)
 	if err := json.Unmarshal(bytes, &msg); err != nil {
-		c.SendMessage(gin.H{"err": err})
+		c.SendMessage(gin.H{"err": err}, msg.Id)
+		return
+	}
+
+	duplicateRpcID, errorMessage := c.RegisterRequestRpcIDS(msg.Id, uint64(time.Now().UnixMicro()))
+
+	if !duplicateRpcID {
+		c.SendMessage(gin.H{"err": errorMessage}, msg.Id)
 		return
 	}
 
 	if msg.Params.Currency == "" {
-		c.SendMessage(gin.H{"err": "Please provide currency"})
+		c.SendMessage(gin.H{"err": "Please provide currency"}, msg.Id)
 		return
 	}
 
@@ -457,6 +524,6 @@ func (svc wsHandler) GetInstruments(input interface{}, c *ws.Client) {
 		Expired:  msg.Params.Expired,
 	})
 
-	c.SendMessage(result)
+	c.SendMessage(result, msg.Id)
 	return
 }

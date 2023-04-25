@@ -110,16 +110,19 @@ func (s *TradeSocket) BroadcastMessage(channelID string, p interface{}) error {
 }
 
 // SendErrorMessage sends error message on orderbookchannel
-func (s *TradeSocket) SendErrorMessage(c *Client, data interface{}) {
-	c.SendMessage(data)
+// First Element In Params Is Requested ID
+func (s *TradeSocket) SendErrorMessage(c *Client, data interface{}, params ...uint64) {
+	c.SendMessage(data, params[0])
 }
 
 // SendInitMessage sends INIT message on orderbookchannel on subscription event
-func (s *TradeSocket) SendInitMessage(c *Client, data interface{}) {
-	c.SendMessage(data)
+// First Element In Params Is Requested ID
+func (s *TradeSocket) SendInitMessage(c *Client, data interface{}, params ...uint64) {
+	c.SendMessage(data, params[0])
 }
 
 // SendUpdateMessage sends UPDATE message on enginechannel as new data is created
-func (s *TradeSocket) SendUpdateMessage(c *Client, data interface{}) {
-	c.SendMessage(data)
+// First Element In Params Is Requested ID
+func (s *TradeSocket) SendUpdateMessage(c *Client, data interface{}, params ...uint64) {
+	c.SendMessage(data, params[0])
 }

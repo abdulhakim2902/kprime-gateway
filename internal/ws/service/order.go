@@ -70,7 +70,7 @@ func (svc wsOrderService) HandleConsume(msg *sarama.ConsumerMessage, userId stri
 }
 
 // Key can be all or user Id. So channel: ORDER.all or ORDER.user123
-func (svc wsOrderService) Subscribe(c *ws.Client, key string) {
+func (svc wsOrderService) Subscribe(c *ws.Client, key string, params ...uint64) {
 	socket := ws.GetOrderSocket()
 
 	// Get initial data from the redis
@@ -117,7 +117,7 @@ func (svc wsOrderService) Subscribe(c *ws.Client, key string) {
 	ws.RegisterConnectionUnsubscribeHandler(c, socket.UnsubscribeHandler(id))
 
 	// Send initial data from the redis
-	socket.SendInitMessage(c, initData)
+	socket.SendInitMessage(c, initData, params[0])
 }
 
 func (svc wsOrderService) Unsubscribe(c *ws.Client) {
