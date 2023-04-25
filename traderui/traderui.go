@@ -334,6 +334,7 @@ func (c tradeClient) newOrder(w http.ResponseWriter, r *http.Request) {
 		field.NewSecurityListRequestType(enum.SecurityListRequestType_SYMBOL),
 	)
 	newMsg.SetString(tag.Currency, "USD")
+	newMsg.SetInt(tag.SubscriptionRequestType, 0)
 	fmt.Println("requesting security list")
 	err = quickfix.SendToTarget(newMsg, order.SessionID)
 	if err != nil {
