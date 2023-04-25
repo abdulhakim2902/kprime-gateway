@@ -301,6 +301,7 @@ func (c tradeClient) newOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	msg.ToMessage().Body.SetString(tag.PartyID, order.PartyID)
 	msg.ToMessage().Body.SetString(tag.ClOrdID, order.ClOrdID)
 	msg.ToMessage().Body.SetString(tag.Password, order.Password)
 	msg.ToMessage().Body.SetString(tag.Username, order.Username)
