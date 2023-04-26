@@ -31,12 +31,15 @@ var App = new (Backbone.View.extend({
   },
 
   start: function (options) {
+    console.log(options)
     this.orderTicket = new App.Models.OrderTicket({
-      session_ids: options.session_ids
+      session_ids: options.session_ids,
+      symbols: options.symbols,
     });
 
     this.securityDefinitionForm = new App.Models.SecurityDefinitionForm({
-      session_ids: options.session_ids
+      session_ids: options.session_ids,
+      symbols: options.symbols,
     });
 
     this.orders = new App.Collections.Orders(options.orders);
@@ -545,7 +548,8 @@ App.Views.SecurityDefinitionRequest = Backbone.View.extend({
 
     <div class='form-group'>
       <label for='symbol'>Symbol</label>
-      <input type='text' class='form-control' name='symbol' placeholder='Symbol'>
+      <input type='text' class='form-control' name='symbol' placeholder='symbol'>
+
     </div>
   </p>
 
@@ -627,7 +631,7 @@ App.Views.OrderTicket = Backbone.View.extend({
 
     <div class='form-group'>
       <label for='symbol'>Symbol</label>
-      <input type='text' class='form-control' name='symbol' placeholder='Symbol' required>
+      <select class='form-control' name='symbol'>
     </div>
 
     <div class='form-group'>
