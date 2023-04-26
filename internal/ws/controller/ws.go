@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"gateway/pkg/utils"
 	"strconv"
 	"strings"
 	"time"
@@ -149,7 +150,7 @@ func (svc wsHandler) PrivateBuy(input interface{}, c *ws.Client) {
 		return
 	}
 
-	ID := strconv.FormatUint(msg.Id, 10) + "-" + JWTData.UserID
+	ID := utils.GetKeyFromIdUserID(msg.Id, JWTData.UserID)
 	duplicateRpcID, errorMessage := c.RegisterRequestRpcIDS(ID, requestedTime)
 
 	if !duplicateRpcID {
@@ -219,7 +220,7 @@ func (svc wsHandler) PrivateSell(input interface{}, c *ws.Client) {
 		return
 	}
 
-	ID := strconv.FormatUint(msg.Id, 10) + "-" + JWTData.UserID
+	ID := utils.GetKeyFromIdUserID(msg.Id, JWTData.UserID)
 
 	duplicateRpcID, errorMessage := c.RegisterRequestRpcIDS(ID, requestedTime)
 
@@ -286,7 +287,7 @@ func (svc wsHandler) PrivateEdit(input interface{}, c *ws.Client) {
 		return
 	}
 
-	ID := strconv.FormatUint(msg.Id, 10) + "-" + JWTData.UserID
+	ID := utils.GetKeyFromIdUserID(msg.Id, JWTData.UserID)
 
 	duplicateRpcID, errorMessage := c.RegisterRequestRpcIDS(ID, requestedTime)
 
@@ -347,7 +348,7 @@ func (svc wsHandler) PrivateCancel(input interface{}, c *ws.Client) {
 		return
 	}
 
-	ID := strconv.FormatUint(msg.Id, 10) + "-" + JWTData.UserID
+	ID := utils.GetKeyFromIdUserID(msg.Id, JWTData.UserID)
 
 	duplicateRpcID, errorMessage := c.RegisterRequestRpcIDS(ID, requestedTime)
 
@@ -406,7 +407,7 @@ func (svc wsHandler) PrivateCancelByInstrument(input interface{}, c *ws.Client) 
 		return
 	}
 
-	ID := strconv.FormatUint(msg.Id, 10) + "-" + JWTData.UserID
+	ID := utils.GetKeyFromIdUserID(msg.Id, JWTData.UserID)
 
 	duplicateRpcID, errorMessage := c.RegisterRequestRpcIDS(ID, requestedTime)
 
@@ -475,7 +476,7 @@ func (svc wsHandler) PrivateCancelAll(input interface{}, c *ws.Client) {
 		return
 	}
 
-	ID := strconv.FormatUint(msg.Id, 10) + "-" + JWTData.UserID
+	ID := utils.GetKeyFromIdUserID(msg.Id, JWTData.UserID)
 
 	duplicateRpcID, errorMessage := c.RegisterRequestRpcIDS(ID, requestedTime)
 
