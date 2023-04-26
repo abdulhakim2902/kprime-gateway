@@ -140,7 +140,10 @@ func (svc engineHandler) PublishOrder(data types.EngineResponse) {
 	case types.ORDER_CANCELLED:
 		ws.SendOrderMessage(userIDStr, types.CancelResponse{
 			Order: order,
-		}, ID)
+		}, ws.SendMessageParams{
+			ID:     ID,
+			UserID: userIDStr,
+		})
 	default:
 		trades := []types.BuySellEditTrade{}
 		if data.Matches != nil && data.Matches.Trades != nil && len(data.Matches.Trades) > 0 {
@@ -162,7 +165,10 @@ func (svc engineHandler) PublishOrder(data types.EngineResponse) {
 		ws.SendOrderMessage(userIDStr, types.BuySellEditResponse{
 			Order:  order,
 			Trades: trades,
-		}, ID)
+		}, ws.SendMessageParams{
+			ID:     ID,
+			UserID: userIDStr,
+		})
 
 	}
 

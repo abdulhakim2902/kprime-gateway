@@ -1,7 +1,9 @@
 package ws
 
 import (
+	"strconv"
 	"sync"
+	"time"
 
 	"github.com/gorilla/websocket"
 )
@@ -17,6 +19,12 @@ type Client struct {
 	send chan WebsocketResponseMessage
 }
 
+type SendMessageParams struct {
+	UserID        string `json:"user_id"`
+	ID            uint64 `json:"id"`
+	RequestedTime uint64 `json:"requested_time"`
+}
+
 type WebsocketMessage struct {
 	JSONRPC string      `json:"jsonrpc"`
 	Method  string      `json:"method"`
@@ -26,8 +34,12 @@ type WebsocketMessage struct {
 
 type WebsocketResponseMessage struct {
 	JSONRPC string      `json:"jsonrpc"`
-	ID      uint64      `json:"id"`
+	ID      uint64      `json:"id,omitempty"`
 	Result  interface{} `json:"result"`
+	UsIn    uint64      `json:"usIn,omitempty"`
+	UsOut   uint64      `json:"usOut,omitempty"`
+	UsDiff  uint64      `json:"usDiff,omitempty"`
+	Testnet bool        `json:"testnet,omitempty"`
 }
 
 type WebsocketEvent struct {
@@ -38,6 +50,28 @@ type WebsocketEvent struct {
 
 var unsubscribeHandlers map[*Client][]func(*Client)
 var subscriptionMutex sync.Mutex
+
+// To Validate rps id-s and return usIn,usOut,usDiff
+var orderRequestRpcIDS map[string]uint64
+
+func (c *Client) RegisterRequestRpcIDS(id string, requestedTime uint64) (bool, string) {
+
+	if len(id) == 0 || id[0:1] == "-" {
+		return false, "Request id is required"
+	}
+
+	if orderRequestRpcIDS == nil {
+		orderRequestRpcIDS = make(map[string]uint64)
+	}
+
+	if orderRequestRpcIDS[id] == 0 {
+		// logger.Info("Registering a new order connection")
+		orderRequestRpcIDS[id] = requestedTime
+		return true, ""
+	}
+
+	return false, "Duplicated request id"
+}
 
 func NewClient(c *websocket.Conn) *Client {
 	subscriptionMutex.Lock()
@@ -56,21 +90,32 @@ func NewClient(c *websocket.Conn) *Client {
 }
 
 // SendMessage constructs the message with proper structure to be sent over websocket
-func (c *Client) SendMessage(payload interface{}, params ...uint64) {
-	// e := WebsocketEvent{
-	// 	Type:    msgType,
-	// 	Payload: payload,
-	// }
-	responseID := uint64(0)
-	// Read first parameter if it exists from optional params
-	if len(params) > 0 {
-		responseID = params[0]
-	}
-
-	m := WebsocketResponseMessage{
+func (c *Client) SendMessage(payload interface{}, params SendMessageParams) {
+	var m WebsocketResponseMessage
+	m = WebsocketResponseMessage{
 		Result:  payload,
 		JSONRPC: "2.0",
-		ID:      responseID,
+		ID:      params.ID,
+		Testnet: true,
+	}
+
+	if params.RequestedTime > 0 {
+		m.UsIn = params.RequestedTime
+		m.UsOut = uint64(time.Now().UnixMicro())
+		m.UsDiff = m.UsOut - m.UsIn
+	} else if params.ID > 0 {
+		// Read requested time
+		ID := strconv.FormatUint(params.ID, 10) + "-" + params.UserID
+		requestedTime := orderRequestRpcIDS[ID]
+		// Return times
+		if requestedTime > 0 {
+			m.UsIn = requestedTime
+			m.UsOut = uint64(time.Now().UnixMicro())
+			m.UsDiff = m.UsOut - m.UsIn
+
+			// Remove saved time
+			delete(orderRequestRpcIDS, ID)
+		}
 	}
 
 	c.mu.Lock()
@@ -102,7 +147,6 @@ func (c *Client) SendOrderErrorMessage(err error) {
 	m := WebsocketResponseMessage{
 		Result:  e,
 		JSONRPC: "2.0",
-		ID:      uint64(0),
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()

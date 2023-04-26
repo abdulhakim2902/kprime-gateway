@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"gateway/internal/auth/model"
 	"gateway/internal/auth/service"
@@ -66,6 +67,7 @@ func NewWebsocketHandler(
 }
 
 func (svc wsHandler) PublicAuth(input interface{}, c *ws.Client) {
+	requestedTime := uint64(time.Now().UnixMicro())
 	type Params struct {
 		GrantType    string `json:"grant_type"`
 		ClientID     string `json:"client_id"`
@@ -80,7 +82,11 @@ func (svc wsHandler) PublicAuth(input interface{}, c *ws.Client) {
 	msg := &WebsocketAuth{}
 	bytes, _ := json.Marshal(input)
 	if err := json.Unmarshal(bytes, &msg); err != nil {
-		c.SendMessage(gin.H{"err": err})
+		c.SendMessage(gin.H{"err": err}, ws.SendMessageParams{
+			ID:            msg.Id,
+			RequestedTime: requestedTime,
+			UserID:        "",
+		})
 		return
 	}
 
@@ -90,15 +96,23 @@ func (svc wsHandler) PublicAuth(input interface{}, c *ws.Client) {
 	})
 	if err != nil {
 		fmt.Println(err)
-		c.SendMessage(gin.H{"err": err.Error()})
+		c.SendMessage(gin.H{"err": err.Error()}, ws.SendMessageParams{
+			ID:            msg.Id,
+			RequestedTime: requestedTime,
+		})
 		return
 	}
 
-	c.SendMessage(gin.H{"access_token": signedToken}, msg.Id)
+	c.SendMessage(gin.H{"access_token": signedToken}, ws.SendMessageParams{
+		ID:            msg.Id,
+		RequestedTime: requestedTime,
+	})
 	return
 }
 
 func (svc wsHandler) PrivateBuy(input interface{}, c *ws.Client) {
+	requestedTime := uint64(time.Now().UnixMicro())
+
 	type Params struct {
 		AccessToken    string  `json:"access_token"`
 		InstrumentName string  `json:"instrument_name"`
@@ -116,14 +130,34 @@ func (svc wsHandler) PrivateBuy(input interface{}, c *ws.Client) {
 	msg := &Req{}
 	bytes, _ := json.Marshal(input)
 	if err := json.Unmarshal(bytes, &msg); err != nil {
-		c.SendMessage(gin.H{"err": err})
+		c.SendMessage(gin.H{"err": err}, ws.SendMessageParams{
+			ID:            msg.Id,
+			RequestedTime: requestedTime,
+			UserID:        "",
+		})
 		return
 	}
 
 	// Check the Access Token
 	JWTData, err := svc.authSvc.JWTCheck(msg.Params.AccessToken)
 	if err != nil {
-		c.SendMessage(gin.H{"err": err.Error()})
+		c.SendMessage(gin.H{"err": err.Error()}, ws.SendMessageParams{
+			ID:            msg.Id,
+			RequestedTime: requestedTime,
+			UserID:        "",
+		})
+		return
+	}
+
+	ID := strconv.FormatUint(msg.Id, 10) + "-" + JWTData.UserID
+	duplicateRpcID, errorMessage := c.RegisterRequestRpcIDS(ID, requestedTime)
+
+	if !duplicateRpcID {
+		c.SendMessage(gin.H{"err": errorMessage}, ws.SendMessageParams{
+			ID:            msg.Id,
+			RequestedTime: requestedTime,
+			UserID:        JWTData.UserID,
+		})
 		return
 	}
 
@@ -147,6 +181,8 @@ func (svc wsHandler) PrivateBuy(input interface{}, c *ws.Client) {
 }
 
 func (svc wsHandler) PrivateSell(input interface{}, c *ws.Client) {
+	requestedTime := uint64(time.Now().UnixMicro())
+
 	type Params struct {
 		AccessToken    string  `json:"access_token"`
 		InstrumentName string  `json:"instrument_name"`
@@ -164,14 +200,35 @@ func (svc wsHandler) PrivateSell(input interface{}, c *ws.Client) {
 	msg := &Req{}
 	bytes, _ := json.Marshal(input)
 	if err := json.Unmarshal(bytes, &msg); err != nil {
-		c.SendMessage(gin.H{"err": err})
+		c.SendMessage(gin.H{"err": err}, ws.SendMessageParams{
+			ID:            msg.Id,
+			RequestedTime: requestedTime,
+			UserID:        "",
+		})
 		return
 	}
 
 	// Check the Access Token
 	JWTData, err := svc.authSvc.JWTCheck(msg.Params.AccessToken)
 	if err != nil {
-		c.SendMessage(gin.H{"err": err.Error()})
+		c.SendMessage(gin.H{"err": err.Error()}, ws.SendMessageParams{
+			ID:            msg.Id,
+			RequestedTime: requestedTime,
+			UserID:        JWTData.UserID,
+		})
+		return
+	}
+
+	ID := strconv.FormatUint(msg.Id, 10) + "-" + JWTData.UserID
+
+	duplicateRpcID, errorMessage := c.RegisterRequestRpcIDS(ID, requestedTime)
+
+	if !duplicateRpcID {
+		c.SendMessage(gin.H{"err": errorMessage}, ws.SendMessageParams{
+			ID:            msg.Id,
+			RequestedTime: requestedTime,
+			UserID:        JWTData.UserID,
+		})
 		return
 	}
 
@@ -195,6 +252,8 @@ func (svc wsHandler) PrivateSell(input interface{}, c *ws.Client) {
 }
 
 func (svc wsHandler) PrivateEdit(input interface{}, c *ws.Client) {
+	requestedTime := uint64(time.Now().UnixMicro())
+
 	type Params struct {
 		AccessToken string  `json:"access_token"`
 		Id          string  `json:"id"`
@@ -210,14 +269,33 @@ func (svc wsHandler) PrivateEdit(input interface{}, c *ws.Client) {
 	msg := &Req{}
 	bytes, _ := json.Marshal(input)
 	if err := json.Unmarshal(bytes, &msg); err != nil {
-		c.SendMessage(gin.H{"err": err})
+		c.SendMessage(gin.H{"err": err}, ws.SendMessageParams{
+			ID:            msg.Id,
+			RequestedTime: requestedTime,
+		})
 		return
 	}
 
 	// Check the Access Token
 	JWTData, err := svc.authSvc.JWTCheck(msg.Params.AccessToken)
 	if err != nil {
-		c.SendMessage(gin.H{"err": err.Error()})
+		c.SendMessage(gin.H{"err": err.Error()}, ws.SendMessageParams{
+			ID:            msg.Id,
+			RequestedTime: requestedTime,
+		})
+		return
+	}
+
+	ID := strconv.FormatUint(msg.Id, 10) + "-" + JWTData.UserID
+
+	duplicateRpcID, errorMessage := c.RegisterRequestRpcIDS(ID, requestedTime)
+
+	if !duplicateRpcID {
+		c.SendMessage(gin.H{"err": errorMessage}, ws.SendMessageParams{
+			ID:            msg.Id,
+			RequestedTime: requestedTime,
+			UserID:        JWTData.UserID,
+		})
 		return
 	}
 
@@ -237,6 +315,8 @@ func (svc wsHandler) PrivateEdit(input interface{}, c *ws.Client) {
 }
 
 func (svc wsHandler) PrivateCancel(input interface{}, c *ws.Client) {
+	requestedTime := uint64(time.Now().UnixMicro())
+
 	type Params struct {
 		AccessToken string `json:"access_token"`
 		Id          string `json:"id"`
@@ -250,14 +330,33 @@ func (svc wsHandler) PrivateCancel(input interface{}, c *ws.Client) {
 	msg := &Req{}
 	bytes, _ := json.Marshal(input)
 	if err := json.Unmarshal(bytes, &msg); err != nil {
-		c.SendMessage(gin.H{"err": err})
+		c.SendMessage(gin.H{"err": err}, ws.SendMessageParams{
+			ID:            msg.Id,
+			RequestedTime: requestedTime,
+		})
 		return
 	}
 
 	// Check the Access Token
 	JWTData, err := svc.authSvc.JWTCheck(msg.Params.AccessToken)
 	if err != nil {
-		c.SendMessage(gin.H{"err": err.Error()})
+		c.SendMessage(gin.H{"err": err.Error()}, ws.SendMessageParams{
+			ID:            msg.Id,
+			RequestedTime: requestedTime,
+		})
+		return
+	}
+
+	ID := strconv.FormatUint(msg.Id, 10) + "-" + JWTData.UserID
+
+	duplicateRpcID, errorMessage := c.RegisterRequestRpcIDS(ID, requestedTime)
+
+	if !duplicateRpcID {
+		c.SendMessage(gin.H{"err": errorMessage}, ws.SendMessageParams{
+			ID:            msg.Id,
+			RequestedTime: requestedTime,
+			UserID:        JWTData.UserID,
+		})
 		return
 	}
 
@@ -275,6 +374,8 @@ func (svc wsHandler) PrivateCancel(input interface{}, c *ws.Client) {
 }
 
 func (svc wsHandler) PrivateCancelByInstrument(input interface{}, c *ws.Client) {
+	requestedTime := uint64(time.Now().UnixMicro())
+
 	type Params struct {
 		AccessToken    string `json:"access_token"`
 		InstrumentName string `json:"instrument_name"`
@@ -288,14 +389,33 @@ func (svc wsHandler) PrivateCancelByInstrument(input interface{}, c *ws.Client) 
 	msg := &Req{}
 	bytes, _ := json.Marshal(input)
 	if err := json.Unmarshal(bytes, &msg); err != nil {
-		c.SendMessage(gin.H{"err": err})
+		c.SendMessage(gin.H{"err": err}, ws.SendMessageParams{
+			ID:            msg.Id,
+			RequestedTime: requestedTime,
+		})
 		return
 	}
 
 	// Check the Access Token
 	JWTData, err := svc.authSvc.JWTCheck(msg.Params.AccessToken)
 	if err != nil {
-		c.SendMessage(gin.H{"err": err.Error()})
+		c.SendMessage(gin.H{"err": err.Error()}, ws.SendMessageParams{
+			ID:            msg.Id,
+			RequestedTime: requestedTime,
+		})
+		return
+	}
+
+	ID := strconv.FormatUint(msg.Id, 10) + "-" + JWTData.UserID
+
+	duplicateRpcID, errorMessage := c.RegisterRequestRpcIDS(ID, requestedTime)
+
+	if !duplicateRpcID {
+		c.SendMessage(gin.H{"err": errorMessage}, ws.SendMessageParams{
+			ID:            msg.Id,
+			RequestedTime: requestedTime,
+			UserID:        JWTData.UserID,
+		})
 		return
 	}
 
@@ -317,10 +437,15 @@ func (svc wsHandler) PrivateCancelByInstrument(input interface{}, c *ws.Client) 
 		"userId":   res.UserId,
 		"clientId": res.ClientId,
 		"side":     res.Side,
-	}, msg.Id)
+	}, ws.SendMessageParams{
+		ID:            msg.Id,
+		RequestedTime: requestedTime,
+	})
 }
 
 func (svc wsHandler) PrivateCancelAll(input interface{}, c *ws.Client) {
+	requestedTime := uint64(time.Now().UnixMicro())
+
 	type Params struct {
 		AccessToken string `json:"access_token"`
 	}
@@ -333,14 +458,33 @@ func (svc wsHandler) PrivateCancelAll(input interface{}, c *ws.Client) {
 	msg := &Req{}
 	bytes, _ := json.Marshal(input)
 	if err := json.Unmarshal(bytes, &msg); err != nil {
-		c.SendMessage(gin.H{"err": err})
+		c.SendMessage(gin.H{"err": err}, ws.SendMessageParams{
+			ID:            msg.Id,
+			RequestedTime: requestedTime,
+		})
 		return
 	}
 
 	// Check the Access Token
 	JWTData, err := svc.authSvc.JWTCheck(msg.Params.AccessToken)
 	if err != nil {
-		c.SendMessage(gin.H{"err": err.Error()})
+		c.SendMessage(gin.H{"err": err.Error()}, ws.SendMessageParams{
+			ID:            msg.Id,
+			RequestedTime: requestedTime,
+		})
+		return
+	}
+
+	ID := strconv.FormatUint(msg.Id, 10) + "-" + JWTData.UserID
+
+	duplicateRpcID, errorMessage := c.RegisterRequestRpcIDS(ID, requestedTime)
+
+	if !duplicateRpcID {
+		c.SendMessage(gin.H{"err": errorMessage}, ws.SendMessageParams{
+			ID:            msg.Id,
+			RequestedTime: requestedTime,
+			UserID:        JWTData.UserID,
+		})
 		return
 	}
 
@@ -361,22 +505,31 @@ func (svc wsHandler) PrivateCancelAll(input interface{}, c *ws.Client) {
 		"userId":   res.UserId,
 		"clientId": res.ClientId,
 		"side":     res.Side,
-	}, msg.Id)
+	}, ws.SendMessageParams{
+		ID:            msg.Id,
+		RequestedTime: requestedTime,
+	})
 }
 
 func (svc wsHandler) SubscribeHandler(input interface{}, c *ws.Client) {
+	requestedTime := uint64(time.Now().UnixMicro())
+
 	type Params struct {
 		Channels []string `json:"channels"`
 	}
 
 	type Req struct {
 		Params Params `json:"params"`
+		Id     uint64 `json:"id"`
 	}
 
 	msg := &Req{}
 	bytes, _ := json.Marshal(input)
 	if err := json.Unmarshal(bytes, &msg); err != nil {
-		c.SendMessage(gin.H{"err": err})
+		c.SendMessage(gin.H{"err": err}, ws.SendMessageParams{
+			ID:            msg.Id,
+			RequestedTime: requestedTime,
+		})
 		return
 	}
 
@@ -398,18 +551,24 @@ func (svc wsHandler) SubscribeHandler(input interface{}, c *ws.Client) {
 }
 
 func (svc wsHandler) UnsubscribeHandler(input interface{}, c *ws.Client) {
+	requestedTime := uint64(time.Now().UnixMicro())
+
 	type Params struct {
 		Channels []string `json:"channels"`
 	}
 
 	type Req struct {
 		Params Params `json:"params"`
+		Id     uint64 `json:"id"`
 	}
 
 	msg := &Req{}
 	bytes, _ := json.Marshal(input)
 	if err := json.Unmarshal(bytes, &msg); err != nil {
-		c.SendMessage(gin.H{"err": err})
+		c.SendMessage(gin.H{"err": err}, ws.SendMessageParams{
+			ID:            msg.Id,
+			RequestedTime: requestedTime,
+		})
 		return
 	}
 
@@ -430,6 +589,8 @@ func (svc wsHandler) UnsubscribeHandler(input interface{}, c *ws.Client) {
 }
 
 func (svc wsHandler) GetInstruments(input interface{}, c *ws.Client) {
+	requestedTime := uint64(time.Now().UnixMicro())
+
 	type Params struct {
 		AccessToken string `json:"accessToken"`
 		Currency    string `json:"currency"`
@@ -438,17 +599,24 @@ func (svc wsHandler) GetInstruments(input interface{}, c *ws.Client) {
 
 	type Req struct {
 		Params Params `json:"params"`
+		Id     uint64 `json:"id"`
 	}
 
 	msg := &Req{}
 	bytes, _ := json.Marshal(input)
 	if err := json.Unmarshal(bytes, &msg); err != nil {
-		c.SendMessage(gin.H{"err": err})
+		c.SendMessage(gin.H{"err": err}, ws.SendMessageParams{
+			ID:            msg.Id,
+			RequestedTime: requestedTime,
+		})
 		return
 	}
 
 	if msg.Params.Currency == "" {
-		c.SendMessage(gin.H{"err": "Please provide currency"})
+		c.SendMessage(gin.H{"err": "Please provide currency"}, ws.SendMessageParams{
+			ID:            msg.Id,
+			RequestedTime: requestedTime,
+		})
 		return
 	}
 
@@ -457,6 +625,9 @@ func (svc wsHandler) GetInstruments(input interface{}, c *ws.Client) {
 		Expired:  msg.Params.Expired,
 	})
 
-	c.SendMessage(result)
+	c.SendMessage(result, ws.SendMessageParams{
+		ID:            msg.Id,
+		RequestedTime: requestedTime,
+	})
 	return
 }

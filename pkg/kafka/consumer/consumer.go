@@ -152,5 +152,8 @@ func handleTopicCancelledOrders(message *sarama.ConsumerMessage) {
 	}
 	ID, _ := strconv.ParseUint(ClOrdID, 0, 64)
 
-	ws.SendOrderMessage(userIDStr, _cancelledData, ID)
+	ws.SendOrderMessage(userIDStr, _cancelledData, ws.SendMessageParams{
+		ID:     ID,
+		UserID: userIDStr,
+	})
 }
