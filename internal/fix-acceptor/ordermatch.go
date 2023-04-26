@@ -94,18 +94,18 @@ type Application struct {
 }
 
 type KafkaOrder struct {
-	ID             string    `json:"id"`
-	ClOrdID        string    `json:"clOrdID,omitempty"`
-	UserID         string    `json:"userId,omitempty"`
-	ClientID       string    `json:"clientId,omitempty"`
-	Side           enum.Side `json:"side,omitempty"`
-	Price          float64   `json:"price,omitempty"`
-	Amount         float64   `json:"amount,omitempty"`
-	Underlying     string    `json:"underlying,omitempty"`
-	ExpirationDate string    `json:"expiryDate,omitempty"`
-	StrikePrice    float64   `json:"strikePrice,omitempty"`
-	Type           string    `json:"type,omitempty"`
-	Contracts      string    `json:"contracts,omitempty"`
+	ID             string  `json:"id"`
+	ClOrdID        string  `json:"clOrdID,omitempty"`
+	UserID         string  `json:"userId,omitempty"`
+	ClientID       string  `json:"clientId,omitempty"`
+	Side           string  `json:"side,omitempty"`
+	Price          float64 `json:"price,omitempty"`
+	Amount         float64 `json:"amount,omitempty"`
+	Underlying     string  `json:"underlying,omitempty"`
+	ExpirationDate string  `json:"expiryDate,omitempty"`
+	StrikePrice    float64 `json:"strikePrice,omitempty"`
+	Type           string  `json:"type,omitempty"`
+	Contracts      string  `json:"contracts,omitempty"`
 }
 
 func newApplication() *Application {
@@ -249,9 +249,9 @@ func (a *Application) onNewOrderSingle(msg newordersingle.NewOrderSingle, sessio
 		putOrCall = "PUT"
 	}
 
-	side = "BUY"
+	sideStr := "BUY"
 	if side == enum.Side_SELL {
-		side = "SELL"
+		sideStr = "SELL"
 	}
 	strikePriceFloat, _ := strconv.ParseFloat(strikePrice, 64)
 	priceFloat, _ := strconv.ParseFloat(price.String(), 64)
@@ -263,8 +263,8 @@ func (a *Application) onNewOrderSingle(msg newordersingle.NewOrderSingle, sessio
 		Underlying:     underlying,
 		ExpirationDate: expiryDate,
 		StrikePrice:    strikePriceFloat,
-		Type:           string(strType),
-		Side:           side,
+		Type:           strType,
+		Side:           sideStr,
 		Price:          priceFloat,
 		Amount:         amountFloat,
 		Contracts:      string(putOrCall),
