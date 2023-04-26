@@ -111,15 +111,15 @@ func (s *OrderBookSocket) BroadcastMessage(channelID string, p interface{}) erro
 
 // SendErrorMessage sends error message on orderbookchannel
 func (s *OrderBookSocket) SendErrorMessage(c *Client, data interface{}) {
-	c.SendMessage(data)
+	c.SendMessage(data, SendMessageParams{})
 }
 
 // SendInitMessage sends INIT message on orderbookchannel on subscription event
 func (s *OrderBookSocket) SendInitMessage(c *Client, data interface{}) {
-	c.SendMessage(data)
+	c.SendMessage(data, SendMessageParams{})
 }
 
 // SendUpdateMessage sends UPDATE message on orderbookchannel as new data is created
 func (s *OrderBookSocket) SendUpdateMessage(c *Client, data interface{}) {
-	c.SendMessage(data)
+	c.SendMessage(data, SendMessageParams{})
 }
