@@ -110,19 +110,16 @@ func (s *OrderSocket) BroadcastMessage(channelID string, p interface{}) error {
 }
 
 // SendErrorMessage sends error message on orderchannel
-// First Element In Params Is Requested ID
-func (s *OrderSocket) SendErrorMessage(c *Client, data interface{}, params ...uint64) {
-	c.SendMessage(data, params[0])
+func (s *OrderSocket) SendErrorMessage(c *Client, data interface{}) {
+	c.SendMessage(data, SendMessageParams{})
 }
 
 // SendInitMessage sends INIT message on orderchannel on subscription event
-// First Element In Params Is Requested ID
-func (s *OrderSocket) SendInitMessage(c *Client, data interface{}, params ...uint64) {
-	c.SendMessage(data, params[0])
+func (s *OrderSocket) SendInitMessage(c *Client, data interface{}) {
+	c.SendMessage(data, SendMessageParams{})
 }
 
 // SendUpdateMessage sends UPDATE message on orderchannel as new data is created
-// First Element In Params Is Requested ID
-func (s *OrderSocket) SendUpdateMessage(c *Client, data interface{}, params ...uint64) {
-	c.SendMessage(data, params[0])
+func (s *OrderSocket) SendUpdateMessage(c *Client, data interface{}) {
+	c.SendMessage(data, SendMessageParams{})
 }

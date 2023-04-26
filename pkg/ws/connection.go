@@ -83,7 +83,7 @@ func readHandler(c *Client) {
 			fmt.Println("err")
 			fmt.Println(err)
 			// logger.Error(err)
-			c.SendMessage(err.Error())
+			c.SendMessage(err.Error(), SendMessageParams{})
 			return
 		}
 
@@ -91,7 +91,7 @@ func readHandler(c *Client) {
 		// logger.Infof("%v", msg.String())
 
 		if socketChannels[msg.Method] == nil {
-			c.SendMessage("INVALID_CHANNEL")
+			c.SendMessage("INVALID_CHANNEL", SendMessageParams{})
 			return
 		}
 

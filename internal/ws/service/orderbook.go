@@ -15,7 +15,7 @@ func NewwsOrderbookService(redis *redis.RedisConnectionPool) IwsOrderbookService
 	return &wsOrderbookService{redis}
 }
 
-func (svc wsOrderbookService) Subscribe(c *ws.Client, instrument string, params ...uint64) {
+func (svc wsOrderbookService) Subscribe(c *ws.Client, instrument string) {
 	socket := ws.GetOrderBookSocket()
 
 	// Get initial data from the redis
@@ -23,7 +23,7 @@ func (svc wsOrderbookService) Subscribe(c *ws.Client, instrument string, params 
 	if res == "" || err != nil {
 		socket.SendInitMessage(c, &types.Message{
 			Instrument: instrument,
-		}, params[0])
+		})
 	}
 
 	// Subscribe
@@ -31,7 +31,7 @@ func (svc wsOrderbookService) Subscribe(c *ws.Client, instrument string, params 
 	err = socket.Subscribe(id, c)
 	if err != nil {
 		msg := map[string]string{"Message": err.Error()}
-		socket.SendErrorMessage(c, msg, params[0])
+		socket.SendErrorMessage(c, msg)
 		return
 	}
 
@@ -48,12 +48,12 @@ func (svc wsOrderbookService) Subscribe(c *ws.Client, instrument string, params 
 	err = json.Unmarshal([]byte(res), &initData)
 	if err != nil {
 		msg := map[string]string{"Message": err.Error()}
-		socket.SendErrorMessage(c, msg, params[0])
+		socket.SendErrorMessage(c, msg)
 		return
 	}
 
 	// Send initial data from the redis
-	socket.SendInitMessage(c, initData, params[0])
+	socket.SendInitMessage(c, initData)
 }
 
 func (svc wsOrderbookService) Unsubscribe(c *ws.Client) {

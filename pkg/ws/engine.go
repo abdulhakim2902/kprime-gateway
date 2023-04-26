@@ -110,19 +110,16 @@ func (s *EngineSocket) BroadcastMessage(channelID string, p interface{}) error {
 }
 
 // SendErrorMessage sends error message on orderbookchannel
-// First Element In Params Is Requested ID
-func (s *EngineSocket) SendErrorMessage(c *Client, data interface{}, params ...uint64) {
-	c.SendMessage(data, params[0])
+func (s *EngineSocket) SendErrorMessage(c *Client, data interface{}) {
+	c.SendMessage(data, SendMessageParams{})
 }
 
 // SendInitMessage sends INIT message on orderbookchannel on subscription event
-// First Element In Params Is Requested ID
-func (s *EngineSocket) SendInitMessage(c *Client, data interface{}, params ...uint64) {
-	c.SendMessage(data, params[0])
+func (s *EngineSocket) SendInitMessage(c *Client, data interface{}) {
+	c.SendMessage(data, SendMessageParams{})
 }
 
 // SendUpdateMessage sends UPDATE message on enginechannel as new data is created
-// First Element In Params Is Requested ID
-func (s *EngineSocket) SendUpdateMessage(c *Client, data interface{}, params ...uint64) {
-	c.SendMessage(data, params[0])
+func (s *EngineSocket) SendUpdateMessage(c *Client, data interface{}) {
+	c.SendMessage(data, SendMessageParams{})
 }
