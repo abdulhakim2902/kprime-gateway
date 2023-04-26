@@ -10,6 +10,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/quickfixgo/enum"
 	"github.com/quickfixgo/field"
+	"github.com/quickfixgo/fix44/securitylist"
 	"github.com/quickfixgo/tag"
 	"github.com/quickfixgo/traderui/oms"
 
@@ -18,7 +19,8 @@ import (
 
 // FIXApplication implements a basic quickfix.Application
 type FIXApplication struct {
-	SessionIDs map[string]quickfix.SessionID
+	SessionIDs   map[string]quickfix.SessionID
+	SecurityList []string
 	*oms.OrderManager
 }
 
@@ -69,9 +71,42 @@ func (a *FIXApplication) FromApp(msg *quickfix.Message, sessionID quickfix.Sessi
 	case enum.MsgType_EXECUTION_REPORT:
 		fmt.Println("Execution Report")
 		return a.onExecutionReport(msg, sessionID)
+	case enum.MsgType_SECURITY_LIST:
+		fmt.Println("Security List")
+		return a.onSecurityList(msg, sessionID)
 	}
 
 	return quickfix.UnsupportedMessageType()
+}
+
+func (a *FIXApplication) onSecurityList(msg *quickfix.Message, sessionID quickfix.SessionID) quickfix.MessageRejectError {
+	a.Lock()
+	defer a.Unlock()
+	fmt.Println("mapping security list")
+	group := securitylist.NewNoRelatedSymRepeatingGroup()
+	fmt.Println("a")
+	err := msg.Body.GetGroup(&group)
+	fmt.Println("b")
+	if err != nil {
+		fmt.Println("Error getting the group: ", err)
+		return err
+	}
+	fmt.Println("c", group.Len())
+	symbols := make([]string, group.Len())
+	for i := 0; i < group.Len(); i++ {
+		var symbol field.SymbolField
+		if err := group.Get(i).Get(&symbol); err != nil {
+			return err
+		}
+		fmt.Println("Symbol: ", symbol.String())
+		symbols[i] = symbol.String()
+	}
+	if a.SecurityList == nil {
+		a.SecurityList = make([]string, group.Len())
+	}
+	a.SecurityList = symbols
+	fmt.Println("Instrument List: ", a.SecurityList)
+	return nil
 }
 
 func (a *FIXApplication) onExecutionReport(msg *quickfix.Message, sessionID quickfix.SessionID) quickfix.MessageRejectError {
@@ -139,4 +174,9 @@ func (a *FIXApplication) onExecutionReport(msg *quickfix.Message, sessionID quic
 	}
 
 	return nil
+}
+
+func (a FIXApplication) GetAllSecurityList() []string {
+	fmt.Println("Instrument List: ", a.SecurityList)
+	return a.SecurityList
 }

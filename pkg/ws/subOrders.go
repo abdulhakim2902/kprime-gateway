@@ -111,15 +111,15 @@ func (s *OrderSocket) BroadcastMessage(channelID string, p interface{}) error {
 
 // SendErrorMessage sends error message on orderchannel
 func (s *OrderSocket) SendErrorMessage(c *Client, data interface{}) {
-	c.SendMessage(data)
+	c.SendMessage(data, SendMessageParams{})
 }
 
 // SendInitMessage sends INIT message on orderchannel on subscription event
 func (s *OrderSocket) SendInitMessage(c *Client, data interface{}) {
-	c.SendMessage(data)
+	c.SendMessage(data, SendMessageParams{})
 }
 
 // SendUpdateMessage sends UPDATE message on orderchannel as new data is created
 func (s *OrderSocket) SendUpdateMessage(c *Client, data interface{}) {
-	c.SendMessage(data)
+	c.SendMessage(data, SendMessageParams{})
 }

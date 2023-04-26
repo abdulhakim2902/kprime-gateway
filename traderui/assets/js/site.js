@@ -31,12 +31,15 @@ var App = new (Backbone.View.extend({
   },
 
   start: function (options) {
+    console.log(options)
     this.orderTicket = new App.Models.OrderTicket({
-      session_ids: options.session_ids
+      session_ids: options.session_ids,
+      symbols: options.symbols,
     });
 
     this.securityDefinitionForm = new App.Models.SecurityDefinitionForm({
-      session_ids: options.session_ids
+      session_ids: options.session_ids,
+      symbols: options.symbols,
     });
 
     this.orders = new App.Collections.Orders(options.orders);
@@ -216,7 +219,7 @@ App.Views.OrderDetails = Backbone.View.extend({
     </div>
   </div>
   <div class="form-group">
-    <label class="col-sm-2 control-label">Account</label>
+    <label class="col-sm-2 control-label">PartyID</label>
     <div class="col-sm-10">
       <p class="form-control-static"><%= account %></p>
     </div>
@@ -536,16 +539,15 @@ App.Views.SecurityDefinitionRequest = Backbone.View.extend({
   <p>
     <div class='form-group'>
       <label for='security_type'>SecurityType</label>
-      <select class='form-control' name='security_type' id='security_type'>
-        <option value='CS'>Common Stock</option>
-        <option value='FUT'>Future</option>
+      <select class='form-control' name='security_type' id='security_type' disabled=true>
         <option value='OPT'>Option</option>
       </select>
     </div>
 
     <div class='form-group'>
       <label for='symbol'>Symbol</label>
-      <input type='text' class='form-control' name='symbol' placeholder='Symbol'>
+      <input type='text' class='form-control' name='symbol' placeholder='symbol'>
+
     </div>
   </p>
 
@@ -618,45 +620,14 @@ App.Views.OrderTicket = Backbone.View.extend({
   <p>
     <div class='form-group'>
       <label for='security_type'>SecurityType</label>
-      <select class='form-control' name='security_type' id='security_type'>
-        <option value='CS'>Common Stock</option>
-        <option value='FUT'>Future</option>
+      <select class='form-control' name='security_type' id='security_type' disabled=true>
         <option value='OPT'>Option</option>
       </select>
     </div>
 
     <div class='form-group'>
       <label for='symbol'>Symbol</label>
-      <input type='text' class='form-control' name='symbol' placeholder='Symbol' required>
-    </div>
-
-    <div class='form-group'>
-      <label for='security_desc'>Security Desc</label>
-      <input type='text' class='form-control' name='security_desc' placeholder='Security Desc'>
-    </div>
-  </p>
-  <p>
-    <div class='form-group'>
-      <label for='maturity_month_year'>Maturity Month Year</label>
-      <input type='text' class='form-control' name='maturity_month_year' id='maturity_month_year' placeholder='Maturity Month Year' disabled>
-    </div>
-
-    <div class='form-group'>
-      <label for='maturity_day'>Maturity Day</label>
-      <input type='number' class='form-control' name='maturity_day' id='maturity_day' placeholder='Maturity Day' disabled>
-    </div>
-
-    <div class='form-group'>
-      <label for='put_or_call'>Put or Call</label>
-      <select class='form-control' name='put_or_call' id='put_or_call' disabled>
-        <option value=1>Call</option>
-        <option value=0>Put</option>
-      </select>
-    </div>
-
-    <div class='form-group'>
-      <label for='strike_price'>Strike Price</label>
-      <input type='number' step='.01' class='form-control' name='strike_price' id='strike_price' placeholder='Strike Price' disabled>
+      <select class='form-control' name='symbol'>
     </div>
   </p>
   <p>
@@ -683,8 +654,8 @@ App.Views.OrderTicket = Backbone.View.extend({
 
   <p>
     <div class='form-group'>
-      <label for='account'>Account</label>
-      <input type='text' class='form-control' placeholder='Account' name='account'>
+      <label for='party_id'>PartyID</label>
+      <input type='text' class='form-control' placeholder='Party ID' name='party_id'>
     </div>
 
     <div class='form-group'>
@@ -705,13 +676,6 @@ App.Views.OrderTicket = Backbone.View.extend({
       <select class='form-control' name='session'>
         <% _.each(session_ids, function(i){ %><option><%= i %></option><% }); %>
       </select>
-    </div>
-    <div class='form-group'>
-      <label for='username'>Username</label>
-      <input type='text' class='form-control' placeholder='username' name='username'>
-
-      <label for='password'>password</label>
-      <input type='password' class='form-control' placeholder='password' name='password'>
     </div>
   </p>
   <button type='submit' class='btn btn-default'>Submit</button>
@@ -738,18 +702,12 @@ App.Views.OrderTicket = Backbone.View.extend({
       ord_type: this.$('select[name=ordType]').val(),
       price: this.$('input[name=price]').val(),
       stop_price: this.$('input[name=stopPrice]').val(),
-      account: this.$('input[name=account]').val(),
+      party_id: this.$('input[name=party_id]').val(),
       tif: this.$('select[name=tif]').val(),
       session_id: this.$('select[name=session]').val(),
       security_type: this.$('select[name=security_type]').val(),
-      security_desc: this.$('select[name=security_desc]').val(),
-      maturity_month_year: this.$('input[name=maturity_month_year]').val(),
-      maturity_day: parseInt(this.$('input[name=maturity_day]').val()),
       put_or_call: this.$('select[name=put_or_call]').val(),
-      strike_price: this.$('input[name=strike_price]').val(),
       order_id: this.$('input[name=order_id]').val(),
-      username: this.$('input[name=username]').val(),
-      password: this.$('input[name=password]').val(),
     });
 
     order.save();

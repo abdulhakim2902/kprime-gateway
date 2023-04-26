@@ -3,6 +3,7 @@ package consumer
 import (
 	"encoding/json"
 	"fmt"
+	"gateway/pkg/utils"
 	"log"
 	"os"
 	"strconv"
@@ -151,6 +152,10 @@ func handleTopicCancelledOrders(message *sarama.ConsumerMessage) {
 		Result:  count.(float64),
 	}
 	ID, _ := strconv.ParseUint(ClOrdID, 0, 64)
+	connectionKey := utils.GetKeyFromIdUserID(ID, userIDStr)
 
-	ws.SendOrderMessage(userIDStr, _cancelledData, ID)
+	ws.SendOrderMessage(connectionKey, _cancelledData, ws.SendMessageParams{
+		ID:     ID,
+		UserID: userIDStr,
+	})
 }

@@ -12,6 +12,9 @@ import (
 	"text/template"
 
 	"github.com/gorilla/mux"
+	"github.com/quickfixgo/enum"
+	"github.com/quickfixgo/field"
+	"github.com/quickfixgo/fix44/securitylistrequest"
 	"github.com/quickfixgo/tag"
 	"github.com/quickfixgo/traderui/basic"
 	"github.com/quickfixgo/traderui/oms"
@@ -27,17 +30,23 @@ type fixFactory interface {
 	SecurityDefinitionRequest(req secmaster.SecurityDefinitionRequest) (msg quickfix.Messagable, err error)
 }
 
+type fixApp interface {
+	GetAllSecurityList() []string
+}
+
 type tradeClient struct {
 	SessionIDs map[string]quickfix.SessionID
 	fixFactory
+	fixApp
 	*oms.OrderManager
 }
 
-func newTradeClient(factory fixFactory, idGen oms.ClOrdIDGenerator) *tradeClient {
+func newTradeClient(factory fixFactory, idGen oms.ClOrdIDGenerator, app fixApp) *tradeClient {
 	tc := &tradeClient{
 		SessionIDs:   make(map[string]quickfix.SessionID),
 		fixFactory:   factory,
 		OrderManager: oms.NewOrderManager(idGen),
+		fixApp:       app,
 	}
 
 	return tc
@@ -67,6 +76,14 @@ func (c tradeClient) ExecutionsAsJSON() (string, error) {
 	defer c.RUnlock()
 
 	b, err := json.Marshal(c.GetAllExecutions())
+	return string(b), err
+}
+
+func (c tradeClient) SecurityListAsJSON() (string, error) {
+	c.RLock()
+	defer c.RUnlock()
+
+	b, err := json.Marshal(c.GetAllSecurityList())
 	return string(b), err
 }
 
@@ -293,7 +310,7 @@ func (c tradeClient) newOrder(w http.ResponseWriter, r *http.Request) {
 	_ = c.OrderManager.Save(&order)
 	c.Unlock()
 
-	fmt.Println(order.ClOrdID)
+	fmt.Println(order.Session)
 	msg, err := c.NewOrderSingle(order)
 	if err != nil {
 		log.Printf("[ERROR] %v\n", err)
@@ -301,6 +318,7 @@ func (c tradeClient) newOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	msg.ToMessage().Body.SetString(tag.PartyID, order.PartyID)
 	msg.ToMessage().Body.SetString(tag.ClOrdID, order.ClOrdID)
 	msg.ToMessage().Body.SetString(tag.Password, order.Password)
 	msg.ToMessage().Body.SetString(tag.Username, order.Username)
@@ -310,6 +328,18 @@ func (c tradeClient) newOrder(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+
+	newMsg := securitylistrequest.New(
+		field.NewSecurityReqID("1"),
+		field.NewSecurityListRequestType(enum.SecurityListRequestType_SYMBOL),
+	)
+	newMsg.SetString(tag.Currency, "USD")
+	newMsg.SetInt(tag.SubscriptionRequestType, 0)
+	fmt.Println("requesting security list")
+	err = quickfix.SendToTarget(newMsg, order.SessionID)
+	if err != nil {
+		fmt.Println("Error sending security list request,", err)
 	}
 }
 
@@ -336,7 +366,7 @@ func main() {
 	logFactory := NewFancyLog()
 
 	var fixApp quickfix.Application
-	app := newTradeClient(basic.FIXFactory{}, new(basic.ClOrdIDGenerator))
+	app := newTradeClient(basic.FIXFactory{}, new(basic.ClOrdIDGenerator), basic.FIXApplication{})
 	fixApp = &basic.FIXApplication{
 		SessionIDs:   app.SessionIDs,
 		OrderManager: app.OrderManager,
