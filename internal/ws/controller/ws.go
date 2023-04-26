@@ -658,7 +658,10 @@ func (svc wsHandler) GetOrderBook(input interface{}, c *ws.Client) {
 	}
 
 	if msg.Params.InstrumentName == "" {
-		c.SendMessage(gin.H{"err": "Please provide instrument_name"})
+		c.SendMessage(gin.H{"err": "Please provide instrument_name"}, ws.SendMessageParams{
+			ID:            msg.Id,
+			RequestedTime: requestedTime,
+		})
 		return
 	}
 
