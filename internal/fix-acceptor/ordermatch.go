@@ -19,6 +19,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"gateway/internal/engine/types"
 	"gateway/internal/repositories"
 	"gateway/internal/user/model"
 	"gateway/pkg/utils"
@@ -431,6 +432,39 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 		}
 	}
 	return
+}
+
+func OnMatchingOrder(data types.EngineResponse) {
+	for _, trd := range data.Matches.Trades {
+		if userSession == nil {
+			if userSession[data.Matches.Trades[0].MakerID] == nil {
+				return
+			}
+			return
+		}
+
+		sessionID := userSession[data.Order.UserID]
+		order := data.Order
+		msg := executionreport.New(
+			field.NewOrderID(order.ID.String()),
+			field.NewExecID(order.ClOrdID),
+			field.NewExecTransType(enum.ExecTransType_NEW),
+			field.NewExecType(enum.ExecType(order.Status)),
+			field.NewOrdStatus(enum.OrdStatus(order.Status)),
+			field.NewSymbol(trd.Underlying),
+			field.NewSide(enum.Side(trd.Side)),
+			field.NewLeavesQty(decimal.NewFromFloat(trd.Amount), 2),
+			field.NewCumQty(decimal.NewFromFloat(order.FilledAmount), 2),
+			field.NewAvgPx(decimal.NewFromFloat(trd.Price), 2),
+		)
+		msg.SetLastPx(decimal.NewFromFloat(trd.Price), 2)
+		msg.SetLastShares(decimal.NewFromFloat(trd.Amount), 2)
+		err := quickfix.SendToTarget(msg, *sessionID)
+		if err != nil {
+			fmt.Println("Error sending execution report")
+		}
+	}
+
 }
 
 func OnOrderboookUpdate(symbol string, data map[string]interface{}) {
