@@ -18,7 +18,7 @@ type Order struct {
 	Symbol             string             `json:"symbol"`
 	QuantityDecimal    decimal.Decimal    `json:"-"`
 	Quantity           string             `json:"quantity"`
-	Account            string             `json:"account"`
+	PartyID            string             `json:"party_id"`
 	Session            string             `json:"session_id"`
 	Side               enum.Side          `json:"side"`
 	OrdType            enum.OrdType       `json:"ord_type"`
