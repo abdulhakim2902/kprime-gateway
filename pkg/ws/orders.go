@@ -90,5 +90,6 @@ func SendOrderMessage(a string, payload interface{}, params SendMessageParams) {
 
 	for _, c := range conn {
 		c.SendMessage(payload, params)
+		OrderSocketUnsubscribeHandler(a)
 	}
 }

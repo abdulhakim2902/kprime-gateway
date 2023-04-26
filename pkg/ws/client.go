@@ -1,7 +1,7 @@
 package ws
 
 import (
-	"strconv"
+	"gateway/pkg/utils"
 	"sync"
 	"time"
 
@@ -105,7 +105,7 @@ func (c *Client) SendMessage(payload interface{}, params SendMessageParams) {
 		m.UsDiff = m.UsOut - m.UsIn
 	} else if params.ID > 0 {
 		// Read requested time
-		ID := strconv.FormatUint(params.ID, 10) + "-" + params.UserID
+		ID := utils.GetKeyFromIdUserID(params.ID, params.UserID)
 		requestedTime := orderRequestRpcIDS[ID]
 		// Return times
 		if requestedTime > 0 {
