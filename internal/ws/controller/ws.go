@@ -65,7 +65,7 @@ func NewWebsocketHandler(
 	ws.RegisterChannel("public/unsubscribe", handler.UnsubscribeHandler)
 
 	ws.RegisterChannel("/public/get_instruments", handler.GetInstruments)
-	ws.RegisterChannel("/public/get_order_book", handler.GetOrderBook)
+	ws.RegisterChannel("public/get_order_book", handler.GetOrderBook)
 }
 
 func (svc wsHandler) PublicAuth(input interface{}, c *ws.Client) {

@@ -1,11 +1,5 @@
 package types
 
-import (
-	"time"
-
-	"go.mongodb.org/mongo-driver/bson/primitive"
-)
-
 type Side string
 type Type string
 type Contracts string
@@ -34,21 +28,3 @@ const (
 	FILLED         OrderStatus = "FILLED"
 	CANCELLED      OrderStatus = "CANCELLED"
 )
-
-type Order struct {
-	ID           primitive.ObjectID `json:"id" bson:"_id"`
-	UserID       string             `json:"userId" bson:"userId"`
-	ClientID     string             `json:"clientId" bson:"clientId"`
-	Underlying   string             `json:"underlying" bson:"underlying"`
-	ExpiryDate   string             `json:"expiryDate" bson:"expiryDate"`
-	StrikePrice  float64            `json:"strikePrice" bson:"strikePrice"`
-	Type         Type               `json:"type" bson:"type"`
-	Side         Side               `json:"side" bson:"side"`
-	Price        float64            `json:"price" bson:"price"`
-	Amount       float64            `json:"amount" bson:"amount"`
-	FilledAmount float64            `json:"filledAmount" bson:"filledAmount"`
-	Contracts    Contracts          `json:"contracts" bson:"contracts"`
-	Status       OrderStatus        `json:"status" bson:"status"`
-	CreatedAt    time.Time          `json:"createdAt" bson:"createdAt"`
-	UpdatedAt    time.Time          `json:"updatedAt" bson:"updatedAt"`
-}

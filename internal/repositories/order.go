@@ -9,7 +9,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 
 	_types "gateway/internal/orderbook/types"
-	"gateway/internal/repositories/types"
 
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -26,7 +25,7 @@ func NewOrderRepository(db Database) *OrderRepository {
 
 var defaultTimeout = 10 * time.Second
 
-func (r OrderRepository) Find(filter interface{}, sort interface{}, offset, limit int64) ([]*types.Order, error) {
+func (r OrderRepository) Find(filter interface{}, sort interface{}, offset, limit int64) ([]*_types.Order, error) {
 	options := options.FindOptions{
 		MaxTime: &defaultTimeout,
 	}
@@ -54,7 +53,7 @@ func (r OrderRepository) Find(filter interface{}, sort interface{}, offset, limi
 
 	defer cursor.Close(context.Background())
 
-	orders := []*types.Order{}
+	orders := []*_types.Order{}
 
 	err = cursor.All(context.Background(), &orders)
 	if err != nil {
