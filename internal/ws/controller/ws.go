@@ -174,7 +174,7 @@ func (svc wsHandler) PrivateBuy(input interface{}, c *ws.Client) {
 	})
 
 	// register order connection
-	ws.RegisterOrderConnection(JWTData.UserID, c)
+	ws.RegisterOrderConnection(ID, c)
 
 	// c.SendMessage(res)
 	return
@@ -245,7 +245,7 @@ func (svc wsHandler) PrivateSell(input interface{}, c *ws.Client) {
 	})
 
 	// register order connection
-	ws.RegisterOrderConnection(JWTData.UserID, c)
+	ws.RegisterOrderConnection(ID, c)
 
 	// c.SendMessage(res)
 	return
@@ -310,7 +310,7 @@ func (svc wsHandler) PrivateEdit(input interface{}, c *ws.Client) {
 	})
 
 	// register order connection
-	ws.RegisterOrderConnection(JWTData.UserID, c)
+	ws.RegisterOrderConnection(ID, c)
 	return
 }
 
@@ -369,7 +369,7 @@ func (svc wsHandler) PrivateCancel(input interface{}, c *ws.Client) {
 	})
 
 	// register order connection
-	ws.RegisterOrderConnection(JWTData.UserID, c)
+	ws.RegisterOrderConnection(ID, c)
 	return
 }
 
@@ -432,7 +432,7 @@ func (svc wsHandler) PrivateCancelByInstrument(input interface{}, c *ws.Client) 
 	}
 
 	//register order connection
-	ws.RegisterOrderConnection(JWTData.UserID, c)
+	ws.RegisterOrderConnection(ID, c)
 	c.SendMessage(map[string]interface{}{
 		"userId":   res.UserId,
 		"clientId": res.ClientId,
@@ -500,7 +500,7 @@ func (svc wsHandler) PrivateCancelAll(input interface{}, c *ws.Client) {
 	}
 
 	// register order connection
-	ws.RegisterOrderConnection(JWTData.UserID, c)
+	ws.RegisterOrderConnection(ID, c)
 	c.SendMessage(map[string]interface{}{
 		"userId":   res.UserId,
 		"clientId": res.ClientId,
