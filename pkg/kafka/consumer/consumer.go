@@ -137,24 +137,14 @@ func handleTopicCancelledOrders(message *sarama.ConsumerMessage) {
 	// Send message to websocket
 	userIDStr := data["data"].(map[string]interface{})["userId"].(string)
 	ClOrdID := data["data"].(map[string]interface{})["clOrdId"].(string)
-	_id := data["data"].(map[string]interface{})["id"].(string)
-	count := data["total"]
-
-	type CancelledData struct {
-		Id      string  `json:"id"`
-		JsonRpc string  `json:"jsonrpc"`
-		Result  float64 `json:"result"`
-	}
-
-	_cancelledData := CancelledData{
-		Id:      _id,
-		JsonRpc: "2.0",
-		Result:  count.(float64),
-	}
 	ID, _ := strconv.ParseUint(ClOrdID, 0, 64)
+
 	connectionKey := utils.GetKeyFromIdUserID(ID, userIDStr)
 
-	ws.SendOrderMessage(connectionKey, _cancelledData, ws.SendMessageParams{
+	count := data["total"]
+	_payload := count.(float64)
+
+	ws.SendOrderMessage(connectionKey, _payload, ws.SendMessageParams{
 		ID:     ID,
 		UserID: userIDStr,
 	})
