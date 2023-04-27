@@ -443,10 +443,10 @@ func OnMatchingOrder(data types.EngineResponse) {
 			return
 		}
 
-		sessionID := userSession[data.Order.UserID]
+		sessionID := userSession[data.Matches.Trades[0].MakerID]
 		order := data.Order
 		msg := executionreport.New(
-			field.NewOrderID(order.ID.String()),
+			field.NewOrderID(trd.ID.String()),
 			field.NewExecID(order.ClOrdID),
 			field.NewExecTransType(enum.ExecTransType_NEW),
 			field.NewExecType(enum.ExecType(order.Status)),
