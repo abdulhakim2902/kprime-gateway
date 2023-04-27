@@ -53,9 +53,14 @@ type Message struct {
 }
 
 type Orderbook struct {
-	InstrumentName string   `json:"instrumentName" bson:"instrumentName"`
-	Bids           []*Order `json:"bids" bson:"bids"`
-	Asks           []*Order `json:"asks" bson:"asks"`
+	InstrumentName string     `json:"instrumentName" bson:"instrumentName"`
+	Bids           []*WsOrder `json:"bids" bson:"bids"`
+	Asks           []*WsOrder `json:"asks" bson:"asks"`
+}
+
+type WsOrder struct {
+	Price  float64 `json:"price" bson:"price"`
+	Amount float64 `json:"amount" bson:"amount"`
 }
 
 type Order struct {

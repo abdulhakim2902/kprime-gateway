@@ -111,17 +111,17 @@ type DeribitGetOrderBookRequest struct {
 }
 
 type DeribitGetOrderBookResponse struct {
-	Timestamp      int64           `json:"timestamp"`
-	Stats          OrderBookStats  `json:"stats"`
-	State          string          `json:"state"`
-	LastPrice      float64         `json:"last_price"`
-	InstrumentName string          `json:"instrument_name"`
-	Bids           []*_types.Order `json:"bids"`
-	BestBidPrice   float64         `json:"best_bid_price"`
-	BestBidAmount  int64           `json:"best_bid_amount"`
-	BestAskPrice   int64           `json:"best_ask_price"`
-	BestAskAmount  int64           `json:"best_ask_amount"`
-	Asks           []*_types.Order `json:"asks"`
+	Timestamp      int64             `json:"timestamp"`
+	Stats          OrderBookStats    `json:"stats"`
+	State          string            `json:"state"`
+	LastPrice      float64           `json:"last_price"`
+	InstrumentName string            `json:"instrument_name"`
+	Bids           []*_types.WsOrder `json:"bids"`
+	BestBidPrice   float64           `json:"best_bid_price"`
+	BestBidAmount  float64           `json:"best_bid_amount"`
+	BestAskPrice   float64           `json:"best_ask_price"`
+	BestAskAmount  float64           `json:"best_ask_amount"`
+	Asks           []*_types.WsOrder `json:"asks"`
 }
 
 type OrderBookStats struct {

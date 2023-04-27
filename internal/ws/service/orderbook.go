@@ -91,10 +91,44 @@ func (svc wsOrderbookService) GetOrderBook(ctx context.Context, data deribitMode
 	// TODO query to orders collections
 	_getOrderBook := svc._getOrderBook(_order)
 
+	//count best Ask
+	maxAskPrice := 0.0
+	maxAskAmount := 0.0
+	var maxAskItem []*types.WsOrder
+	for _, item := range _getOrderBook.Asks {
+		if item.Price > maxAskPrice {
+			maxAskPrice = item.Price
+			maxAskItem = []*types.WsOrder{item}
+			maxAskAmount = item.Amount
+		} else if item.Price == maxAskPrice {
+			maxAskItem = append(maxAskItem, item)
+			maxAskAmount += item.Amount
+		}
+	}
+
+	//count best Bid
+	maxBidPrice := _getOrderBook.Bids[0].Price
+	maxBidAmount := 0.0
+	var maxBidItem []*types.WsOrder
+	for _, item := range _getOrderBook.Bids {
+		if item.Price < maxBidPrice {
+			maxBidPrice = item.Price
+			maxBidItem = []*types.WsOrder{item}
+			maxBidAmount = item.Amount
+		} else if item.Price == maxBidPrice {
+			maxBidItem = append(maxBidItem, item)
+			maxBidAmount += item.Amount
+		}
+	}
+
 	results := deribitModel.DeribitGetOrderBookResponse{
 		InstrumentName: _getOrderBook.InstrumentName,
 		Bids:           _getOrderBook.Bids,
 		Asks:           _getOrderBook.Asks,
+		BestAskPrice:   maxAskPrice,
+		BestAskAmount:  maxAskAmount,
+		BestBidPrice:   maxBidPrice,
+		BestBidAmount:  maxBidAmount,
 	}
 
 	return results
@@ -137,8 +171,8 @@ func (svc wsOrderbookService) _getOrderBook(o types.GetOrderBook) *types.Orderbo
 		},
 	}
 
-	asks := svc.orderRepository.Aggregate(asksQuery)
-	bids := svc.orderRepository.Aggregate(bidsQuery)
+	asks := svc.orderRepository.WsAggregate(asksQuery)
+	bids := svc.orderRepository.WsAggregate(bidsQuery)
 
 	orderbooks := &types.Orderbook{
 		InstrumentName: o.InstrumentName,

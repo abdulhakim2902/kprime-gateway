@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	deribitModel "gateway/internal/deribit/model"
+	"sort"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -210,24 +211,29 @@ func (r OrderRepository) GetInstruments(currency string, expired bool) ([]*derib
 	return orders, nil
 }
 
-func (r OrderRepository) Aggregate(pipeline interface{}) []*_types.Order {
+func (r OrderRepository) WsAggregate(pipeline interface{}) []*_types.WsOrder {
 	opt := options.AggregateOptions{
 		MaxTime: &defaultTimeout,
 	}
 
 	cursor, err := r.collection.Aggregate(context.Background(), pipeline, &opt)
 	if err != nil {
-		return []*_types.Order{}
+		return []*_types.WsOrder{}
 	}
 
 	err = cursor.Err()
 	if err != nil {
-		return []*_types.Order{}
+		return []*_types.WsOrder{}
 	}
 
-	orders := []*_types.Order{}
+	orders := []*_types.WsOrder{}
 
 	cursor.All(context.Background(), &orders)
+
+	//sort orders by price
+	sort.Slice(orders, func(i, j int) bool {
+		return orders[i].Price < orders[j].Price
+	})
 
 	return orders
 }
