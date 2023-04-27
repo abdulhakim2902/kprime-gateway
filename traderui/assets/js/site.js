@@ -627,7 +627,7 @@ App.Views.OrderTicket = Backbone.View.extend({
 
     <div class='form-group'>
       <label for='symbol'>Symbol</label>
-      <select class='form-control' name='symbol'>
+      <input type='text' class='form-control' name='symbol' placeholder='symbol'>
     </div>
   </p>
   <p>

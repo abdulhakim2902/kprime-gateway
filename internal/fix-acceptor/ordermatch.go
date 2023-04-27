@@ -435,11 +435,21 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 }
 
 func OnMatchingOrder(data types.EngineResponse) {
+	fmt.Println("OnMatchingOrder")
+	if data.Matches == nil {
+		return
+	}
+
+	if data.Matches.Trades == nil {
+		return
+	}
+
 	for _, trd := range data.Matches.Trades {
+		fmt.Println(userSession)
 		if userSession == nil {
-			if userSession[data.Matches.Trades[0].MakerID] == nil {
-				return
-			}
+			return
+		}
+		if userSession[data.Matches.Trades[0].MakerID] == nil {
 			return
 		}
 
@@ -459,6 +469,7 @@ func OnMatchingOrder(data types.EngineResponse) {
 		)
 		msg.SetLastPx(decimal.NewFromFloat(trd.Price), 2)
 		msg.SetLastShares(decimal.NewFromFloat(trd.Amount), 2)
+		fmt.Println("Sending execution report for matching order")
 		err := quickfix.SendToTarget(msg, *sessionID)
 		if err != nil {
 			fmt.Println("Error sending execution report")
