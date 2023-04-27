@@ -466,7 +466,7 @@ func OnMatchingOrder(data types.EngineResponse) {
 			field.NewAvgPx(decimal.NewFromFloat(trd.Price), 2),
 		)
 		msg.SetLastPx(decimal.NewFromFloat(trd.Price), 2)
-		// msg.SetLastShares(decimal.NewFromFloat(trd.Amount), 2) // this field not exists on 4.4
+		msg.SetLastQty(decimal.NewFromFloat(trd.Amount), 2)
 		fmt.Println("Sending execution report for matching order")
 		err := quickfix.SendToTarget(msg, *sessionID)
 		if err != nil {
@@ -576,7 +576,7 @@ func (a *Application) updateOrder(order Order, status enum.OrdStatus) {
 
 	switch status {
 	case enum.OrdStatus_FILLED, enum.OrdStatus_PARTIALLY_FILLED:
-		// execReport.SetLastShares(order.LastExecutedQuantity, 2)
+		execReport.SetLastQty(order.LastExecutedQuantity, 2)
 		execReport.SetLastPx(order.LastExecutedPrice, 2)
 	}
 
