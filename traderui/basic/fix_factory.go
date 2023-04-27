@@ -2,6 +2,7 @@ package basic
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/quickfixgo/enum"
@@ -164,6 +165,7 @@ func nos43(ord oms.Order) (quickfix.Messagable, error) {
 }
 
 func nos44(ord oms.Order) (quickfix.Messagable, error) {
+	fmt.Println("creating 44 nos")
 	nos := fix44nos.New(
 		field.NewClOrdID(ord.ClOrdID),
 		field.NewSide(ord.Side),
