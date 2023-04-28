@@ -333,6 +333,7 @@ func (c tradeClient) newOrder(w http.ResponseWriter, r *http.Request) {
 		field.NewSecurityReqID("1"),
 		field.NewSecurityListRequestType(enum.SecurityListRequestType_SYMBOL),
 	)
+	newMsg.SetString(tag.SecurityResponseID, "a1")
 	newMsg.SetInt(tag.SubscriptionRequestType, 0)
 	newMsg.SetString(tag.Currency, "ALL") // btc / all
 	fmt.Println("requesting security list")

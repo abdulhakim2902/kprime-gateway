@@ -601,6 +601,7 @@ func (a Application) onSecurityListRequest(msg securitylistrequest.SecurityListR
 	var secDef field.SecurityResponseIDField
 	msg.GetField(tag.SecurityResponseID, &secDef)
 
+	fmt.Println("sec def", secDef)
 	res := securitylist.New(
 		field.NewSecurityReqID(secReq),
 		field.NewSecurityResponseID(secDef.String()),
@@ -621,9 +622,9 @@ func (a Application) onSecurityListRequest(msg securitylistrequest.SecurityListR
 		secListGroup.Add().SetSecurityDesc("OPTIONS")
 		secListGroup.Add().SetSecurityType("OPT")
 		secListGroup.Add().SetStrikeCurrency("USD")
-		secListGroup.Add().SetSymbol()
-		secListGroup.Add().SetIssueDate()
-		secListGroup.Add().SetStrikePrice(decimal.NewFromFloat(instrument).String())
+		// secListGroup.Add().SetSymbol()
+		// secListGroup.Add().SetIssueDate()
+		// secListGroup.Add().SetStrikePrice(decimal.NewFromFloat(instrument).String())
 		secListGroup.Add().SetField(quickfix.Tag(201), putOrCall)
 		secListGroup.Add().SetField(quickfix.Tag(965), secStatus)
 		res.SetNoRelatedSym(secListGroup)
