@@ -162,7 +162,7 @@ func (svc wsOrderbookService) GetOrderBook(ctx context.Context, data deribitMode
 	_volumeAmount := 0.0
 	if len(_getLowestTrade) > 0 {
 		_lowestPrice = _getLowestTrade[0].Price
-		for _, item := range _getLastTrades {
+		for _, item := range _getLowestTrade {
 			_volumeAmount += item.Amount
 		}
 	}
