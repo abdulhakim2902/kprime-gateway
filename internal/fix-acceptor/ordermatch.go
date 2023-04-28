@@ -598,13 +598,10 @@ func (a Application) onSecurityListRequest(msg securitylistrequest.SecurityListR
 	if err != nil {
 		return err
 	}
-	var secDef field.SecurityResponseIDField
-	msg.GetField(tag.SecurityResponseID, &secDef)
 
-	fmt.Println("sec def", secDef)
 	res := securitylist.New(
 		field.NewSecurityReqID(secReq),
-		field.NewSecurityResponseID(secDef.String()),
+		field.NewSecurityResponseID("secDef.String()"),
 		field.NewSecurityRequestResult(enum.SecurityRequestResult_VALID_REQUEST),
 	)
 
