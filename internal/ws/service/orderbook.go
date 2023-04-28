@@ -3,10 +3,13 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	deribitModel "gateway/internal/deribit/model"
+	_engineTypes "gateway/internal/engine/types"
 	"gateway/internal/orderbook/types"
 	"gateway/internal/repositories"
 	"gateway/pkg/redis"
@@ -18,10 +21,11 @@ import (
 type wsOrderbookService struct {
 	redis           *redis.RedisConnectionPool
 	orderRepository *repositories.OrderRepository
+	tradeRepository *repositories.TradeRepository
 }
 
-func NewwsOrderbookService(redis *redis.RedisConnectionPool, orderRepository *repositories.OrderRepository) IwsOrderbookService {
-	return &wsOrderbookService{redis, orderRepository}
+func NewwsOrderbookService(redis *redis.RedisConnectionPool, orderRepository *repositories.OrderRepository, tradeRepository *repositories.TradeRepository) IwsOrderbookService {
+	return &wsOrderbookService{redis, orderRepository, tradeRepository}
 }
 
 func (svc wsOrderbookService) Subscribe(c *ws.Client, instrument string) {
@@ -88,7 +92,7 @@ func (svc wsOrderbookService) GetOrderBook(ctx context.Context, data deribitMode
 		StrikePrice:    _strikePrice,
 	}
 
-	// TODO query to orders collections
+	//TODO query to orders collections
 	_getOrderBook := svc._getOrderBook(_order)
 
 	//count best Ask
@@ -107,7 +111,10 @@ func (svc wsOrderbookService) GetOrderBook(ctx context.Context, data deribitMode
 	}
 
 	//count best Bid
-	maxBidPrice := _getOrderBook.Bids[0].Price
+	maxBidPrice := 0.0
+	if len(_getOrderBook.Bids) > 0 {
+		maxBidPrice = _getOrderBook.Bids[0].Price
+	}
 	maxBidAmount := 0.0
 	var maxBidItem []*types.WsOrder
 	for _, item := range _getOrderBook.Bids {
@@ -121,6 +128,41 @@ func (svc wsOrderbookService) GetOrderBook(ctx context.Context, data deribitMode
 		}
 	}
 
+	//check state
+	dateString := _expiryDate
+	layout := "02Jan06"
+	date, err := time.Parse(layout, dateString)
+	if err != nil {
+		fmt.Println("Error parsing date:", err)
+	}
+	currentTime := time.Now()
+	oneDayAgo := currentTime.AddDate(0, 0, -1)
+	_state := ""
+	if date.Before(oneDayAgo) {
+		_state = "closed"
+	} else {
+		_state = "open"
+	}
+
+	//TODO query to trades collections
+	_getLastTrades := svc._getLastTrades(_order)
+	_lastPrice := 0.0
+	if len(_getLastTrades) > 0 {
+		_lastPrice = _getLastTrades[len(_getLastTrades)-1].Price
+	}
+
+	_getHigestTrade := svc._getHighLowTrades(_order, -1)
+	_hightPrice := 0.0
+	if len(_getHigestTrade) > 0 {
+		_hightPrice = _getHigestTrade[0].Price
+	}
+
+	_getLowestTrade := svc._getHighLowTrades(_order, 1)
+	_lowestPrice := 0.0
+	if len(_getLowestTrade) > 0 {
+		_lowestPrice = _getLowestTrade[0].Price
+	}
+
 	results := deribitModel.DeribitGetOrderBookResponse{
 		InstrumentName: _getOrderBook.InstrumentName,
 		Bids:           _getOrderBook.Bids,
@@ -129,6 +171,15 @@ func (svc wsOrderbookService) GetOrderBook(ctx context.Context, data deribitMode
 		BestAskAmount:  maxAskAmount,
 		BestBidPrice:   maxBidPrice,
 		BestBidAmount:  maxBidAmount,
+		Timestamp:      time.Now().UnixNano() / int64(time.Millisecond),
+		State:          _state,
+		LastPrice:      _lastPrice,
+		Stats: deribitModel.OrderBookStats{
+			High:        _hightPrice,
+			Low:         _lowestPrice,
+			PriceChange: 0,
+			Volume:      0,
+		},
 	}
 
 	return results
@@ -181,4 +232,46 @@ func (svc wsOrderbookService) _getOrderBook(o types.GetOrderBook) *types.Orderbo
 	}
 
 	return orderbooks
+}
+
+func (svc wsOrderbookService) _getLastTrades(o types.GetOrderBook) []*_engineTypes.Trade {
+	tradesQuery := bson.M{
+		"underlying":  o.Underlying,
+		"strikePrice": o.StrikePrice,
+		"expiryDate":  o.ExpiryDate,
+	}
+	tradesSort := bson.M{
+		"createdAt": 1,
+	}
+
+	trades, err := svc.tradeRepository.Find(tradesQuery, tradesSort, 0, -1)
+	if err != nil {
+		panic(err)
+	}
+
+	return trades
+}
+
+func (svc wsOrderbookService) _getHighLowTrades(o types.GetOrderBook, t int) []*_engineTypes.Trade {
+	currentTime := time.Now()
+	oneDayAgo := currentTime.AddDate(0, 0, -1)
+
+	tradesQuery := bson.M{
+		"underlying":  o.Underlying,
+		"strikePrice": o.StrikePrice,
+		"expiryDate":  o.ExpiryDate,
+		"createdAt": bson.M{
+			"$gte": oneDayAgo,
+		},
+	}
+	tradesSort := bson.M{
+		"price": t,
+	}
+
+	trades, err := svc.tradeRepository.Find(tradesQuery, tradesSort, 0, 1)
+	if err != nil {
+		panic(err)
+	}
+
+	return trades
 }
