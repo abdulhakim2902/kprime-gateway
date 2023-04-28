@@ -159,8 +159,12 @@ func (svc wsOrderbookService) GetOrderBook(ctx context.Context, data deribitMode
 
 	_getLowestTrade := svc._getHighLowTrades(_order, 1)
 	_lowestPrice := 0.0
+	_volumeAmount := 0.0
 	if len(_getLowestTrade) > 0 {
 		_lowestPrice = _getLowestTrade[0].Price
+		for _, item := range _getLastTrades {
+			_volumeAmount += item.Amount
+		}
 	}
 
 	results := deribitModel.DeribitGetOrderBookResponse{
@@ -178,7 +182,7 @@ func (svc wsOrderbookService) GetOrderBook(ctx context.Context, data deribitMode
 			High:        _hightPrice,
 			Low:         _lowestPrice,
 			PriceChange: 0,
-			Volume:      0,
+			Volume:      _volumeAmount,
 		},
 	}
 
@@ -268,7 +272,7 @@ func (svc wsOrderbookService) _getHighLowTrades(o types.GetOrderBook, t int) []*
 		"price": t,
 	}
 
-	trades, err := svc.tradeRepository.Find(tradesQuery, tradesSort, 0, 1)
+	trades, err := svc.tradeRepository.Find(tradesQuery, tradesSort, 0, -1)
 	if err != nil {
 		panic(err)
 	}
