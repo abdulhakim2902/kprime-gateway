@@ -167,6 +167,16 @@ func (svc wsOrderbookService) GetOrderBook(ctx context.Context, data deribitMode
 		}
 	}
 
+	_get24HoursTrade := svc._get24HoursTrades(_order)
+	_priceChange := 0.0
+	if len(_get24HoursTrade) > 0 {
+		_firstTrade := _get24HoursTrade[0].Price
+		_lastTrade := _get24HoursTrade[len(_get24HoursTrade)-1].Price
+
+		//calculate price change with percentage
+		_priceChange = (_lastTrade - _firstTrade) / _firstTrade * 100
+	}
+
 	results := deribitModel.DeribitGetOrderBookResponse{
 		InstrumentName: _getOrderBook.InstrumentName,
 		Bids:           _getOrderBook.Bids,
@@ -181,7 +191,7 @@ func (svc wsOrderbookService) GetOrderBook(ctx context.Context, data deribitMode
 		Stats: deribitModel.OrderBookStats{
 			High:        _hightPrice,
 			Low:         _lowestPrice,
-			PriceChange: 0,
+			PriceChange: _priceChange,
 			Volume:      _volumeAmount,
 		},
 	}
@@ -270,6 +280,30 @@ func (svc wsOrderbookService) _getHighLowTrades(o types.GetOrderBook, t int) []*
 	}
 	tradesSort := bson.M{
 		"price": t,
+	}
+
+	trades, err := svc.tradeRepository.Find(tradesQuery, tradesSort, 0, -1)
+	if err != nil {
+		panic(err)
+	}
+
+	return trades
+}
+
+func (svc wsOrderbookService) _get24HoursTrades(o types.GetOrderBook) []*_engineTypes.Trade {
+	currentTime := time.Now()
+	oneDayAgo := currentTime.AddDate(0, 0, -1)
+
+	tradesQuery := bson.M{
+		"underlying":  o.Underlying,
+		"strikePrice": o.StrikePrice,
+		"expiryDate":  o.ExpiryDate,
+		"createdAt": bson.M{
+			"$gte": oneDayAgo,
+		},
+	}
+	tradesSort := bson.M{
+		"createdAt": 1,
 	}
 
 	trades, err := svc.tradeRepository.Find(tradesQuery, tradesSort, 0, -1)
