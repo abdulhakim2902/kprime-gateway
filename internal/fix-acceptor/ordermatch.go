@@ -614,8 +614,18 @@ func (a Application) onSecurityListRequest(msg securitylistrequest.SecurityListR
 	}
 
 	for _, instrument := range instruments {
+		var putOrCall field.PutOrCallField
+		var secStatus field.SecurityStatusField
 		secListGroup := securitylist.NewNoRelatedSymRepeatingGroup()
 		secListGroup.Add().SetSymbol(instrument.InstrumentName)
+		secListGroup.Add().SetSecurityDesc("OPTIONS")
+		secListGroup.Add().SetSecurityType("OPT")
+		secListGroup.Add().SetStrikeCurrency("USD")
+		secListGroup.Add().SetSymbol()
+		secListGroup.Add().SetIssueDate()
+		secListGroup.Add().SetStrikePrice(decimal.NewFromFloat(instrument).String())
+		secListGroup.Add().SetField(quickfix.Tag(201), putOrCall)
+		secListGroup.Add().SetField(quickfix.Tag(965), secStatus)
 		res.SetNoRelatedSym(secListGroup)
 	}
 
