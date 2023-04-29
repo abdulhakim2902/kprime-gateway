@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"gateway/pkg/utils"
+	"strconv"
 	"time"
 
 	"github.com/Shopify/sarama"
@@ -133,12 +134,16 @@ func (svc engineHandler) PublishOrder(data types.EngineResponse) {
 	}
 	userIDStr := fmt.Sprintf("%v", data.Order.UserID)
 	ClOrdID := fmt.Sprintf("%v", data.Order.ClOrdID)
-
+	ID, _ := strconv.ParseUint(ClOrdID, 0, 64)
+	connectionKey := utils.GetKeyFromIdUserID(ID, userIDStr)
 	switch data.Status {
 	case types.ORDER_CANCELLED:
-		ws.SendOrderMessage(userIDStr, types.CancelResponse{
+		ws.SendOrderMessage(connectionKey, types.CancelResponse{
 			Order: order,
-		}, ClOrdID)
+		}, ws.SendMessageParams{
+			ID:     ID,
+			UserID: userIDStr,
+		})
 	default:
 		trades := []types.BuySellEditTrade{}
 		if data.Matches != nil && data.Matches.Trades != nil && len(data.Matches.Trades) > 0 {
@@ -157,10 +162,13 @@ func (svc engineHandler) PublishOrder(data types.EngineResponse) {
 				})
 			}
 		}
-		ws.SendOrderMessage(userIDStr, types.BuySellEditResponse{
+		ws.SendOrderMessage(connectionKey, types.BuySellEditResponse{
 			Order:  order,
 			Trades: trades,
-		}, ClOrdID)
+		}, ws.SendMessageParams{
+			ID:     ID,
+			UserID: userIDStr,
+		})
 
 	}
 

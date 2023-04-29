@@ -1,24 +1,35 @@
-## Options Exchange Gateway
+<p align="center">
+    <h1 align="center">K-Prime Gateway</h1>
+</p>
 
-### This projects uses Gin and implements Clean Architecture
+## Requirement
+Make sure you have Go installed and GOPATH set in your env.
+Go version: `1.20.3` <br />
+MongoDB version: Community Edition `6.0.5`
 
-for gin related docs please visit https://gin-gonic.com/docs/
 
-for clean architecture concepts you can visit these links:
+### Framework
+This projects uses `Gin` and implements `Clean Architecture`
 
-1. https://evrone.com/go-clean-template
+* for gin related docs please visit https://gin-gonic.com/docs/
+* for clean architecture concepts you can visit the link: https://evrone.com/go-clean-template
 
 
 ### Setup the application
 
-to setup the application, please copy file `.env.example` and rename it to `.env`
-modify `.env` file based on your local requirement
+To setup the application, please copy file `.env.example` and rename it to `.env`, modify `.env` file based on your local requirement
 
 ### Database
-We're using 2 databases. MySQL database is used only for gateway application, to store users' credentials. And MongoDB Database is connected to the orderbook's MongoDB, using replica set feature. So for local development, make sure that the orderbook app and the gateway app has the same mongoDB database.
+We're using two databases:
+* MySQL
+* MongoDB
+
+MySQL is used only for gateway application, to store user's credentials, roles, permissions, etc. 
+
+Gateway is connected to the orderbook's MongoDB instance. In production Gateway would use replica set feature. For local development, make sure that the `orderbook app` and the `gateway app` has the same MongoDB database.
 
 ### Migrate
-to run the migration, just follow the command below
+To run the migration, just follow the command below
 
 Migration up:
 
@@ -46,14 +57,13 @@ or, for executable binary:
 
 ### Start the application
 
-to start running the application, simply run
+To start running the application, simply run:
 
 ```bash
 go run cmd/main/main.go
 ```
 
-under cmd/main directory
-this will automatically install project dependecy, just make sure you have go installed and GOPATH set in your env.
+under cmd/main directory this will automatically install project dependecy.
 
 ### Using docker
 

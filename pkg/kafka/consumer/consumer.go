@@ -3,8 +3,10 @@ package consumer
 import (
 	"encoding/json"
 	"fmt"
+	"gateway/pkg/utils"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 
 	engInt "gateway/internal/engine/service"
@@ -29,7 +31,7 @@ func KafkaConsumer(
 	config.Consumer.Return.Errors = true
 
 	brokers := []string{os.Getenv("KAFKA_BROKER")}
-	topics := []string{"ORDER", "TRADE", "ORDERBOOK", "ENGINE"}
+	topics := []string{"ORDER", "TRADE", "ORDERBOOK", "ENGINE", "CANCELLED_ORDERS"}
 
 	fmt.Println(brokers)
 	consumer, err := sarama.NewConsumer(brokers, config)
@@ -133,22 +135,17 @@ func handleTopicCancelledOrders(message *sarama.ConsumerMessage) {
 	}
 
 	// Send message to websocket
-	userIDStr := fmt.Sprintf("%v", data["userId"])
-	ClOrdID := fmt.Sprintf("%v", data["clOrdId"])
-	_id := fmt.Sprintf("%v", data["id"])
+	userIDStr := data["data"].(map[string]interface{})["userId"].(string)
+	ClOrdID := data["data"].(map[string]interface{})["clOrdId"].(string)
+	ID, _ := strconv.ParseUint(ClOrdID, 0, 64)
+
+	connectionKey := utils.GetKeyFromIdUserID(ID, userIDStr)
+
 	count := data["total"]
+	_payload := count.(float64)
 
-	type CancelledData struct {
-		Id      string `json:"id"`
-		JsonRpc string `json:"jsonrpc"`
-		Result  int    `json:"result"`
-	}
-
-	_cancelledData := CancelledData{
-		Id:      _id,
-		JsonRpc: "2.0",
-		Result:  count.(int),
-	}
-
-	ws.SendOrderMessage(userIDStr, _cancelledData, ClOrdID)
+	ws.SendOrderMessage(connectionKey, _payload, ws.SendMessageParams{
+		ID:     ID,
+		UserID: userIDStr,
+	})
 }

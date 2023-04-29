@@ -82,13 +82,14 @@ func isClientConnected(a string, client *Client) bool {
 	return false
 }
 
-func SendOrderMessage(a string, payload interface{}, id string) {
+func SendOrderMessage(a string, payload interface{}, params SendMessageParams) {
 	conn := GetOrderConnections(a)
 	if conn == nil {
 		return
 	}
 
 	for _, c := range conn {
-		c.SendMessage(payload, id)
+		c.SendMessage(payload, params)
+		OrderSocketUnsubscribeHandler(a)
 	}
 }
