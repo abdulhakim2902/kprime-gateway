@@ -553,20 +553,17 @@ App.Views.SecurityDefinitionRequest = Backbone.View.extend({
 
   <p>
   <div class='form-group'>
+    <label for='symbol'>Instrument</label>
+    <select class='form-control' name='symbol'>
+      <% _.each(symbols, function(i){ %><option><%= i %></option><% }); %>
+    </select>
+  </div>
+  <div class='form-group'>
     <label for='session'>Session</label>
     <select class='form-control' name='session'>
       <% _.each(session_ids, function(i){ %><option><%= i %></option><% }); %>
     </select>
   </div>
-
-  <div class='form-group'>
-    <label for='username'>Username</label>
-    <input type='text' class='form-control' name='username' placeholder='username'>
-
-    <label for='password'>Password</label>
-    <input type='password' class='form-control' name='password' placeholder='password'>
-  </div>
-
   <button type='submit' class='btn btn-default'>Submit</button>
   </p>
 </form>

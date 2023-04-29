@@ -611,6 +611,7 @@ func (a Application) onSecurityListRequest(msg securitylistrequest.SecurityListR
 		return quickfix.NewMessageRejectError(e.Error(), 0, nil)
 	}
 
+	fmt.Println(instruments)
 	for _, instrument := range instruments {
 		var putOrCall field.PutOrCallField
 		var secStatus field.SecurityStatusField
