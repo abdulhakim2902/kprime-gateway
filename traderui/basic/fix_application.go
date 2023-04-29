@@ -17,10 +17,11 @@ import (
 	"github.com/quickfixgo/quickfix"
 )
 
+var instruments []string
+
 // FIXApplication implements a basic quickfix.Application
 type FIXApplication struct {
-	SessionIDs   map[string]quickfix.SessionID
-	SecurityList []string
+	SessionIDs map[string]quickfix.SessionID
 	*oms.OrderManager
 }
 
@@ -101,11 +102,11 @@ func (a *FIXApplication) onSecurityList(msg *quickfix.Message, sessionID quickfi
 		fmt.Println("Symbol: ", symbol.String())
 		symbols[i] = symbol.String()
 	}
-	if a.SecurityList == nil {
-		a.SecurityList = make([]string, group.Len())
+	if instruments == nil {
+		instruments = make([]string, group.Len())
 	}
-	a.SecurityList = symbols
-	fmt.Println("Instrument List: ", a.SecurityList)
+	instruments = symbols
+	fmt.Println("Instrument List: ", instruments)
 	return nil
 }
 
@@ -177,6 +178,6 @@ func (a *FIXApplication) onExecutionReport(msg *quickfix.Message, sessionID quic
 }
 
 func (a FIXApplication) GetAllSecurityList() []string {
-	fmt.Println("Instrument List: ", a.SecurityList)
-	return a.SecurityList
+	fmt.Println("Instrument List: ", instruments)
+	return instruments
 }
