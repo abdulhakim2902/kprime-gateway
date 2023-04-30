@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 
 	"gateway/internal/repositories/types"
 
@@ -61,6 +62,18 @@ func (r OrderRepository) Find(filter interface{}, sort interface{}, offset, limi
 	}
 
 	return orders, nil
+}
+
+func (r OrderRepository) FindByID(orderId primitive.ObjectID) (*types.Order, error) {
+	var order *types.Order
+	err := r.collection.FindOne(context.Background(), bson.M{
+		"_id": orderId,
+	}).Decode(&order)
+	if err != nil {
+		return nil, err
+	}
+
+	return order, nil
 }
 
 func (r OrderRepository) GetInstruments(currency string, expired bool) ([]*deribitModel.DeribitGetInstrumentsResponse, error) {

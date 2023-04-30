@@ -178,7 +178,7 @@ func main() {
 	_wsOrderSvc := _wsSvc.NewWSOrderService(redis, orderRepo)
 
 	tradeRepo := repositories.NewTradeRepository(mongoDb)
-	_wsTradeSvc := _wsSvc.NewWSTradeService(redis, tradeRepo)
+	_wsTradeSvc := _wsSvc.NewWSTradeService(redis, tradeRepo, orderRepo)
 
 	_wsCtrl.NewWebsocketHandler(
 		r,

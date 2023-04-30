@@ -100,3 +100,24 @@ type DeribitGetInstrumentsResponse struct {
 	ContractSize        uint64 `json:"contract_size"`
 	BaseCurrency        string `json:"base_currency"`
 }
+
+type DeribitGetUserTradesByInstrumentsRequest struct {
+	InstrumentName string `json:"instrument_name" validate:"required"`
+	Count          int    `json:"count"`
+	StartTimestamp int64  `json:"start_timestamp"`
+	EndTimestamp   int64  `json:"end_timestamp"`
+	Sorting        string `json:"sorting"`
+}
+
+type DeribitGetUserTradesByInstrumentsResponse struct {
+	HasMore        string  `json:"has_more"`
+	Amount         float64 `json:"amount"`
+	Direction      string  `json:"direction"`
+	InstrumentName string  `json:"instrument_name"`
+	OrderId        string  `json:"order_id"`
+	OrderType      string  `json:"order_type"`
+	Price          float64 `json:"price"`
+	State          string  `json:"state"`
+	Timestamp      int64   `json:"timestamp"`
+	TradeId        string  `json:"trade_id"`
+}
