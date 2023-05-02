@@ -115,7 +115,7 @@ type DeribitGetUserTradesByInstrumentsRequest struct {
 	Sorting        string `json:"sorting"`
 }
 
-type DeribitGetUserTradesByInstrumentsResponse struct {
+type DeribitGetUserTradesByInstruments struct {
 	TradeId        string             `json:"trade_id" bson:"_id"`
 	HasMore        string             `json:"has_more"`
 	Amount         float64            `json:"amount" bson:"amount"`
@@ -126,4 +126,9 @@ type DeribitGetUserTradesByInstrumentsResponse struct {
 	Price          float64            `json:"price" bson:"price"`
 	State          types.OrderStatus  `json:"state" bson:"state"`
 	Timestamp      int64              `json:"timestamp"`
+}
+
+type DeribitGetUserTradesByInstrumentsResponse struct {
+	Trades  []*DeribitGetUserTradesByInstruments `json:"trades"`
+	HasMore bool                                 `json:"has_more"`
 }

@@ -163,7 +163,7 @@ func (svc wsTradeService) GetUserTradesByInstrument(
 	ctx context.Context,
 	userId string,
 	request deribitModel.DeribitGetUserTradesByInstrumentsRequest,
-) []deribitModel.DeribitGetUserTradesByInstrumentsResponse {
+) *deribitModel.DeribitGetUserTradesByInstrumentsResponse {
 
 	trades, err := svc.repo.FindUserTradesByInstrument(
 		request.InstrumentName,
@@ -172,18 +172,20 @@ func (svc wsTradeService) GetUserTradesByInstrument(
 		userId,
 	)
 	if err != nil {
-		fmt.Println(err)
+		return nil
 	}
 
 	jsonBytes, err := json.Marshal(trades)
 	if err != nil {
 		fmt.Println(err)
+
+		return nil
 	}
 
-	var out []deribitModel.DeribitGetUserTradesByInstrumentsResponse
-	err = json.Unmarshal([]byte(jsonBytes), &out)
-	if err != nil {
+	var out *deribitModel.DeribitGetUserTradesByInstrumentsResponse
+	if err = json.Unmarshal([]byte(jsonBytes), &out); err != nil {
 		fmt.Println(err)
+
 		return nil
 	}
 

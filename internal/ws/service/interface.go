@@ -28,5 +28,5 @@ type IwsTradeService interface {
 		ctx context.Context,
 		userId string,
 		request deribitModel.DeribitGetUserTradesByInstrumentsRequest,
-	) []deribitModel.DeribitGetUserTradesByInstrumentsResponse
+	) *deribitModel.DeribitGetUserTradesByInstrumentsResponse
 }
