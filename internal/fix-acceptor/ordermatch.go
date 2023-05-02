@@ -599,9 +599,10 @@ func (a Application) onSecurityListRequest(msg securitylistrequest.SecurityListR
 		return err
 	}
 
+	secRes := time.Now().UnixMicro()
 	res := securitylist.New(
 		field.NewSecurityReqID(secReq),
-		field.NewSecurityResponseID("secDef.String()"),
+		field.NewSecurityResponseID(strconv.Itoa(int(secRes))),
 		field.NewSecurityRequestResult(enum.SecurityRequestResult_VALID_REQUEST),
 	)
 
