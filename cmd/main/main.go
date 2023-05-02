@@ -173,10 +173,11 @@ func main() {
 	_wsEngineSvc := _wsEngineSvc.NewwsEngineService(redis)
 
 	orderRepo := repositories.NewOrderRepository(mongoDb)
-	_wsOrderbookSvc := _wsOrderbookSvc.NewwsOrderbookService(redis, orderRepo)
+	tradeRepo := repositories.NewTradeRepository(mongoDb)
+
+	_wsOrderbookSvc := _wsOrderbookSvc.NewWSOrderbookService(redis, orderRepo, tradeRepo)
 	_wsOrderSvc := _wsSvc.NewWSOrderService(redis, orderRepo)
 
-	tradeRepo := repositories.NewTradeRepository(mongoDb)
 	_wsTradeSvc := _wsSvc.NewWSTradeService(redis, tradeRepo)
 
 	_wsCtrl.NewWebsocketHandler(

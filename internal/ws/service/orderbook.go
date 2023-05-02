@@ -24,7 +24,7 @@ type wsOrderbookService struct {
 	tradeRepository *repositories.TradeRepository
 }
 
-func NewwsOrderbookService(redis *redis.RedisConnectionPool, orderRepository *repositories.OrderRepository, tradeRepository *repositories.TradeRepository) IwsOrderbookService {
+func NewWSOrderbookService(redis *redis.RedisConnectionPool, orderRepository *repositories.OrderRepository, tradeRepository *repositories.TradeRepository) IwsOrderbookService {
 	return &wsOrderbookService{redis, orderRepository, tradeRepository}
 }
 
@@ -92,7 +92,6 @@ func (svc wsOrderbookService) GetOrderBook(ctx context.Context, data deribitMode
 		StrikePrice:    _strikePrice,
 	}
 
-	//TODO query to orders collections
 	_getOrderBook := svc._getOrderBook(_order)
 
 	//count best Ask
