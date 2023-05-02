@@ -1,5 +1,11 @@
 package model
 
+import (
+	"gateway/internal/engine/types"
+
+	"go.mongodb.org/mongo-driver/bson/primitive"
+)
+
 type DeribitRequest struct {
 	InstrumentName string  `json:"instrument_name" validate:"required"`
 	Amount         float64 `json:"amount"`
@@ -110,14 +116,14 @@ type DeribitGetUserTradesByInstrumentsRequest struct {
 }
 
 type DeribitGetUserTradesByInstrumentsResponse struct {
-	HasMore        string  `json:"has_more"`
-	Amount         float64 `json:"amount"`
-	Direction      string  `json:"direction"`
-	InstrumentName string  `json:"instrument_name"`
-	OrderId        string  `json:"order_id"`
-	OrderType      string  `json:"order_type"`
-	Price          float64 `json:"price"`
-	State          string  `json:"state"`
-	Timestamp      int64   `json:"timestamp"`
-	TradeId        string  `json:"trade_id"`
+	TradeId        string             `json:"trade_id" bson:"_id"`
+	HasMore        string             `json:"has_more"`
+	Amount         float64            `json:"amount" bson:"amount"`
+	Direction      types.Side         `json:"direction" bson:"direction"`
+	InstrumentName string             `json:"instrument_name"`
+	OrderId        primitive.ObjectID `json:"order_id" bson:"order_id"`
+	OrderType      types.Type         `json:"order_type" bson:"order_type"`
+	Price          float64            `json:"price" bson:"price"`
+	State          types.OrderStatus  `json:"state" bson:"state"`
+	Timestamp      int64              `json:"timestamp"`
 }
