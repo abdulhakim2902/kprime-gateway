@@ -4,11 +4,12 @@ import (
 	"context"
 	"fmt"
 	deribitModel "gateway/internal/deribit/model"
+	"sort"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
 
-	"gateway/internal/repositories/types"
+	_types "gateway/internal/orderbook/types"
 
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -25,7 +26,7 @@ func NewOrderRepository(db Database) *OrderRepository {
 
 var defaultTimeout = 10 * time.Second
 
-func (r OrderRepository) Find(filter interface{}, sort interface{}, offset, limit int64) ([]*types.Order, error) {
+func (r OrderRepository) Find(filter interface{}, sort interface{}, offset, limit int64) ([]*_types.Order, error) {
 	options := options.FindOptions{
 		MaxTime: &defaultTimeout,
 	}
@@ -53,7 +54,7 @@ func (r OrderRepository) Find(filter interface{}, sort interface{}, offset, limi
 
 	defer cursor.Close(context.Background())
 
-	orders := []*types.Order{}
+	orders := []*_types.Order{}
 
 	err = cursor.All(context.Background(), &orders)
 	if err != nil {
@@ -208,4 +209,31 @@ func (r OrderRepository) GetInstruments(currency string, expired bool) ([]*derib
 	}
 
 	return orders, nil
+}
+
+func (r OrderRepository) WsAggregate(pipeline interface{}) []*_types.WsOrder {
+	opt := options.AggregateOptions{
+		MaxTime: &defaultTimeout,
+	}
+
+	cursor, err := r.collection.Aggregate(context.Background(), pipeline, &opt)
+	if err != nil {
+		return []*_types.WsOrder{}
+	}
+
+	err = cursor.Err()
+	if err != nil {
+		return []*_types.WsOrder{}
+	}
+
+	orders := []*_types.WsOrder{}
+
+	cursor.All(context.Background(), &orders)
+
+	//sort orders by price
+	sort.Slice(orders, func(i, j int) bool {
+		return orders[i].Price < orders[j].Price
+	})
+
+	return orders
 }

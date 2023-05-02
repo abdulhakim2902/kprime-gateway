@@ -66,7 +66,8 @@ func NewWebsocketHandler(
 	ws.RegisterChannel("public/subscribe", handler.SubscribeHandler)
 	ws.RegisterChannel("public/unsubscribe", handler.UnsubscribeHandler)
 
-	ws.RegisterChannel("public/get_instruments", handler.GetInstruments)
+	ws.RegisterChannel("/public/get_instruments", handler.GetInstruments)
+	ws.RegisterChannel("public/get_order_book", handler.GetOrderBook)
 }
 
 func (svc wsHandler) PublicAuth(input interface{}, c *ws.Client) {
@@ -633,6 +634,48 @@ func (svc wsHandler) GetInstruments(input interface{}, c *ws.Client) {
 		RequestedTime: requestedTime,
 	})
 	return
+}
+
+func (svc wsHandler) GetOrderBook(input interface{}, c *ws.Client) {
+	requestedTime := uint64(time.Now().UnixMicro())
+
+	type Params struct {
+		InstrumentName string `json:"instrument_name"`
+		Depth          int64  `json:"depth"`
+	}
+
+	type Req struct {
+		Params Params `json:"params"`
+		Id     uint64 `json:"id"`
+	}
+
+	msg := &Req{}
+	bytes, _ := json.Marshal(input)
+	if err := json.Unmarshal(bytes, &msg); err != nil {
+		c.SendMessage(gin.H{"err": err}, ws.SendMessageParams{
+			ID:            msg.Id,
+			RequestedTime: requestedTime,
+		})
+		return
+	}
+
+	if msg.Params.InstrumentName == "" {
+		c.SendMessage(gin.H{"err": "Please provide instrument_name"}, ws.SendMessageParams{
+			ID:            msg.Id,
+			RequestedTime: requestedTime,
+		})
+		return
+	}
+
+	result := svc.wsOBSvc.GetOrderBook(context.TODO(), deribitModel.DeribitGetOrderBookRequest{
+		InstrumentName: msg.Params.InstrumentName,
+		Depth:          msg.Params.Depth,
+	})
+
+	c.SendMessage(result, ws.SendMessageParams{
+		ID:            msg.Id,
+		RequestedTime: requestedTime,
+	})
 }
 
 func (svc wsHandler) PrivateGetUserTradesByInstrument(input interface{}, c *ws.Client) {

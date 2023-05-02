@@ -12,7 +12,7 @@ import (
 	"strconv"
 
 	engineType "gateway/internal/engine/types"
-	daoType "gateway/internal/repositories/types"
+	_types "gateway/internal/orderbook/types"
 
 	"github.com/Shopify/sarama"
 
@@ -28,7 +28,7 @@ func NewWSOrderService(redis *redis.RedisConnectionPool, repo *repositories.Orde
 	return &wsOrderService{redis, repo}
 }
 
-func (svc wsOrderService) initialData(key string) ([]*daoType.Order, error) {
+func (svc wsOrderService) initialData(key string) ([]*_types.Order, error) {
 	if key != "all" {
 		orders, err := svc.repo.Find(bson.M{"userId": key}, nil, 0, -1)
 		return orders, err
@@ -105,7 +105,7 @@ func (svc wsOrderService) Subscribe(c *ws.Client, key string) {
 	}
 
 	// JSON Parse
-	var initData []daoType.Order
+	var initData []_types.Order
 	err = json.Unmarshal([]byte(res), &initData)
 	if err != nil {
 		msg := map[string]string{"Message": err.Error()}
