@@ -21,6 +21,7 @@ require (
 	github.com/quickfixgo/enum v0.1.0
 	github.com/quickfixgo/field v0.1.0
 	github.com/quickfixgo/fix42 v0.1.0
+	github.com/quickfixgo/fix44 v0.1.0
 	github.com/quickfixgo/quickfix v0.7.0
 	github.com/quickfixgo/tag v0.1.0
 	github.com/rs/cors/wrapper/gin v0.0.0-20230301160956-5c2b877d2a03
@@ -84,9 +85,6 @@ require (
 	github.com/pelletier/go-toml/v2 v2.0.7 // indirect
 	github.com/pierrec/lz4/v4 v4.1.17 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
-	github.com/quickfixgo/fix40 v0.1.0
-	github.com/quickfixgo/fix41 v0.1.0
-	github.com/quickfixgo/tag v0.1.0 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20200410134404-eec4a21b6bb0 // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
