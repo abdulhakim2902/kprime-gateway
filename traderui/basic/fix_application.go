@@ -93,6 +93,10 @@ func (a *FIXApplication) onSecurityList(msg *quickfix.Message, sessionID quickfi
 		return err
 	}
 	fmt.Println("c", group.Len())
+
+	var secres field.SecurityResponseIDField
+	msg.Body.GetField(tag.SecurityResponseID, &secres)
+	fmt.Println("secres", secres)
 	symbols := make([]string, group.Len())
 	for i := 0; i < group.Len(); i++ {
 		var symbol field.SymbolField
