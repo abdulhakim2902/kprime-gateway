@@ -357,9 +357,8 @@ func (c tradeClient) onSecurityListRequest(w http.ResponseWriter, r *http.Reques
 		field.NewSecurityReqID("1"),
 		field.NewSecurityListRequestType(enum.SecurityListRequestType_SYMBOL),
 	)
-	newMsg.SetString(tag.SecurityResponseID, "a1")
 	newMsg.SetInt(tag.SubscriptionRequestType, 0)
-	newMsg.SetString(tag.Currency, "ALL") // btc / all
+	newMsg.SetString(tag.Currency, secDefRequest.Symbol) // btc / all
 	fmt.Println("requesting security list")
 	err = quickfix.SendToTarget(newMsg, secDefRequest.SessionID)
 	if err != nil {
