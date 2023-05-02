@@ -12,6 +12,7 @@ import (
 
 	"gateway/internal/engine/types"
 
+	ordermatch "gateway/internal/fix-acceptor"
 	"gateway/pkg/redis"
 	"gateway/pkg/ws"
 )
@@ -74,6 +75,9 @@ func (svc engineHandler) HandleConsume(msg *sarama.ConsumerMessage) {
 		fmt.Println(err)
 		return
 	}
+
+	//pass to fix gateway
+	ordermatch.OnMatchingOrder(data)
 
 	//save to redis
 	svc.redis.Set("ENGINE-"+_instrument, string(jsonBytes))

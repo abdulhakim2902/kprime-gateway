@@ -46,6 +46,7 @@ var App = new (Backbone.View.extend({
     this.executions = new App.Collections.Executions(options.executions);
     this.router = new App.Router();
 
+    console.log(this.orders)
     Backbone.history.start({ pushState: true });
   },
 
@@ -221,7 +222,7 @@ App.Views.OrderDetails = Backbone.View.extend({
   <div class="form-group">
     <label class="col-sm-2 control-label">PartyID</label>
     <div class="col-sm-10">
-      <p class="form-control-static"><%= account %></p>
+      <p class="form-control-static"><%= party_id %></p>
     </div>
   </div>
   <div class="form-group">
@@ -411,7 +412,7 @@ App.Views.OrderRowView = Backbone.View.extend({
 </td>
 <td><%= symbol %></td>
 <td><%= quantity %></td>
-<td><%= account %></td>
+<td><%= party_id %></td>
 <td><%= open %></td>
 <td><%= closed %></td>
 <td><%= App.prettySide(side) %></td>
@@ -491,7 +492,7 @@ App.Views.OrdersView = Backbone.View.extend({
       <th></th>
       <th>Symbol</th>
       <th>Quantity</th>
-      <th>Account</th>
+      <th>PartyID</th>
       <th>Open</th>
       <th>Executed</th>
       <th>Side</th>
@@ -627,7 +628,7 @@ App.Views.OrderTicket = Backbone.View.extend({
 
     <div class='form-group'>
       <label for='symbol'>Symbol</label>
-      <select class='form-control' name='symbol'>
+      <input type='text' class='form-control' name='symbol' placeholder='symbol'>
     </div>
   </p>
   <p>
