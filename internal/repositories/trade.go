@@ -225,7 +225,9 @@ func (r TradeRepository) FindUserTradesByInstrument(
 	}
 
 	result.Trades = res.Trades
-	result.HasMore = res.Total[0].Count > int64(count)
+	if len(res.Total) > 0 {
+		result.HasMore = res.Total[0].Count > int64(count)
+	}
 
 	return result, nil
 }
