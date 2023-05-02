@@ -73,7 +73,7 @@ type DeribitResponse struct {
 	UserId         string  `json:"userId"`
 	ClientId       string  `json:"clientId"`
 	Underlying     string  `json:"underlying"`
-	ExpirationDate string  `json:"expiryDate"`
+	ExpirationDate string  `json:"expiryDate" bson:"expiryDate"`
 	StrikePrice    float64 `json:"strikePrice"`
 	Type           string  `json:"type"`
 	Side           string  `json:"side"`

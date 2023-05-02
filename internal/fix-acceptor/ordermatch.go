@@ -607,31 +607,36 @@ func (a Application) onSecurityListRequest(msg securitylistrequest.SecurityListR
 	)
 
 	// get isntrument from mongo
-	instruments, e := a.OrderRepository.GetInstruments(currency, false)
+	instruments, e := a.OrderRepository.GetAvailableInstruments(currency)
 	if e != nil {
 		return quickfix.NewMessageRejectError(e.Error(), 0, nil)
 	}
 
-	fmt.Println(instruments)
 	for _, instrument := range instruments {
-		var putOrCall field.PutOrCallField
-		var secStatus field.SecurityStatusField
+		// putOrCall := 0
+		// if instrument.Contracts == string(enum.PutOrCall_CALL) {
+		// 	putOrCall = 1
+		// }
+		// secStatus := 1
+		// t, _ := time.Parse("2006-01-02", instrument.ExpirationDate)
+		// date := t.Unix()
+		// today := time.Now().Unix()
+
+		// if date < today {
+		// 	secStatus = 0
+		// }
 		secListGroup := securitylist.NewNoRelatedSymRepeatingGroup()
-		secListGroup.Add().SetSymbol(instrument.InstrumentName)
-		secListGroup.Add().SetSecurityDesc("OPTIONS")
-		secListGroup.Add().SetSecurityType("OPT")
-		secListGroup.Add().SetStrikeCurrency("USD")
-		// secListGroup.Add().SetSymbol()
-		// secListGroup.Add().SetIssueDate()
-		// secListGroup.Add().SetStrikePrice(decimal.NewFromFloat(instrument).String())
-		secListGroup.Add().SetField(quickfix.Tag(201), putOrCall)
-		secListGroup.Add().SetField(quickfix.Tag(965), secStatus)
+		strikePrice := strconv.FormatFloat(instrument.StrikePrice, 'f', 0, 64)
+		instrumentName := fmt.Sprintf("%s-%s-%s-%s", instrument.Underlying, instrument.ExpirationDate, strikePrice, instrument.Contracts)
+		fmt.Println(instrument.ExpirationDate)
+		secListGroup.Add().SetSymbol(instrumentName)
+		// secListGroup.Add().SetSecurityDesc("OPTIONS")
+		// secListGroup.Add().SetSecurityType("OPT")
+		// secListGroup.Add().SetStrikePrice(decimal.NewFromFloat(instrument.StrikePrice), 0)
+		// secListGroup.Add().SetStrikeCurrency("USD")
 		res.SetNoRelatedSym(secListGroup)
 	}
 
-	secListGroup := securitylist.NewNoRelatedSymRepeatingGroup()
-	secListGroup.Add().SetSymbol("No symbol")
-	res.SetNoRelatedSym(secListGroup)
 	fmt.Println("giving back security list msg")
 	quickfix.SendToTarget(res, sessionID)
 	return nil

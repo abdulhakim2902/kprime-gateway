@@ -63,6 +63,31 @@ func (r OrderRepository) Find(filter interface{}, sort interface{}, offset, limi
 	return orders, nil
 }
 
+func (r OrderRepository) GetAvailableInstruments(currency string) ([]deribitModel.DeribitResponse, error) {
+	cur, err := r.collection.Find(context.Background(), bson.M{
+		"underlying": currency,
+		"status":     "OPEN",
+	})
+	if err != nil {
+		return []deribitModel.DeribitResponse{}, err
+	}
+	err = cur.Err()
+	if err != nil {
+		fmt.Printf("%+v\n", err)
+		return []deribitModel.DeribitResponse{}, err
+	}
+
+	orders := []deribitModel.DeribitResponse{}
+
+	if err = cur.All(context.TODO(), &orders); err != nil {
+		fmt.Printf("%+v\n", err)
+
+		return []deribitModel.DeribitResponse{}, nil
+	}
+
+	return orders, nil
+}
+
 func (r OrderRepository) GetInstruments(currency string, expired bool) ([]*deribitModel.DeribitGetInstrumentsResponse, error) {
 	now := time.Now()
 	loc, _ := time.LoadLocation("Singapore")
