@@ -1,7 +1,11 @@
 package model
 
 import (
-	_types "gateway/internal/orderbook/types"
+	orderBookType "gateway/internal/orderbook/types"
+
+	engineType "gateway/internal/engine/types"
+
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type DeribitRequest struct {
@@ -111,17 +115,17 @@ type DeribitGetOrderBookRequest struct {
 }
 
 type DeribitGetOrderBookResponse struct {
-	Timestamp      int64             `json:"timestamp"`
-	Stats          OrderBookStats    `json:"stats"`
-	State          string            `json:"state"`
-	LastPrice      float64           `json:"last_price"`
-	InstrumentName string            `json:"instrument_name"`
-	Bids           []*_types.WsOrder `json:"bids"`
-	BestBidPrice   float64           `json:"best_bid_price"`
-	BestBidAmount  float64           `json:"best_bid_amount"`
-	BestAskPrice   float64           `json:"best_ask_price"`
-	BestAskAmount  float64           `json:"best_ask_amount"`
-	Asks           []*_types.WsOrder `json:"asks"`
+	Timestamp      int64                    `json:"timestamp"`
+	Stats          OrderBookStats           `json:"stats"`
+	State          string                   `json:"state"`
+	LastPrice      float64                  `json:"last_price"`
+	InstrumentName string                   `json:"instrument_name"`
+	Bids           []*orderBookType.WsOrder `json:"bids"`
+	BestBidPrice   float64                  `json:"best_bid_price"`
+	BestBidAmount  float64                  `json:"best_bid_amount"`
+	BestAskPrice   float64                  `json:"best_ask_price"`
+	BestAskAmount  float64                  `json:"best_ask_amount"`
+	Asks           []*orderBookType.WsOrder `json:"asks"`
 }
 
 type OrderBookStats struct {
@@ -130,4 +134,30 @@ type OrderBookStats struct {
 	PriceUSD    float64 `json:"volume_usd"`
 	Low         float64 `json:"low"`
 	High        float64 `json:"high"`
+}
+
+type DeribitGetUserTradesByInstrumentsRequest struct {
+	InstrumentName string `json:"instrument_name" validate:"required"`
+	Count          int    `json:"count"`
+	StartTimestamp int64  `json:"start_timestamp"`
+	EndTimestamp   int64  `json:"end_timestamp"`
+	Sorting        string `json:"sorting"`
+}
+
+type DeribitGetUserTradesByInstruments struct {
+	TradeId        string                 `json:"trade_id" bson:"_id"`
+	HasMore        string                 `json:"has_more"`
+	Amount         float64                `json:"amount" bson:"amount"`
+	Direction      engineType.Side        `json:"direction" bson:"direction"`
+	InstrumentName string                 `json:"instrument_name"`
+	OrderId        primitive.ObjectID     `json:"order_id" bson:"order_id"`
+	OrderType      engineType.Type        `json:"order_type" bson:"order_type"`
+	Price          float64                `json:"price" bson:"price"`
+	State          engineType.OrderStatus `json:"state" bson:"state"`
+	Timestamp      int64                  `json:"timestamp"`
+}
+
+type DeribitGetUserTradesByInstrumentsResponse struct {
+	Trades  []*DeribitGetUserTradesByInstruments `json:"trades"`
+	HasMore bool                                 `json:"has_more"`
 }

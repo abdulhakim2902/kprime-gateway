@@ -26,4 +26,9 @@ type IwsTradeService interface {
 	Subscribe(c *ws.Client, instrument string)
 	Unsubscribe(c *ws.Client)
 	HandleConsume(msg *sarama.ConsumerMessage)
+	GetUserTradesByInstrument(
+		ctx context.Context,
+		userId string,
+		request deribitModel.DeribitGetUserTradesByInstrumentsRequest,
+	) *deribitModel.DeribitGetUserTradesByInstrumentsResponse
 }
