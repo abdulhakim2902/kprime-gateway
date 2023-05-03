@@ -159,3 +159,31 @@ func (svc wsOrderService) GetInstruments(ctx context.Context, request deribitMod
 
 	return instrumentData
 }
+
+func (svc wsOrderService) GetOpenOrdersByInstrument(ctx context.Context, userId string, request deribitModel.DeribitGetOpenOrdersByInstrumentRequest) []deribitModel.DeribitGetOpenOrdersByInstrumentResponse {
+
+	trades, err := svc.repo.GetOpenOrdersByInstrument(
+		request.InstrumentName,
+		request.Type,
+		userId,
+	)
+	if err != nil {
+		return nil
+	}
+
+	jsonBytes, err := json.Marshal(trades)
+	if err != nil {
+		fmt.Println(err)
+
+		return nil
+	}
+
+	var openOrderData []deribitModel.DeribitGetOpenOrdersByInstrumentResponse
+	err = json.Unmarshal([]byte(jsonBytes), &openOrderData)
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+
+	return openOrderData
+}

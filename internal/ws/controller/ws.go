@@ -62,6 +62,7 @@ func NewWebsocketHandler(
 	ws.RegisterChannel("private/cancel_all_by_instrument", handler.PrivateCancelByInstrument)
 	ws.RegisterChannel("private/cancel_all", handler.PrivateCancelAll)
 	ws.RegisterChannel("private/get_user_trades_by_instrument", handler.PrivateGetUserTradesByInstrument)
+	ws.RegisterChannel("private/get_open_orders_by_instrument", handler.PrivateGetOpenOrdersByInstrument)
 
 	ws.RegisterChannel("public/subscribe", handler.SubscribeHandler)
 	ws.RegisterChannel("public/unsubscribe", handler.UnsubscribeHandler)
@@ -742,6 +743,72 @@ func (svc wsHandler) PrivateGetUserTradesByInstrument(input interface{}, c *ws.C
 			StartTimestamp: msg.Params.StartTimestamp,
 			EndTimestamp:   msg.Params.EndTimestamp,
 			Sorting:        msg.Params.Sorting,
+		},
+	)
+
+	c.SendMessage(res, ws.SendMessageParams{
+		ID:            msg.Id,
+		RequestedTime: requestedTime,
+	})
+}
+
+func (svc wsHandler) PrivateGetOpenOrdersByInstrument(input interface{}, c *ws.Client) {
+	requestedTime := uint64(time.Now().UnixMicro())
+
+	type Params struct {
+		AccessToken    string `json:"access_token" validate:"required"`
+		InstrumentName string `json:"instrument_name" validate:"required"`
+		Type           string `json:"type"`
+	}
+
+	type Req struct {
+		Params Params `json:"params"`
+		Id     uint64 `json:"id"`
+	}
+
+	msg := &Req{}
+	bytes, _ := json.Marshal(input)
+	if err := json.Unmarshal(bytes, &msg); err != nil {
+		fmt.Println(err)
+		c.SendMessage(gin.H{"err": err}, ws.SendMessageParams{
+			ID:            msg.Id,
+			RequestedTime: requestedTime,
+		})
+		return
+	}
+
+	validate := validator.New()
+	if err := validate.Struct(msg); err != nil {
+		fmt.Println(err)
+		c.SendMessage(gin.H{"err": err}, ws.SendMessageParams{
+			ID:            msg.Id,
+			RequestedTime: requestedTime,
+		})
+		return
+	}
+
+	// type parameter
+	if msg.Params.Type == "" {
+		msg.Params.Type = "all"
+	}
+
+	JWTData, err := svc.authSvc.JWTCheck(msg.Params.AccessToken)
+	if err != nil {
+		fmt.Println(err)
+		c.SendMessage(gin.H{"err": err.Error()}, ws.SendMessageParams{
+			ID:            msg.Id,
+			RequestedTime: requestedTime,
+			UserID:        "",
+		})
+		return
+	}
+
+	res := svc.wsOSvc.GetOpenOrdersByInstrument(
+		context.TODO(),
+		JWTData.UserID,
+		deribitModel.DeribitGetOpenOrdersByInstrumentRequest{
+			InstrumentName: msg.Params.InstrumentName,
+			Type:           msg.Params.Type,
 		},
 	)
 
