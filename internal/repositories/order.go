@@ -5,6 +5,7 @@ import (
 	"fmt"
 	deribitModel "gateway/internal/deribit/model"
 	"sort"
+	"strings"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -206,6 +207,94 @@ func (r OrderRepository) GetInstruments(currency string, expired bool) ([]*derib
 		fmt.Printf("%+v\n", err)
 
 		return []*deribitModel.DeribitGetInstrumentsResponse{}, nil
+	}
+
+	return orders, nil
+}
+
+func (r OrderRepository) GetOpenOrdersByInstrument(InstrumentName string, OrderType string, userId string) ([]*deribitModel.DeribitGetOpenOrdersByInstrumentResponse, error) {
+	projectStage := bson.M{
+		"$project": bson.M{
+			"InstrumentName": bson.M{"$concat": bson.A{
+				bson.D{
+					{"$convert", bson.D{
+						{"input", "$underlying"},
+						{"to", "string"},
+					}}},
+				"-",
+				bson.D{
+					{"$convert", bson.D{
+						{"input", "$expiryDate"},
+						{"to", "string"},
+					}}},
+				"-",
+				bson.D{
+					{"$convert", bson.D{
+						{"input", "$strikePrice"},
+						{"to", "string"},
+					}}},
+				"-",
+				bson.M{"$substr": bson.A{"$contracts", 0, 1}},
+			}},
+			"filledAmount": "$filledAmount",
+			"amount":       "$amount",
+			"direction":    "$side",
+			"price":        "$price",
+			"orderId":      "$_id",
+			"timeInForce":  "$timeInForce",
+			"orderType":    "$type",
+			"orderState":   "$status",
+			"userId":       "$userId",
+		}}
+
+	query := bson.M{
+		"$match": bson.M{
+			"orderState": bson.M{"$in": []_types.OrderStatus{_types.OPEN, _types.PARTIAL_FILLED}},
+			"userId":     userId,
+		},
+	}
+
+	sortStage := bson.M{
+		"$sort": bson.M{
+			"createdAt": 1,
+		},
+	}
+
+	pipelineInstruments := bson.A{}
+
+	pipelineInstruments = append(pipelineInstruments, projectStage)
+	pipelineInstruments = append(pipelineInstruments, query)
+	if OrderType != "all" {
+		queryType := bson.M{
+			"$match": bson.M{
+				"orderType": bson.M{"$in": []_types.Type{_types.Type(strings.ToUpper(OrderType))}},
+			},
+		}
+		pipelineInstruments = append(pipelineInstruments, queryType)
+	}
+	pipelineInstruments = append(pipelineInstruments, sortStage)
+	fmt.Println(pipelineInstruments...)
+
+	cursor, err := r.collection.Aggregate(context.Background(), pipelineInstruments)
+	if err != nil {
+		fmt.Printf("err:%+v\n", err)
+
+		return []*deribitModel.DeribitGetOpenOrdersByInstrumentResponse{}, nil
+	}
+
+	err = cursor.Err()
+	if err != nil {
+		fmt.Printf("%+v\n", err)
+
+		return []*deribitModel.DeribitGetOpenOrdersByInstrumentResponse{}, err
+	}
+
+	orders := []*deribitModel.DeribitGetOpenOrdersByInstrumentResponse{}
+
+	if err = cursor.All(context.TODO(), &orders); err != nil {
+		fmt.Printf("%+v\n", err)
+
+		return []*deribitModel.DeribitGetOpenOrdersByInstrumentResponse{}, nil
 	}
 
 	return orders, nil

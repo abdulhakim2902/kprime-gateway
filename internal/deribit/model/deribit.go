@@ -161,3 +161,21 @@ type DeribitGetUserTradesByInstrumentsResponse struct {
 	Trades  []*DeribitGetUserTradesByInstruments `json:"trades"`
 	HasMore bool                                 `json:"has_more"`
 }
+
+type DeribitGetOpenOrdersByInstrumentRequest struct {
+	InstrumentName string `json:"instrument_name" validate:"required"`
+	Type           string `json:"type"`
+}
+
+type DeribitGetOpenOrdersByInstrumentResponse struct {
+	FilledAmount   float64            `json:"filled_amount" bson:"filledAmount"`
+	Amount         float64            `json:"amount" bson:"amount"`
+	InstrumentName string             `json:"instrument_name" bson:"InstrumentName"`
+	Direction      string             `json:"direction" bson:"direction"`
+	Price          float64            `json:"price" bson:"price"`
+	OrderId        primitive.ObjectID `json:"order_id" bson:"orderId"`
+	Replaced       bool               `json:"replaced"`
+	TimeInForce    string             `json:"time_in_force" bson:"timeInForce"`
+	OrderType      string             `json:"order_type" bson:"orderType"`
+	OrderState     string             `json:"order_state" bson:"orderState"`
+}
