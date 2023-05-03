@@ -199,43 +199,46 @@ func (svc wsOrderbookService) GetOrderBook(ctx context.Context, data deribitMode
 }
 
 func (svc wsOrderbookService) _getOrderBook(o types.GetOrderBook) *types.Orderbook {
-	bidsQuery := []bson.M{
-		{
-			"$match": bson.M{
-				"status":      bson.M{"$in": []types.OrderStatus{types.OPEN, types.PARTIAL_FILLED}},
-				"underlying":  o.Underlying,
-				"strikePrice": o.StrikePrice,
-				"expiryDate":  o.ExpiryDate,
-				"side":        types.BUY,
+	queryBuilder := func(side types.Side, priceOrder int) interface{} {
+		return []bson.M{
+			{
+				"$match": bson.M{
+					"status":      bson.M{"$in": []types.OrderStatus{types.OPEN, types.PARTIAL_FILLED}},
+					"underlying":  o.Underlying,
+					"strikePrice": o.StrikePrice,
+					"expiryDate":  o.ExpiryDate,
+					"side":        side,
+				},
 			},
-		},
-		{
-			"$sort": bson.M{
-				"price":     1,
-				"createdAt": 1,
+			{
+				"$group": bson.D{
+					{"_id", "$price"},
+					{"amount", bson.D{{"$sum", "$amount"}}},
+					{"detail", bson.D{{"$first", "$$ROOT"}}},
+				},
 			},
-		},
+			{"$sort": bson.M{"price": priceOrder, "createdAt": 1}},
+			{
+				"$replaceRoot": bson.D{
+					{"newRoot",
+						bson.D{
+							{"$mergeObjects",
+								bson.A{
+									"$detail",
+									bson.D{{"amount", "$amount"}},
+								},
+							},
+						},
+					},
+				},
+			},
+		}
 	}
 
-	asksQuery := []bson.M{
-		{
-			"$match": bson.M{
-				"status":      bson.M{"$in": []types.OrderStatus{types.OPEN, types.PARTIAL_FILLED}},
-				"underlying":  o.Underlying,
-				"strikePrice": o.StrikePrice,
-				"expiryDate":  o.ExpiryDate,
-				"side":        types.SELL,
-			},
-		},
-		{
-			"$sort": bson.M{
-				"price":     -1,
-				"createdAt": 1,
-			},
-		},
-	}
-
+	asksQuery := queryBuilder(types.SELL, -1)
 	asks := svc.orderRepository.WsAggregate(asksQuery)
+
+	bidsQuery := queryBuilder(types.BUY, 1)
 	bids := svc.orderRepository.WsAggregate(bidsQuery)
 
 	orderbooks := &types.Orderbook{
