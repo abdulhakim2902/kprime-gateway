@@ -12,7 +12,7 @@ import (
 	"strconv"
 
 	engineType "gateway/internal/engine/types"
-	daoType "gateway/internal/repositories/types"
+	_types "gateway/internal/orderbook/types"
 
 	"github.com/Shopify/sarama"
 
@@ -28,7 +28,7 @@ func NewWSOrderService(redis *redis.RedisConnectionPool, repo *repositories.Orde
 	return &wsOrderService{redis, repo}
 }
 
-func (svc wsOrderService) initialData(key string) ([]*daoType.Order, error) {
+func (svc wsOrderService) initialData(key string) ([]*_types.Order, error) {
 	if key != "all" {
 		orders, err := svc.repo.Find(bson.M{"userId": key}, nil, 0, -1)
 		return orders, err
@@ -105,7 +105,7 @@ func (svc wsOrderService) Subscribe(c *ws.Client, key string) {
 	}
 
 	// JSON Parse
-	var initData []daoType.Order
+	var initData []_types.Order
 	err = json.Unmarshal([]byte(res), &initData)
 	if err != nil {
 		msg := map[string]string{"Message": err.Error()}
@@ -158,4 +158,32 @@ func (svc wsOrderService) GetInstruments(ctx context.Context, request deribitMod
 	}
 
 	return instrumentData
+}
+
+func (svc wsOrderService) GetOpenOrdersByInstrument(ctx context.Context, userId string, request deribitModel.DeribitGetOpenOrdersByInstrumentRequest) []deribitModel.DeribitGetOpenOrdersByInstrumentResponse {
+
+	trades, err := svc.repo.GetOpenOrdersByInstrument(
+		request.InstrumentName,
+		request.Type,
+		userId,
+	)
+	if err != nil {
+		return nil
+	}
+
+	jsonBytes, err := json.Marshal(trades)
+	if err != nil {
+		fmt.Println(err)
+
+		return nil
+	}
+
+	var openOrderData []deribitModel.DeribitGetOpenOrdersByInstrumentResponse
+	err = json.Unmarshal([]byte(jsonBytes), &openOrderData)
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+
+	return openOrderData
 }

@@ -19,6 +19,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"gateway/internal/engine/types"
 	"gateway/internal/repositories"
 	"gateway/internal/user/model"
 	"gateway/pkg/utils"
@@ -36,12 +37,12 @@ import (
 
 	"github.com/quickfixgo/enum"
 	"github.com/quickfixgo/field"
-	"github.com/quickfixgo/fix42/executionreport"
-	"github.com/quickfixgo/fix42/marketdatarequest"
-	"github.com/quickfixgo/fix42/marketdatasnapshotfullrefresh"
-	"github.com/quickfixgo/fix42/newordersingle"
-	"github.com/quickfixgo/fix42/ordercancelreplacerequest"
-	"github.com/quickfixgo/fix42/ordercancelrequest"
+	"github.com/quickfixgo/fix44/executionreport"
+	"github.com/quickfixgo/fix44/marketdatarequest"
+	"github.com/quickfixgo/fix44/marketdatasnapshotfullrefresh"
+	"github.com/quickfixgo/fix44/newordersingle"
+	"github.com/quickfixgo/fix44/ordercancelreplacerequest"
+	"github.com/quickfixgo/fix44/ordercancelrequest"
 	"github.com/quickfixgo/fix44/securitylist"
 	"github.com/quickfixgo/fix44/securitylistrequest"
 	"github.com/quickfixgo/tag"
@@ -433,12 +434,54 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 	return
 }
 
+func OnMatchingOrder(data types.EngineResponse) {
+	fmt.Println("OnMatchingOrder")
+	if data.Matches == nil {
+		return
+	}
+
+	if data.Matches.Trades == nil {
+		return
+	}
+
+	for _, trd := range data.Matches.Trades {
+		fmt.Println(userSession)
+		if userSession == nil {
+			return
+		}
+		if userSession[data.Matches.Trades[0].MakerID] == nil {
+			return
+		}
+
+		sessionID := userSession[data.Matches.Trades[0].MakerID]
+		order := data.Order
+		msg := executionreport.New(
+			field.NewOrderID(trd.ID.String()),
+			field.NewExecID(order.ClOrdID),
+			field.NewExecType(enum.ExecType(order.Status)),
+			field.NewOrdStatus(enum.OrdStatus(order.Status)),
+			field.NewSide(enum.Side(trd.Side)),
+			field.NewLeavesQty(decimal.NewFromFloat(trd.Amount), 2),
+			field.NewCumQty(decimal.NewFromFloat(order.FilledAmount), 2),
+			field.NewAvgPx(decimal.NewFromFloat(trd.Price), 2),
+		)
+		msg.SetLastPx(decimal.NewFromFloat(trd.Price), 2)
+		msg.SetLastQty(decimal.NewFromFloat(trd.Amount), 2)
+		fmt.Println("Sending execution report for matching order")
+		err := quickfix.SendToTarget(msg, *sessionID)
+		if err != nil {
+			fmt.Println("Error sending execution report")
+		}
+	}
+
+}
+
 func OnOrderboookUpdate(symbol string, data map[string]interface{}) {
 
 	bids := data["bids"].([]Order)
 	asks := data["asks"].([]Order)
 
-	msg := marketdatasnapshotfullrefresh.New(field.SymbolField{quickfix.FIXString(symbol)})
+	msg := marketdatasnapshotfullrefresh.New()
 
 	for _, bid := range bids {
 		mdBid := field.NewNoMDEntryTypes(1)
@@ -519,10 +562,8 @@ func (a *Application) updateOrder(order Order, status enum.OrdStatus) {
 	execReport := executionreport.New(
 		field.NewOrderID(order.ID),
 		field.NewExecID(a.genExecID()),
-		field.NewExecTransType(enum.ExecTransType_NEW),
 		field.NewExecType(enum.ExecType(status)),
 		field.NewOrdStatus(status),
-		field.NewSymbol(order.Symbol),
 		field.NewSide(order.Side),
 		field.NewLeavesQty(order.Amount.Sub(order.FilledAmount), 2),
 		field.NewCumQty(order.FilledAmount, 2),
@@ -535,7 +576,7 @@ func (a *Application) updateOrder(order Order, status enum.OrdStatus) {
 
 	switch status {
 	case enum.OrdStatus_FILLED, enum.OrdStatus_PARTIALLY_FILLED:
-		execReport.SetLastShares(order.LastExecutedQuantity, 2)
+		execReport.SetLastQty(order.LastExecutedQuantity, 2)
 		execReport.SetLastPx(order.LastExecutedPrice, 2)
 	}
 
@@ -570,10 +611,8 @@ func OrderConfirmation(userId string, order Order, symbol string) {
 	msg := executionreport.New(
 		field.NewOrderID(order.ClientOrderId),
 		field.NewExecID(strconv.Itoa(exec)),
-		field.NewExecTransType(enum.ExecTransType_NEW),
 		field.NewExecType(enum.ExecType(order.Status)),
 		field.NewOrdStatus(enum.OrdStatus(order.Status)),
-		field.NewSymbol(symbol),
 		field.NewSide(enum.Side(order.Side)),
 		field.NewLeavesQty(order.Amount.Sub(order.FilledAmount), 2),
 		field.NewCumQty(order.FilledAmount, 2),

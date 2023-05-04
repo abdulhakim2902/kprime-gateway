@@ -16,6 +16,7 @@ import (
 	engService "gateway/internal/ws/engine/service"
 	wsService "gateway/internal/ws/service"
 
+	"github.com/go-playground/validator/v10"
 	cors "github.com/rs/cors/wrapper/gin"
 
 	"gateway/pkg/ws"
@@ -60,11 +61,14 @@ func NewWebsocketHandler(
 	ws.RegisterChannel("private/cancel", handler.PrivateCancel)
 	ws.RegisterChannel("private/cancel_all_by_instrument", handler.PrivateCancelByInstrument)
 	ws.RegisterChannel("private/cancel_all", handler.PrivateCancelAll)
+	ws.RegisterChannel("private/get_user_trades_by_instrument", handler.PrivateGetUserTradesByInstrument)
+	ws.RegisterChannel("private/get_open_orders_by_instrument", handler.PrivateGetOpenOrdersByInstrument)
 
 	ws.RegisterChannel("public/subscribe", handler.SubscribeHandler)
 	ws.RegisterChannel("public/unsubscribe", handler.UnsubscribeHandler)
 
-	ws.RegisterChannel("public/get_instruments", handler.GetInstruments)
+	ws.RegisterChannel("/public/get_instruments", handler.GetInstruments)
+	ws.RegisterChannel("public/get_order_book", handler.GetOrderBook)
 }
 
 func (svc wsHandler) PublicAuth(input interface{}, c *ws.Client) {
@@ -631,4 +635,185 @@ func (svc wsHandler) GetInstruments(input interface{}, c *ws.Client) {
 		RequestedTime: requestedTime,
 	})
 	return
+}
+
+func (svc wsHandler) GetOrderBook(input interface{}, c *ws.Client) {
+	requestedTime := uint64(time.Now().UnixMicro())
+
+	type Params struct {
+		InstrumentName string `json:"instrument_name"`
+		Depth          int64  `json:"depth"`
+	}
+
+	type Req struct {
+		Params Params `json:"params"`
+		Id     uint64 `json:"id"`
+	}
+
+	msg := &Req{}
+	bytes, _ := json.Marshal(input)
+	if err := json.Unmarshal(bytes, &msg); err != nil {
+		c.SendMessage(gin.H{"err": err}, ws.SendMessageParams{
+			ID:            msg.Id,
+			RequestedTime: requestedTime,
+		})
+		return
+	}
+
+	if msg.Params.InstrumentName == "" {
+		c.SendMessage(gin.H{"err": "Please provide instrument_name"}, ws.SendMessageParams{
+			ID:            msg.Id,
+			RequestedTime: requestedTime,
+		})
+		return
+	}
+
+	result := svc.wsOBSvc.GetOrderBook(context.TODO(), deribitModel.DeribitGetOrderBookRequest{
+		InstrumentName: msg.Params.InstrumentName,
+		Depth:          msg.Params.Depth,
+	})
+
+	c.SendMessage(result, ws.SendMessageParams{
+		ID:            msg.Id,
+		RequestedTime: requestedTime,
+	})
+}
+
+func (svc wsHandler) PrivateGetUserTradesByInstrument(input interface{}, c *ws.Client) {
+	requestedTime := uint64(time.Now().UnixMicro())
+
+	type Params struct {
+		AccessToken string `json:"access_token" validate:"required"`
+
+		InstrumentName string `json:"instrument_name" validate:"required"`
+		Count          int    `json:"count"`
+		StartTimestamp int64  `json:"start_timestamp"`
+		EndTimestamp   int64  `json:"end_timestamp"`
+		Sorting        string `json:"sorting"`
+	}
+
+	type Req struct {
+		Params Params `json:"params"`
+		Id     uint64 `json:"id"`
+	}
+
+	msg := &Req{}
+	bytes, _ := json.Marshal(input)
+	if err := json.Unmarshal(bytes, &msg); err != nil {
+		fmt.Println(err)
+		c.SendMessage(gin.H{"err": err}, ws.SendMessageParams{
+			ID:            msg.Id,
+			RequestedTime: requestedTime,
+		})
+		return
+	}
+
+	validate := validator.New()
+	if err := validate.Struct(msg); err != nil {
+		fmt.Println(err)
+		c.SendMessage(gin.H{"err": err}, ws.SendMessageParams{
+			ID:            msg.Id,
+			RequestedTime: requestedTime,
+		})
+		return
+	}
+
+	// Number of requested items, default - 10
+	if msg.Params.Count <= 0 {
+		msg.Params.Count = 10
+	}
+
+	JWTData, err := svc.authSvc.JWTCheck(msg.Params.AccessToken)
+	if err != nil {
+		fmt.Println(err)
+		c.SendMessage(gin.H{"err": err.Error()}, ws.SendMessageParams{
+			ID:            msg.Id,
+			RequestedTime: requestedTime,
+			UserID:        "",
+		})
+		return
+	}
+
+	res := svc.wsTradeSvc.GetUserTradesByInstrument(
+		context.TODO(),
+		JWTData.UserID,
+		deribitModel.DeribitGetUserTradesByInstrumentsRequest{
+			InstrumentName: msg.Params.InstrumentName,
+			Count:          msg.Params.Count,
+			StartTimestamp: msg.Params.StartTimestamp,
+			EndTimestamp:   msg.Params.EndTimestamp,
+			Sorting:        msg.Params.Sorting,
+		},
+	)
+
+	c.SendMessage(res, ws.SendMessageParams{
+		ID:            msg.Id,
+		RequestedTime: requestedTime,
+	})
+}
+
+func (svc wsHandler) PrivateGetOpenOrdersByInstrument(input interface{}, c *ws.Client) {
+	requestedTime := uint64(time.Now().UnixMicro())
+
+	type Params struct {
+		AccessToken    string `json:"access_token" validate:"required"`
+		InstrumentName string `json:"instrument_name" validate:"required"`
+		Type           string `json:"type"`
+	}
+
+	type Req struct {
+		Params Params `json:"params"`
+		Id     uint64 `json:"id"`
+	}
+
+	msg := &Req{}
+	bytes, _ := json.Marshal(input)
+	if err := json.Unmarshal(bytes, &msg); err != nil {
+		fmt.Println(err)
+		c.SendMessage(gin.H{"err": err}, ws.SendMessageParams{
+			ID:            msg.Id,
+			RequestedTime: requestedTime,
+		})
+		return
+	}
+
+	validate := validator.New()
+	if err := validate.Struct(msg); err != nil {
+		fmt.Println(err)
+		c.SendMessage(gin.H{"err": err}, ws.SendMessageParams{
+			ID:            msg.Id,
+			RequestedTime: requestedTime,
+		})
+		return
+	}
+
+	// type parameter
+	if msg.Params.Type == "" {
+		msg.Params.Type = "all"
+	}
+
+	JWTData, err := svc.authSvc.JWTCheck(msg.Params.AccessToken)
+	if err != nil {
+		fmt.Println(err)
+		c.SendMessage(gin.H{"err": err.Error()}, ws.SendMessageParams{
+			ID:            msg.Id,
+			RequestedTime: requestedTime,
+			UserID:        "",
+		})
+		return
+	}
+
+	res := svc.wsOSvc.GetOpenOrdersByInstrument(
+		context.TODO(),
+		JWTData.UserID,
+		deribitModel.DeribitGetOpenOrdersByInstrumentRequest{
+			InstrumentName: msg.Params.InstrumentName,
+			Type:           msg.Params.Type,
+		},
+	)
+
+	c.SendMessage(res, ws.SendMessageParams{
+		ID:            msg.Id,
+		RequestedTime: requestedTime,
+	})
 }

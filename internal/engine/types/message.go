@@ -3,6 +3,8 @@ package types
 import (
 	"time"
 
+	_types "gateway/internal/orderbook/types"
+
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -23,37 +25,15 @@ type Message struct {
 }
 
 type EngineResponse struct {
-	Status  EngineStatus `json:"status,omitempty"`
-	Order   *Order       `json:"order,omitempty"`
-	Matches *Matches     `json:"matches,omitempty"`
+	Status  EngineStatus  `json:"status,omitempty"`
+	Order   *_types.Order `json:"order,omitempty"`
+	Matches *Matches      `json:"matches,omitempty"`
 }
 
 type Matches struct {
-	MakerOrders []*Order `json:"makerOrders"`
-	TakerOrder  *Order   `json:"takerOrder"`
-	Trades      []*Trade `json:"trades"`
-}
-
-type Order struct {
-	ID           primitive.ObjectID `json:"id" bson:"_id"`
-	UserID       string             `json:"userId" bson:"userId"`
-	ClientID     string             `json:"clientId" bson:"clientId"`
-	ClOrdID      string             `json:"clOrdID"`
-	Underlying   string             `json:"underlying" bson:"underlying"`
-	ExpiryDate   string             `json:"expiryDate" bson:"expiryDate"`
-	StrikePrice  float64            `json:"strikePrice" bson:"strikePrice"`
-	Type         Type               `json:"type" bson:"type"`
-	Side         Side               `json:"side" bson:"side"`
-	Price        float64            `json:"price" bson:"price"`
-	Amount       float64            `json:"amount" bson:"amount"`
-	FilledAmount float64            `json:"filledAmount" bson:"filledAmount"`
-	Contracts    Contracts          `json:"contracts" bson:"contracts"`
-	Status       OrderStatus        `json:"status" bson:"status"`
-	Amendments   []interface{}      `json:"amendments" bson:"amendments"`
-	TimeInForce  TimeInForce        `json:"timeInForce"`
-	CreatedAt    time.Time          `json:"createdAt" bson:"createdAt"`
-	UpdatedAt    time.Time          `json:"updatedAt" bson:"updatedAt"`
-	CancelledAt  *time.Time         `json:"cancelledAt" bson:"cancelledAt"`
+	MakerOrders []*_types.Order `json:"makerOrders"`
+	TakerOrder  *_types.Order   `json:"takerOrder"`
+	Trades      []*Trade        `json:"trades"`
 }
 
 type Trade struct {

@@ -1,9 +1,11 @@
 package service
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
+	deribitModel "gateway/internal/deribit/model"
 	"gateway/internal/repositories"
 	"gateway/pkg/redis"
 	"gateway/pkg/ws"
@@ -18,7 +20,10 @@ type wsTradeService struct {
 	repo  *repositories.TradeRepository
 }
 
-func NewWSTradeService(redis *redis.RedisConnectionPool, repo *repositories.TradeRepository) IwsTradeService {
+func NewWSTradeService(
+	redis *redis.RedisConnectionPool,
+	repo *repositories.TradeRepository,
+) IwsTradeService {
 	return &wsTradeService{redis, repo}
 }
 
@@ -152,4 +157,37 @@ func (svc wsTradeService) Subscribe(c *ws.Client, instrument string) {
 func (svc wsTradeService) Unsubscribe(c *ws.Client) {
 	socket := ws.GetTradeSocket()
 	socket.Unsubscribe(c)
+}
+
+func (svc wsTradeService) GetUserTradesByInstrument(
+	ctx context.Context,
+	userId string,
+	request deribitModel.DeribitGetUserTradesByInstrumentsRequest,
+) *deribitModel.DeribitGetUserTradesByInstrumentsResponse {
+
+	trades, err := svc.repo.FindUserTradesByInstrument(
+		request.InstrumentName,
+		request.Sorting,
+		request.Count,
+		userId,
+	)
+	if err != nil {
+		return nil
+	}
+
+	jsonBytes, err := json.Marshal(trades)
+	if err != nil {
+		fmt.Println(err)
+
+		return nil
+	}
+
+	var out *deribitModel.DeribitGetUserTradesByInstrumentsResponse
+	if err = json.Unmarshal([]byte(jsonBytes), &out); err != nil {
+		fmt.Println(err)
+
+		return nil
+	}
+
+	return out
 }

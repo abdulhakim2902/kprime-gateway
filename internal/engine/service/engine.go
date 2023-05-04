@@ -12,6 +12,7 @@ import (
 
 	"gateway/internal/engine/types"
 
+	ordermatch "gateway/internal/fix-acceptor"
 	"gateway/pkg/redis"
 	"gateway/pkg/ws"
 )
@@ -75,6 +76,9 @@ func (svc engineHandler) HandleConsume(msg *sarama.ConsumerMessage) {
 		return
 	}
 
+	//pass to fix gateway
+	ordermatch.OnMatchingOrder(data)
+
 	//save to redis
 	svc.redis.Set("ENGINE-"+_instrument, string(jsonBytes))
 
@@ -118,18 +122,18 @@ func checkDateToRemoveRedis(_expiryDate string, _instrument string, svc engineHa
 func (svc engineHandler) PublishOrder(data types.EngineResponse) {
 	instrumentName := data.Order.Underlying + "-" + data.Order.ExpiryDate + "-" + fmt.Sprintf("%.0f", data.Order.StrikePrice) + "-" + string(data.Order.Contracts[0])
 	order := types.BuySellEditCancelOrder{
-		OrderState:          data.Order.Status,
+		OrderState:          types.OrderStatus(data.Order.Status),
 		Usd:                 data.Order.Price,
 		FilledAmount:        data.Order.FilledAmount,
 		InstrumentName:      instrumentName,
-		Direction:           data.Order.Side,
+		Direction:           types.Side(data.Order.Side),
 		LastUpdateTimestamp: utils.MakeTimestamp(data.Order.UpdatedAt),
 		Price:               data.Order.Price,
 		Replaced:            len(data.Order.Amendments) > 0,
 		Amount:              data.Order.Amount,
 		OrderId:             data.Order.ID,
-		OrderType:           data.Order.Type,
-		TimeInForce:         data.Order.TimeInForce,
+		OrderType:           types.Type(data.Order.Type),
+		TimeInForce:         types.TimeInForce(data.Order.TimeInForce),
 		CreationTimestamp:   utils.MakeTimestamp(data.Order.CreatedAt),
 	}
 	userIDStr := fmt.Sprintf("%v", data.Order.UserID)
@@ -154,7 +158,7 @@ func (svc engineHandler) PublishOrder(data types.EngineResponse) {
 					Direction:      element.Side,
 					InstrumentName: instrumentName,
 					OrderId:        data.Order.ID,
-					OrderType:      data.Order.Type,
+					OrderType:      types.Type(data.Order.Type),
 					Price:          element.Price,
 					State:          element.Status,
 					Timestamp:      utils.MakeTimestamp(element.CreatedAt),

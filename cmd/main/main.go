@@ -20,13 +20,12 @@ import (
 	"gateway/internal/admin/repository"
 	"gateway/internal/admin/service"
 	_authModel "gateway/internal/auth/model"
+	ordermatch "gateway/internal/fix-acceptor"
 	"gateway/internal/repositories"
 	"gateway/internal/user/model"
 	"gateway/pkg/kafka/consumer"
 	"gateway/pkg/mongo"
 	"gateway/pkg/redis"
-
-	ordermatch "gateway/internal/fix-acceptor"
 
 	// "gateway/pkg/kafka/consumer"
 
@@ -171,13 +170,14 @@ func main() {
 	go ordermatch.Cmd.Execute()
 
 	// Websocket handlers
-	_wsOrderbookSvc := _wsOrderbookSvc.NewwsOrderbookService(redis)
 	_wsEngineSvc := _wsEngineSvc.NewwsEngineService(redis)
 
 	orderRepo := repositories.NewOrderRepository(mongoDb)
+	tradeRepo := repositories.NewTradeRepository(mongoDb)
+
+	_wsOrderbookSvc := _wsOrderbookSvc.NewWSOrderbookService(redis, orderRepo, tradeRepo)
 	_wsOrderSvc := _wsSvc.NewWSOrderService(redis, orderRepo)
 
-	tradeRepo := repositories.NewTradeRepository(mongoDb)
 	_wsTradeSvc := _wsSvc.NewWSTradeService(redis, tradeRepo)
 
 	_wsCtrl.NewWebsocketHandler(
