@@ -237,6 +237,10 @@ func (r OrderRepository) GetOpenOrdersByInstrument(InstrumentName string, OrderT
 				"-",
 				bson.M{"$substr": bson.A{"$contracts", 0, 1}},
 			}},
+			"replaced": bson.M{
+				"$cond": bson.M{"if": bson.M{"$and": []interface{}{bson.M{"$eq": []interface{}{bson.M{"$type": "$amendments"}, "array"}}, bson.M{"$ne": []interface{}{"$amendments", "[]"}}}},
+					"then": true,
+					"else": false}},
 			"filledAmount": "$filledAmount",
 			"amount":       "$amount",
 			"direction":    "$side",
@@ -257,7 +261,7 @@ func (r OrderRepository) GetOpenOrdersByInstrument(InstrumentName string, OrderT
 
 	sortStage := bson.M{
 		"$sort": bson.M{
-			"createdAt": 1,
+			"createdAt": -1,
 		},
 	}
 
@@ -274,7 +278,6 @@ func (r OrderRepository) GetOpenOrdersByInstrument(InstrumentName string, OrderT
 		pipelineInstruments = append(pipelineInstruments, queryType)
 	}
 	pipelineInstruments = append(pipelineInstruments, sortStage)
-	fmt.Println(pipelineInstruments...)
 
 	cursor, err := r.collection.Aggregate(context.Background(), pipelineInstruments)
 	if err != nil {
@@ -296,6 +299,120 @@ func (r OrderRepository) GetOpenOrdersByInstrument(InstrumentName string, OrderT
 		fmt.Printf("%+v\n", err)
 
 		return []*_deribitModel.DeribitGetOpenOrdersByInstrumentResponse{}, nil
+	}
+
+	return orders, nil
+}
+
+func (r OrderRepository) GetOrderHistoryByInstrument(InstrumentName string, Count int, Offset int, IncludeOld bool, IncludeUnfilled bool, userId string) ([]*_deribitModel.DeribitGetOrderHistoryByInstrumentResponse, error) {
+	now := time.Now()
+	loc, _ := time.LoadLocation("Singapore")
+	if loc != nil {
+		now = now.In(loc)
+	}
+	now = now.Add(2 * -24 * time.Hour)
+
+	projectStage := bson.M{
+		"$project": bson.M{
+			"InstrumentName": bson.M{"$concat": bson.A{
+				bson.D{
+					{"$convert", bson.D{
+						{"input", "$underlying"},
+						{"to", "string"},
+					}}},
+				"-",
+				bson.D{
+					{"$convert", bson.D{
+						{"input", "$expiryDate"},
+						{"to", "string"},
+					}}},
+				"-",
+				bson.D{
+					{"$convert", bson.D{
+						{"input", "$strikePrice"},
+						{"to", "string"},
+					}}},
+				"-",
+				bson.M{"$substr": bson.A{"$contracts", 0, 1}},
+			}},
+			"replaced": bson.M{
+				"$cond": bson.M{"if": bson.M{"$and": []interface{}{bson.M{"$eq": []interface{}{bson.M{"$type": "$amendments"}, "array"}}, bson.M{"$ne": []interface{}{"$amendments", "[]"}}}},
+					"then": true,
+					"else": false}},
+			"creationTimestamp": bson.M{"$toLong": "$createdAt"},
+			"filledAmount":      "$filledAmount",
+			"amount":            "$amount",
+			"direction":         "$side",
+			"usd":               "$price",
+			"price":             "$price",
+			"orderId":           "$_id",
+			"timeInForce":       "$timeInForce",
+			"orderType":         "$type",
+			"orderState":        "$status",
+			"userId":            "$userId",
+		}}
+
+	orderState := []types.OrderStatus{types.FILLED, types.PARTIAL_FILLED}
+	if IncludeUnfilled {
+		orderState = append(orderState, types.CANCELLED, types.REJECTED)
+	}
+	query := bson.M{
+		"$match": bson.M{
+			"orderState": bson.M{"$in": orderState},
+			"userId":     userId,
+		},
+	}
+
+	limitStage := bson.M{
+		"$limit": Count,
+	}
+
+	skipStage := bson.M{
+		"$skip": Offset,
+	}
+
+	sortStage := bson.M{
+		"$sort": bson.M{
+			"creationTimestamp": -1,
+		},
+	}
+
+	pipelineInstruments := bson.A{}
+
+	pipelineInstruments = append(pipelineInstruments, projectStage)
+	pipelineInstruments = append(pipelineInstruments, query)
+	if !IncludeOld {
+		queryTimestamp := bson.M{
+			"$match": bson.M{
+				"creationTimestamp": bson.M{"$gte": now.UnixMilli()},
+			},
+		}
+		pipelineInstruments = append(pipelineInstruments, queryTimestamp)
+	}
+	pipelineInstruments = append(pipelineInstruments, skipStage)
+	pipelineInstruments = append(pipelineInstruments, limitStage)
+	pipelineInstruments = append(pipelineInstruments, sortStage)
+
+	cursor, err := r.collection.Aggregate(context.Background(), pipelineInstruments)
+	if err != nil {
+		fmt.Printf("err:%+v\n", err)
+
+		return []*_deribitModel.DeribitGetOrderHistoryByInstrumentResponse{}, nil
+	}
+
+	err = cursor.Err()
+	if err != nil {
+		fmt.Printf("%+v\n", err)
+
+		return []*_deribitModel.DeribitGetOrderHistoryByInstrumentResponse{}, err
+	}
+
+	orders := []*_deribitModel.DeribitGetOrderHistoryByInstrumentResponse{}
+
+	if err = cursor.All(context.TODO(), &orders); err != nil {
+		fmt.Printf("%+v\n", err)
+
+		return []*_deribitModel.DeribitGetOrderHistoryByInstrumentResponse{}, nil
 	}
 
 	return orders, nil

@@ -178,3 +178,26 @@ type DeribitGetOpenOrdersByInstrumentResponse struct {
 	OrderType      types.Type         `json:"order_type" bson:"orderType"`
 	OrderState     types.OrderStatus  `json:"order_state" bson:"orderState"`
 }
+
+type DeribitGetOrderHistoryByInstrumentRequest struct {
+	InstrumentName  string `json:"instrument_name" validate:"required"`
+	Count           int    `json:"count"`
+	Offset          int    `json:"offset"`
+	IncludeOld      bool   `json:"include_old"`
+	IncludeUnfilled bool   `json:"include_unfilled"`
+}
+
+type DeribitGetOrderHistoryByInstrumentResponse struct {
+	OrderState        string             `json:"order_state" bson:"orderState"`
+	USD               float64            `json:"usd" bson:"usd"`
+	Amount            float64            `json:"amount" bson:"amount"`
+	FilledAmount      float64            `json:"filled_amount" bson:"filledAmount"`
+	InstrumentName    string             `json:"instrument_name" bson:"InstrumentName"`
+	Direction         string             `json:"direction" bson:"direction"`
+	Price             float64            `json:"price" bson:"price"`
+	OrderId           primitive.ObjectID `json:"order_id" bson:"orderId"`
+	Replaced          bool               `json:"replaced" bson:"replaced"`
+	OrderType         string             `json:"order_type" bson:"orderType"`
+	TimeInForce       string             `json:"time_in_force" bson:"timeInForce"`
+	CreationTimestamp int64              `json:"creation_timestamp" bson:"creationTimestamp"`
+}
