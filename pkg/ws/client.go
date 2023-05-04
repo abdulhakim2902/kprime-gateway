@@ -50,11 +50,14 @@ type WebsocketEvent struct {
 
 var unsubscribeHandlers map[*Client][]func(*Client)
 var subscriptionMutex sync.Mutex
+var registerRequestRpcIdsMutex sync.Mutex
 
 // To Validate rps id-s and return usIn,usOut,usDiff
 var orderRequestRpcIDS map[string]uint64
 
 func (c *Client) RegisterRequestRpcIDS(id string, requestedTime uint64) (bool, string) {
+	registerRequestRpcIdsMutex.Lock()
+	defer registerRequestRpcIdsMutex.Unlock()
 
 	if len(id) == 0 || id[0:1] == "-" {
 		return false, "Request id is required"
