@@ -3,14 +3,15 @@ package repositories
 import (
 	"context"
 	"fmt"
-	deribitModel "gateway/internal/deribit/model"
 	"sort"
 	"strings"
 	"time"
 
+	"git.devucc.name/dependencies/utilities/types"
 	"go.mongodb.org/mongo-driver/bson"
 
-	_types "gateway/internal/orderbook/types"
+	_deribitModel "gateway/internal/deribit/model"
+	_orderbookType "gateway/internal/orderbook/types"
 
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -27,7 +28,7 @@ func NewOrderRepository(db Database) *OrderRepository {
 
 var defaultTimeout = 10 * time.Second
 
-func (r OrderRepository) Find(filter interface{}, sort interface{}, offset, limit int64) ([]*_types.Order, error) {
+func (r OrderRepository) Find(filter interface{}, sort interface{}, offset, limit int64) ([]*_orderbookType.Order, error) {
 	options := options.FindOptions{
 		MaxTime: &defaultTimeout,
 	}
@@ -55,7 +56,7 @@ func (r OrderRepository) Find(filter interface{}, sort interface{}, offset, limi
 
 	defer cursor.Close(context.Background())
 
-	orders := []*_types.Order{}
+	orders := []*_orderbookType.Order{}
 
 	err = cursor.All(context.Background(), &orders)
 	if err != nil {
@@ -65,7 +66,7 @@ func (r OrderRepository) Find(filter interface{}, sort interface{}, offset, limi
 	return orders, nil
 }
 
-func (r OrderRepository) GetInstruments(currency string, expired bool) ([]*deribitModel.DeribitGetInstrumentsResponse, error) {
+func (r OrderRepository) GetInstruments(currency string, expired bool) ([]*_deribitModel.DeribitGetInstrumentsResponse, error) {
 	now := time.Now()
 	loc, _ := time.LoadLocation("Singapore")
 	if loc != nil {
@@ -192,27 +193,27 @@ func (r OrderRepository) GetInstruments(currency string, expired bool) ([]*derib
 
 	cursor, err := r.collection.Aggregate(context.Background(), pipelineInstruments)
 	if err != nil {
-		return []*deribitModel.DeribitGetInstrumentsResponse{}, nil
+		return []*_deribitModel.DeribitGetInstrumentsResponse{}, nil
 	}
 
 	err = cursor.Err()
 	if err != nil {
 		fmt.Printf("%+v\n", err)
-		return []*deribitModel.DeribitGetInstrumentsResponse{}, err
+		return []*_deribitModel.DeribitGetInstrumentsResponse{}, err
 	}
 
-	orders := []*deribitModel.DeribitGetInstrumentsResponse{}
+	orders := []*_deribitModel.DeribitGetInstrumentsResponse{}
 
 	if err = cursor.All(context.TODO(), &orders); err != nil {
 		fmt.Printf("%+v\n", err)
 
-		return []*deribitModel.DeribitGetInstrumentsResponse{}, nil
+		return []*_deribitModel.DeribitGetInstrumentsResponse{}, nil
 	}
 
 	return orders, nil
 }
 
-func (r OrderRepository) GetOpenOrdersByInstrument(InstrumentName string, OrderType string, userId string) ([]*deribitModel.DeribitGetOpenOrdersByInstrumentResponse, error) {
+func (r OrderRepository) GetOpenOrdersByInstrument(InstrumentName string, OrderType string, userId string) ([]*_deribitModel.DeribitGetOpenOrdersByInstrumentResponse, error) {
 	projectStage := bson.M{
 		"$project": bson.M{
 			"InstrumentName": bson.M{"$concat": bson.A{
@@ -249,7 +250,7 @@ func (r OrderRepository) GetOpenOrdersByInstrument(InstrumentName string, OrderT
 
 	query := bson.M{
 		"$match": bson.M{
-			"orderState": bson.M{"$in": []_types.OrderStatus{_types.OPEN, _types.PARTIAL_FILLED}},
+			"orderState": bson.M{"$in": []types.OrderStatus{types.OPEN, types.PARTIAL_FILLED}},
 			"userId":     userId,
 		},
 	}
@@ -267,7 +268,7 @@ func (r OrderRepository) GetOpenOrdersByInstrument(InstrumentName string, OrderT
 	if OrderType != "all" {
 		queryType := bson.M{
 			"$match": bson.M{
-				"orderType": bson.M{"$in": []_types.Type{_types.Type(strings.ToUpper(OrderType))}},
+				"orderType": bson.M{"$in": []types.Type{types.Type(strings.ToUpper(OrderType))}},
 			},
 		}
 		pipelineInstruments = append(pipelineInstruments, queryType)
@@ -279,43 +280,43 @@ func (r OrderRepository) GetOpenOrdersByInstrument(InstrumentName string, OrderT
 	if err != nil {
 		fmt.Printf("err:%+v\n", err)
 
-		return []*deribitModel.DeribitGetOpenOrdersByInstrumentResponse{}, nil
+		return []*_deribitModel.DeribitGetOpenOrdersByInstrumentResponse{}, nil
 	}
 
 	err = cursor.Err()
 	if err != nil {
 		fmt.Printf("%+v\n", err)
 
-		return []*deribitModel.DeribitGetOpenOrdersByInstrumentResponse{}, err
+		return []*_deribitModel.DeribitGetOpenOrdersByInstrumentResponse{}, err
 	}
 
-	orders := []*deribitModel.DeribitGetOpenOrdersByInstrumentResponse{}
+	orders := []*_deribitModel.DeribitGetOpenOrdersByInstrumentResponse{}
 
 	if err = cursor.All(context.TODO(), &orders); err != nil {
 		fmt.Printf("%+v\n", err)
 
-		return []*deribitModel.DeribitGetOpenOrdersByInstrumentResponse{}, nil
+		return []*_deribitModel.DeribitGetOpenOrdersByInstrumentResponse{}, nil
 	}
 
 	return orders, nil
 }
 
-func (r OrderRepository) WsAggregate(pipeline interface{}) []*_types.WsOrder {
+func (r OrderRepository) WsAggregate(pipeline interface{}) []*_orderbookType.WsOrder {
 	opt := options.AggregateOptions{
 		MaxTime: &defaultTimeout,
 	}
 
 	cursor, err := r.collection.Aggregate(context.Background(), pipeline, &opt)
 	if err != nil {
-		return []*_types.WsOrder{}
+		return []*_orderbookType.WsOrder{}
 	}
 
 	err = cursor.Err()
 	if err != nil {
-		return []*_types.WsOrder{}
+		return []*_orderbookType.WsOrder{}
 	}
 
-	orders := []*_types.WsOrder{}
+	orders := []*_orderbookType.WsOrder{}
 
 	cursor.All(context.Background(), &orders)
 
