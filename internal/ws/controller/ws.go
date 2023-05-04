@@ -63,6 +63,7 @@ func NewWebsocketHandler(
 	ws.RegisterChannel("private/cancel_all", handler.PrivateCancelAll)
 	ws.RegisterChannel("private/get_user_trades_by_instrument", handler.PrivateGetUserTradesByInstrument)
 	ws.RegisterChannel("private/get_open_orders_by_instrument", handler.PrivateGetOpenOrdersByInstrument)
+	ws.RegisterChannel("private/get_order_history_by_instrument", handler.PrivateGetOrderHistoryByInstrument)
 
 	ws.RegisterChannel("public/subscribe", handler.SubscribeHandler)
 	ws.RegisterChannel("public/unsubscribe", handler.UnsubscribeHandler)
@@ -809,6 +810,78 @@ func (svc wsHandler) PrivateGetOpenOrdersByInstrument(input interface{}, c *ws.C
 		deribitModel.DeribitGetOpenOrdersByInstrumentRequest{
 			InstrumentName: msg.Params.InstrumentName,
 			Type:           msg.Params.Type,
+		},
+	)
+
+	c.SendMessage(res, ws.SendMessageParams{
+		ID:            msg.Id,
+		RequestedTime: requestedTime,
+	})
+}
+
+func (svc wsHandler) PrivateGetOrderHistoryByInstrument(input interface{}, c *ws.Client) {
+	requestedTime := uint64(time.Now().UnixMicro())
+
+	type Params struct {
+		AccessToken     string `json:"access_token" validate:"required"`
+		InstrumentName  string `json:"instrument_name" validate:"required"`
+		Count           int    `json:"count"`
+		Offset          int    `json:"offset"`
+		IncludeOld      bool   `json:"include_old"`
+		IncludeUnfilled bool   `json:"include_unfilled"`
+	}
+
+	type Req struct {
+		Params Params `json:"params"`
+		Id     uint64 `json:"id"`
+	}
+
+	msg := &Req{}
+	bytes, _ := json.Marshal(input)
+	if err := json.Unmarshal(bytes, &msg); err != nil {
+		fmt.Println(err)
+		c.SendMessage(gin.H{"err": err}, ws.SendMessageParams{
+			ID:            msg.Id,
+			RequestedTime: requestedTime,
+		})
+		return
+	}
+
+	validate := validator.New()
+	if err := validate.Struct(msg); err != nil {
+		fmt.Println(err)
+		c.SendMessage(gin.H{"err": err}, ws.SendMessageParams{
+			ID:            msg.Id,
+			RequestedTime: requestedTime,
+		})
+		return
+	}
+
+	// parameter default value
+	if msg.Params.Count <= 0 {
+		msg.Params.Count = 20
+	}
+
+	JWTData, err := svc.authSvc.JWTCheck(msg.Params.AccessToken)
+	if err != nil {
+		fmt.Println(err)
+		c.SendMessage(gin.H{"err": err.Error()}, ws.SendMessageParams{
+			ID:            msg.Id,
+			RequestedTime: requestedTime,
+			UserID:        "",
+		})
+		return
+	}
+
+	res := svc.wsOSvc.GetGetOrderHistoryByInstrument(
+		context.TODO(),
+		JWTData.UserID,
+		deribitModel.DeribitGetOrderHistoryByInstrumentRequest{
+			InstrumentName:  msg.Params.InstrumentName,
+			Count:           msg.Params.Count,
+			Offset:          msg.Params.Offset,
+			IncludeOld:      msg.Params.IncludeOld,
+			IncludeUnfilled: msg.Params.IncludeUnfilled,
 		},
 	)
 
