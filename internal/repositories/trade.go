@@ -6,10 +6,9 @@ import (
 	"strconv"
 	"strings"
 
-	engineType "gateway/internal/engine/types"
-
-	deribitModel "gateway/internal/deribit/model"
-	tradeType "gateway/internal/repositories/types"
+	_deribitModel "gateway/internal/deribit/model"
+	_engineType "gateway/internal/engine/types"
+	_tradeType "gateway/internal/repositories/types"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -25,7 +24,7 @@ func NewTradeRepository(db Database) *TradeRepository {
 	return &TradeRepository{collection}
 }
 
-func (r TradeRepository) Find(filter interface{}, sort interface{}, offset, limit int64) ([]*engineType.Trade, error) {
+func (r TradeRepository) Find(filter interface{}, sort interface{}, offset, limit int64) ([]*_engineType.Trade, error) {
 	options := options.FindOptions{
 		MaxTime: &defaultTimeout,
 	}
@@ -53,7 +52,7 @@ func (r TradeRepository) Find(filter interface{}, sort interface{}, offset, limi
 
 	defer cursor.Close(context.Background())
 
-	Trades := []*engineType.Trade{}
+	Trades := []*_engineType.Trade{}
 
 	err = cursor.All(context.Background(), &Trades)
 	if err != nil {
@@ -68,7 +67,7 @@ func (r TradeRepository) FindUserTradesByInstrument(
 	sort string,
 	count int,
 	userId string,
-) (result deribitModel.DeribitGetUserTradesByInstrumentsResponse, err error) {
+) (result _deribitModel.DeribitGetUserTradesByInstrumentsResponse, err error) {
 	options := options.AggregateOptions{
 		MaxTime: &defaultTimeout,
 	}
@@ -216,7 +215,7 @@ func (r TradeRepository) FindUserTradesByInstrument(
 	}
 	defer cursor.Close(context.Background())
 
-	var res tradeType.UserTradesByInstrumentResult
+	var res _tradeType.UserTradesByInstrumentResult
 	for cursor.Next(context.TODO()) {
 		if err = cursor.Decode(&res); err != nil {
 			fmt.Println(err)
