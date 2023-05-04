@@ -352,9 +352,9 @@ func (r OrderRepository) GetOrderHistoryByInstrument(InstrumentName string, Coun
 			"userId":            "$userId",
 		}}
 
-	orderState := []_types.OrderStatus{_types.FILLED, _types.PARTIAL_FILLED}
+	orderState := []types.OrderStatus{types.FILLED, types.PARTIAL_FILLED}
 	if IncludeUnfilled {
-		orderState = append(orderState, _types.CANCELLED, _types.REJECTED)
+		orderState = append(orderState, types.CANCELLED, types.REJECTED)
 	}
 	query := bson.M{
 		"$match": bson.M{
