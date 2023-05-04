@@ -612,31 +612,49 @@ func (a Application) onSecurityListRequest(msg securitylistrequest.SecurityListR
 		return quickfix.NewMessageRejectError(e.Error(), 0, nil)
 	}
 
+	secListGroup := securitylist.NewNoRelatedSymRepeatingGroup()
 	for _, instrument := range instruments {
-		// putOrCall := 0
-		// if instrument.Contracts == string(enum.PutOrCall_CALL) {
-		// 	putOrCall = 1
-		// }
-		// secStatus := 1
-		// t, _ := time.Parse("2006-01-02", instrument.ExpirationDate)
-		// date := t.Unix()
-		// today := time.Now().Unix()
+		putOrCall := enum.PutOrCall_CALL
+		if instrument.Contracts == string(enum.PutOrCall_CALL) {
+			putOrCall = enum.PutOrCall_PUT
+		}
+		secStatus := enum.SecurityStatus_ACTIVE
+		t, _ := time.Parse("2006-01-02", instrument.ExpirationDate)
+		date := t.Unix()
+		today := time.Now().Unix()
 
-		// if date < today {
-		// 	secStatus = 0
-		// }
-		secListGroup := securitylist.NewNoRelatedSymRepeatingGroup()
+		if date < today {
+			secStatus = enum.SecurityStatus_INACTIVE
+		}
+
+		row := secListGroup.Add()
 		strikePrice := strconv.FormatFloat(instrument.StrikePrice, 'f', 0, 64)
 		instrumentName := fmt.Sprintf("%s-%s-%s-%s", instrument.Underlying, instrument.ExpirationDate, strikePrice, instrument.Contracts)
 		fmt.Println(instrument.ExpirationDate)
-		secListGroup.Add().SetSymbol(instrumentName)
-		// secListGroup.Add().SetSecurityDesc("OPTIONS")
-		// secListGroup.Add().SetSecurityType("OPT")
-		// secListGroup.Add().SetStrikePrice(decimal.NewFromFloat(instrument.StrikePrice), 0)
-		// secListGroup.Add().SetStrikeCurrency("USD")
-		res.SetNoRelatedSym(secListGroup)
+		row.SetSymbol(instrumentName)
+		row.SetSecurityDesc("OPTIONS")
+		row.SetSecurityType("OPT")
+		row.SetStrikePrice(decimal.NewFromFloat(instrument.StrikePrice), 0)
+		row.SetStrikeCurrency("USD")
+
+		var contract field.PutOrCallField
+		contract = field.NewPutOrCall(putOrCall)
+		row.Set(contract)
+
+		var securityStatus field.SecurityStatusField
+		securityStatus = field.NewSecurityStatus(secStatus)
+		row.Set(securityStatus)
+
+		var issueDate field.IssueDateField
+		issueDate = field.NewIssueDate(instrument.CreatedAt.String())
+		row.Set(issueDate)
+
+		var symbol field.UnderlyingSymbolField
+		symbol = field.NewUnderlyingSymbol(instrument.Underlying)
+		row.Set(symbol)
 	}
 
+	res.SetNoRelatedSym(secListGroup)
 	fmt.Println("giving back security list msg")
 	quickfix.SendToTarget(res, sessionID)
 	return nil

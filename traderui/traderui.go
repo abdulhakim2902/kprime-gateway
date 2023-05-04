@@ -31,7 +31,7 @@ type fixFactory interface {
 }
 
 type fixApp interface {
-	GetAllSecurityList() []string
+	GetAllSecurityList() []basic.Instruments
 }
 
 type tradeClient struct {
@@ -144,6 +144,7 @@ func (c tradeClient) writeOrderJSON(w http.ResponseWriter, order *oms.Order) {
 }
 
 func (c tradeClient) getExecution(w http.ResponseWriter, r *http.Request) {
+
 	c.RLock()
 	defer c.RUnlock()
 
@@ -162,6 +163,25 @@ func (c tradeClient) getExecution(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	fmt.Fprint(w, string(outgoingJSON))
+}
+
+func (c tradeClient) getInstruments(w http.ResponseWriter, r *http.Request) {
+
+	c.RLock()
+	defer c.RUnlock()
+
+	b, err := json.Marshal(c.GetAllSecurityList())
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+
+	fmt.Println(string(b))
+	if string(b) == "null" {
+		b = []byte("[no instruments]")
+	}
+	w.Header().Set("Content-Type", "application/json")
+	fmt.Fprint(w, string(b))
 }
 
 func (c tradeClient) updateOrder(w http.ResponseWriter, r *http.Request) {
@@ -412,6 +432,8 @@ func main() {
 	router.HandleFunc("/orders/{id:[0-9]+}", app.updateOrder).Methods("PUT")
 	router.HandleFunc("/orders/{id:[0-9]+}", app.getOrder).Methods("GET")
 	router.HandleFunc("/orders/{id:[0-9]+}", app.deleteOrder).Methods("DELETE")
+
+	router.HandleFunc("/instruments", app.getInstruments).Methods("GET")
 
 	router.HandleFunc("/executions", app.getExecutions).Methods("GET")
 	router.HandleFunc("/executions/{id:[0-9]+}", app.getExecution).Methods("GET")
