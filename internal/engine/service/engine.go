@@ -7,12 +7,13 @@ import (
 	"strconv"
 	"time"
 
+	"git.devucc.name/dependencies/utilities/types"
 	"github.com/Shopify/sarama"
 	"github.com/gin-gonic/gin"
 
-	"gateway/internal/engine/types"
+	_engineType "gateway/internal/engine/types"
+	_ordermatch "gateway/internal/fix-acceptor"
 
-	ordermatch "gateway/internal/fix-acceptor"
 	"gateway/pkg/redis"
 	"gateway/pkg/ws"
 )
@@ -26,7 +27,7 @@ func NewEngineHandler(r *gin.Engine, redis *redis.RedisConnectionPool) IEngineSe
 
 }
 func (svc engineHandler) HandleConsume(msg *sarama.ConsumerMessage) {
-	var data types.EngineResponse
+	var data _engineType.EngineResponse
 	err := json.Unmarshal(msg.Value, &data)
 	if err != nil {
 		fmt.Println(err)
@@ -46,7 +47,7 @@ func (svc engineHandler) HandleConsume(msg *sarama.ConsumerMessage) {
 	checkDateToRemoveRedis(data.Order.ExpiryDate, _instrument, svc)
 
 	//init redisDataArray variable
-	redisDataArray := []types.EngineResponse{}
+	redisDataArray := []_engineType.EngineResponse{}
 
 	//get redis
 	redisData, err := svc.redis.GetValue("ENGINE-" + _instrument)
@@ -56,7 +57,7 @@ func (svc engineHandler) HandleConsume(msg *sarama.ConsumerMessage) {
 
 	//create new variable with array of object and append to redisDataArray
 	if redisData != "" {
-		var _redisDataArray []types.EngineResponse
+		var _redisDataArray []_engineType.EngineResponse
 		err = json.Unmarshal([]byte(redisData), &_redisDataArray)
 		if err != nil {
 			fmt.Println("error unmarshal redisData")
@@ -76,8 +77,8 @@ func (svc engineHandler) HandleConsume(msg *sarama.ConsumerMessage) {
 		return
 	}
 
+	_ordermatch.OnMatchingOrder(data)
 	//pass to fix gateway
-	ordermatch.OnMatchingOrder(data)
 
 	//save to redis
 	svc.redis.Set("ENGINE-"+_instrument, string(jsonBytes))
@@ -119,9 +120,9 @@ func checkDateToRemoveRedis(_expiryDate string, _instrument string, svc engineHa
 	}
 }
 
-func (svc engineHandler) PublishOrder(data types.EngineResponse) {
+func (svc engineHandler) PublishOrder(data _engineType.EngineResponse) {
 	instrumentName := data.Order.Underlying + "-" + data.Order.ExpiryDate + "-" + fmt.Sprintf("%.0f", data.Order.StrikePrice) + "-" + string(data.Order.Contracts[0])
-	order := types.BuySellEditCancelOrder{
+	order := _engineType.BuySellEditCancelOrder{
 		OrderState:          types.OrderStatus(data.Order.Status),
 		Usd:                 data.Order.Price,
 		FilledAmount:        data.Order.FilledAmount,
@@ -142,17 +143,17 @@ func (svc engineHandler) PublishOrder(data types.EngineResponse) {
 	connectionKey := utils.GetKeyFromIdUserID(ID, userIDStr)
 	switch data.Status {
 	case types.ORDER_CANCELLED:
-		ws.SendOrderMessage(connectionKey, types.CancelResponse{
+		ws.SendOrderMessage(connectionKey, _engineType.CancelResponse{
 			Order: order,
 		}, ws.SendMessageParams{
 			ID:     ID,
 			UserID: userIDStr,
 		})
 	default:
-		trades := []types.BuySellEditTrade{}
+		trades := []_engineType.BuySellEditTrade{}
 		if data.Matches != nil && data.Matches.Trades != nil && len(data.Matches.Trades) > 0 {
 			for _, element := range data.Matches.Trades {
-				trades = append(trades, types.BuySellEditTrade{
+				trades = append(trades, _engineType.BuySellEditTrade{
 					Advanced:       "usd",
 					Amount:         element.Amount,
 					Direction:      element.Side,
@@ -166,7 +167,7 @@ func (svc engineHandler) PublishOrder(data types.EngineResponse) {
 				})
 			}
 		}
-		ws.SendOrderMessage(connectionKey, types.BuySellEditResponse{
+		ws.SendOrderMessage(connectionKey, _engineType.BuySellEditResponse{
 			Order:  order,
 			Trades: trades,
 		}, ws.SendMessageParams{

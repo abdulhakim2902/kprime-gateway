@@ -1,6 +1,9 @@
 package ws
 
-import "fmt"
+import (
+	"fmt"
+	"sync"
+)
 
 // OrderConn is websocket order connection struct
 // It holds the reference to connection and the channel of type OrderMessage
@@ -8,6 +11,7 @@ import "fmt"
 type OrderConnection []*Client
 
 var orderConnections map[string]OrderConnection
+var registerOrderConnMutex sync.Mutex
 
 // GetOrderConn returns the connection associated with an order ID
 func GetOrderConnections(a string) OrderConnection {
@@ -47,6 +51,8 @@ func OrderSocketUnsubscribeHandler(a string) func(client *Client) {
 // RegisterOrderConnection registers a connection with and orderID.
 // It is called whenever a message is recieved over order channel
 func RegisterOrderConnection(a string, c *Client) {
+	registerOrderConnMutex.Lock()
+	defer registerOrderConnMutex.Unlock()
 	// logger.Info("Registering new order connection")
 
 	if orderConnections == nil {

@@ -27,13 +27,14 @@ require (
 	github.com/rs/cors/wrapper/gin v0.0.0-20230301160956-5c2b877d2a03
 	github.com/shopspring/decimal v1.3.1
 	github.com/spf13/cobra v1.6.1
-	go.mongodb.org/mongo-driver v1.11.3
+	go.mongodb.org/mongo-driver v1.11.5
 	golang.org/x/crypto v0.7.0
 	gorm.io/driver/mysql v1.4.7
 	gorm.io/gorm v1.24.6
 )
 
 require (
+	git.devucc.name/dependencies/utilities v1.0.1 // indirect
 	github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible // indirect
 	github.com/armon/go-proxyproto v0.0.0-20210323213023-7e956b284f0a // indirect
 	github.com/bytedance/sonic v1.8.6 // indirect

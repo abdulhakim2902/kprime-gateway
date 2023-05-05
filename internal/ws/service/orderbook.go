@@ -8,13 +8,15 @@ import (
 	"strings"
 	"time"
 
-	deribitModel "gateway/internal/deribit/model"
+	_deribitModel "gateway/internal/deribit/model"
 	_engineTypes "gateway/internal/engine/types"
-	"gateway/internal/orderbook/types"
+	_orderbookTypes "gateway/internal/orderbook/types"
+
 	"gateway/internal/repositories"
 	"gateway/pkg/redis"
 	"gateway/pkg/ws"
 
+	"git.devucc.name/dependencies/utilities/types"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
@@ -34,7 +36,7 @@ func (svc wsOrderbookService) Subscribe(c *ws.Client, instrument string) {
 	// Get initial data from the redis
 	res, err := svc.redis.GetValue("ORDERBOOK-" + instrument)
 	if res == "" || err != nil {
-		socket.SendInitMessage(c, &types.Message{
+		socket.SendInitMessage(c, &_orderbookTypes.Message{
 			Instrument: instrument,
 		})
 	}
@@ -57,7 +59,7 @@ func (svc wsOrderbookService) Subscribe(c *ws.Client, instrument string) {
 	}
 
 	// JSON Parse
-	var initData types.Message
+	var initData _orderbookTypes.Message
 	err = json.Unmarshal([]byte(res), &initData)
 	if err != nil {
 		msg := map[string]string{"Message": err.Error()}
@@ -74,7 +76,7 @@ func (svc wsOrderbookService) Unsubscribe(c *ws.Client) {
 	socket.Unsubscribe(c)
 }
 
-func (svc wsOrderbookService) GetOrderBook(ctx context.Context, data deribitModel.DeribitGetOrderBookRequest) deribitModel.DeribitGetOrderBookResponse {
+func (svc wsOrderbookService) GetOrderBook(ctx context.Context, data _deribitModel.DeribitGetOrderBookRequest) _deribitModel.DeribitGetOrderBookResponse {
 	_string := data.InstrumentName
 	substring := strings.Split(_string, "-")
 
@@ -85,7 +87,7 @@ func (svc wsOrderbookService) GetOrderBook(ctx context.Context, data deribitMode
 	_underlying := substring[0]
 	_expiryDate := strings.ToUpper(substring[1])
 
-	_order := types.GetOrderBook{
+	_order := _orderbookTypes.GetOrderBook{
 		InstrumentName: _string,
 		Underlying:     _underlying,
 		ExpiryDate:     _expiryDate,
@@ -97,11 +99,11 @@ func (svc wsOrderbookService) GetOrderBook(ctx context.Context, data deribitMode
 	//count best Ask
 	maxAskPrice := 0.0
 	maxAskAmount := 0.0
-	var maxAskItem []*types.WsOrder
+	var maxAskItem []*_orderbookTypes.WsOrder
 	for _, item := range _getOrderBook.Asks {
 		if item.Price > maxAskPrice {
 			maxAskPrice = item.Price
-			maxAskItem = []*types.WsOrder{item}
+			maxAskItem = []*_orderbookTypes.WsOrder{item}
 			maxAskAmount = item.Amount
 		} else if item.Price == maxAskPrice {
 			maxAskItem = append(maxAskItem, item)
@@ -115,11 +117,11 @@ func (svc wsOrderbookService) GetOrderBook(ctx context.Context, data deribitMode
 		maxBidPrice = _getOrderBook.Bids[0].Price
 	}
 	maxBidAmount := 0.0
-	var maxBidItem []*types.WsOrder
+	var maxBidItem []*_orderbookTypes.WsOrder
 	for _, item := range _getOrderBook.Bids {
 		if item.Price < maxBidPrice {
 			maxBidPrice = item.Price
-			maxBidItem = []*types.WsOrder{item}
+			maxBidItem = []*_orderbookTypes.WsOrder{item}
 			maxBidAmount = item.Amount
 		} else if item.Price == maxBidPrice {
 			maxBidItem = append(maxBidItem, item)
@@ -176,7 +178,7 @@ func (svc wsOrderbookService) GetOrderBook(ctx context.Context, data deribitMode
 		_priceChange = (_lastTrade - _firstTrade) / _firstTrade * 100
 	}
 
-	results := deribitModel.DeribitGetOrderBookResponse{
+	results := _deribitModel.DeribitGetOrderBookResponse{
 		InstrumentName: _getOrderBook.InstrumentName,
 		Bids:           _getOrderBook.Bids,
 		Asks:           _getOrderBook.Asks,
@@ -187,7 +189,7 @@ func (svc wsOrderbookService) GetOrderBook(ctx context.Context, data deribitMode
 		Timestamp:      time.Now().UnixNano() / int64(time.Millisecond),
 		State:          _state,
 		LastPrice:      _lastPrice,
-		Stats: deribitModel.OrderBookStats{
+		Stats: _deribitModel.OrderBookStats{
 			High:        _hightPrice,
 			Low:         _lowestPrice,
 			PriceChange: _priceChange,
@@ -198,7 +200,7 @@ func (svc wsOrderbookService) GetOrderBook(ctx context.Context, data deribitMode
 	return results
 }
 
-func (svc wsOrderbookService) _getOrderBook(o types.GetOrderBook) *types.Orderbook {
+func (svc wsOrderbookService) _getOrderBook(o _orderbookTypes.GetOrderBook) *_orderbookTypes.Orderbook {
 	queryBuilder := func(side types.Side, priceOrder int) interface{} {
 		return []bson.M{
 			{
@@ -241,7 +243,7 @@ func (svc wsOrderbookService) _getOrderBook(o types.GetOrderBook) *types.Orderbo
 	bidsQuery := queryBuilder(types.BUY, 1)
 	bids := svc.orderRepository.WsAggregate(bidsQuery)
 
-	orderbooks := &types.Orderbook{
+	orderbooks := &_orderbookTypes.Orderbook{
 		InstrumentName: o.InstrumentName,
 		Asks:           asks,
 		Bids:           bids,
@@ -250,7 +252,7 @@ func (svc wsOrderbookService) _getOrderBook(o types.GetOrderBook) *types.Orderbo
 	return orderbooks
 }
 
-func (svc wsOrderbookService) _getLastTrades(o types.GetOrderBook) []*_engineTypes.Trade {
+func (svc wsOrderbookService) _getLastTrades(o _orderbookTypes.GetOrderBook) []*_engineTypes.Trade {
 	tradesQuery := bson.M{
 		"underlying":  o.Underlying,
 		"strikePrice": o.StrikePrice,
@@ -268,7 +270,7 @@ func (svc wsOrderbookService) _getLastTrades(o types.GetOrderBook) []*_engineTyp
 	return trades
 }
 
-func (svc wsOrderbookService) _getHighLowTrades(o types.GetOrderBook, t int) []*_engineTypes.Trade {
+func (svc wsOrderbookService) _getHighLowTrades(o _orderbookTypes.GetOrderBook, t int) []*_engineTypes.Trade {
 	currentTime := time.Now()
 	oneDayAgo := currentTime.AddDate(0, 0, -1)
 
@@ -292,7 +294,7 @@ func (svc wsOrderbookService) _getHighLowTrades(o types.GetOrderBook, t int) []*
 	return trades
 }
 
-func (svc wsOrderbookService) _get24HoursTrades(o types.GetOrderBook) []*_engineTypes.Trade {
+func (svc wsOrderbookService) _get24HoursTrades(o _orderbookTypes.GetOrderBook) []*_engineTypes.Trade {
 	currentTime := time.Now()
 	oneDayAgo := currentTime.AddDate(0, 0, -1)
 
