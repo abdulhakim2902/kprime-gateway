@@ -624,6 +624,7 @@ func OrderConfirmation(userId string, order Order, symbol string) {
 		field.NewCumQty(order.FilledAmount, 2),
 		field.NewAvgPx(order.Price, 2),
 	)
+	msg.SetOrdStatus(enum.OrdStatus_NEW)
 	msg.SetString(tag.OrderID, order.ID)
 	msg.SetString(tag.ClOrdID, order.ClientOrderId)
 	err := quickfix.SendToTarget(msg, *sessionId)
