@@ -29,16 +29,7 @@ type Matches struct {
 }
 
 type Trade struct {
-	trade.Trade
-	ID            primitive.ObjectID `json:"id" bson:"_id"`
-	Underlying    string             `json:"underlying" bson:"underlying"`
-	ExpiryDate    string             `json:"expiryDate" bson:"expiryDate"`
-	StrikePrice   float64            `json:"strikePrice" bson:"strikePrice"`
-	Side          types.Side         `json:"side" bson:"side"`
-	Price         float64            `json:"price" bson:"price"`
-	Amount        float64            `json:"amount" bson:"amount"`
-	Status        types.TradeStatus  `json:"status" bson:"status"`
-	Contracts     types.Contracts    `json:"contracts" bson:"contracts"`
+	trade.Trade   `bson:",inline"`
 	TakerID       string             `json:"takerId" bson:"takerId"`
 	MakerID       string             `json:"makerId" bson:"makerId"`
 	TakerClientID string             `json:"takerClientId" bson:"takerClientId"`
