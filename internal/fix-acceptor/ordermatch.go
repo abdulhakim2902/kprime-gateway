@@ -719,9 +719,14 @@ var (
 
 func execute(cmd *cobra.Command, args []string) error {
 	var cfgFileName string
+	if os.Getenv("APP_ENV") != "local" {
+		cfgFileName = "ordermatch_dev.cfg"
+	} else {
+		cfgFileName = "ordermatch.cfg"
+	}
 
 	_, b, _, _ := runtime.Caller(0)
-	cfg, err := os.Open(path.Join(b, "../", "config", "ordermatch.cfg"))
+	cfg, err := os.Open(path.Join(b, "../", "config", cfgFileName))
 	if err != nil {
 		return fmt.Errorf("error opening %v, %v", cfgFileName, err)
 	}
@@ -738,7 +743,7 @@ func execute(cmd *cobra.Command, args []string) error {
 
 	logger := utils.NewFancyLog()
 	app := newApplication()
-
+	fmt.Println(string(stringData))
 	utils.PrintConfig("acceptor", bytes.NewReader(stringData))
 	acceptor, err := quickfix.NewAcceptor(app, quickfix.NewMemoryStoreFactory(), appSettings, logger)
 	if err != nil {
