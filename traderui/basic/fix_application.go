@@ -152,27 +152,28 @@ func (a *FIXApplication) onExecutionReport(msg *quickfix.Message, sessionID quic
 	order.OrderID = orderId.String()
 	a.Save(order)
 	fmt.Println(order)
-	if msg.Body.Has(tag.LastShares) {
-		var lastShares field.LastSharesField
-		if err := msg.Body.Get(&lastShares); err != nil {
-			return err
-		}
-
-		var price field.LastPxField
-		if err := msg.Body.Get(&price); err != nil {
-			return err
-		}
-
-		exec := new(oms.Execution)
-		exec.Symbol = order.Symbol
-		exec.Side = order.Side
-		exec.Session = order.Session
-
-		exec.Quantity = lastShares.String()
-		exec.Price = price.String()
-		_ = a.SaveExecution(exec)
+	var lastShares field.LastSharesField
+	if err := msg.Body.Get(&lastShares); err != nil {
+		return err
 	}
 
+	var price field.LastPxField
+	if err := msg.Body.Get(&price); err != nil {
+		return err
+	}
+
+	exec := new(oms.Execution)
+	exec.Symbol = order.Symbol
+	exec.Side = order.Side
+	exec.Session = order.Session
+
+	exec.Quantity = lastShares.String()
+	exec.Price = price.String()
+
+	status := msg.Body.Get(&field.OrdStatusField{}).String()
+	if status == "2" || status == "1" {
+		_ = a.SaveExecution(exec)
+	}
 	return nil
 }
 

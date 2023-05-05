@@ -444,12 +444,12 @@ func OnMatchingOrder(data types.EngineResponse) {
 		return
 	}
 
-	for _, trd := range data.Matches.Trades {
+	for _, trd := range data.Matches.MakerOrders {
 		fmt.Println(userSession)
 		if userSession == nil {
 			return
 		}
-		if userSession[data.Matches.Trades[0].MakerID] == nil {
+		if userSession[trd.Order.UserID] == nil {
 			return
 		}
 
@@ -465,6 +465,11 @@ func OnMatchingOrder(data types.EngineResponse) {
 			field.NewCumQty(decimal.NewFromFloat(order.FilledAmount), 2),
 			field.NewAvgPx(decimal.NewFromFloat(trd.Price), 2),
 		)
+		if trd.Amount == 0 {
+			msg.SetOrdStatus(enum.OrdStatus_FILLED)
+		} else {
+			msg.SetOrdStatus(enum.OrdStatus_PARTIALLY_FILLED)
+		}
 		msg.SetLastPx(decimal.NewFromFloat(trd.Price), 2)
 		msg.SetLastQty(decimal.NewFromFloat(trd.Amount), 2)
 		fmt.Println("Sending execution report for matching order")
