@@ -470,6 +470,7 @@ func OnMatchingOrder(data types.EngineResponse) {
 		} else {
 			msg.SetOrdStatus(enum.OrdStatus_PARTIALLY_FILLED)
 		}
+		msg.SetClOrdID(trd.ClOrdID)
 		msg.SetLastPx(decimal.NewFromFloat(trd.Price), 2)
 		msg.SetLastQty(decimal.NewFromFloat(trd.Amount), 2)
 		fmt.Println("Sending execution report for matching order")

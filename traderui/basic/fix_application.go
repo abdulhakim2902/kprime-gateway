@@ -152,28 +152,32 @@ func (a *FIXApplication) onExecutionReport(msg *quickfix.Message, sessionID quic
 	order.OrderID = orderId.String()
 	a.Save(order)
 	fmt.Println(order)
-	var lastShares field.LastSharesField
-	if err := msg.Body.Get(&lastShares); err != nil {
+	var ordStatus field.OrdStatusField
+	if err := msg.Body.Get(&ordStatus); err != nil {
 		return err
 	}
+	fmt.Println(ordStatus.String())
+	if ordStatus.String() != string(enum.OrdStatus_NEW) {
+		var lastQty field.LastQtyField
+		if err := msg.Body.Get(&lastQty); err != nil {
+			return err
+		}
 
-	var price field.LastPxField
-	if err := msg.Body.Get(&price); err != nil {
-		return err
-	}
+		var price field.LastPxField
+		if err := msg.Body.Get(&price); err != nil {
+			return err
+		}
 
-	exec := new(oms.Execution)
-	exec.Symbol = order.Symbol
-	exec.Side = order.Side
-	exec.Session = order.Session
+		exec := new(oms.Execution)
+		exec.Symbol = order.Symbol
+		exec.Side = order.Side
+		exec.Session = order.Session
 
-	exec.Quantity = lastShares.String()
-	exec.Price = price.String()
-
-	status := msg.Body.Get(&field.OrdStatusField{}).String()
-	if status == "2" || status == "1" {
+		exec.Quantity = lastQty.String()
+		exec.Price = price.String()
 		_ = a.SaveExecution(exec)
 	}
+
 	return nil
 }
 
