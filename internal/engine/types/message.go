@@ -29,8 +29,7 @@ type Matches struct {
 }
 
 type Trade struct {
-	trade.Trade
-
+	trade.Trade   `bson:",inline"`
 	TakerID       string             `json:"takerId" bson:"takerId"`
 	MakerID       string             `json:"makerId" bson:"makerId"`
 	TakerClientID string             `json:"takerClientId" bson:"takerClientId"`

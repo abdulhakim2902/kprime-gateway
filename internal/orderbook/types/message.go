@@ -25,12 +25,11 @@ type WsOrder struct {
 }
 
 type Order struct {
-	order.Order
-
+	order.Order          `bson:",inline"`
 	InstrumentName       string `json:"instrumentName" bson:"instrumentName"`
 	Symbol               string `json:"symbol" bson:"symbol"`
 	SenderCompID         string `json:"sender_comp_id" bson:"sender_comp_id"`
-	insertTime           time.Time
+	InsertTime           time.Time
 	LastExecutedQuantity decimal.Decimal
 	LastExecutedPrice    decimal.Decimal
 }
