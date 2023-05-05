@@ -673,6 +673,7 @@ func (svc wsHandler) GetOrderBook(input interface{}, c *ws.Client) {
 		InstrumentName: msg.Params.InstrumentName,
 		Depth:          msg.Params.Depth,
 	})
+	fmt.Printf("%+v\n", result)
 
 	c.SendMessage(result, ws.SendMessageParams{
 		ID:            msg.Id,
