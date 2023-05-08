@@ -2,6 +2,7 @@ package basic
 
 import (
 	"fmt"
+	"gateway/pkg/utils"
 	"log"
 	"os"
 	"path"
@@ -98,18 +99,14 @@ func (a *FIXApplication) onSecurityList(msg *quickfix.Message, sessionID quickfi
 	defer a.Unlock()
 	fmt.Println("mapping security list")
 	group := securitylist.NewNoRelatedSymRepeatingGroup()
-	fmt.Println("a")
 	err := msg.Body.GetGroup(&group)
-	fmt.Println("b")
 	if err != nil {
 		fmt.Println("Error getting the group: ", err)
 		return err
 	}
-	fmt.Println("c", group.Len())
 
 	var secres field.SecurityResponseIDField
 	msg.Body.GetField(tag.SecurityResponseID, &secres)
-	fmt.Println("secres", secres)
 
 	var putOrCall field.PutOrCallField
 	msg.Body.GetField(tag.PutOrCall, &putOrCall)
@@ -122,6 +119,12 @@ func (a *FIXApplication) onSecurityList(msg *quickfix.Message, sessionID quickfi
 
 	var issueDate field.IssueDateField
 	msg.Body.GetField(tag.IssueDate, &issueDate)
+
+	// extract instrument name from instruments into an array of strings
+	var instrumentNames []string
+	for _, instrument := range instruments {
+		instrumentNames = append(instrumentNames, instrument.InstrumentName)
+	}
 
 	for i := 0; i < group.Len(); i++ {
 		var symbol field.SymbolField
@@ -161,12 +164,16 @@ func (a *FIXApplication) onSecurityList(msg *quickfix.Message, sessionID quickfi
 			Underlying:     underlying.String(),
 			IssueDate:      issueDate.String(),
 		}
+
+		if utils.ArrContains(instrumentNames, ins.InstrumentName) {
+			continue
+		}
 		instruments = append(instruments, ins)
+		instrumentNames = append(instrumentNames, ins.InstrumentName)
 	}
 	if instruments == nil {
 		instruments = make([]Instruments, group.Len())
 	}
-	fmt.Println("Instrument List: ", instruments)
 	return nil
 }
 
@@ -238,6 +245,6 @@ func (a *FIXApplication) onExecutionReport(msg *quickfix.Message, sessionID quic
 }
 
 func (a FIXApplication) GetAllSecurityList() []Instruments {
-	fmt.Println("Instrument List: ", instruments)
+	fmt.Println("Instrument List: ", len(instruments))
 	return instruments
 }
