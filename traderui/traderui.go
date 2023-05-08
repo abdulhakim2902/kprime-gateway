@@ -14,7 +14,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/quickfixgo/enum"
 	"github.com/quickfixgo/field"
-	"github.com/quickfixgo/fix44/securitylistrequest"
+	"github.com/quickfixgo/fix43/securitylistrequest"
 	"github.com/quickfixgo/tag"
 	"github.com/quickfixgo/traderui/basic"
 	"github.com/quickfixgo/traderui/oms"
@@ -31,7 +31,7 @@ type fixFactory interface {
 }
 
 type fixApp interface {
-	GetAllSecurityList() []string
+	GetAllSecurityList() []basic.Instruments
 }
 
 type tradeClient struct {
@@ -53,6 +53,7 @@ func newTradeClient(factory fixFactory, idGen oms.ClOrdIDGenerator, app fixApp) 
 }
 
 func (c tradeClient) SessionsAsJSON() (string, error) {
+	fmt.Println("sessionsasjson")
 	sessionIDs := make([]string, 0, len(c.SessionIDs))
 
 	for s := range c.SessionIDs {
@@ -80,6 +81,8 @@ func (c tradeClient) ExecutionsAsJSON() (string, error) {
 }
 
 func (c tradeClient) SecurityListAsJSON() (string, error) {
+	fmt.Println("seclist as json")
+
 	c.RLock()
 	defer c.RUnlock()
 
@@ -141,6 +144,7 @@ func (c tradeClient) writeOrderJSON(w http.ResponseWriter, order *oms.Order) {
 }
 
 func (c tradeClient) getExecution(w http.ResponseWriter, r *http.Request) {
+
 	c.RLock()
 	defer c.RUnlock()
 
@@ -159,6 +163,25 @@ func (c tradeClient) getExecution(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	fmt.Fprint(w, string(outgoingJSON))
+}
+
+func (c tradeClient) getInstruments(w http.ResponseWriter, r *http.Request) {
+
+	c.RLock()
+	defer c.RUnlock()
+
+	b, err := json.Marshal(c.GetAllSecurityList())
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+
+	fmt.Println(string(b))
+	if string(b) == "null" {
+		b = []byte("[no instruments]")
+	}
+	w.Header().Set("Content-Type", "application/json")
+	fmt.Fprint(w, string(b))
 }
 
 func (c tradeClient) updateOrder(w http.ResponseWriter, r *http.Request) {
@@ -328,15 +351,35 @@ func (c tradeClient) newOrder(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
+}
 
+func (c tradeClient) onSecurityListRequest(w http.ResponseWriter, r *http.Request) {
+	var secDefRequest secmaster.SecurityDefinitionRequest
+	decoder := json.NewDecoder(r.Body)
+	err := decoder.Decode(&secDefRequest)
+	if err != nil {
+		log.Printf("[ERROR] %v\n", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	log.Printf("secDefRequest = %+v\n", secDefRequest)
+
+	if sessionID, ok := c.SessionIDs[secDefRequest.Session]; ok {
+		secDefRequest.SessionID = sessionID
+	} else {
+		log.Println("[ERROR] Invalid SessionID")
+		http.Error(w, "Invalid SessionID", http.StatusBadRequest)
+		return
+	}
 	newMsg := securitylistrequest.New(
 		field.NewSecurityReqID("1"),
 		field.NewSecurityListRequestType(enum.SecurityListRequestType_SYMBOL),
 	)
-	newMsg.SetString(tag.Currency, "USD")
 	newMsg.SetInt(tag.SubscriptionRequestType, 0)
+	newMsg.SetString(tag.Currency, secDefRequest.Symbol) // btc / all
 	fmt.Println("requesting security list")
-	err = quickfix.SendToTarget(newMsg, order.SessionID)
+	err = quickfix.SendToTarget(newMsg, secDefRequest.SessionID)
 	if err != nil {
 		fmt.Println("Error sending security list request,", err)
 	}
@@ -389,10 +432,12 @@ func main() {
 	router.HandleFunc("/orders/{id:[0-9]+}", app.getOrder).Methods("GET")
 	router.HandleFunc("/orders/{id:[0-9]+}", app.deleteOrder).Methods("DELETE")
 
+	router.HandleFunc("/instruments", app.getInstruments).Methods("GET")
+
 	router.HandleFunc("/executions", app.getExecutions).Methods("GET")
 	router.HandleFunc("/executions/{id:[0-9]+}", app.getExecution).Methods("GET")
 
-	router.HandleFunc("/securitydefinitionrequest", app.newSecurityDefintionRequest).Methods("POST")
+	router.HandleFunc("/securitydefinitionrequest", app.onSecurityListRequest).Methods("POST")
 
 	router.PathPrefix("/assets/").Handler(http.StripPrefix("/assets/", http.FileServer(http.Dir("assets"))))
 	router.HandleFunc("/", app.traderView)

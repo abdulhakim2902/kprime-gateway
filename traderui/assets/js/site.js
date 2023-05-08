@@ -15,6 +15,7 @@ $(function () {
 setInterval(function () {
   App.orders.fetch({ reset: true });
   App.executions.fetch({ reset: true });
+  App.instruments.fetch({ reset: true });
 
 }, 1000);
 
@@ -44,9 +45,8 @@ var App = new (Backbone.View.extend({
 
     this.orders = new App.Collections.Orders(options.orders);
     this.executions = new App.Collections.Executions(options.executions);
+    this.instruments = new App.Collections.Instruments(options.symbols);
     this.router = new App.Router();
-
-    console.log(this.orders)
     Backbone.history.start({ pushState: true });
   },
 
@@ -74,7 +74,9 @@ var App = new (Backbone.View.extend({
 
   showSecurityDefinitions: function () {
     var secDefReq = new App.Views.SecurityDefinitionRequest({ model: this.securityDefinitionForm });
+    var secListView = new App.Views.SecurityList({model: this.instruments})
     $("#app").html(secDefReq.render().el);
+    $("#app").append(secListView.render().el);
     $("#nav-order").removeClass("active");
     $("#nav-execution").removeClass("active");
     $("#nav-secdef").addClass("active");
@@ -112,6 +114,7 @@ App.Router = Backbone.Router.extend({
     "": "index",
     "orders": "index",
     "executions": "executions",
+    "instruments": "instruments",
     "secdefs": "secdefs",
     "orders/:id": "orderDetails",
     "executions/:id": "executionDetails",
@@ -146,6 +149,10 @@ App.Models.Execution = Backbone.Model.extend({
   urlRoot: "/executions"
 });
 
+App.Models.Instruments = Backbone.Model.extend({
+  urlRoot: "/instruments"
+});
+
 App.Models.SecurityDefinitionRequest = Backbone.Model.extend({
   urlRoot: "securitydefinitionrequest"
 });
@@ -160,6 +167,11 @@ App.Collections.Orders = Backbone.Collection.extend({
 
 App.Collections.Executions = Backbone.Collection.extend({
   url: '/executions',
+  comparator: 'id'
+});
+
+App.Collections.Instruments = Backbone.Collection.extend({
+  url: '/instruments',
   comparator: 'id'
 });
 
@@ -402,6 +414,31 @@ App.Views.ExecutionRowView = Backbone.View.extend({
   }
 });
 
+App.Views.SecurityListRowView = Backbone.View.extend({
+  tagName: 'tr',
+  template: _.template(`
+<td>
+<button class="btn btn-info details">Details</button>
+</td>
+<td><%= request_id %></td>
+<td><%= instrument_name %></td>
+<td><%= security_desc %></td>
+<td><%= security_type %></td>
+<td><%= put_or_call %></td>
+<td><%= strike_currency %></td>
+<td><%= strike_price %></td>
+<td><%= underlying %></td>
+<td><%= issue_date %></td>
+<td><%= security_status %></td>
+`),
+
+
+  render: function () {
+    this.$el.html(this.template(this.model.attributes));
+    return this;
+  },
+});
+
 
 App.Views.OrderRowView = Backbone.View.extend({
   tagName: 'tr',
@@ -446,6 +483,7 @@ App.Views.Executions = Backbone.View.extend({
   },
 
   render: function () {
+    console.log("rendering ex list")
     this.$el.html(`
 <table class='table table-striped' id='executions'>
   <thead>
@@ -475,6 +513,54 @@ App.Views.Executions = Backbone.View.extend({
 
   addOne: function (execution) {
     var row = new App.Views.ExecutionRowView({ model: execution });
+    this.$("tbody").append(row.render().el);
+  }
+});
+
+App.Views.SecurityList = Backbone.View.extend({
+  initialize: function () {
+    console.log("security list view")
+    this.listenTo(this.model, 'reset', this.addAll);
+  },
+
+  render: function () {
+    console.log("renderinggg", this)
+    this.$el.html(`
+<table class='table table-striped' id='security-list'>
+  <thead>
+    <tr>
+      <th></th>
+      <th>RequestID</th>
+      <th>Instrument Name</th>
+      <th>Sec Desx</th>
+      <th>Sec Type</th>
+      <th>Put Or Call</th>
+      <th>Strike Currency</th>
+      <th>Strike Price</th>
+      <th>Underlying</th>
+      <th>Issue Date</th>
+      <th>Security Status</th>
+    </tr>
+  </thead>
+  <tbody>
+  </tbody>
+</table>`);
+
+    this.addAll();
+
+    return this;
+  },
+
+  addAll: function () {
+    console.log(this)
+    this.$("tbody").empty();
+    this.model.models.forEach(this.addOne, this);
+    return this;
+  },
+
+  addOne: function (instruments) {
+    console.log('adding one', instruments)
+    var row = new App.Views.SecurityListRowView({ model: instruments });
     this.$("tbody").append(row.render().el);
   }
 });
@@ -554,20 +640,17 @@ App.Views.SecurityDefinitionRequest = Backbone.View.extend({
 
   <p>
   <div class='form-group'>
+    <label for='symbol'>Instrument</label>
+    <select class='form-control' name='symbol'>
+      <% _.each(symbols, function(i){ %><option><%= i %></option><% }); %>
+    </select>
+  </div>
+  <div class='form-group'>
     <label for='session'>Session</label>
     <select class='form-control' name='session'>
       <% _.each(session_ids, function(i){ %><option><%= i %></option><% }); %>
     </select>
   </div>
-
-  <div class='form-group'>
-    <label for='username'>Username</label>
-    <input type='text' class='form-control' name='username' placeholder='username'>
-
-    <label for='password'>Password</label>
-    <input type='password' class='form-control' name='password' placeholder='password'>
-  </div>
-
   <button type='submit' class='btn btn-default'>Submit</button>
   </p>
 </form>
