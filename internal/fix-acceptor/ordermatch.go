@@ -24,6 +24,7 @@ import (
 	"gateway/internal/user/model"
 	"gateway/pkg/utils"
 	"io"
+	"io/ioutil"
 	"os"
 	"os/signal"
 	"path"
@@ -718,14 +719,16 @@ var (
 )
 
 func execute(cmd *cobra.Command, args []string) error {
-	var cfgFileName string
-	if os.Getenv("APP_ENV") != "local" {
-		cfgFileName = "ordermatch_dev.cfg"
-	} else {
-		cfgFileName = "ordermatch.cfg"
-	}
-
+	cfgFileName := "ordermatch.cfg"
+	templateCfg := "ordermatch_template.cfg"
 	_, b, _, _ := runtime.Caller(0)
+
+	input, _ := ioutil.ReadFile(path.Join(b, "../", "config", templateCfg))
+
+	config := strings.Replace(string(input), "$DATA_DICTIONARY_PATH", os.Getenv("DATA_DICTIONARY_PATH"), 1)
+
+	ioutil.WriteFile(path.Join(b, "../", "config", cfgFileName), []byte(config), 0644)
+
 	cfg, err := os.Open(path.Join(b, "../", "config", cfgFileName))
 	if err != nil {
 		return fmt.Errorf("error opening %v, %v", cfgFileName, err)
@@ -743,7 +746,6 @@ func execute(cmd *cobra.Command, args []string) error {
 
 	logger := utils.NewFancyLog()
 	app := newApplication()
-	fmt.Println(string(stringData))
 	utils.PrintConfig("acceptor", bytes.NewReader(stringData))
 	acceptor, err := quickfix.NewAcceptor(app, quickfix.NewMemoryStoreFactory(), appSettings, logger)
 	if err != nil {
