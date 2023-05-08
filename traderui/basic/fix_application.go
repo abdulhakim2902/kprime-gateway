@@ -131,23 +131,23 @@ func (a *FIXApplication) onSecurityList(msg *quickfix.Message, sessionID quickfi
 
 		var securityDesc field.SecurityDescField
 		if err := group.Get(i).Get(&securityDesc); err != nil {
-			return err
+			fmt.Println("Error getting the security desc: ", err)
 		}
 
 		var securityType field.SecurityTypeField
 		if err := group.Get(i).Get(&securityType); err != nil {
-			return err
+			fmt.Println("Error getting the security type: ", err)
 		}
 
 		var strikePrice field.StrikePriceField
 		if err := group.Get(i).Get(&strikePrice); err != nil {
-			return err
+			fmt.Println("Error getting the strike price: ", err)
 		}
 		strikePriceF, _ := strikePrice.Float64()
 
 		var strikeCurr field.StrikeCurrencyField
 		if err := group.Get(i).Get(&strikeCurr); err != nil {
-			return err
+			fmt.Println("Error getting the strike currency: ", err)
 		}
 
 		ins := Instruments{

@@ -69,7 +69,6 @@ func (r OrderRepository) Find(filter interface{}, sort interface{}, offset, limi
 func (r OrderRepository) GetAvailableInstruments(currency string) ([]_deribitModel.DeribitResponse, error) {
 	cur, err := r.collection.Find(context.Background(), bson.M{
 		"underlying": currency,
-		"status":     "OPEN",
 	})
 	if err != nil {
 		return []_deribitModel.DeribitResponse{}, err
