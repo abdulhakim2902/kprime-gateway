@@ -129,7 +129,12 @@ func checkDateToRemoveRedis(_expiryDate string, _instrument string, svc engineHa
 func (svc engineHandler) PublishOrder(data _engineType.EngineResponse) {
 	instrumentName := data.Order.Underlying + "-" + data.Order.ExpiryDate + "-" + fmt.Sprintf("%.0f", data.Order.StrikePrice) + "-" + string(data.Order.Contracts[0])
 
-	tradePriceAvg, err := svc.tradeRepo.GetPriceAvg(data.Order.Underlying, data.Order.ExpiryDate, data.Order.StrikePrice)
+	tradePriceAvg, err := svc.tradeRepo.GetPriceAvg(
+		data.Order.Underlying,
+		data.Order.ExpiryDate,
+		string(data.Order.Contracts),
+		data.Order.StrikePrice,
+	)
 	if err != nil {
 		fmt.Println("tradeRepo.GetPriceAvg:", err)
 	}

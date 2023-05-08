@@ -232,7 +232,7 @@ func (r TradeRepository) FindUserTradesByInstrument(
 	return result, nil
 }
 
-func (r TradeRepository) GetPriceAvg(underlying, expiryDate string, strikePrice float64) (price float64, err error) {
+func (r TradeRepository) GetPriceAvg(underlying, expiryDate, contracts string, strikePrice float64) (price float64, err error) {
 	options := options.AggregateOptions{
 		MaxTime: &defaultTimeout,
 	}
@@ -244,6 +244,7 @@ func (r TradeRepository) GetPriceAvg(underlying, expiryDate string, strikePrice 
 					{"underlying", underlying},
 					{"strikePrice", strikePrice},
 					{"expiryDate", expiryDate},
+					{"contracts", contracts},
 				},
 			},
 		},
