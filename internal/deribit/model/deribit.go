@@ -14,6 +14,7 @@ type DeribitRequest struct {
 	Price          float64 `json:"price"`
 	ClOrdID        string  `json:"clOrdID"`
 	TimeInForce    string  `json:"time_in_force"`
+	Label          string  `json:"label"`
 }
 
 type DeribitCancelRequest struct {
@@ -89,6 +90,7 @@ type DeribitResponse struct {
 	Contracts      string  `json:"contracts"`
 	TimeInForce    string  `json:"timeInForce"`
 	ClOrdID        string  `json:"clOrdID"`
+	Label          string  `json:"label,omitempty"`
 }
 
 type DeribitGetInstrumentsRequest struct {
