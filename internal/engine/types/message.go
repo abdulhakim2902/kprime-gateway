@@ -63,6 +63,10 @@ type BuySellEditCancelOrder struct {
 	OrderType           types.Type         `json:"order_type"`
 	TimeInForce         types.TimeInForce  `json:"time_in_force"`
 	CreationTimestamp   int64              `json:"creation_timestamp"`
+	Label               string             `json:"label,omitempty"`
+	Api                 bool               `json:"api" validate:"required"`
+	AveragePrice        float64            `json:"average_price" validate:"required"`
+	CancelReason        string             `json:"cancel_reason"`
 }
 
 type BuySellEditTrade struct {
