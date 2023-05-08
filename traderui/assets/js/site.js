@@ -424,12 +424,8 @@ App.Views.SecurityListRowView = Backbone.View.extend({
 <td><%= instrument_name %></td>
 <td><%= security_desc %></td>
 <td><%= security_type %></td>
-<td><%= put_or_call %></td>
 <td><%= strike_currency %></td>
 <td><%= strike_price %></td>
-<td><%= underlying %></td>
-<td><%= issue_date %></td>
-<td><%= security_status %></td>
 `),
 
 
@@ -534,12 +530,8 @@ App.Views.SecurityList = Backbone.View.extend({
       <th>Instrument Name</th>
       <th>Sec Desx</th>
       <th>Sec Type</th>
-      <th>Put Or Call</th>
       <th>Strike Currency</th>
       <th>Strike Price</th>
-      <th>Underlying</th>
-      <th>Issue Date</th>
-      <th>Security Status</th>
     </tr>
   </thead>
   <tbody>
