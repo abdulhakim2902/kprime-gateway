@@ -133,7 +133,6 @@ type DeribitGetOrderBookResponse struct {
 type OrderBookStats struct {
 	Volume      float64 `json:"volume"`
 	PriceChange float64 `json:"price_change"`
-	PriceUSD    float64 `json:"volume_usd"`
 	Low         float64 `json:"low"`
 	High        float64 `json:"high"`
 }

@@ -100,8 +100,12 @@ func (svc wsOrderbookService) GetOrderBook(ctx context.Context, data _deribitMod
 	maxAskPrice := 0.0
 	maxAskAmount := 0.0
 	var maxAskItem []*_orderbookTypes.WsOrder
-	for _, item := range _getOrderBook.Asks {
-		if item.Price > maxAskPrice {
+	for index, item := range _getOrderBook.Asks {
+		if index == 0 {
+			maxAskPrice = item.Price
+			maxAskItem = []*_orderbookTypes.WsOrder{item}
+		}
+		if item.Price < maxAskPrice {
 			maxAskPrice = item.Price
 			maxAskItem = []*_orderbookTypes.WsOrder{item}
 			maxAskAmount = item.Amount
@@ -119,7 +123,7 @@ func (svc wsOrderbookService) GetOrderBook(ctx context.Context, data _deribitMod
 	maxBidAmount := 0.0
 	var maxBidItem []*_orderbookTypes.WsOrder
 	for _, item := range _getOrderBook.Bids {
-		if item.Price < maxBidPrice {
+		if item.Price > maxBidPrice {
 			maxBidPrice = item.Price
 			maxBidItem = []*_orderbookTypes.WsOrder{item}
 			maxBidAmount = item.Amount
@@ -215,7 +219,7 @@ func (svc wsOrderbookService) _getOrderBook(o _orderbookTypes.GetOrderBook) *_or
 			{
 				"$group": bson.D{
 					{"_id", "$price"},
-					{"amount", bson.D{{"$sum", "$amount"}}},
+					{"amount", bson.D{{"$sum", bson.M{"$subtract": []string{"$amount", "$filledAmount"}}}}},
 					{"detail", bson.D{{"$first", "$$ROOT"}}},
 				},
 			},
