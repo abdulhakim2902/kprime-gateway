@@ -11,6 +11,7 @@ import (
 	_tradeType "gateway/internal/repositories/types"
 
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -229,4 +230,58 @@ func (r TradeRepository) FindUserTradesByInstrument(
 	}
 
 	return result, nil
+}
+
+func (r TradeRepository) GetPriceAvg(underlying, expiryDate, contracts string, strikePrice float64) (price float64, err error) {
+	options := options.AggregateOptions{
+		MaxTime: &defaultTimeout,
+	}
+
+	query := bson.A{
+		bson.D{
+			{"$match",
+				bson.D{
+					{"underlying", underlying},
+					{"strikePrice", strikePrice},
+					{"expiryDate", expiryDate},
+					{"contracts", contracts},
+				},
+			},
+		},
+		bson.D{
+			{"$group",
+				bson.D{
+					{"_id", primitive.Null{}},
+					{"price", bson.D{{"$avg", "$price"}}},
+				},
+			},
+		},
+		bson.D{
+			{"$unset",
+				bson.A{
+					"_id",
+				},
+			},
+		},
+	}
+
+	var cursor *mongo.Cursor
+	cursor, err = r.collection.Aggregate(context.Background(), query, &options)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	defer cursor.Close(context.Background())
+
+	var avgPrice map[string]interface{}
+	for cursor.Next(context.TODO()) {
+		if err = cursor.Decode(&avgPrice); err != nil {
+			fmt.Println(err)
+			return
+		}
+	}
+
+	price = avgPrice["price"].(float64)
+
+	return
 }
