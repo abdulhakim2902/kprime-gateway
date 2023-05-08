@@ -1,15 +1,43 @@
 stages:
+  - code_update
+  - install_packages
+  - build
   - deploy
 
-deploy:
-  stage: deploy
-  before_script:
-    - cd /home/gitlab-runner/gateway/ && cp ${env_dev} .env  
+pull_code_dev:
+  stage: code_update
   script:
-    - "cd /home/gitlab-runner/gateway/ && git checkout development && git pull git@git.devucc.name:undercurrent-tech/options-exchange/gateway.git"
-    - "go mod download"
-    - "go build cmd/main/main.go" 
-    - "sudo systemctl stop gateway.service"
-    - "sudo systemctl start gateway.service"
- 
+    - cd $path_deploy && git stash && git fetch && git reset --hard $CI_COMMIT_SHA
+    - cd $path_deploy && cp ${env_dev} .env
+  only:
+    - development
+  tags:
+    - development
+
+install_packages_dev:
+  stage: install_packages
+  script:
+    - cd $path_deploy && go mod download
+  only:
+    - development
+  tags:
+    - development
+
+build_dev:
+  stage: build
+  script:
+    - cd $path_deploy && go build cmd/main/main.go
+  only:
+    - development
+  tags:
+    - development
+
+deploy_dev:
+  stage: deploy
+  script:
+    - sudo systemctl restart gateway.service
+  only:
+    - development
+  tags:
+    - development
     
