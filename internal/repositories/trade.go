@@ -232,7 +232,7 @@ func (r TradeRepository) FindUserTradesByInstrument(
 	return result, nil
 }
 
-func (r TradeRepository) GetPriceAvg(instrument string) (price float64, err error) {
+func (r TradeRepository) GetPriceAvg(underlying, expiryDate string, strikePrice float64) (price float64, err error) {
 	options := options.AggregateOptions{
 		MaxTime: &defaultTimeout,
 	}
@@ -241,9 +241,9 @@ func (r TradeRepository) GetPriceAvg(instrument string) (price float64, err erro
 		bson.D{
 			{"$match",
 				bson.D{
-					{"underlying", "BTC"},
-					{"strikePrice", 1000},
-					{"expiryDate", "28MAY23"},
+					{"underlying", underlying},
+					{"strikePrice", strikePrice},
+					{"expiryDate", expiryDate},
 				},
 			},
 		},
