@@ -93,7 +93,7 @@ type DeribitResponse struct {
 	TimeInForce    string    `json:"timeInForce"`
 	ClOrdID        string    `json:"clOrdID"`
 	CreatedAt      time.Time `json:"createdAt"`
-	Label          string  `json:"label,omitempty"`
+	Label          string    `json:"label,omitempty"`
 }
 
 type DeribitGetInstrumentsRequest struct {
@@ -181,6 +181,14 @@ type DeribitGetOpenOrdersByInstrumentResponse struct {
 	TimeInForce    types.TimeInForce  `json:"time_in_force" bson:"timeInForce"`
 	OrderType      types.Type         `json:"order_type" bson:"orderType"`
 	OrderState     types.OrderStatus  `json:"order_state" bson:"orderState"`
+
+	Label               string  `json:"label,omitempty" bson:"label"`
+	Usd                 float64 `json:"usd" bson:"usd"`
+	CreationTimestamp   int64   `json:"creation_timestamp" bson:"creationTimestamp"`
+	LastUpdateTimestamp int64   `json:"last_update_timestamp" bson:"lastUpdateTimestamp"`
+	Api                 bool    `json:"api" bson:"api"`
+	AveragePrice        float64 `json:"average_price,omitempty" bson:"priceAvg"`
+	CancelledReason     string  `json:"cancel_reason" bson:"cancelledReason"`
 }
 
 type DeribitGetOrderHistoryByInstrumentRequest struct {
@@ -192,16 +200,22 @@ type DeribitGetOrderHistoryByInstrumentRequest struct {
 }
 
 type DeribitGetOrderHistoryByInstrumentResponse struct {
-	OrderState        string             `json:"order_state" bson:"orderState"`
-	USD               float64            `json:"usd" bson:"usd"`
-	Amount            float64            `json:"amount" bson:"amount"`
-	FilledAmount      float64            `json:"filled_amount" bson:"filledAmount"`
-	InstrumentName    string             `json:"instrument_name" bson:"InstrumentName"`
-	Direction         string             `json:"direction" bson:"direction"`
-	Price             float64            `json:"price" bson:"price"`
-	OrderId           primitive.ObjectID `json:"order_id" bson:"orderId"`
-	Replaced          bool               `json:"replaced" bson:"replaced"`
-	OrderType         string             `json:"order_type" bson:"orderType"`
-	TimeInForce       string             `json:"time_in_force" bson:"timeInForce"`
-	CreationTimestamp int64              `json:"creation_timestamp" bson:"creationTimestamp"`
+	OrderState     string             `json:"order_state" bson:"orderState"`
+	Amount         float64            `json:"amount" bson:"amount"`
+	FilledAmount   float64            `json:"filled_amount" bson:"filledAmount"`
+	InstrumentName string             `json:"instrument_name" bson:"InstrumentName"`
+	Direction      string             `json:"direction" bson:"direction"`
+	Price          float64            `json:"price" bson:"price"`
+	OrderId        primitive.ObjectID `json:"order_id" bson:"orderId"`
+	Replaced       bool               `json:"replaced" bson:"replaced"`
+	OrderType      string             `json:"order_type" bson:"orderType"`
+	TimeInForce    string             `json:"time_in_force" bson:"timeInForce"`
+
+	Label               string  `json:"label,omitempty" bson:"label"`
+	Usd                 float64 `json:"usd" bson:"usd"`
+	CreationTimestamp   int64   `json:"creation_timestamp" bson:"creationTimestamp"`
+	LastUpdateTimestamp int64   `json:"last_update_timestamp" bson:"lastUpdateTimestamp"`
+	Api                 bool    `json:"api" bson:"api"`
+	AveragePrice        float64 `json:"average_price,omitempty" bson:"priceAvg"`
+	CancelledReason     string  `json:"cancel_reason" bson:"cancelledReason"`
 }
