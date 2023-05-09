@@ -174,8 +174,10 @@ func main() {
 
 	orderRepo := repositories.NewOrderRepository(mongoDb)
 	tradeRepo := repositories.NewTradeRepository(mongoDb)
+	rawPriceRepo := repositories.NewRawPriceRepository(mongoDb)
+	settlementPriceRepo := repositories.NewSettlementPriceRepository(mongoDb)
 
-	_wsOrderbookSvc := _wsOrderbookSvc.NewWSOrderbookService(redis, orderRepo, tradeRepo)
+	_wsOrderbookSvc := _wsOrderbookSvc.NewWSOrderbookService(redis, orderRepo, tradeRepo, rawPriceRepo, settlementPriceRepo)
 	_wsOrderSvc := _wsSvc.NewWSOrderService(redis, orderRepo)
 
 	_wsTradeSvc := _wsSvc.NewWSTradeService(redis, tradeRepo)

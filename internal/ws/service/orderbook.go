@@ -21,13 +21,20 @@ import (
 )
 
 type wsOrderbookService struct {
-	redis           *redis.RedisConnectionPool
-	orderRepository *repositories.OrderRepository
-	tradeRepository *repositories.TradeRepository
+	redis                     *redis.RedisConnectionPool
+	orderRepository           *repositories.OrderRepository
+	tradeRepository           *repositories.TradeRepository
+	rawPriceRepository        *repositories.RawPriceRepository
+	settlementPriceRepository *repositories.SettlementPriceRepository
 }
 
-func NewWSOrderbookService(redis *redis.RedisConnectionPool, orderRepository *repositories.OrderRepository, tradeRepository *repositories.TradeRepository) IwsOrderbookService {
-	return &wsOrderbookService{redis, orderRepository, tradeRepository}
+func NewWSOrderbookService(redis *redis.RedisConnectionPool,
+	orderRepository *repositories.OrderRepository,
+	tradeRepository *repositories.TradeRepository,
+	rawPriceRepository *repositories.RawPriceRepository,
+	settlementPriceRepository *repositories.SettlementPriceRepository,
+) IwsOrderbookService {
+	return &wsOrderbookService{redis, orderRepository, tradeRepository, rawPriceRepository, settlementPriceRepository}
 }
 
 func (svc wsOrderbookService) Subscribe(c *ws.Client, instrument string) {
@@ -201,6 +208,17 @@ func (svc wsOrderbookService) GetOrderBook(ctx context.Context, data _deribitMod
 		},
 	}
 
+	_getIndexPrice := svc._getLatestIndexPrice(_order)
+	if len(_getIndexPrice) > 0 {
+		results.IndexPrice = &_getIndexPrice[0].Price
+		results.UnderlyingIndex = &_getIndexPrice[0].Price
+	}
+
+	_getSettlementPrice := svc._getLatestSettlementPrice(_order)
+	if len(_getSettlementPrice) > 0 {
+		results.SettlementPrice = &_getSettlementPrice[0].Price
+	}
+
 	return results
 }
 
@@ -315,6 +333,46 @@ func (svc wsOrderbookService) _get24HoursTrades(o _orderbookTypes.GetOrderBook) 
 	}
 
 	trades, err := svc.tradeRepository.Find(tradesQuery, tradesSort, 0, -1)
+	if err != nil {
+		panic(err)
+	}
+
+	return trades
+}
+
+func (svc wsOrderbookService) _getLatestIndexPrice(o _orderbookTypes.GetOrderBook) []*_engineTypes.RawPrice {
+	metadataType := "match"
+	metadataPair := fmt.Sprintf("%s_usd", strings.ToLower(o.Underlying))
+
+	tradesQuery := bson.M{
+		"metadata.pair": metadataPair,
+		"metadata.type": metadataType,
+	}
+	tradesSort := bson.M{
+		"ts": -1,
+	}
+
+	trades, err := svc.rawPriceRepository.Find(tradesQuery, tradesSort, 0, 1)
+	if err != nil {
+		panic(err)
+	}
+
+	return trades
+}
+
+func (svc wsOrderbookService) _getLatestSettlementPrice(o _orderbookTypes.GetOrderBook) []*_engineTypes.SettlementPrice {
+	metadataType := "match"
+	metadataPair := fmt.Sprintf("%s_usd", strings.ToLower(o.Underlying))
+
+	tradesQuery := bson.M{
+		"metadata.pair": metadataPair,
+		"metadata.type": metadataType,
+	}
+	tradesSort := bson.M{
+		"ts": -1,
+	}
+
+	trades, err := svc.settlementPriceRepository.Find(tradesQuery, tradesSort, 0, 1)
 	if err != nil {
 		panic(err)
 	}
