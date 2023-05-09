@@ -93,6 +93,7 @@ type DeribitResponse struct {
 	TimeInForce    string    `json:"timeInForce"`
 	ClOrdID        string    `json:"clOrdID"`
 	CreatedAt      time.Time `json:"createdAt"`
+	Label          string  `json:"label,omitempty"`
 }
 
 type DeribitGetInstrumentsRequest struct {
