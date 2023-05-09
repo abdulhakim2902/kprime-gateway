@@ -126,6 +126,7 @@ func (svc wsHandler) PrivateBuy(input interface{}, c *ws.Client) {
 		Type           string  `json:"type"`
 		Price          float64 `json:"price"`
 		TimeInForce    string  `json:"time_in_force"`
+		Label          string  `json:"label"`
 	}
 
 	type Req struct {
@@ -177,6 +178,7 @@ func (svc wsHandler) PrivateBuy(input interface{}, c *ws.Client) {
 		Price:          msg.Params.Price,
 		ClOrdID:        strconv.FormatUint(msg.Id, 10),
 		TimeInForce:    msg.Params.TimeInForce,
+		Label:          msg.Params.Label,
 	})
 
 	// register order connection
@@ -196,6 +198,7 @@ func (svc wsHandler) PrivateSell(input interface{}, c *ws.Client) {
 		Type           string  `json:"type"`
 		Price          float64 `json:"price"`
 		TimeInForce    string  `json:"time_in_force"`
+		Label          string  `json:"label"`
 	}
 
 	type Req struct {
@@ -248,6 +251,7 @@ func (svc wsHandler) PrivateSell(input interface{}, c *ws.Client) {
 		Price:          msg.Params.Price,
 		ClOrdID:        strconv.FormatUint(msg.Id, 10),
 		TimeInForce:    msg.Params.TimeInForce,
+		Label:          msg.Params.Label,
 	})
 
 	// register order connection
@@ -673,7 +677,6 @@ func (svc wsHandler) GetOrderBook(input interface{}, c *ws.Client) {
 		InstrumentName: msg.Params.InstrumentName,
 		Depth:          msg.Params.Depth,
 	})
-	fmt.Printf("%+v\n", result)
 
 	c.SendMessage(result, ws.SendMessageParams{
 		ID:            msg.Id,

@@ -4,8 +4,8 @@ git.devucc.name/dependencies/utilities v1.0.1 h1:8EgeeZO8kBuhtg2sz2vk28nNBvKGsC4
 git.devucc.name/dependencies/utilities v1.0.1/go.mod h1:KwGAHOiVJ/bNxmq07uNwY0GrHJgvKlY8Bot1ve3JXfY=
 git.devucc.name/dependencies/utilities v1.0.3 h1:eqAaQdrXQEQpNFzCga/xZE78Z1sDhVJkUl+sZAfeL2w=
 git.devucc.name/dependencies/utilities v1.0.3/go.mod h1:KwGAHOiVJ/bNxmq07uNwY0GrHJgvKlY8Bot1ve3JXfY=
-git.devucc.name/dependencies/utilities v1.0.4 h1:i+Fvb011oSlGyydylb57i0vjKaS9uK1eyoNAixd4mMU=
-git.devucc.name/dependencies/utilities v1.0.4/go.mod h1:KwGAHOiVJ/bNxmq07uNwY0GrHJgvKlY8Bot1ve3JXfY=
+git.devucc.name/dependencies/utilities v1.0.5 h1:PcR+lNqiu/aJI80NjJNUAutyVOqS1BX1/Zy2rOhi2HM=
+git.devucc.name/dependencies/utilities v1.0.5/go.mod h1:KwGAHOiVJ/bNxmq07uNwY0GrHJgvKlY8Bot1ve3JXfY=
 github.com/Azure/azure-sdk-for-go/sdk/azcore v1.0.0/go.mod h1:uGG2W01BaETf0Ozp+QxxKJdMBNRWPdstHG0Fmdwn1/U=
 github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.0.0/go.mod h1:+6sju8gk8FRmSajX3Oz4G5Gm7P+mbqE9FVaXXFYTkCM=
 github.com/Azure/azure-sdk-for-go/sdk/internal v1.0.0/go.mod h1:eWRD7oawr1Mu1sLCawqVc0CUiF43ia3qQMxLscsKQ9w=

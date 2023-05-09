@@ -4,11 +4,13 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
 	"git.devucc.name/dependencies/utilities/types"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 
 	_deribitModel "gateway/internal/deribit/model"
 	_orderbookType "gateway/internal/orderbook/types"
@@ -274,7 +276,16 @@ func (r OrderRepository) GetOpenOrdersByInstrument(InstrumentName string, OrderT
 			"orderType":    "$type",
 			"orderState":   "$status",
 			"userId":       "$userId",
-		}}
+
+			"label":               "$label",
+			"usd":                 "$price",
+			"api":                 bson.M{"$toBool": "true"},
+			"creationTimestamp":   bson.M{"$toLong": "$createdAt"},
+			"lastUpdateTimestamp": bson.M{"$toLong": "$updatedAt"},
+			"cancelledReason":     canceledReasonQuery(),
+			"priceAvg":            "$tradePriceAvg.price",
+		},
+	}
 
 	query := bson.M{
 		"$match": bson.M{
@@ -290,6 +301,12 @@ func (r OrderRepository) GetOpenOrdersByInstrument(InstrumentName string, OrderT
 	}
 
 	pipelineInstruments := bson.A{}
+
+	priceAvgStage, err := tradePriceAvgQuery(InstrumentName)
+	if err != nil {
+		return nil, err
+	}
+	pipelineInstruments = append(pipelineInstruments, priceAvgStage...)
 
 	pipelineInstruments = append(pipelineInstruments, projectStage)
 	pipelineInstruments = append(pipelineInstruments, query)
@@ -363,17 +380,23 @@ func (r OrderRepository) GetOrderHistoryByInstrument(InstrumentName string, Coun
 				"$cond": bson.M{"if": bson.M{"$and": []interface{}{bson.M{"$eq": []interface{}{bson.M{"$type": "$amendments"}, "array"}}, bson.M{"$ne": []interface{}{"$amendments", "[]"}}}},
 					"then": true,
 					"else": false}},
-			"creationTimestamp": bson.M{"$toLong": "$createdAt"},
-			"filledAmount":      "$filledAmount",
-			"amount":            "$amount",
-			"direction":         "$side",
-			"usd":               "$price",
-			"price":             "$price",
-			"orderId":           "$_id",
-			"timeInForce":       "$timeInForce",
-			"orderType":         "$type",
-			"orderState":        "$status",
-			"userId":            "$userId",
+			"filledAmount": "$filledAmount",
+			"amount":       "$amount",
+			"direction":    "$side",
+			"price":        "$price",
+			"orderId":      "$_id",
+			"timeInForce":  "$timeInForce",
+			"orderType":    "$type",
+			"orderState":   "$status",
+			"userId":       "$userId",
+
+			"label":               "$label",
+			"usd":                 "$price",
+			"api":                 bson.M{"$toBool": "true"},
+			"creationTimestamp":   bson.M{"$toLong": "$createdAt"},
+			"lastUpdateTimestamp": bson.M{"$toLong": "$updatedAt"},
+			"cancelledReason":     canceledReasonQuery(),
+			"priceAvg":            "$tradePriceAvg.price",
 		}}
 
 	orderState := []types.OrderStatus{types.FILLED, types.PARTIAL_FILLED}
@@ -402,6 +425,12 @@ func (r OrderRepository) GetOrderHistoryByInstrument(InstrumentName string, Coun
 	}
 
 	pipelineInstruments := bson.A{}
+
+	priceAvgStage, err := tradePriceAvgQuery(InstrumentName)
+	if err != nil {
+		return nil, err
+	}
+	pipelineInstruments = append(pipelineInstruments, priceAvgStage...)
 
 	pipelineInstruments = append(pipelineInstruments, projectStage)
 	pipelineInstruments = append(pipelineInstruments, query)
@@ -467,4 +496,76 @@ func (r OrderRepository) WsAggregate(pipeline interface{}) []*_orderbookType.WsO
 	})
 
 	return orders
+}
+
+func canceledReasonQuery() bson.D {
+	return bson.D{
+		{"$switch",
+			bson.D{
+				{"branches",
+					bson.A{
+						bson.D{{"case", bson.D{{"$eq", bson.A{"$cancelledReason", 1}}}}, {"then", "user_request"}},
+						bson.D{{"case", bson.D{{"$eq", bson.A{"$cancelledReason", 2}}}}, {"then", "immediate_or_cancel"}},
+						bson.D{{"case", bson.D{{"$eq", bson.A{"$cancelledReason", 3}}}}, {"then", "good_til_day"}},
+					},
+				},
+				{"default", "none"},
+			},
+		},
+	}
+}
+
+func tradePriceAvgQuery(instrument string) (query bson.A, err error) {
+	substring := strings.Split(instrument, "-")
+	if len(substring) != 4 {
+		err = fmt.Errorf("invalid instrument name")
+		return
+	}
+
+	var strikePrice float64
+	strikePrice, err = strconv.ParseFloat(substring[2], 64)
+	if err != nil {
+		return
+	}
+	_contracts := ""
+	if substring[3] == "P" {
+		_contracts = "PUT"
+	} else {
+		_contracts = "CALL"
+	}
+
+	query = bson.A{
+		bson.M{
+			"$lookup": bson.D{
+				{"from", "trades"},
+				{"let", bson.D{}},
+				{"pipeline",
+					bson.A{
+						bson.D{
+							{"$match",
+								bson.D{
+									{"underlying", substring[0]},
+									{"expiryDate", substring[1]},
+									{"strikePrice", strikePrice},
+									{"contracts", _contracts},
+								},
+							},
+						},
+						bson.D{
+							{"$group",
+								bson.D{{"_id", primitive.Null{}}, {"price", bson.D{{"$avg", "$price"}}}},
+							},
+						},
+						bson.D{{"$unset", bson.A{"_id"}}},
+					},
+				},
+				{"as", "tradePriceAvg"},
+			},
+		},
+		bson.M{
+			"$unwind": "$tradePriceAvg",
+		},
+	}
+
+	return
 }

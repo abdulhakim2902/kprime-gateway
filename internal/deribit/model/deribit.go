@@ -16,6 +16,7 @@ type DeribitRequest struct {
 	Price          float64 `json:"price"`
 	ClOrdID        string  `json:"clOrdID"`
 	TimeInForce    string  `json:"time_in_force"`
+	Label          string  `json:"label"`
 }
 
 type DeribitCancelRequest struct {
@@ -92,6 +93,7 @@ type DeribitResponse struct {
 	TimeInForce    string    `json:"timeInForce"`
 	ClOrdID        string    `json:"clOrdID"`
 	CreatedAt      time.Time `json:"createdAt"`
+	Label          string    `json:"label,omitempty"`
 }
 
 type DeribitGetInstrumentsRequest struct {
@@ -117,17 +119,20 @@ type DeribitGetOrderBookRequest struct {
 }
 
 type DeribitGetOrderBookResponse struct {
-	Timestamp      int64                     `json:"timestamp"`
-	Stats          OrderBookStats            `json:"stats"`
-	State          string                    `json:"state"`
-	LastPrice      float64                   `json:"last_price"`
-	InstrumentName string                    `json:"instrument_name"`
-	Bids           []*_orderbookType.WsOrder `json:"bids"`
-	BestBidPrice   float64                   `json:"best_bid_price"`
-	BestBidAmount  float64                   `json:"best_bid_amount"`
-	BestAskPrice   float64                   `json:"best_ask_price"`
-	BestAskAmount  float64                   `json:"best_ask_amount"`
-	Asks           []*_orderbookType.WsOrder `json:"asks"`
+	Timestamp       int64                     `json:"timestamp"`
+	Stats           OrderBookStats            `json:"stats"`
+	State           string                    `json:"state"`
+	LastPrice       float64                   `json:"last_price"`
+	InstrumentName  string                    `json:"instrument_name"`
+	Bids            []*_orderbookType.WsOrder `json:"bids"`
+	BestBidPrice    float64                   `json:"best_bid_price"`
+	BestBidAmount   float64                   `json:"best_bid_amount"`
+	BestAskPrice    float64                   `json:"best_ask_price"`
+	BestAskAmount   float64                   `json:"best_ask_amount"`
+	Asks            []*_orderbookType.WsOrder `json:"asks"`
+	IndexPrice      *float64                  `json:"index_price"`
+	SettlementPrice *float64                  `json:"settlement_price"`
+	UnderlyingIndex *float64                  `json:"underlying_index"`
 }
 
 type OrderBookStats struct {
@@ -147,15 +152,19 @@ type DeribitGetUserTradesByInstrumentsRequest struct {
 
 type DeribitGetUserTradesByInstruments struct {
 	TradeId        string             `json:"trade_id" bson:"_id"`
-	HasMore        string             `json:"has_more"`
 	Amount         float64            `json:"amount" bson:"amount"`
 	Direction      types.Side         `json:"direction" bson:"direction"`
-	InstrumentName string             `json:"instrument_name"`
+	InstrumentName string             `json:"instrument_name" bson:"InstrumentName"`
 	OrderId        primitive.ObjectID `json:"order_id" bson:"order_id"`
 	OrderType      types.Type         `json:"order_type" bson:"order_type"`
 	Price          float64            `json:"price" bson:"price"`
 	State          types.OrderStatus  `json:"state" bson:"state"`
-	Timestamp      int64              `json:"timestamp"`
+	Timestamp      int64              `json:"timestamp" bson:"timestamp"`
+	Api            bool               `json:"api"`
+	IndexPrice     float64            `json:"index_price" bson:"indexPrice"`
+	Label          string             `json:"label,omitempty" bson:"label"`
+	TickDirection  int                `json:"tick_direction" bson:"tick_direction"`
+	TradeSequence  int                `json:"trade_seq" bson:"tradeSequence"`
 }
 
 type DeribitGetUserTradesByInstrumentsResponse struct {
@@ -179,6 +188,14 @@ type DeribitGetOpenOrdersByInstrumentResponse struct {
 	TimeInForce    types.TimeInForce  `json:"time_in_force" bson:"timeInForce"`
 	OrderType      types.Type         `json:"order_type" bson:"orderType"`
 	OrderState     types.OrderStatus  `json:"order_state" bson:"orderState"`
+
+	Label               string  `json:"label,omitempty" bson:"label"`
+	Usd                 float64 `json:"usd" bson:"usd"`
+	CreationTimestamp   int64   `json:"creation_timestamp" bson:"creationTimestamp"`
+	LastUpdateTimestamp int64   `json:"last_update_timestamp" bson:"lastUpdateTimestamp"`
+	Api                 bool    `json:"api" bson:"api"`
+	AveragePrice        float64 `json:"average_price,omitempty" bson:"priceAvg"`
+	CancelledReason     string  `json:"cancel_reason" bson:"cancelledReason"`
 }
 
 type DeribitGetOrderHistoryByInstrumentRequest struct {
@@ -190,16 +207,22 @@ type DeribitGetOrderHistoryByInstrumentRequest struct {
 }
 
 type DeribitGetOrderHistoryByInstrumentResponse struct {
-	OrderState        string             `json:"order_state" bson:"orderState"`
-	USD               float64            `json:"usd" bson:"usd"`
-	Amount            float64            `json:"amount" bson:"amount"`
-	FilledAmount      float64            `json:"filled_amount" bson:"filledAmount"`
-	InstrumentName    string             `json:"instrument_name" bson:"InstrumentName"`
-	Direction         string             `json:"direction" bson:"direction"`
-	Price             float64            `json:"price" bson:"price"`
-	OrderId           primitive.ObjectID `json:"order_id" bson:"orderId"`
-	Replaced          bool               `json:"replaced" bson:"replaced"`
-	OrderType         string             `json:"order_type" bson:"orderType"`
-	TimeInForce       string             `json:"time_in_force" bson:"timeInForce"`
-	CreationTimestamp int64              `json:"creation_timestamp" bson:"creationTimestamp"`
+	OrderState     string             `json:"order_state" bson:"orderState"`
+	Amount         float64            `json:"amount" bson:"amount"`
+	FilledAmount   float64            `json:"filled_amount" bson:"filledAmount"`
+	InstrumentName string             `json:"instrument_name" bson:"InstrumentName"`
+	Direction      string             `json:"direction" bson:"direction"`
+	Price          float64            `json:"price" bson:"price"`
+	OrderId        primitive.ObjectID `json:"order_id" bson:"orderId"`
+	Replaced       bool               `json:"replaced" bson:"replaced"`
+	OrderType      string             `json:"order_type" bson:"orderType"`
+	TimeInForce    string             `json:"time_in_force" bson:"timeInForce"`
+
+	Label               string  `json:"label,omitempty" bson:"label"`
+	Usd                 float64 `json:"usd" bson:"usd"`
+	CreationTimestamp   int64   `json:"creation_timestamp" bson:"creationTimestamp"`
+	LastUpdateTimestamp int64   `json:"last_update_timestamp" bson:"lastUpdateTimestamp"`
+	Api                 bool    `json:"api" bson:"api"`
+	AveragePrice        float64 `json:"average_price,omitempty" bson:"priceAvg"`
+	CancelledReason     string  `json:"cancel_reason" bson:"cancelledReason"`
 }

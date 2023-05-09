@@ -85,3 +85,23 @@ type BuySellEditTrade struct {
 type ErrorMessage struct {
 	Error string `json:"error"`
 }
+
+type RawPrice struct {
+	Id       primitive.ObjectID `json:"id" bson:"_id"`
+	Price    float64            `json:"price" bson:"price"`
+	Metadata Metadata           `json:"metadata" bson:"metadata"`
+	Ts       time.Time          `json:"ts" bson:"ts"`
+}
+
+type SettlementPrice struct {
+	ID       primitive.ObjectID `json:"id" bson:"_id"`
+	Price    float64            `json:"price" bson:"price"`
+	Metadata Metadata           `json:"metadata" bson:"metadata"`
+	Ts       time.Time          `json:"ts" bson:"ts"`
+}
+
+type Metadata struct {
+	Exchange string `json:"exchange" bson:"exchange"`
+	Pair     string `json:"pair" bson:"pair"`
+	Type     string `json:"type" bson:"type"`
+}
