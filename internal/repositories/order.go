@@ -282,21 +282,8 @@ func (r OrderRepository) GetOpenOrdersByInstrument(InstrumentName string, OrderT
 			"api":                 bson.M{"$toBool": "true"},
 			"creationTimestamp":   bson.M{"$toLong": "$createdAt"},
 			"lastUpdateTimestamp": bson.M{"$toLong": "$updatedAt"},
-			"cancelledReason": bson.D{
-				{"$switch",
-					bson.D{
-						{"branches",
-							bson.A{
-								bson.D{{"case", bson.D{{"$eq", bson.A{"$cancelledReason", 1}}}}, {"then", "user_request"}},
-								bson.D{{"case", bson.D{{"$eq", bson.A{"$cancelledReason", 2}}}}, {"then", "immediate_or_cancel"}},
-								bson.D{{"case", bson.D{{"$eq", bson.A{"$cancelledReason", 3}}}}, {"then", "good_til_day"}},
-							},
-						},
-						{"default", "none"},
-					},
-				},
-			},
-			"priceAvg": "$tradePriceAvg.price",
+			"cancelledReason":     canceledReasonQuery(),
+			"priceAvg":            "$tradePriceAvg.price",
 		},
 	}
 
@@ -408,21 +395,8 @@ func (r OrderRepository) GetOrderHistoryByInstrument(InstrumentName string, Coun
 			"api":                 bson.M{"$toBool": "true"},
 			"creationTimestamp":   bson.M{"$toLong": "$createdAt"},
 			"lastUpdateTimestamp": bson.M{"$toLong": "$updatedAt"},
-			"cancelledReason": bson.D{
-				{"$switch",
-					bson.D{
-						{"branches",
-							bson.A{
-								bson.D{{"case", bson.D{{"$eq", bson.A{"$cancelledReason", 1}}}}, {"then", "user_request"}},
-								bson.D{{"case", bson.D{{"$eq", bson.A{"$cancelledReason", 2}}}}, {"then", "immediate_or_cancel"}},
-								bson.D{{"case", bson.D{{"$eq", bson.A{"$cancelledReason", 3}}}}, {"then", "good_til_day"}},
-							},
-						},
-						{"default", "none"},
-					},
-				},
-			},
-			"priceAvg": "$tradePriceAvg.price",
+			"cancelledReason":     canceledReasonQuery(),
+			"priceAvg":            "$tradePriceAvg.price",
 		}}
 
 	orderState := []types.OrderStatus{types.FILLED, types.PARTIAL_FILLED}
@@ -522,6 +496,23 @@ func (r OrderRepository) WsAggregate(pipeline interface{}) []*_orderbookType.WsO
 	})
 
 	return orders
+}
+
+func canceledReasonQuery() bson.D {
+	return bson.D{
+		{"$switch",
+			bson.D{
+				{"branches",
+					bson.A{
+						bson.D{{"case", bson.D{{"$eq", bson.A{"$cancelledReason", 1}}}}, {"then", "user_request"}},
+						bson.D{{"case", bson.D{{"$eq", bson.A{"$cancelledReason", 2}}}}, {"then", "immediate_or_cancel"}},
+						bson.D{{"case", bson.D{{"$eq", bson.A{"$cancelledReason", 3}}}}, {"then", "good_til_day"}},
+					},
+				},
+				{"default", "none"},
+			},
+		},
+	}
 }
 
 func tradePriceAvgQuery(instrument string) (query bson.A, err error) {
