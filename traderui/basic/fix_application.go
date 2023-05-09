@@ -2,6 +2,7 @@ package basic
 
 import (
 	"fmt"
+	"gateway/pkg/utils"
 	"log"
 	"os"
 	"path"
@@ -17,10 +18,24 @@ import (
 	"github.com/quickfixgo/quickfix"
 )
 
+type Instruments struct {
+	RequestID      int     `json:"request_id"`
+	InstrumentName string  `json:"instrument_name"`
+	SecurityDesc   string  `json:"security_desc"`
+	SecurityType   string  `json:"security_type"`
+	PutOrCall      string  `json:"put_or_call"`
+	StrikeCurrency string  `json:"strike_currency"`
+	StrikePrice    float64 `json:"strike_price"`
+	Underlying     string  `json:"underlying"`
+	IssueDate      string  `json:"issue_date"`
+	SecurityStatus string  `json:"security_status"`
+}
+
+var instruments []Instruments
+
 // FIXApplication implements a basic quickfix.Application
 type FIXApplication struct {
-	SessionIDs   map[string]quickfix.SessionID
-	SecurityList []string
+	SessionIDs map[string]quickfix.SessionID
 	*oms.OrderManager
 }
 
@@ -84,28 +99,81 @@ func (a *FIXApplication) onSecurityList(msg *quickfix.Message, sessionID quickfi
 	defer a.Unlock()
 	fmt.Println("mapping security list")
 	group := securitylist.NewNoRelatedSymRepeatingGroup()
-	fmt.Println("a")
 	err := msg.Body.GetGroup(&group)
-	fmt.Println("b")
 	if err != nil {
 		fmt.Println("Error getting the group: ", err)
 		return err
 	}
-	fmt.Println("c", group.Len())
-	symbols := make([]string, group.Len())
+
+	var secres field.SecurityResponseIDField
+	msg.Body.GetField(tag.SecurityResponseID, &secres)
+
+	var putOrCall field.PutOrCallField
+	msg.Body.GetField(tag.PutOrCall, &putOrCall)
+
+	var securityStatus field.SecurityStatusField
+	msg.Body.GetField(tag.SecurityStatus, &securityStatus)
+
+	var underlying field.UnderlyingSymbolField
+	msg.Body.GetField(tag.UnderlyingSymbol, &underlying)
+
+	var issueDate field.IssueDateField
+	msg.Body.GetField(tag.IssueDate, &issueDate)
+
+	// extract instrument name from instruments into an array of strings
+	var instrumentNames []string
+	for _, instrument := range instruments {
+		instrumentNames = append(instrumentNames, instrument.InstrumentName)
+	}
+
 	for i := 0; i < group.Len(); i++ {
 		var symbol field.SymbolField
 		if err := group.Get(i).Get(&symbol); err != nil {
 			return err
 		}
-		fmt.Println("Symbol: ", symbol.String())
-		symbols[i] = symbol.String()
+
+		var securityDesc field.SecurityDescField
+		if err := group.Get(i).Get(&securityDesc); err != nil {
+			fmt.Println("Error getting the security desc: ", err)
+		}
+
+		var securityType field.SecurityTypeField
+		if err := group.Get(i).Get(&securityType); err != nil {
+			fmt.Println("Error getting the security type: ", err)
+		}
+
+		var strikePrice field.StrikePriceField
+		if err := group.Get(i).Get(&strikePrice); err != nil {
+			fmt.Println("Error getting the strike price: ", err)
+		}
+		strikePriceF, _ := strikePrice.Float64()
+
+		var strikeCurr field.StrikeCurrencyField
+		if err := group.Get(i).Get(&strikeCurr); err != nil {
+			fmt.Println("Error getting the strike currency: ", err)
+		}
+
+		ins := Instruments{
+			InstrumentName: symbol.String(),
+			SecurityDesc:   securityDesc.String(),
+			SecurityType:   securityType.String(),
+			StrikePrice:    strikePriceF,
+			StrikeCurrency: strikeCurr.String(),
+			PutOrCall:      putOrCall.String(),
+			SecurityStatus: securityStatus.String(),
+			Underlying:     underlying.String(),
+			IssueDate:      issueDate.String(),
+		}
+
+		if utils.ArrContains(instrumentNames, ins.InstrumentName) {
+			continue
+		}
+		instruments = append(instruments, ins)
+		instrumentNames = append(instrumentNames, ins.InstrumentName)
 	}
-	if a.SecurityList == nil {
-		a.SecurityList = make([]string, group.Len())
+	if instruments == nil {
+		instruments = make([]Instruments, group.Len())
 	}
-	a.SecurityList = symbols
-	fmt.Println("Instrument List: ", a.SecurityList)
 	return nil
 }
 
@@ -181,7 +249,7 @@ func (a *FIXApplication) onExecutionReport(msg *quickfix.Message, sessionID quic
 	return nil
 }
 
-func (a FIXApplication) GetAllSecurityList() []string {
-	fmt.Println("Instrument List: ", a.SecurityList)
-	return a.SecurityList
+func (a FIXApplication) GetAllSecurityList() []Instruments {
+	fmt.Println("Instrument List: ", len(instruments))
+	return instruments
 }

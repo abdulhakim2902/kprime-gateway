@@ -24,6 +24,7 @@ import (
 	"gateway/internal/user/model"
 	"gateway/pkg/utils"
 	"io"
+	"io/ioutil"
 	"os"
 	"os/signal"
 	"path"
@@ -190,6 +191,7 @@ func (a *Application) FromApp(msg *quickfix.Message, sessionID quickfix.SessionI
 }
 
 func (a *Application) onNewOrderSingle(msg newordersingle.NewOrderSingle, sessionID quickfix.SessionID) quickfix.MessageRejectError {
+	fmt.Println("incoming new order")
 	if userSession == nil {
 		return quickfix.NewMessageRejectError("User not logged in", 1, nil)
 	}
@@ -644,30 +646,37 @@ func (a Application) onSecurityListRequest(msg securitylistrequest.SecurityListR
 	if err != nil {
 		return err
 	}
-	var secDef field.SecurityResponseIDField
-	msg.GetField(tag.SecurityResponseID, &secDef)
 
+	secRes := time.Now().UnixMicro()
 	res := securitylist.New(
 		field.NewSecurityReqID(secReq),
-		field.NewSecurityResponseID(secDef.String()),
+		field.NewSecurityResponseID(strconv.Itoa(int(secRes))),
 		field.NewSecurityRequestResult(enum.SecurityRequestResult_VALID_REQUEST),
 	)
 
 	// get isntrument from mongo
-	instruments, e := a.OrderRepository.GetInstruments(currency, false)
+	instruments, e := a.OrderRepository.GetAvailableInstruments(currency)
 	if e != nil {
 		return quickfix.NewMessageRejectError(e.Error(), 0, nil)
 	}
 
+	fmt.Println("instruments", instruments)
+	secListGroup := securitylist.NewNoRelatedSymRepeatingGroup()
 	for _, instrument := range instruments {
-		secListGroup := securitylist.NewNoRelatedSymRepeatingGroup()
-		secListGroup.Add().SetSymbol(instrument.InstrumentName)
-		res.SetNoRelatedSym(secListGroup)
+		row := secListGroup.Add()
+		strikePrice := strconv.FormatFloat(instrument.StrikePrice, 'f', 0, 64)
+		instrumentName := fmt.Sprintf("%s-%s-%s-%s", instrument.Underlying, instrument.ExpirationDate, strikePrice, instrument.Contracts)
+		row.SetSymbol(instrumentName)
+
+		row.SetSecurityDesc("OPTIONS")
+		row.SetSecurityType("OPT")
+		row.SetStrikePrice(decimal.NewFromFloat(instrument.StrikePrice), 0)
+		row.SetStrikeCurrency("USD")
+
 	}
 
-	secListGroup := securitylist.NewNoRelatedSymRepeatingGroup()
-	secListGroup.Add().SetSymbol("No symbol")
 	res.SetNoRelatedSym(secListGroup)
+	fmt.Println(res.ToMessage().String())
 	fmt.Println("giving back security list msg")
 	quickfix.SendToTarget(res, sessionID)
 	return nil
@@ -692,10 +701,17 @@ var (
 )
 
 func execute(cmd *cobra.Command, args []string) error {
-	var cfgFileName string
-
+	cfgFileName := "ordermatch.cfg"
+	templateCfg := "ordermatch_template.cfg"
 	_, b, _, _ := runtime.Caller(0)
-	cfg, err := os.Open(path.Join(b, "../", "config", "ordermatch.cfg"))
+
+	input, _ := ioutil.ReadFile(path.Join(b, "../", "config", templateCfg))
+
+	config := strings.Replace(string(input), "$DATA_DICTIONARY_PATH", os.Getenv("DATA_DICTIONARY_PATH"), 1)
+
+	ioutil.WriteFile(path.Join(b, "../", "config", cfgFileName), []byte(config), 0644)
+
+	cfg, err := os.Open(path.Join(b, "../", "config", cfgFileName))
 	if err != nil {
 		return fmt.Errorf("error opening %v, %v", cfgFileName, err)
 	}
@@ -712,7 +728,6 @@ func execute(cmd *cobra.Command, args []string) error {
 
 	logger := utils.NewFancyLog()
 	app := newApplication()
-
 	utils.PrintConfig("acceptor", bytes.NewReader(stringData))
 	acceptor, err := quickfix.NewAcceptor(app, quickfix.NewMemoryStoreFactory(), appSettings, logger)
 	if err != nil {

@@ -278,8 +278,6 @@
   <message name='Logon' msgtype='A' msgcat='admin'>
    <field name='EncryptMethod' required='Y' />
    <field name='HeartBtInt' required='Y' />
-   <field name='ApiSecret' required='Y' />
-   <field name='ApiKey' required='Y' />
    <field name='RawDataLength' required='N' />
    <field name='RawData' required='N' />
    <field name='ResetSeqNumFlag' required='N' />
@@ -3434,6 +3432,9 @@
     <field name='Text' required='N' />
     <field name='EncodedTextLen' required='N' />
     <field name='EncodedText' required='N' />
+    <field name='PutOrCall' required='N' />
+    <field name='UnderlyingSymbol' required='N' />
+    <field name='IssueDate' required='N' />
    </group>
   </component>
   <component name='SecTypesGrp'>

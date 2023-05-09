@@ -3,6 +3,7 @@ module gateway
 go 1.20
 
 require (
+	git.devucc.name/dependencies/utilities v1.0.4
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/Shopify/sarama v1.38.1
 	github.com/casbin/casbin/v2 v2.66.0
@@ -34,7 +35,6 @@ require (
 )
 
 require (
-	git.devucc.name/dependencies/utilities v1.0.1 // indirect
 	github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible // indirect
 	github.com/armon/go-proxyproto v0.0.0-20210323213023-7e956b284f0a // indirect
 	github.com/bytedance/sonic v1.8.6 // indirect

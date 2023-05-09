@@ -13,17 +13,23 @@ import (
 
 	_engineType "gateway/internal/engine/types"
 	_ordermatch "gateway/internal/fix-acceptor"
+	"gateway/internal/repositories"
 
 	"gateway/pkg/redis"
 	"gateway/pkg/ws"
 )
 
 type engineHandler struct {
-	redis *redis.RedisConnectionPool
+	redis     *redis.RedisConnectionPool
+	tradeRepo *repositories.TradeRepository
 }
 
-func NewEngineHandler(r *gin.Engine, redis *redis.RedisConnectionPool) IEngineService {
-	return &engineHandler{redis}
+func NewEngineHandler(
+	r *gin.Engine,
+	redis *redis.RedisConnectionPool,
+	tradeRepo *repositories.TradeRepository,
+) IEngineService {
+	return &engineHandler{redis, tradeRepo}
 
 }
 func (svc engineHandler) HandleConsume(msg *sarama.ConsumerMessage) {
@@ -122,6 +128,17 @@ func checkDateToRemoveRedis(_expiryDate string, _instrument string, svc engineHa
 
 func (svc engineHandler) PublishOrder(data _engineType.EngineResponse) {
 	instrumentName := data.Order.Underlying + "-" + data.Order.ExpiryDate + "-" + fmt.Sprintf("%.0f", data.Order.StrikePrice) + "-" + string(data.Order.Contracts[0])
+
+	tradePriceAvg, err := svc.tradeRepo.GetPriceAvg(
+		data.Order.Underlying,
+		data.Order.ExpiryDate,
+		string(data.Order.Contracts),
+		data.Order.StrikePrice,
+	)
+	if err != nil {
+		fmt.Println("tradeRepo.GetPriceAvg:", err)
+	}
+
 	order := _engineType.BuySellEditCancelOrder{
 		OrderState:          types.OrderStatus(data.Order.Status),
 		Usd:                 data.Order.Price,
@@ -136,6 +153,10 @@ func (svc engineHandler) PublishOrder(data _engineType.EngineResponse) {
 		OrderType:           types.Type(data.Order.Type),
 		TimeInForce:         types.TimeInForce(data.Order.TimeInForce),
 		CreationTimestamp:   utils.MakeTimestamp(data.Order.CreatedAt),
+		Label:               data.Order.Label,
+		Api:                 true,
+		CancelReason:        data.Order.CancelledReason.String(),
+		AveragePrice:        tradePriceAvg,
 	}
 	userIDStr := fmt.Sprintf("%v", data.Order.UserID)
 	ClOrdID := fmt.Sprintf("%v", data.Order.ClOrdID)
