@@ -180,7 +180,8 @@ func (a Application) FromAdmin(msg *quickfix.Message, sessionID quickfix.Session
 			userSession = make(map[string]*quickfix.SessionID)
 		}
 		userSession[strconv.Itoa(int(user.ID))] = &sessionID
-
+		fmt.Println(user.ID)
+		fmt.Println(userSession)
 	}
 	return nil
 }
@@ -628,6 +629,9 @@ func OrderConfirmation(userId string, order Order, symbol string) {
 	msg.SetOrdStatus(enum.OrdStatus_NEW)
 	msg.SetString(tag.OrderID, order.ID)
 	msg.SetString(tag.ClOrdID, order.ClientOrderId)
+	if sessionId == nil {
+		return
+	}
 	err := quickfix.SendToTarget(msg, *sessionId)
 	if err != nil {
 		fmt.Print(err.Error())
