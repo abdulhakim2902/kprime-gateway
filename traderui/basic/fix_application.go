@@ -220,9 +220,14 @@ func (a *FIXApplication) onExecutionReport(msg *quickfix.Message, sessionID quic
 	order.OrderID = orderId.String()
 	a.Save(order)
 	fmt.Println(order)
-	if msg.Body.Has(tag.LastShares) {
-		var lastShares field.LastSharesField
-		if err := msg.Body.Get(&lastShares); err != nil {
+	var ordStatus field.OrdStatusField
+	if err := msg.Body.Get(&ordStatus); err != nil {
+		return err
+	}
+	fmt.Println(ordStatus.String())
+	if ordStatus.String() != string(enum.OrdStatus_NEW) {
+		var lastQty field.LastQtyField
+		if err := msg.Body.Get(&lastQty); err != nil {
 			return err
 		}
 
@@ -236,7 +241,7 @@ func (a *FIXApplication) onExecutionReport(msg *quickfix.Message, sessionID quic
 		exec.Side = order.Side
 		exec.Session = order.Session
 
-		exec.Quantity = lastShares.String()
+		exec.Quantity = lastQty.String()
 		exec.Price = price.String()
 		_ = a.SaveExecution(exec)
 	}

@@ -180,7 +180,8 @@ func (a Application) FromAdmin(msg *quickfix.Message, sessionID quickfix.Session
 			userSession = make(map[string]*quickfix.SessionID)
 		}
 		userSession[strconv.Itoa(int(user.ID))] = &sessionID
-
+		fmt.Println(user.ID)
+		fmt.Println(userSession)
 	}
 	return nil
 }
@@ -446,12 +447,11 @@ func OnMatchingOrder(data types.EngineResponse) {
 		return
 	}
 
-	for _, trd := range data.Matches.Trades {
-		fmt.Println(userSession)
+	for _, trd := range data.Matches.MakerOrders {
 		if userSession == nil {
 			return
 		}
-		if userSession[data.Matches.Trades[0].MakerID] == nil {
+		if userSession[trd.Order.UserID] == nil {
 			return
 		}
 
@@ -467,6 +467,12 @@ func OnMatchingOrder(data types.EngineResponse) {
 			field.NewCumQty(decimal.NewFromFloat(order.FilledAmount), 2),
 			field.NewAvgPx(decimal.NewFromFloat(trd.Price), 2),
 		)
+		if trd.Amount == 0 {
+			msg.SetOrdStatus(enum.OrdStatus_FILLED)
+		} else {
+			msg.SetOrdStatus(enum.OrdStatus_PARTIALLY_FILLED)
+		}
+		msg.SetClOrdID(trd.ClOrdID)
 		msg.SetLastPx(decimal.NewFromFloat(trd.Price), 2)
 		msg.SetLastQty(decimal.NewFromFloat(trd.Amount), 2)
 		fmt.Println("Sending execution report for matching order")
@@ -620,8 +626,12 @@ func OrderConfirmation(userId string, order Order, symbol string) {
 		field.NewCumQty(order.FilledAmount, 2),
 		field.NewAvgPx(order.Price, 2),
 	)
+	msg.SetOrdStatus(enum.OrdStatus_NEW)
 	msg.SetString(tag.OrderID, order.ID)
 	msg.SetString(tag.ClOrdID, order.ClientOrderId)
+	if sessionId == nil {
+		return
+	}
 	err := quickfix.SendToTarget(msg, *sessionId)
 	if err != nil {
 		fmt.Print(err.Error())
