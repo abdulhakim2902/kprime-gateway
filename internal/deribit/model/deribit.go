@@ -193,13 +193,13 @@ type DeribitGetOpenOrdersByInstrumentResponse struct {
 	OrderType      types.Type         `json:"order_type" bson:"orderType"`
 	OrderState     types.OrderStatus  `json:"order_state" bson:"orderState"`
 
-	Label               string  `json:"label,omitempty" bson:"label"`
-	Usd                 float64 `json:"usd" bson:"usd"`
-	CreationTimestamp   int64   `json:"creation_timestamp" bson:"creationTimestamp"`
-	LastUpdateTimestamp int64   `json:"last_update_timestamp" bson:"lastUpdateTimestamp"`
-	Api                 bool    `json:"api" bson:"api"`
-	AveragePrice        float64 `json:"average_price,omitempty" bson:"priceAvg"`
-	CancelledReason     string  `json:"cancel_reason" bson:"cancelledReason"`
+	Label               string   `json:"label,omitempty" bson:"label"`
+	Usd                 float64  `json:"usd" bson:"usd"`
+	CreationTimestamp   int64    `json:"creation_timestamp" bson:"creationTimestamp"`
+	LastUpdateTimestamp int64    `json:"last_update_timestamp" bson:"lastUpdateTimestamp"`
+	Api                 bool     `json:"api" bson:"api"`
+	AveragePrice        *float64 `json:"average_price" bson:"priceAvg"`
+	CancelledReason     string   `json:"cancel_reason" bson:"cancelledReason"`
 }
 
 type DeribitGetOrderHistoryByInstrumentRequest struct {
@@ -222,11 +222,11 @@ type DeribitGetOrderHistoryByInstrumentResponse struct {
 	OrderType      string             `json:"order_type" bson:"orderType"`
 	TimeInForce    string             `json:"time_in_force" bson:"timeInForce"`
 
-	Label               string  `json:"label,omitempty" bson:"label"`
-	Usd                 float64 `json:"usd" bson:"usd"`
-	CreationTimestamp   int64   `json:"creation_timestamp" bson:"creationTimestamp"`
-	LastUpdateTimestamp int64   `json:"last_update_timestamp" bson:"lastUpdateTimestamp"`
-	Api                 bool    `json:"api" bson:"api"`
-	AveragePrice        float64 `json:"average_price,omitempty" bson:"priceAvg"`
-	CancelledReason     string  `json:"cancel_reason" bson:"cancelledReason"`
+	Label               string   `json:"label,omitempty" bson:"label"`
+	Usd                 float64  `json:"usd" bson:"usd"`
+	CreationTimestamp   int64    `json:"creation_timestamp" bson:"creationTimestamp"`
+	LastUpdateTimestamp int64    `json:"last_update_timestamp" bson:"lastUpdateTimestamp"`
+	Api                 bool     `json:"api" bson:"api"`
+	AveragePrice        *float64 `json:"average_price" bson:"priceAvg"`
+	CancelledReason     string   `json:"cancel_reason" bson:"cancelledReason"`
 }
