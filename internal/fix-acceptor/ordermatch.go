@@ -447,7 +447,6 @@ func OnMatchingOrder(data types.EngineResponse) {
 	}
 
 	for _, trd := range data.Matches.MakerOrders {
-		fmt.Println(userSession)
 		if userSession == nil {
 			return
 		}

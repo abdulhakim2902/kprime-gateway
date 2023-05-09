@@ -281,7 +281,9 @@ func (r TradeRepository) GetPriceAvg(underlying, expiryDate, contracts string, s
 		}
 	}
 
-	price = avgPrice["price"].(float64)
+	if avgPrice["price"] != nil {
+		price, _ = avgPrice["price"].(float64)
+	}
 
 	return
 }
