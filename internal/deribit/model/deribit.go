@@ -111,6 +111,10 @@ type DeribitGetInstrumentsResponse struct {
 	CreationTimestamp   int64  `json:"creation_timestamp"`
 	ContractSize        uint64 `json:"contract_size"`
 	BaseCurrency        string `json:"base_currency"`
+
+	OptionType         string  `json:"option_type"`
+	SettlementCurrency string  `json:"settlement_currency"`
+	Strike             float64 `json:"strike"`
 }
 
 type DeribitGetOrderBookRequest struct {
