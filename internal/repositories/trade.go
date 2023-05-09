@@ -88,7 +88,7 @@ func (r TradeRepository) FindUserTradesByInstrument(
 			{"$lookup",
 				bson.D{
 					{"from", "orders"},
-					{"localField", "takerOrderId"},
+					{"localField", "taker.orderId"},
 					{"foreignField", "_id"},
 					{"as", "takerOrder"},
 				},
@@ -98,7 +98,7 @@ func (r TradeRepository) FindUserTradesByInstrument(
 			{"$lookup",
 				bson.D{
 					{"from", "orders"},
-					{"localField", "makerOrderId"},
+					{"localField", "maker.orderId"},
 					{"foreignField", "_id"},
 					{"as", "makerOrder"},
 				},
@@ -112,8 +112,8 @@ func (r TradeRepository) FindUserTradesByInstrument(
 					{"expiryDate", _expiryDate},
 					{"$or",
 						bson.A{
-							bson.D{{"takerId", userId}},
-							bson.D{{"makerId", userId}},
+							bson.D{{"taker.userId", userId}},
+							bson.D{{"maker.userId", userId}},
 						},
 					},
 				},
@@ -122,15 +122,36 @@ func (r TradeRepository) FindUserTradesByInstrument(
 		bson.D{
 			{"$project",
 				bson.D{
+					{"InstrumentName", bson.M{"$concat": bson.A{
+						bson.D{
+							{"$convert", bson.D{
+								{"input", "$underlying"},
+								{"to", "string"},
+							}}},
+						"-",
+						bson.D{
+							{"$convert", bson.D{
+								{"input", "$expiryDate"},
+								{"to", "string"},
+							}}},
+						"-",
+						bson.D{
+							{"$convert", bson.D{
+								{"input", "$strikePrice"},
+								{"to", "string"},
+							}}},
+						"-",
+						bson.M{"$substr": bson.A{"$contracts", 0, 1}},
+					}}},
 					{"amount", "$amount"},
 					{"direction", "$side"},
 					{"order_id",
 						bson.D{
 							{"$cond",
 								bson.A{
-									"$takerId" == userId,
-									"$takerOrderId",
-									"$makerOrderId",
+									"$taker.userId" == userId,
+									"$taker.orderId",
+									"$maker.orderId",
 								},
 							},
 						},
@@ -139,11 +160,11 @@ func (r TradeRepository) FindUserTradesByInstrument(
 						bson.D{
 							{"$cond",
 								bson.A{
-									"$takerId" == userId,
+									"$taker.userId" == userId,
 									bson.D{
 										{"$arrayElemAt",
 											bson.A{
-												"$takerOrderId.type",
+												"$takerOrder.type",
 												0,
 											},
 										},
@@ -186,6 +207,7 @@ func (r TradeRepository) FindUserTradesByInstrument(
 							},
 						},
 					},
+					{"timestamp", bson.M{"$toLong": "$createdAt"}},
 				},
 			},
 		},
@@ -221,6 +243,9 @@ func (r TradeRepository) FindUserTradesByInstrument(
 		if err = cursor.Decode(&res); err != nil {
 			fmt.Println(err)
 			return
+		}
+		for _, trade := range res.Trades {
+			trade.Api = true
 		}
 	}
 
