@@ -283,7 +283,13 @@ func (r OrderRepository) GetOpenOrdersByInstrument(InstrumentName string, OrderT
 			"creationTimestamp":   bson.M{"$toLong": "$createdAt"},
 			"lastUpdateTimestamp": bson.M{"$toLong": "$updatedAt"},
 			"cancelledReason":     canceledReasonQuery(),
-			"priceAvg":            "$tradePriceAvg.price",
+			"priceAvg": bson.M{
+				"$cond": bson.D{
+					{"if", bson.D{{"$gt", bson.A{"$tradePriceAvg.price", 0}}}},
+					{"then", "$tradePriceAvg.price"},
+					{"else", primitive.Null{}},
+				},
+			},
 		},
 	}
 
@@ -396,7 +402,13 @@ func (r OrderRepository) GetOrderHistoryByInstrument(InstrumentName string, Coun
 			"creationTimestamp":   bson.M{"$toLong": "$createdAt"},
 			"lastUpdateTimestamp": bson.M{"$toLong": "$updatedAt"},
 			"cancelledReason":     canceledReasonQuery(),
-			"priceAvg":            "$tradePriceAvg.price",
+			"priceAvg": bson.M{
+				"$cond": bson.D{
+					{"if", bson.D{{"$gt", bson.A{"$tradePriceAvg.price", 0}}}},
+					{"then", "$tradePriceAvg.price"},
+					{"else", primitive.Null{}},
+				},
+			},
 		}}
 
 	orderState := []types.OrderStatus{types.FILLED, types.PARTIAL_FILLED}
@@ -538,7 +550,6 @@ func tradePriceAvgQuery(instrument string) (query bson.A, err error) {
 		bson.M{
 			"$lookup": bson.D{
 				{"from", "trades"},
-				{"let", bson.D{}},
 				{"pipeline",
 					bson.A{
 						bson.D{
@@ -562,9 +573,10 @@ func tradePriceAvgQuery(instrument string) (query bson.A, err error) {
 				{"as", "tradePriceAvg"},
 			},
 		},
-		bson.M{
-			"$unwind": "$tradePriceAvg",
-		},
+		bson.M{"$unwind": bson.M{
+			"path":                       "$tradePriceAvg",
+			"preserveNullAndEmptyArrays": true,
+		}},
 	}
 
 	return
