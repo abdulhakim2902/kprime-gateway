@@ -120,14 +120,14 @@ func (r OrderRepository) GetInstruments(currency string, expired bool) ([]*_deri
 				"-",
 				bson.M{"$substr": bson.A{"$contracts", 0, 1}},
 			}},
-			"PriceIndex": bson.M{"$concat": bson.A{
+			"PriceIndex": bson.M{"$toLower": bson.M{"$concat": bson.A{
 				bson.D{
 					{"$convert", bson.D{
 						{"input", "$underlying"},
 						{"to", "string"},
 					}}},
-				"-USD",
-			}},
+				"_USD",
+			}}},
 			"IsActive": bson.M{
 				"$cond": bson.M{"if": bson.M{"$gt": []interface{}{bson.M{"$toDate": "$expiryDate"}, now}},
 					"then": true,
@@ -153,8 +153,11 @@ func (r OrderRepository) GetInstruments(currency string, expired bool) ([]*_deri
 						{"to", "string"},
 					}}},
 			}},
-			"QuoteCurrency": "USD",
-			"underlying":    "$underlying",
+			"QuoteCurrency":      "USD",
+			"SettlementCurrency": "USD",
+			"Strike":             "$strikePrice",
+			"OptionType":         bson.M{"$toLower": "$contracts"},
+			"underlying":         "$underlying",
 		}}
 	matchUnerlyingStage := bson.M{
 		"$match": bson.M{
@@ -198,6 +201,15 @@ func (r OrderRepository) GetInstruments(currency string, expired bool) ([]*_deri
 			},
 			"QuoteCurrency": bson.M{
 				"$first": "$QuoteCurrency",
+			},
+			"SettlementCurrency": bson.M{
+				"$first": "$SettlementCurrency",
+			},
+			"Strike": bson.M{
+				"$first": "$Strike",
+			},
+			"OptionType": bson.M{
+				"$first": "$OptionType",
 			},
 		},
 	}
