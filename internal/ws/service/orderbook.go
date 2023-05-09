@@ -341,7 +341,7 @@ func (svc wsOrderbookService) _get24HoursTrades(o _orderbookTypes.GetOrderBook) 
 }
 
 func (svc wsOrderbookService) _getLatestIndexPrice(o _orderbookTypes.GetOrderBook) []*_engineTypes.RawPrice {
-	metadataType := "match"
+	metadataType := "index"
 	metadataPair := fmt.Sprintf("%s_usd", strings.ToLower(o.Underlying))
 
 	tradesQuery := bson.M{
@@ -361,7 +361,7 @@ func (svc wsOrderbookService) _getLatestIndexPrice(o _orderbookTypes.GetOrderBoo
 }
 
 func (svc wsOrderbookService) _getLatestSettlementPrice(o _orderbookTypes.GetOrderBook) []*_engineTypes.SettlementPrice {
-	metadataType := "match"
+	metadataType := "index"
 	metadataPair := fmt.Sprintf("%s_usd", strings.ToLower(o.Underlying))
 
 	tradesQuery := bson.M{
