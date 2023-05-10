@@ -58,9 +58,14 @@ import (
 	"github.com/quickfixgo/quickfix"
 )
 
+type XMessageSubscriber struct {
+	sessiondID quickfix.SessionID
+	secReq     string
+}
+
 var userSession map[string]*quickfix.SessionID
 var orderSubs map[string][]quickfix.SessionID
-var xMessagesSubs []quickfix.SessionID
+var xMessagesSubs []XMessageSubscriber
 
 type Order struct {
 	ID                   string          `json:"id" bson:"_id"`
@@ -285,7 +290,16 @@ func (a *Application) onNewOrderSingle(msg newordersingle.NewOrderSingle, sessio
 
 	_data, _ := json.Marshal(data)
 	_producer.KafkaProducer(string(_data), "NEW_ORDER")
+
 	return nil
+}
+
+func (a Application) broadcastInstrumentList(currency string) {
+	fmt.Println("broadcastInstrumentList", currency)
+	fmt.Println(xMessagesSubs)
+	for _, subs := range xMessagesSubs {
+		a.SecurityListResponse(currency, subs.secReq, subs.sessiondID)
+	}
 }
 
 func (a *Application) onOrderUpdateRequest(msg ordercancelreplacerequest.OrderCancelReplaceRequest, sessionID quickfix.SessionID) quickfix.MessageRejectError {
@@ -627,6 +641,8 @@ func OrderConfirmation(userId string, order Order, symbol string) {
 	if err != nil {
 		fmt.Print(err.Error())
 	}
+	fmt.Println("new order, send instruments")
+	newApplication().broadcastInstrumentList(order.Underlying)
 }
 
 func (a Application) onSecurityListRequest(msg securitylistrequest.SecurityListRequest, sessionID quickfix.SessionID) quickfix.MessageRejectError {
@@ -647,9 +663,15 @@ func (a Application) onSecurityListRequest(msg securitylistrequest.SecurityListR
 	}
 
 	if subs == enum.SubscriptionRequestType_SNAPSHOT_PLUS_UPDATES {
-		xMessagesSubs = append(xMessagesSubs, sessionID)
+		xMessagesSubs = append(xMessagesSubs, XMessageSubscriber{
+			sessiondID: sessionID,
+			secReq:     secReq,
+		})
 	}
 
+	fmt.Println("requesting", subs)
+	fmt.Println("requesting", xMessagesSubs)
+	fmt.Println("currency", currency)
 	err = a.SecurityListResponse(currency, secReq, sessionID)
 	if err != nil {
 		return err
@@ -658,6 +680,7 @@ func (a Application) onSecurityListRequest(msg securitylistrequest.SecurityListR
 }
 
 func (a Application) SecurityListResponse(currency string, secReq string, sessionID quickfix.SessionID) quickfix.MessageRejectError {
+	fmt.Println("sending security list response")
 	secRes := time.Now().UnixMicro()
 	res := securitylist.New(
 		field.NewSecurityReqID(secReq),
@@ -671,7 +694,7 @@ func (a Application) SecurityListResponse(currency string, secReq string, sessio
 		return quickfix.NewMessageRejectError(e.Error(), 0, nil)
 	}
 
-	fmt.Println("instruments", instruments)
+	fmt.Println("instrumentsz", instruments)
 	secListGroup := securitylist.NewNoRelatedSymRepeatingGroup()
 	for _, instrument := range instruments {
 		row := secListGroup.Add()

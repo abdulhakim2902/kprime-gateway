@@ -343,8 +343,6 @@ func (c tradeClient) newOrder(w http.ResponseWriter, r *http.Request) {
 
 	msg.ToMessage().Body.SetString(tag.PartyID, order.PartyID)
 	msg.ToMessage().Body.SetString(tag.ClOrdID, order.ClOrdID)
-	msg.ToMessage().Body.SetString(tag.Password, order.Password)
-	msg.ToMessage().Body.SetString(tag.Username, order.Username)
 	msg.ToMessage().Body.SetField(quickfix.Tag(44), quickfix.FIXDecimal{order.PriceDecimal, 2})
 	err = quickfix.SendToTarget(msg, order.SessionID)
 
