@@ -456,6 +456,9 @@ func OnMatchingOrder(data types.EngineResponse) {
 		}
 
 		sessionID := userSession[data.Matches.Trades[0].MakerID]
+		if sessionID == nil {
+			return
+		}
 		order := data.Order
 		msg := executionreport.New(
 			field.NewOrderID(trd.ID.String()),
@@ -629,9 +632,7 @@ func OrderConfirmation(userId string, order Order, symbol string) {
 	msg.SetOrdStatus(enum.OrdStatus_NEW)
 	msg.SetString(tag.OrderID, order.ID)
 	msg.SetString(tag.ClOrdID, order.ClientOrderId)
-	if sessionId == nil {
-		return
-	}
+
 	err := quickfix.SendToTarget(msg, *sessionId)
 	if err != nil {
 		fmt.Print(err.Error())
