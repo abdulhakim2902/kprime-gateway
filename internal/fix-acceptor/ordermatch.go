@@ -60,6 +60,7 @@ import (
 
 var userSession map[string]*quickfix.SessionID
 var orderSubs map[string][]quickfix.SessionID
+var xMessagesSubs []quickfix.SessionID
 
 type Order struct {
 	ID                   string          `json:"id" bson:"_id"`
@@ -640,6 +641,23 @@ func (a Application) onSecurityListRequest(msg securitylistrequest.SecurityListR
 		return err
 	}
 
+	subs, err := msg.GetSubscriptionRequestType()
+	if err != nil {
+		return err
+	}
+
+	if subs == enum.SubscriptionRequestType_SNAPSHOT_PLUS_UPDATES {
+		xMessagesSubs = append(xMessagesSubs, sessionID)
+	}
+
+	err = a.SecurityListResponse(currency, secReq, sessionID)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (a Application) SecurityListResponse(currency string, secReq string, sessionID quickfix.SessionID) quickfix.MessageRejectError {
 	secRes := time.Now().UnixMicro()
 	res := securitylist.New(
 		field.NewSecurityReqID(secReq),
