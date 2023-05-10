@@ -36,6 +36,7 @@ import (
 
 	_mongo "gateway/pkg/mongo"
 
+	"git.devucc.name/dependencies/utilities/commons/log"
 	"github.com/quickfixgo/enum"
 	"github.com/quickfixgo/field"
 	"github.com/quickfixgo/fix44/executionreport"
@@ -729,7 +730,7 @@ func execute(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("error reading cfg: %s,", err)
 	}
 
-	logger := utils.NewFancyLog()
+	logger := log.NewFancyLog()
 	app := newApplication()
 	utils.PrintConfig("acceptor", bytes.NewReader(stringData))
 	acceptor, err := quickfix.NewAcceptor(app, quickfix.NewMemoryStoreFactory(), appSettings, logger)

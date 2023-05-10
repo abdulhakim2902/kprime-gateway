@@ -2,10 +2,10 @@ package mongo
 
 import (
 	"context"
-	"gateway/pkg/utils"
 	"os"
 	"time"
 
+	"git.devucc.name/dependencies/utilities/commons/log"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
@@ -15,7 +15,7 @@ type Database struct {
 	Client *mongo.Client
 }
 
-var logger = utils.Logger
+var logger = log.Logger
 
 func InitConnection(uri string) (*Database, error) {
 	logger.Infof("Database connecting...")
