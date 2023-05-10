@@ -4,12 +4,11 @@ import (
 	"fmt"
 	"time"
 
-	"gateway/pkg/utils"
-
+	"git.devucc.name/dependencies/utilities/commons/log"
 	"github.com/gomodule/redigo/redis"
 )
 
-var logger = utils.Logger
+var logger = log.Logger
 
 type RedisConnection struct {
 	redis.Conn

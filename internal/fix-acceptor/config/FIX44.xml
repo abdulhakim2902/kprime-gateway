@@ -325,6 +325,7 @@
   </message>
   <message name='NewOrderSingle' msgtype='D' msgcat='app'>
    <field name='ClOrdID' required='Y' />
+   <field name='PartyID' required='N' />
    <field name='SecondaryClOrdID' required='N' />
    <field name='PartyID' required='N' />
    <field name='ClOrdLinkID' required='N' />
