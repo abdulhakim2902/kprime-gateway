@@ -4,6 +4,7 @@ import (
 	"context"
 
 	deribitModel "gateway/internal/deribit/model"
+	_orderbookTypes "gateway/internal/orderbook/types"
 	"gateway/pkg/ws"
 
 	"github.com/Shopify/sarama"
@@ -11,8 +12,11 @@ import (
 
 type IwsOrderbookService interface {
 	Subscribe(c *ws.Client, instrument string)
+	SubscribeQuote(c *ws.Client, instrument string)
 	Unsubscribe(c *ws.Client)
+	UnsubscribeQuote(c *ws.Client)
 	GetOrderBook(ctx context.Context, request deribitModel.DeribitGetOrderBookRequest) deribitModel.DeribitGetOrderBookResponse
+	GetInitialDataQuote(order _orderbookTypes.GetOrderBook) _orderbookTypes.QuoteMessage
 }
 
 type IwsOrderService interface {

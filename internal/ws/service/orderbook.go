@@ -78,8 +78,124 @@ func (svc wsOrderbookService) Subscribe(c *ws.Client, instrument string) {
 	socket.SendInitMessage(c, initData)
 }
 
+func (svc wsOrderbookService) SubscribeQuote(c *ws.Client, instrument string) {
+	socket := ws.GetQuoteSocket()
+	_string := instrument
+	substring := strings.Split(_string, "-")
+
+	_strikePrice, err := strconv.ParseFloat(substring[2], 64)
+	if err != nil {
+		panic(err)
+	}
+	_underlying := substring[0]
+	_expiryDate := strings.ToUpper(substring[1])
+
+	_order := _orderbookTypes.GetOrderBook{
+		InstrumentName: _string,
+		Underlying:     _underlying,
+		ExpiryDate:     _expiryDate,
+		StrikePrice:    _strikePrice,
+	}
+
+	// Get initial data from the redis
+	var initData _orderbookTypes.QuoteMessage
+	res, err := svc.redis.GetValue("QUOTE-" + _string)
+	if res == "" || err != nil {
+		// Get initial data if null
+		initData = svc.GetInitialDataQuote(_order)
+	} else {
+		err = json.Unmarshal([]byte(res), &initData)
+		if err != nil {
+			msg := map[string]string{"Message": err.Error()}
+			socket.SendErrorMessage(c, msg)
+			return
+		}
+	}
+
+	// Subscribe
+	id := instrument
+	err = socket.Subscribe(id, c)
+	if err != nil {
+		msg := map[string]string{"Message": err.Error()}
+		socket.SendErrorMessage(c, msg)
+		return
+	}
+
+	// Prepare when user is doing unsubscribe
+	ws.RegisterConnectionUnsubscribeHandler(c, socket.UnsubscribeHandler(id))
+
+	// Send initial data from the redis
+	socket.SendInitMessage(c, initData)
+}
+
+func (svc wsOrderbookService) GetInitialDataQuote(order _orderbookTypes.GetOrderBook) _orderbookTypes.QuoteMessage {
+
+	// Get initial data
+	_getOrderBook := svc._getOrderBook(order)
+
+	//count best Ask
+	maxAskPrice := 0.0
+	maxAskAmount := 0.0
+	var maxAskItem []*_orderbookTypes.WsOrder
+	for index, item := range _getOrderBook.Asks {
+		if index == 0 {
+			maxAskPrice = item.Price
+			maxAskItem = []*_orderbookTypes.WsOrder{item}
+		}
+		if item.Price < maxAskPrice {
+			maxAskPrice = item.Price
+			maxAskItem = []*_orderbookTypes.WsOrder{item}
+			maxAskAmount = item.Amount
+		} else if item.Price == maxAskPrice {
+			maxAskItem = append(maxAskItem, item)
+			maxAskAmount += item.Amount
+		}
+	}
+
+	//count best Bid
+	maxBidPrice := 0.0
+	if len(_getOrderBook.Bids) > 0 {
+		maxBidPrice = _getOrderBook.Bids[0].Price
+	}
+	maxBidAmount := 0.0
+	var maxBidItem []*_orderbookTypes.WsOrder
+	for _, item := range _getOrderBook.Bids {
+		if item.Price > maxBidPrice {
+			maxBidPrice = item.Price
+			maxBidItem = []*_orderbookTypes.WsOrder{item}
+			maxBidAmount = item.Amount
+		} else if item.Price == maxBidPrice {
+			maxBidItem = append(maxBidItem, item)
+			maxBidAmount += item.Amount
+		}
+	}
+
+	initData := _orderbookTypes.QuoteMessage{
+		Instrument:    order.InstrumentName,
+		BestAskAmount: maxAskAmount,
+		BestAskPrice:  maxAskPrice,
+		BestBidAmount: maxBidAmount,
+		BestBidPrice:  maxBidPrice,
+		Timestamp:     time.Now().UnixNano() / int64(time.Millisecond),
+	}
+	// convert data to json
+	jsonBytes, err := json.Marshal(initData)
+	if err != nil {
+		fmt.Println(err)
+		return initData
+	}
+	svc.redis.Set("QUOTE-"+order.InstrumentName, string(jsonBytes))
+
+	return initData
+}
+
 func (svc wsOrderbookService) Unsubscribe(c *ws.Client) {
 	socket := ws.GetOrderBookSocket()
+	socket.Unsubscribe(c)
+}
+
+func (svc wsOrderbookService) UnsubscribeQuote(c *ws.Client) {
+	socket := ws.GetQuoteSocket()
 	socket.Unsubscribe(c)
 }
 

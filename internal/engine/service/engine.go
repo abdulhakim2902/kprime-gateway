@@ -13,6 +13,9 @@ import (
 
 	_engineType "gateway/internal/engine/types"
 	_ordermatch "gateway/internal/fix-acceptor"
+	_orderbookTypes "gateway/internal/orderbook/types"
+	wsService "gateway/internal/ws/service"
+
 	"gateway/internal/repositories"
 
 	"gateway/pkg/redis"
@@ -22,17 +25,21 @@ import (
 type engineHandler struct {
 	redis     *redis.RedisConnectionPool
 	tradeRepo *repositories.TradeRepository
+	wsOBSvc   wsService.IwsOrderbookService
 }
 
 func NewEngineHandler(
 	r *gin.Engine,
 	redis *redis.RedisConnectionPool,
 	tradeRepo *repositories.TradeRepository,
+	wsOBSvc wsService.IwsOrderbookService,
 ) IEngineService {
-	return &engineHandler{redis, tradeRepo}
+	return &engineHandler{redis, tradeRepo, wsOBSvc}
 
 }
 func (svc engineHandler) HandleConsume(msg *sarama.ConsumerMessage) {
+	go svc.HandleConsumeQuote(msg)
+
 	var data _engineType.EngineResponse
 	err := json.Unmarshal(msg.Value, &data)
 	if err != nil {
@@ -91,6 +98,41 @@ func (svc engineHandler) HandleConsume(msg *sarama.ConsumerMessage) {
 
 	//broadcast to websocket
 	ws.GetEngineSocket().BroadcastMessage(_instrument, data)
+}
+
+func (svc engineHandler) HandleConsumeQuote(msg *sarama.ConsumerMessage) {
+	var data _engineType.EngineResponse
+	err := json.Unmarshal(msg.Value, &data)
+	if err != nil {
+		fmt.Println(err)
+		fmt.Println(msg.Value)
+		return
+	}
+
+	//convert instrument name
+	_instrument := data.Order.Underlying + "-" + data.Order.ExpiryDate + "-" + fmt.Sprintf("%.0f", data.Order.StrikePrice) + "-" + string(data.Order.Contracts[0])
+
+	_order := _orderbookTypes.GetOrderBook{
+		InstrumentName: _instrument,
+		Underlying:     data.Order.Underlying,
+		ExpiryDate:     data.Order.ExpiryDate,
+		StrikePrice:    data.Order.StrikePrice,
+	}
+
+	initData := svc.wsOBSvc.GetInitialDataQuote(_order)
+
+	//convert redisDataArray to json
+	jsonBytes, err := json.Marshal(initData)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	//save to redis
+	svc.redis.Set("ENGINE-"+_instrument, string(jsonBytes))
+
+	//broadcast to websocket
+	ws.GetQuoteSocket().BroadcastMessage(_instrument, initData)
 }
 
 func checkDateToRemoveRedis(_expiryDate string, _instrument string, svc engineHandler) {

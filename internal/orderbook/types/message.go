@@ -40,3 +40,12 @@ type GetOrderBook struct {
 	ExpiryDate     string  `json:"expiryDate"`
 	StrikePrice    float64 `json:"strikePrice"`
 }
+
+type QuoteMessage struct {
+	BestAskAmount float64 `json:"best_ask_amount"`
+	BestAskPrice  float64 `json:"best_ask_price"`
+	BestBidAmount float64 `json:"best_bid_amount"`
+	BestBidPrice  float64 `json:"best_bid_price"`
+	Instrument    string  `json:"instrument_name"`
+	Timestamp     int64   `json:"timestamp"`
+}

@@ -555,6 +555,8 @@ func (svc wsHandler) SubscribeHandler(input interface{}, c *ws.Client) {
 			svc.wsOSvc.Subscribe(c, s[1])
 		case "trade":
 			svc.wsTradeSvc.Subscribe(c, s[1])
+		case "quote":
+			svc.wsOBSvc.SubscribeQuote(c, s[1])
 		}
 
 	}
@@ -593,6 +595,8 @@ func (svc wsHandler) UnsubscribeHandler(input interface{}, c *ws.Client) {
 			svc.wsOSvc.Unsubscribe(c)
 		case "trade":
 			svc.wsTradeSvc.Unsubscribe(c)
+		case "quote":
+			svc.wsOBSvc.UnsubscribeQuote(c)
 		}
 
 	}
