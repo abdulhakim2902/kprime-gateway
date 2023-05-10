@@ -132,7 +132,13 @@ func (svc engineHandler) HandleConsumeQuote(msg *sarama.ConsumerMessage) {
 	svc.redis.Set("ENGINE-"+_instrument, string(jsonBytes))
 
 	//broadcast to websocket
-	ws.GetQuoteSocket().BroadcastMessage(_instrument, initData)
+
+	params := _orderbookTypes.QuoteResponse{
+		Channel: fmt.Sprintf("quote.%s", _instrument),
+		Data:    initData,
+	}
+	method := "subscription"
+	ws.GetQuoteSocket().BroadcastMessage(_instrument, method, params)
 }
 
 func checkDateToRemoveRedis(_expiryDate string, _instrument string, svc engineHandler) {

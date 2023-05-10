@@ -543,6 +543,11 @@ func (svc wsHandler) SubscribeHandler(input interface{}, c *ws.Client) {
 		return
 	}
 
+	c.SendMessage(msg.Params.Channels, ws.SendMessageParams{
+		ID:            msg.Id,
+		RequestedTime: requestedTime,
+	})
+
 	for _, channel := range msg.Params.Channels {
 		fmt.Println(channel)
 		s := strings.Split(channel, ".")
@@ -600,6 +605,11 @@ func (svc wsHandler) UnsubscribeHandler(input interface{}, c *ws.Client) {
 		}
 
 	}
+
+	c.SendMessage(msg.Params.Channels, ws.SendMessageParams{
+		ID:            msg.Id,
+		RequestedTime: requestedTime,
+	})
 }
 
 func (svc wsHandler) GetInstruments(input interface{}, c *ws.Client) {

@@ -124,8 +124,13 @@ func (svc wsOrderbookService) SubscribeQuote(c *ws.Client, instrument string) {
 	// Prepare when user is doing unsubscribe
 	ws.RegisterConnectionUnsubscribeHandler(c, socket.UnsubscribeHandler(id))
 
+	params := _orderbookTypes.QuoteResponse{
+		Channel: fmt.Sprintf("quote.%s", instrument),
+		Data:    initData,
+	}
+	method := "subscription"
 	// Send initial data from the redis
-	socket.SendInitMessage(c, initData)
+	socket.SendInitMessage(c, method, params)
 }
 
 func (svc wsOrderbookService) GetInitialDataQuote(order _orderbookTypes.GetOrderBook) _orderbookTypes.QuoteMessage {

@@ -96,13 +96,13 @@ func (s *QuoteSocket) Unsubscribe(c *Client) {
 }
 
 // BroadcastMessage streams message to all the subscribtions subscribed to the pair
-func (s *QuoteSocket) BroadcastMessage(channelID string, p interface{}) error {
+func (s *QuoteSocket) BroadcastMessage(channelID string, method string, p interface{}) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	for c, status := range s.subscriptions[channelID] {
 		if status {
-			s.SendUpdateMessage(c, p)
+			s.SendUpdateMessage(c, method, p)
 		}
 	}
 
@@ -115,11 +115,11 @@ func (s *QuoteSocket) SendErrorMessage(c *Client, data interface{}) {
 }
 
 // SendInitMessage sends INIT message on orderbookchannel on subscription event
-func (s *QuoteSocket) SendInitMessage(c *Client, data interface{}) {
-	c.SendMessage(data, SendMessageParams{})
+func (s *QuoteSocket) SendInitMessage(c *Client, method string, data interface{}) {
+	c.SendMessageSubcription(data, method, SendMessageParams{})
 }
 
 // SendUpdateMessage sends UPDATE message on orderbookchannel as new data is created
-func (s *QuoteSocket) SendUpdateMessage(c *Client, data interface{}) {
-	c.SendMessage(data, SendMessageParams{})
+func (s *QuoteSocket) SendUpdateMessage(c *Client, method string, data interface{}) {
+	c.SendMessageSubcription(data, method, SendMessageParams{})
 }
