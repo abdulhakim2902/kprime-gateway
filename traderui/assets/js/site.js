@@ -635,6 +635,7 @@ App.Views.SecurityDefinitionRequest = Backbone.View.extend({
     <select class='form-control' name='subscription_request_type'>
       <option value="0">Snapshot</option>
       <option value="1">Snapshot Plus Update</option>
+      <option value="2">Disable Update</option>
     </select>
   </div>
 </p>

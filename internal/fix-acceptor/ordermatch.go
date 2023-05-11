@@ -678,7 +678,7 @@ func (a Application) onSecurityListRequest(msg securitylistrequest.SecurityListR
 			sessiondID: sessionID,
 			secReq:     secReq,
 		})
-	} else if subs == enum.SubscriptionRequestType_SNAPSHOT || subs == enum.SubscriptionRequestType_DISABLE_PREVIOUS_SNAPSHOT_PLUS_UPDATE_REQUEST {
+	} else if subs == enum.SubscriptionRequestType_DISABLE_PREVIOUS_SNAPSHOT_PLUS_UPDATE_REQUEST {
 		for _, x := range xMessagesSubs {
 			if x.sessiondID == sessionID {
 				xMessagesSubs = removeXMessageSubscriber(xMessagesSubs, x)
