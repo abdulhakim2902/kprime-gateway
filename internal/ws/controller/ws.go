@@ -543,6 +543,11 @@ func (svc wsHandler) SubscribeHandler(input interface{}, c *ws.Client) {
 		return
 	}
 
+	c.SendMessage(msg.Params.Channels, ws.SendMessageParams{
+		ID:            msg.Id,
+		RequestedTime: requestedTime,
+	})
+
 	for _, channel := range msg.Params.Channels {
 		fmt.Println(channel)
 		s := strings.Split(channel, ".")
@@ -555,6 +560,8 @@ func (svc wsHandler) SubscribeHandler(input interface{}, c *ws.Client) {
 			svc.wsOSvc.Subscribe(c, s[1])
 		case "trade":
 			svc.wsTradeSvc.Subscribe(c, s[1])
+		case "quote":
+			svc.wsOBSvc.SubscribeQuote(c, s[1])
 		}
 
 	}
@@ -593,9 +600,16 @@ func (svc wsHandler) UnsubscribeHandler(input interface{}, c *ws.Client) {
 			svc.wsOSvc.Unsubscribe(c)
 		case "trade":
 			svc.wsTradeSvc.Unsubscribe(c)
+		case "quote":
+			svc.wsOBSvc.UnsubscribeQuote(c)
 		}
 
 	}
+
+	c.SendMessage(msg.Params.Channels, ws.SendMessageParams{
+		ID:            msg.Id,
+		RequestedTime: requestedTime,
+	})
 }
 
 func (svc wsHandler) GetInstruments(input interface{}, c *ws.Client) {

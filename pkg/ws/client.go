@@ -35,7 +35,9 @@ type WebsocketMessage struct {
 type WebsocketResponseMessage struct {
 	JSONRPC string      `json:"jsonrpc"`
 	ID      uint64      `json:"id,omitempty"`
-	Result  interface{} `json:"result"`
+	Method  string      `json:"method,omitempty"`
+	Result  interface{} `json:"result,omitempty"`
+	Params  interface{} `json:"params,omitempty"`
 	UsIn    uint64      `json:"usIn,omitempty"`
 	UsOut   uint64      `json:"usOut,omitempty"`
 	UsDiff  uint64      `json:"usDiff,omitempty"`
@@ -119,6 +121,19 @@ func (c *Client) SendMessage(payload interface{}, params SendMessageParams) {
 			// Remove saved time
 			delete(orderRequestRpcIDS, ID)
 		}
+	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.send <- m
+}
+
+// SendMessageSubcription constructs the message with proper structure to be sent over websocket for subcription
+func (c *Client) SendMessageSubcription(payload interface{}, method string, params SendMessageParams) {
+	m := WebsocketResponseMessage{
+		Params:  payload,
+		JSONRPC: "2.0",
+		Method:  method,
 	}
 
 	c.mu.Lock()
