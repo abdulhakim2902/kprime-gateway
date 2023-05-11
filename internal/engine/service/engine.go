@@ -119,7 +119,7 @@ func (svc engineHandler) HandleConsumeQuote(msg *sarama.ConsumerMessage) {
 		StrikePrice:    data.Order.StrikePrice,
 	}
 
-	initData := svc.wsOBSvc.GetInitialDataQuote(_order)
+	initData, _ := svc.wsOBSvc.GetDataQuote(_order)
 
 	//convert redisDataArray to json
 	jsonBytes, err := json.Marshal(initData)

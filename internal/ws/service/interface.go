@@ -16,7 +16,7 @@ type IwsOrderbookService interface {
 	Unsubscribe(c *ws.Client)
 	UnsubscribeQuote(c *ws.Client)
 	GetOrderBook(ctx context.Context, request deribitModel.DeribitGetOrderBookRequest) deribitModel.DeribitGetOrderBookResponse
-	GetInitialDataQuote(order _orderbookTypes.GetOrderBook) _orderbookTypes.QuoteMessage
+	GetDataQuote(order _orderbookTypes.GetOrderBook) (_orderbookTypes.QuoteMessage, _orderbookTypes.Orderbook)
 }
 
 type IwsOrderService interface {

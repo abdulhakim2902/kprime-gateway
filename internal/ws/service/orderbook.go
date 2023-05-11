@@ -102,7 +102,7 @@ func (svc wsOrderbookService) SubscribeQuote(c *ws.Client, instrument string) {
 	res, err := svc.redis.GetValue("QUOTE-" + _string)
 	if res == "" || err != nil {
 		// Get initial data if null
-		initData = svc.GetInitialDataQuote(_order)
+		initData, _ = svc.GetDataQuote(_order)
 	} else {
 		err = json.Unmarshal([]byte(res), &initData)
 		if err != nil {
@@ -133,7 +133,7 @@ func (svc wsOrderbookService) SubscribeQuote(c *ws.Client, instrument string) {
 	socket.SendInitMessage(c, method, params)
 }
 
-func (svc wsOrderbookService) GetInitialDataQuote(order _orderbookTypes.GetOrderBook) _orderbookTypes.QuoteMessage {
+func (svc wsOrderbookService) GetDataQuote(order _orderbookTypes.GetOrderBook) (_orderbookTypes.QuoteMessage, _orderbookTypes.Orderbook) {
 
 	// Get initial data
 	_getOrderBook := svc._getOrderBook(order)
@@ -183,15 +183,21 @@ func (svc wsOrderbookService) GetInitialDataQuote(order _orderbookTypes.GetOrder
 		BestBidPrice:  maxBidPrice,
 		Timestamp:     time.Now().UnixNano() / int64(time.Millisecond),
 	}
+
+	bidsAsksData := _orderbookTypes.Orderbook{
+		InstrumentName: order.InstrumentName,
+		Bids:           _getOrderBook.Bids,
+		Asks:           _getOrderBook.Asks,
+	}
 	// convert data to json
 	jsonBytes, err := json.Marshal(initData)
 	if err != nil {
 		fmt.Println(err)
-		return initData
+		return initData, bidsAsksData
 	}
 	svc.redis.Set("QUOTE-"+order.InstrumentName, string(jsonBytes))
 
-	return initData
+	return initData, bidsAsksData
 }
 
 func (svc wsOrderbookService) Unsubscribe(c *ws.Client) {
@@ -210,7 +216,7 @@ func (svc wsOrderbookService) GetOrderBook(ctx context.Context, data _deribitMod
 
 	_strikePrice, err := strconv.ParseFloat(substring[2], 64)
 	if err != nil {
-		panic(err)
+		return _deribitModel.DeribitGetOrderBookResponse{}
 	}
 	_underlying := substring[0]
 	_expiryDate := strings.ToUpper(substring[1])
@@ -222,44 +228,7 @@ func (svc wsOrderbookService) GetOrderBook(ctx context.Context, data _deribitMod
 		StrikePrice:    _strikePrice,
 	}
 
-	_getOrderBook := svc._getOrderBook(_order)
-
-	//count best Ask
-	maxAskPrice := 0.0
-	maxAskAmount := 0.0
-	var maxAskItem []*_orderbookTypes.WsOrder
-	for index, item := range _getOrderBook.Asks {
-		if index == 0 {
-			maxAskPrice = item.Price
-			maxAskItem = []*_orderbookTypes.WsOrder{item}
-		}
-		if item.Price < maxAskPrice {
-			maxAskPrice = item.Price
-			maxAskItem = []*_orderbookTypes.WsOrder{item}
-			maxAskAmount = item.Amount
-		} else if item.Price == maxAskPrice {
-			maxAskItem = append(maxAskItem, item)
-			maxAskAmount += item.Amount
-		}
-	}
-
-	//count best Bid
-	maxBidPrice := 0.0
-	if len(_getOrderBook.Bids) > 0 {
-		maxBidPrice = _getOrderBook.Bids[0].Price
-	}
-	maxBidAmount := 0.0
-	var maxBidItem []*_orderbookTypes.WsOrder
-	for _, item := range _getOrderBook.Bids {
-		if item.Price > maxBidPrice {
-			maxBidPrice = item.Price
-			maxBidItem = []*_orderbookTypes.WsOrder{item}
-			maxBidAmount = item.Amount
-		} else if item.Price == maxBidPrice {
-			maxBidItem = append(maxBidItem, item)
-			maxBidAmount += item.Amount
-		}
-	}
+	dataQuote, orderBook := svc.GetDataQuote(_order)
 
 	//check state
 	dateString := _expiryDate
@@ -311,13 +280,13 @@ func (svc wsOrderbookService) GetOrderBook(ctx context.Context, data _deribitMod
 	}
 
 	results := _deribitModel.DeribitGetOrderBookResponse{
-		InstrumentName: _getOrderBook.InstrumentName,
-		Bids:           _getOrderBook.Bids,
-		Asks:           _getOrderBook.Asks,
-		BestAskPrice:   maxAskPrice,
-		BestAskAmount:  maxAskAmount,
-		BestBidPrice:   maxBidPrice,
-		BestBidAmount:  maxBidAmount,
+		InstrumentName: orderBook.InstrumentName,
+		Bids:           orderBook.Bids,
+		Asks:           orderBook.Asks,
+		BestAskPrice:   dataQuote.BestAskPrice,
+		BestAskAmount:  dataQuote.BestAskAmount,
+		BestBidPrice:   dataQuote.BestBidPrice,
+		BestBidAmount:  dataQuote.BestBidAmount,
 		Timestamp:      time.Now().UnixNano() / int64(time.Millisecond),
 		State:          _state,
 		LastPrice:      _lastPrice,
