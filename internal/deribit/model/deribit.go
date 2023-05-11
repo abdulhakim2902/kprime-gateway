@@ -167,7 +167,7 @@ type DeribitGetUserTradesByInstruments struct {
 	Api            bool               `json:"api"`
 	IndexPrice     float64            `json:"index_price" bson:"indexPrice"`
 	Label          string             `json:"label,omitempty" bson:"label"`
-	TickDirection  int                `json:"tick_direction" bson:"tick_direction"`
+	TickDirection  int                `json:"tick_direction" bson:"tickDirection"`
 	TradeSequence  int                `json:"trade_seq" bson:"tradeSequence"`
 }
 

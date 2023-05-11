@@ -629,14 +629,17 @@ App.Views.SecurityDefinitionRequest = Backbone.View.extend({
 
     </div>
   </p>
-
   <p>
   <div class='form-group'>
-    <label for='symbol'>Instrument</label>
-    <select class='form-control' name='symbol'>
-      <% _.each(symbols, function(i){ %><option><%= i %></option><% }); %>
+    <label for="subscription_request_type">Subscription Request Type</label>
+    <select class='form-control' name='subscription_request_type'>
+      <option value="0">Snapshot</option>
+      <option value="1">Snapshot Plus Update</option>
+      <option value="2">Disable Update</option>
     </select>
   </div>
+</p>
+  <p>
   <div class='form-group'>
     <label for='session'>Session</label>
     <select class='form-control' name='session'>
@@ -658,6 +661,7 @@ App.Views.SecurityDefinitionRequest = Backbone.View.extend({
     req.set({
       session_id: this.$('select[name=session]').val(),
       security_request_type: this.$('select[name=security_request_type]').val(),
+      subscription_request_type: this.$('select[name=subscription_request_type]').val(),
       security_type: this.$('select[name=security_type]').val(),
       symbol: this.$('input[name=symbol]').val(),
     });

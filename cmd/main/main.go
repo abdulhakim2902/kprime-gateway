@@ -117,7 +117,7 @@ func main() {
 	}()
 
 	_obSvc := _obSvc.NewOrderbookHandler(r, redis)
-	_engSvc := _engSvc.NewEngineHandler(r, redis, tradeRepo)
+	_engSvc := _engSvc.NewEngineHandler(r, redis, tradeRepo, _wsOrderbookSvc)
 
 	// kafka listener
 	consumer.KafkaConsumer(orderRepo, _engSvc, _obSvc, _wsOrderSvc, _wsTradeSvc)
