@@ -374,7 +374,9 @@ func (c tradeClient) onSecurityListRequest(w http.ResponseWriter, r *http.Reques
 		field.NewSecurityReqID("1"),
 		field.NewSecurityListRequestType(enum.SecurityListRequestType_SYMBOL),
 	)
-	newMsg.SetInt(tag.SubscriptionRequestType, 0)
+	fmt.Println("request subs type", secDefRequest.SubscriptionRequestType)
+	subsType, _ := strconv.Atoi(secDefRequest.SubscriptionRequestType)
+	newMsg.SetInt(tag.SubscriptionRequestType, subsType)
 	newMsg.SetString(tag.Currency, secDefRequest.Symbol) // btc / all
 	fmt.Println("requesting security list")
 	err = quickfix.SendToTarget(newMsg, secDefRequest.SessionID)
