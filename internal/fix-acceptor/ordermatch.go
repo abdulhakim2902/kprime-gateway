@@ -678,6 +678,12 @@ func (a Application) onSecurityListRequest(msg securitylistrequest.SecurityListR
 			sessiondID: sessionID,
 			secReq:     secReq,
 		})
+	} else if subs == enum.SubscriptionRequestType_SNAPSHOT || subs == enum.SubscriptionRequestType_DISABLE_PREVIOUS_SNAPSHOT_PLUS_UPDATE_REQUEST {
+		for _, x := range xMessagesSubs {
+			if x.sessiondID == sessionID {
+				xMessagesSubs = removeXMessageSubscriber(xMessagesSubs, x)
+			}
+		}
 	}
 
 	fmt.Println("requesting", subs)
@@ -688,6 +694,15 @@ func (a Application) onSecurityListRequest(msg securitylistrequest.SecurityListR
 		return err
 	}
 	return nil
+}
+
+func removeXMessageSubscriber(array []XMessageSubscriber, element XMessageSubscriber) []XMessageSubscriber {
+	for i, v := range array {
+		if v == element {
+			return append(array[:i], array[i+1:]...)
+		}
+	}
+	return array
 }
 
 func (a Application) SecurityListResponse(currency string, secReq string, sessionID quickfix.SessionID) quickfix.MessageRejectError {
