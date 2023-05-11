@@ -70,16 +70,21 @@ type BuySellEditCancelOrder struct {
 }
 
 type BuySellEditTrade struct {
-	Advanced       string             `json:"advanced"`
-	Amount         float64            `json:"amount"`
-	Direction      types.Side         `json:"direction"`
-	InstrumentName string             `json:"instrument_name"`
-	OrderId        primitive.ObjectID `json:"order_id"`
-	OrderType      types.Type         `json:"order_type"`
-	Price          float64            `json:"price"`
-	State          types.TradeStatus  `json:"state"`
-	Timestamp      int64              `json:"timestamp"`
-	TradeId        primitive.ObjectID `json:"trade_id"`
+	Advanced       string              `json:"advanced"`
+	Amount         float64             `json:"amount"`
+	Direction      types.Side          `json:"direction"`
+	InstrumentName string              `json:"instrument_name"`
+	OrderId        primitive.ObjectID  `json:"order_id"`
+	OrderType      types.Type          `json:"order_type"`
+	Price          float64             `json:"price"`
+	State          types.TradeStatus   `json:"state"`
+	Timestamp      int64               `json:"timestamp"`
+	TradeId        primitive.ObjectID  `json:"trade_id"`
+	Api            bool                `json:"api"`
+	IndexPrice     float64             `json:"index_price"`
+	Label          string              `json:"label,omitempty"`
+	TickDirection  types.TickDirection `json:"tick_direction"`
+	TradeSequence  int                 `json:"trade_seq"`
 }
 
 type ErrorMessage struct {

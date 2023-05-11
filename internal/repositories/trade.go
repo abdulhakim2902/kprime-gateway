@@ -145,6 +145,31 @@ func (r TradeRepository) FindUserTradesByInstrument(
 					}}},
 					{"amount", "$amount"},
 					{"direction", "$side"},
+					{"label",
+						bson.D{
+							{"$cond",
+								bson.A{
+									"$taker.userId" == userId,
+									bson.D{
+										{"$arrayElemAt",
+											bson.A{
+												"$takerOrder.label",
+												0,
+											},
+										},
+									},
+									bson.D{
+										{"$arrayElemAt",
+											bson.A{
+												"$makerOrder.label",
+												0,
+											},
+										},
+									},
+								},
+							},
+						},
+					},
 					{"order_id",
 						bson.D{
 							{"$cond",
@@ -208,6 +233,10 @@ func (r TradeRepository) FindUserTradesByInstrument(
 						},
 					},
 					{"timestamp", bson.M{"$toLong": "$createdAt"}},
+					{"strikePrice", "$strikePrice"},
+					{"tickDirection", "$tickDirection"},
+					{"tradeSequence", "$tradeSequence"},
+					{"indexPrice", "$indexPrice"},
 				},
 			},
 		},
