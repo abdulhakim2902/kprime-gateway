@@ -50,7 +50,6 @@ import (
 	"github.com/quickfixgo/tag"
 	"github.com/shopspring/decimal"
 	"github.com/spf13/cobra"
-	"go.mongodb.org/mongo-driver/bson"
 
 	_producer "gateway/pkg/kafka/producer"
 
@@ -164,7 +163,7 @@ func (a Application) FromAdmin(msg *quickfix.Message, sessionID quickfix.Session
 			return err
 		}
 
-		user, err := a.AuthRepository.FindOne(bson.M{"apiCredentials.apiKey": uname})
+		user, err := a.AuthRepository.FindByAPIKeyAndSecret(context.TODO(), uname.String(), pwd.String())
 		if err != nil {
 			return quickfix.NewMessageRejectError("Failed getting user", 1, nil)
 		}
@@ -173,8 +172,6 @@ func (a Application) FromAdmin(msg *quickfix.Message, sessionID quickfix.Session
 			userSession = make(map[string]*quickfix.SessionID)
 		}
 		userSession[user.ID.Hex()] = &sessionID
-		fmt.Println(user.ID)
-		fmt.Println(userSession)
 	}
 	return nil
 }
