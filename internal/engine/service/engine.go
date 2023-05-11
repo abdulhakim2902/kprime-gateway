@@ -234,6 +234,7 @@ func (svc engineHandler) PublishOrder(data _engineType.EngineResponse) {
 					Timestamp:      utils.MakeTimestamp(element.CreatedAt),
 					TradeId:        element.ID,
 					Api:            true,
+					Label:          data.Order.Label,
 					TickDirection:  element.TickDirection,
 					TradeSequence:  element.TradeSequence,
 					IndexPrice:     element.IndexPrice,
