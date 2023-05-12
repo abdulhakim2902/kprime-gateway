@@ -133,6 +133,117 @@ func (svc wsOrderbookService) SubscribeQuote(c *ws.Client, instrument string) {
 	socket.SendInitMessage(c, method, params)
 }
 
+func (svc wsOrderbookService) SubscribeBook(c *ws.Client, channel string) {
+	s := strings.Split(channel, ".")
+	instrument := s[1]
+	socket := ws.GetBookSocket()
+	_string := instrument
+	substring := strings.Split(_string, "-")
+
+	_strikePrice, err := strconv.ParseFloat(substring[2], 64)
+	if err != nil {
+		panic(err)
+	}
+	_underlying := substring[0]
+	_expiryDate := strings.ToUpper(substring[1])
+
+	_order := _orderbookTypes.GetOrderBook{
+		InstrumentName: _string,
+		Underlying:     _underlying,
+		ExpiryDate:     _expiryDate,
+		StrikePrice:    _strikePrice,
+	}
+
+	// Get initial data
+	var orderBook _orderbookTypes.Orderbook
+	_, orderBook = svc.GetDataQuote(_order)
+
+	// Subscribe
+	id := instrument
+	err = socket.Subscribe(id, c)
+	if err != nil {
+		msg := map[string]string{"Message": err.Error()}
+		socket.SendErrorMessage(c, msg)
+		return
+	}
+
+	// Prepare when user is doing unsubscribe
+	ws.RegisterConnectionUnsubscribeHandler(c, socket.UnsubscribeHandler(id))
+
+	ts := time.Now().UnixNano() / int64(time.Millisecond)
+	var changeId _orderbookTypes.Change
+	// Get change_id
+	res, err := svc.redis.GetValue("CHANGEID-" + _string)
+	if res == "" || err != nil {
+		// Set initial data if null
+		changeIdData := _orderbookTypes.Change{
+			Id:        1,
+			Timestamp: ts,
+		}
+
+		//convert changeIdData to json
+		jsonBytes, err := json.Marshal(changeIdData)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		svc.redis.Set("CHANGEID-"+_string, string(jsonBytes))
+		changeId = _orderbookTypes.Change{
+			Id:        1,
+			Timestamp: ts,
+		}
+	} else {
+		err = json.Unmarshal([]byte(res), &changeId)
+		if err != nil {
+			msg := map[string]string{"Message": err.Error()}
+			socket.SendErrorMessage(c, msg)
+			return
+		}
+	}
+
+	var bidsData [][]interface{}
+	var asksData [][]interface{}
+	if len(orderBook.Asks) > 0 {
+		for _, ask := range orderBook.Asks {
+			var askData []interface{}
+			askData = append(askData, "new")
+			askData = append(askData, ask.Amount)
+			askData = append(askData, ask.Price)
+			asksData = append(asksData, askData)
+		}
+	} else {
+		asksData = make([][]interface{}, 0)
+	}
+	if len(orderBook.Bids) > 0 {
+		for _, bid := range orderBook.Bids {
+			var bidData []interface{}
+			bidData = append(bidData, "new")
+			bidData = append(bidData, bid.Amount)
+			bidData = append(bidData, bid.Price)
+			bidsData = append(bidsData, bidData)
+		}
+	} else {
+		bidsData = make([][]interface{}, 0)
+	}
+
+	bookData := _orderbookTypes.BookData{
+		Type:           "snapshot",
+		Timestamp:      changeId.Timestamp,
+		InstrumentName: instrument,
+		ChangeId:       changeId.Id,
+		Bids:           bidsData,
+		Asks:           asksData,
+	}
+
+	params := _orderbookTypes.QuoteResponse{
+		Channel: channel,
+		Data:    bookData,
+	}
+	method := "subscription"
+	// Send initial data
+	socket.SendInitMessage(c, method, params)
+}
+
 func (svc wsOrderbookService) GetDataQuote(order _orderbookTypes.GetOrderBook) (_orderbookTypes.QuoteMessage, _orderbookTypes.Orderbook) {
 
 	// Get initial data
@@ -310,6 +421,61 @@ func (svc wsOrderbookService) GetOrderBook(ctx context.Context, data _deribitMod
 	}
 
 	return results
+}
+
+func (svc wsOrderbookService) GetOrderLatestTimestamp(o _orderbookTypes.GetOrderBook, before int64, after int64) _orderbookTypes.Orderbook {
+	timeBefore := time.UnixMilli(before)
+	timeAfter := time.UnixMilli(after)
+	queryBuilder := func(side types.Side, priceOrder int) interface{} {
+		return []bson.M{
+			{
+				"$match": bson.M{
+					"status":      bson.M{"$in": []types.OrderStatus{types.OPEN, types.PARTIAL_FILLED, types.CANCELLED}},
+					"underlying":  o.Underlying,
+					"strikePrice": o.StrikePrice,
+					"expiryDate":  o.ExpiryDate,
+					"side":        side,
+					"updatedAt":   bson.M{"$gte": timeBefore, "$lt": timeAfter},
+				},
+			},
+			{
+				"$group": bson.D{
+					{"_id", "$price"},
+					{"amount", bson.D{{"$sum", bson.M{"$subtract": []string{"$amount", "$filledAmount"}}}}},
+					{"detail", bson.D{{"$first", "$$ROOT"}}},
+				},
+			},
+			{"$sort": bson.M{"price": priceOrder, "createdAt": 1}},
+			{
+				"$replaceRoot": bson.D{
+					{"newRoot",
+						bson.D{
+							{"$mergeObjects",
+								bson.A{
+									"$detail",
+									bson.D{{"amount", "$amount"}},
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+	}
+
+	asksQuery := queryBuilder(types.SELL, -1)
+	asks := svc.orderRepository.WsAggregate(asksQuery)
+
+	bidsQuery := queryBuilder(types.BUY, 1)
+	bids := svc.orderRepository.WsAggregate(bidsQuery)
+
+	orderbooks := _orderbookTypes.Orderbook{
+		InstrumentName: o.InstrumentName,
+		Asks:           asks,
+		Bids:           bids,
+	}
+
+	return orderbooks
 }
 
 func (svc wsOrderbookService) _getOrderBook(o _orderbookTypes.GetOrderBook) *_orderbookTypes.Orderbook {

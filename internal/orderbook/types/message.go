@@ -13,6 +13,18 @@ type Message struct {
 	Asks       interface{} `json:"asks"`
 }
 
+type OrderbookSubscribe struct {
+	InstrumentName string              `json:"instrumentName" bson:"instrumentName"`
+	Bids           []*WsOrderSubscribe `json:"bids" bson:"bids"`
+	Asks           []*WsOrderSubscribe `json:"asks" bson:"asks"`
+}
+
+type WsOrderSubscribe struct {
+	Price  float64     `json:"price" bson:"price"`
+	Amount float64     `json:"amount" bson:"amount"`
+	Detail interface{} `json:"detail,omitempty" bson:"detail,omitempty"`
+}
+
 type Orderbook struct {
 	InstrumentName string     `json:"instrumentName" bson:"instrumentName"`
 	Bids           []*WsOrder `json:"bids" bson:"bids"`
@@ -42,8 +54,8 @@ type GetOrderBook struct {
 }
 
 type QuoteResponse struct {
-	Channel string       `json:"channel"`
-	Data    QuoteMessage `json:"data"`
+	Channel string      `json:"channel"`
+	Data    interface{} `json:"data"`
 }
 
 type QuoteMessage struct {
@@ -53,4 +65,20 @@ type QuoteMessage struct {
 	BestAskPrice  float64 `json:"best_ask_price"`
 	BestBidAmount float64 `json:"best_bid_amount"`
 	BestBidPrice  float64 `json:"best_bid_price"`
+}
+
+type BookData struct {
+	Type           string          `json:"type"`
+	Timestamp      int64           `json:"timestamp"`
+	InstrumentName string          `json:"instrument_name"`
+	ChangeId       int             `json:"change_id"`
+	PrevChangeId   int             `json:"prev_change_id,omitempty"`
+	Bids           [][]interface{} `json:"bids"`
+	Asks           [][]interface{} `json:"asks"`
+}
+
+type Change struct {
+	Id            int   `json:"id"`
+	Timestamp     int64 `json:"timestamp"`
+	TimestampPrev int64 `json:"timestamp_prev"`
 }

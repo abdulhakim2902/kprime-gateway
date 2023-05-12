@@ -6,4 +6,5 @@ import (
 
 type IOrderbookService interface {
 	HandleConsume(message *sarama.ConsumerMessage)
+	HandleConsumeBook(message *sarama.ConsumerMessage)
 }

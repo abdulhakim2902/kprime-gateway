@@ -50,6 +50,7 @@ func KafkaConsumer(
 			for message := range partitionConsumer.Messages() {
 				switch topic {
 				case "ORDER":
+					go obSvc.HandleConsumeBook(message)
 					handleTopicOrder(oSvc, message)
 				case "TRADE":
 					handleTopicTrade(tradeSvc, message)
