@@ -185,6 +185,7 @@ func (svc engineHandler) PublishOrder(data _engineType.EngineResponse) {
 	)
 	if err != nil {
 		fmt.Println("tradeRepo.GetPriceAvg:", err)
+		return
 	}
 
 	order := _engineType.BuySellEditCancelOrder{

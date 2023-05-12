@@ -2,7 +2,7 @@ package service
 
 import (
 	"context"
-	"gateway/internal/auth/types"
+	"gateway/internal/user/types"
 )
 
 type IAuthService interface {
