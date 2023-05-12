@@ -61,8 +61,12 @@ type XMessageSubscriber struct {
 	secReq     string
 }
 
+type VMessageSubscriber struct {
+	sessiondID quickfix.SessionID
+}
+
 var userSession map[string]*quickfix.SessionID
-var orderSubs map[string][]quickfix.SessionID
+var vMessageSubs []VMessageSubscriber
 var xMessagesSubs []XMessageSubscriber
 
 type Order struct {
@@ -424,16 +428,24 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 	fmt.Printf("%+v\n", msg)
 	var symbol field.SymbolField
 	msg.Body.GetField(quickfix.Tag(55), &symbol)
-	subs, _ := msg.Body.GetInt(quickfix.Tag(263))
-	if subs == 1 { // subscribe
-		orderSubs[symbol.String()] = append(orderSubs[symbol.String()], sessionID)
-	} else if subs == 2 { // unsubscribe
-		for i, sess := range orderSubs[symbol.String()] {
-			if sess == sessionID {
-				orderSubs[symbol.String()] = append(orderSubs[symbol.String()][:i], orderSubs[symbol.String()][i+1:]...)
+	subs, _ := msg.GetSubscriptionRequestType()
+	if subs == enum.SubscriptionRequestType_SNAPSHOT_PLUS_UPDATES { // subscribe
+		vMessageSubs = append(vMessageSubs, VMessageSubscriber{
+			sessiondID: sessionID,
+		})
+	} else if subs == enum.SubscriptionRequestType_DISABLE_PREVIOUS_SNAPSHOT_PLUS_UPDATE_REQUEST { // unsubscribe
+		for _, subs := range vMessageSubs {
+			if subs.sessiondID.String() == sessionID.String() {
+				vMessageSubs = removeVMessageSubscriber(vMessageSubs, subs)
 			}
 		}
 	}
+
+	snap := marketdatasnapshotfullrefresh.New()
+
+	// loop based on symbol requested
+	bids, asks := a.OrderRepository.GetMarketData(symbol.String())
+
 	return
 }
 
@@ -542,8 +554,8 @@ func OnOrderboookUpdate(symbol string, data map[string]interface{}) {
 		msg.SetNoMDEntries(grp)
 	}
 
-	for _, sess := range orderSubs[symbol] {
-		quickfix.SendToTarget(msg, sess)
+	for _, sess := range vMessageSubs {
+		quickfix.SendToTarget(msg, sess.sessiondID)
 	}
 }
 
@@ -682,6 +694,15 @@ func (a Application) onSecurityListRequest(msg securitylistrequest.SecurityListR
 }
 
 func removeXMessageSubscriber(array []XMessageSubscriber, element XMessageSubscriber) []XMessageSubscriber {
+	for i, v := range array {
+		if v == element {
+			return append(array[:i], array[i+1:]...)
+		}
+	}
+	return array
+}
+
+func removeVMessageSubscriber(array []VMessageSubscriber, element VMessageSubscriber) []VMessageSubscriber {
 	for i, v := range array {
 		if v == element {
 			return append(array[:i], array[i+1:]...)

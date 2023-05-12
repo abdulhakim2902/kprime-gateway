@@ -9,6 +9,7 @@ import (
 	"os"
 	"path"
 	"strconv"
+	"strings"
 	"text/template"
 
 	"github.com/gorilla/mux"
@@ -397,7 +398,7 @@ func (c tradeClient) onMarketDataRequest(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	fmt.Println(mktDataRequest)
+	fmt.Println(mktDataRequest.Session)
 
 	if sessionID, ok := c.SessionIDs[mktDataRequest.Session]; ok {
 		mktDataRequest.SessionID = sessionID
@@ -413,6 +414,32 @@ func (c tradeClient) onMarketDataRequest(w http.ResponseWriter, r *http.Request)
 		field.NewMarketDepth(0),
 	)
 
+	mdEntryGrp := marketdatarequest.NewNoMDEntryTypesRepeatingGroup()
+
+	if mktDataRequest.Bid == "Bid" {
+		mdEntryGrp.Add().SetMDEntryType(enum.MDEntryType_BID)
+	}
+
+	if mktDataRequest.Ask == "Ask" {
+		mdEntryGrp.Add().SetMDEntryType(enum.MDEntryType_OFFER)
+	}
+
+	if mktDataRequest.Trade == "Trade" {
+		mdEntryGrp.Add().SetMDEntryType(enum.MDEntryType_TRADE)
+	}
+
+	msg.SetNoMDEntryTypes(mdEntryGrp)
+
+	mdReqGrp := marketdatarequest.NewNoRelatedSymRepeatingGroup()
+
+	symbols := strings.Split(mktDataRequest.Symbol, ",")
+
+	for _, symbol := range symbols {
+		mdReqGrp.Add().SetString(tag.Symbol, symbol)
+	}
+
+	msg.SetNoRelatedSym(mdReqGrp)
+	fmt.Println(msg.Message.String())
 	err = quickfix.SendToTarget(msg, mktDataRequest.SessionID)
 
 	if err != nil {
