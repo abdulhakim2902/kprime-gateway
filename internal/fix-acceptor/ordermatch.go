@@ -50,6 +50,7 @@ import (
 	"github.com/quickfixgo/tag"
 	"github.com/shopspring/decimal"
 	"github.com/spf13/cobra"
+	"go.mongodb.org/mongo-driver/bson"
 
 	_producer "gateway/pkg/kafka/producer"
 
@@ -95,6 +96,14 @@ type Order struct {
 	LastExecutedPrice    decimal.Decimal
 }
 
+type MarketDataResponse struct {
+	InstrumentName string  `json:"instrumentName"`
+	Side           string  `json:"side"`
+	Contract       string  `json:"contract"`
+	Price          float64 `json:"price"`
+	Amount         float64 `json:"amount"`
+}
+
 type Orderbook struct {
 	InstrumentName string   `json:"instrumentName" bson:"instrumentName"`
 	Bids           []*Order `json:"bids" bson:"bids"`
@@ -107,6 +116,7 @@ type Application struct {
 	execID int
 	*repositories.AuthRepository
 	*repositories.OrderRepository
+	*repositories.TradeRepository
 }
 
 type KafkaOrder struct {
@@ -426,8 +436,6 @@ func (a *Application) onOrderCancelRequest(msg ordercancelrequest.OrderCancelReq
 
 func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataRequest, sessionID quickfix.SessionID) (err quickfix.MessageRejectError) {
 	fmt.Printf("%+v\n", msg)
-	var symbol field.SymbolField
-	msg.Body.GetField(quickfix.Tag(55), &symbol)
 	subs, _ := msg.GetSubscriptionRequestType()
 	if subs == enum.SubscriptionRequestType_SNAPSHOT_PLUS_UPDATES { // subscribe
 		vMessageSubs = append(vMessageSubs, VMessageSubscriber{
@@ -441,11 +449,68 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 		}
 	}
 
-	snap := marketdatasnapshotfullrefresh.New()
+	mdEntryTypes, _ := msg.GetNoMDEntryTypes()
+	noRelatedsym, _ := msg.GetNoRelatedSym()
+	sym, _ := noRelatedsym.Get(1).GetSymbol()
+	response := []MarketDataResponse{}
 
 	// loop based on symbol requested
-	bids, asks := a.OrderRepository.GetMarketData(symbol.String())
+	for i := 0; i < noRelatedsym.Len(); i++ {
+		sym, _ := noRelatedsym.Get(i).GetSymbol()
+		fmt.Println(sym)
+		entries := make([]string, mdEntryTypes.Len())
+		for j := 0; j < mdEntryTypes.Len(); j++ {
+			entry, _ := mdEntryTypes.Get(j).GetMDEntryType()
+			entries[j] = string(entry)
+		}
 
+		if utils.ArrContains(entries, "0") {
+			asks := a.OrderRepository.GetMarketData(sym, "ask")
+			for _, ask := range asks {
+				response = append(response, MarketDataResponse{
+					Price:  ask.Price,
+					Amount: ask.Amount,
+					Side:   "ASK",
+					InstrumentName: ask.Underlying + "-" + ask.ExpirationDate + "-" + strconv.FormatFloat(ask.StrikePrice, 'f', 2, 64) +
+						"-" + ask.Contracts,
+				})
+			}
+		}
+
+		if utils.ArrContains(entries, "1") {
+			bids := a.OrderRepository.GetMarketData(sym, "BID")
+			for _, bid := range bids {
+				response = append(response, MarketDataResponse{
+					Price:  bid.Price,
+					Amount: bid.Amount,
+					Side:   "BID",
+					InstrumentName: bid.Underlying + "-" + bid.ExpirationDate + "-" + strconv.FormatFloat(bid.StrikePrice, 'f', 2, 64) +
+						"-" + bid.Contracts,
+				})
+			}
+
+		}
+
+		if utils.ArrContains(entries, "2") {
+			trades, _ := a.TradeRepository.Find(bson.M{"symbol": sym}, nil, 10, 99)
+			for _, trade := range trades {
+				response = append(response, MarketDataResponse{
+					Price:  trade.Price,
+					Amount: trade.Amount,
+					Side:   "TRADE",
+					InstrumentName: trade.Underlying + "-" + trade.ExpiryDate + "-" + strconv.FormatFloat(trade.StrikePrice, 'f', 2, 64) +
+						"-" + string(trade.Contracts),
+				})
+			}
+		}
+	}
+
+	snap := marketdatasnapshotfullrefresh.New()
+	snap.SetSymbol(sym)
+	grp := marketdatasnapshotfullrefresh.NewNoMDEntriesRepeatingGroup()
+	for _, res := range response {
+		row := grp.Add()
+	}
 	return
 }
 

@@ -363,26 +363,17 @@ func (r OrderRepository) GetOpenOrdersByInstrument(InstrumentName string, OrderT
 	return orders, nil
 }
 
-func (r OrderRepository) GetMarketData(instrumentName string) (bids []_deribitModel.DeribitResponse, asks []_deribitModel.DeribitResponse) {
-	curr, err := r.collection.Find(context.Background(), bson.M{"instrumentName": instrumentName, "side": "buy"})
+func (r OrderRepository) GetMarketData(instrumentName string, side string) (res []_deribitModel.DeribitResponse) {
+	curr, err := r.collection.Find(context.Background(), bson.M{"instrumentName": instrumentName, "side": side})
 	if err != nil {
 		fmt.Printf("%+v\n", err)
 	}
 
-	if err = curr.All(context.Background(), &bids); err != nil {
+	if err = curr.All(context.Background(), &res); err != nil {
 		fmt.Printf("%+v\n", err)
 	}
 
-	curr, err = r.collection.Find(context.Background(), bson.M{"instrumentName": instrumentName, "side": "sell"})
-	if err != nil {
-		fmt.Printf("%+v\n", err)
-	}
-
-	if err = curr.All(context.Background(), &asks); err != nil {
-		fmt.Printf("%+v\n", err)
-	}
-
-	return bids, asks
+	return res
 }
 
 func (r OrderRepository) GetOrderHistoryByInstrument(InstrumentName string, Count int, Offset int, IncludeOld bool, IncludeUnfilled bool, userId string) ([]*_deribitModel.DeribitGetOrderHistoryByInstrumentResponse, error) {
