@@ -1,0 +1,18 @@
+package secmaster
+
+import (
+	"github.com/quickfixgo/enum"
+
+	"github.com/quickfixgo/quickfix"
+)
+
+// SecurityDefinitionRequest is the SecurityDefinitionRequest type
+type MarketDataRequest struct {
+	ID                      int                      `json:"id"`
+	SessionID               quickfix.SessionID       `json:"-"`
+	Session                 string                   `json:"session"`
+	SecurityRequestType     enum.SecurityRequestType `json:"security_request_type"`
+	Symbol                  string                   `json:"symbol"`
+	SubscriptionRequestType string                   `json:"subscription_request_type"`
+	MDEntryType             enum.MDEntryType         `json:"md_entry_type"`
+}

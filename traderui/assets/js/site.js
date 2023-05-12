@@ -43,6 +43,11 @@ var App = new (Backbone.View.extend({
       symbols: options.symbols,
     });
 
+    this.marketDataForm = new App.Models.MarketDataForm({
+      session_ids: options.session_ids,
+      symbols: options.symbols,
+    });
+
     this.orders = new App.Collections.Orders(options.orders);
     this.executions = new App.Collections.Executions(options.executions);
     this.instruments = new App.Collections.Instruments(options.symbols);
@@ -59,6 +64,7 @@ var App = new (Backbone.View.extend({
     $("#nav-order").addClass("active");
     $("#nav-execution").removeClass("active");
     $("#nav-secdef").removeClass("active");
+    $("#nav-marketdata").removeClass("active");
   },
 
   showExecutions: function () {
@@ -70,6 +76,7 @@ var App = new (Backbone.View.extend({
     $("#nav-order").removeClass("active");
     $("#nav-execution").addClass("active");
     $("#nav-secdef").removeClass("active");
+    $("#nav-marketdata").removeClass("active");
   },
 
   showSecurityDefinitions: function () {
@@ -80,6 +87,18 @@ var App = new (Backbone.View.extend({
     $("#nav-order").removeClass("active");
     $("#nav-execution").removeClass("active");
     $("#nav-secdef").addClass("active");
+    $("#nav-marketdata").removeClass("active");
+  },
+
+  showMarketData: function () {
+    var mrktDataReq = new App.Views.MarketDataRequest({ model: this.marketDataForm });
+    var mrktListView = new App.Views.MarketData({model: this.instruments})
+    $("#app").html(mrktDataReq.render().el);
+    $("#app").append(mrktListView.render().el);
+    $("#nav-order").removeClass("active");
+    $("#nav-execution").removeClass("active");
+    $("#nav-secdef").removeClass("active");
+    $("#nav-marketdata").addClass("active");
   },
 
   showOrderDetails: function (id) {
@@ -116,6 +135,7 @@ App.Router = Backbone.Router.extend({
     "executions": "executions",
     "instruments": "instruments",
     "secdefs": "secdefs",
+    "marketdata": "marketdata",
     "orders/:id": "orderDetails",
     "executions/:id": "executionDetails",
   },
@@ -130,6 +150,10 @@ App.Router = Backbone.Router.extend({
 
   secdefs: function () {
     App.showSecurityDefinitions();
+  },
+
+  marketdata: function () {
+    App.showMarketData();
   },
 
   orderDetails: function (id) {
@@ -157,8 +181,13 @@ App.Models.SecurityDefinitionRequest = Backbone.Model.extend({
   urlRoot: "securitydefinitionrequest"
 });
 
+App.Models.MarketDataRequest = Backbone.Model.extend({
+  urlRoot: "marketdatarequest"
+});
+
 App.Models.OrderTicket = Backbone.Model.extend({});
 App.Models.SecurityDefinitionForm = Backbone.Model.extend({});
+App.Models.MarketDataForm = Backbone.Model.extend({});
 
 App.Collections.Orders = Backbone.Collection.extend({
   url: '/orders',
@@ -435,6 +464,27 @@ App.Views.SecurityListRowView = Backbone.View.extend({
   },
 });
 
+App.Views.MarketDataRowView = Backbone.View.extend({
+  tagName: 'tr',
+  template: _.template(`
+<td>
+<button class="btn btn-info details">Details</button>
+</td>
+<td><%= request_id %></td>
+<td><%= instrument_name %></td>
+<td><%= security_desc %></td>
+<td><%= security_type %></td>
+<td><%= strike_currency %></td>
+<td><%= strike_price %></td>
+`),
+
+
+  render: function () {
+    this.$el.html(this.template(this.model.attributes));
+    return this;
+  },
+});
+
 
 App.Views.OrderRowView = Backbone.View.extend({
   tagName: 'tr',
@@ -557,6 +607,50 @@ App.Views.SecurityList = Backbone.View.extend({
   }
 });
 
+App.Views.MarketData = Backbone.View.extend({
+  initialize: function () {
+    console.log("security list view")
+    this.listenTo(this.model, 'reset', this.addAll);
+  },
+
+  render: function () {
+    console.log("renderinggg", this)
+    this.$el.html(`
+<table class='table table-striped' id='security-list'>
+  <thead>
+    <tr>
+      <th></th>
+      <th>RequestID</th>
+      <th>Instrument Name</th>
+      <th>Sec Desx</th>
+      <th>Sec Type</th>
+      <th>Strike Currency</th>
+      <th>Strike Price</th>
+    </tr>
+  </thead>
+  <tbody>
+  </tbody>
+</table>`);
+
+    this.addAll();
+
+    return this;
+  },
+
+  addAll: function () {
+    console.log(this)
+    this.$("tbody").empty();
+    this.model.models.forEach(this.addOne, this);
+    return this;
+  },
+
+  addOne: function (instruments) {
+    console.log('adding one', instruments)
+    var row = new App.Views.MarketDataRowView({ model: instruments });
+    this.$("tbody").append(row.render().el);
+  }
+});
+
 App.Views.OrdersView = Backbone.View.extend({
   initialize: function () {
     this.listenTo(this.collection, 'reset', this.addAll);
@@ -663,6 +757,69 @@ App.Views.SecurityDefinitionRequest = Backbone.View.extend({
       security_request_type: this.$('select[name=security_request_type]').val(),
       subscription_request_type: this.$('select[name=subscription_request_type]').val(),
       security_type: this.$('select[name=security_type]').val(),
+      symbol: this.$('input[name=symbol]').val(),
+    });
+    req.save();
+  },
+
+  render: function () {
+    this.$el.html(this.template(this.model.attributes));
+    return this;
+  }
+});
+
+App.Views.MarketDataRequest = Backbone.View.extend({
+  template: _.template(`
+<form class='form-inline'>
+  <p>
+    <div class='form-group'>
+      <label for='symbol'>Symbol</label>
+      <input type='text' class='form-control' name='symbol' placeholder='symbol'>
+    </div>
+  </p>
+  <p>
+  <div class='form-group'>
+    <input type="checkbox" id="md_entry_type_1" name="md_entry_type_1" value="0">
+    <label for="md_entry_type_1"> Bid</label><br>
+    <input type="checkbox" id="md_entry_type_2" name="md_entry_type_2" value="1">
+    <label for="md_entry_type_1"> Offer</label><br>
+    <input type="checkbox" id="md_entry_type_3" name="md_entry_type_3" value="2">
+    <label for="md_entry_type_3"> Trade</label><br>
+  </div>
+  </p>
+  <p>
+  <div class='form-group'>
+    <label for="subscription_request_type">Subscription Request Type</label>
+    <select class='form-control' name='subscription_request_type'>
+      <option value="0">Snapshot</option>
+      <option value="1">Snapshot Plus Update</option>
+      <option value="2">Disable Update</option>
+    </select>
+  </div>
+</p>
+  <p>
+  <div class='form-group'>
+    <label for='session'>Session</label>
+    <select class='form-control' name='session'>
+      <% _.each(session_ids, function(i){ %><option><%= i %></option><% }); %>
+    </select>
+  </div>
+  <button type='submit' class='btn btn-default'>Submit</button>
+  </p>
+</form>
+  `),
+
+  events: {
+    submit: "submit"
+  },
+
+  submit: function (e) {
+    console.log("submit market data request")
+    e.preventDefault();
+    var req = new App.Models.MarketDataRequest();
+    req.set({
+      session_id: this.$('select[name=session]').val(),
+      subscription_request_type: this.$('select[name=subscription_request_type]').val(),
       symbol: this.$('input[name=symbol]').val(),
     });
     req.save();

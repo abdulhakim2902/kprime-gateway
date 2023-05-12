@@ -15,6 +15,7 @@ import (
 	"github.com/quickfixgo/enum"
 	"github.com/quickfixgo/field"
 	"github.com/quickfixgo/fix43/securitylistrequest"
+	"github.com/quickfixgo/fix44/marketdatarequest"
 	"github.com/quickfixgo/tag"
 	"github.com/quickfixgo/traderui/basic"
 	"github.com/quickfixgo/traderui/oms"
@@ -385,6 +386,40 @@ func (c tradeClient) onSecurityListRequest(w http.ResponseWriter, r *http.Reques
 	}
 }
 
+func (c tradeClient) onMarketDataRequest(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("onMarketDataRequest")
+	var mktDataRequest secmaster.MarketDataRequest
+	decoder := json.NewDecoder(r.Body)
+	err := decoder.Decode(&mktDataRequest)
+	if err != nil {
+		log.Printf("[ERROR] %v\n", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	fmt.Println(mktDataRequest)
+
+	if sessionID, ok := c.SessionIDs[mktDataRequest.Session]; ok {
+		mktDataRequest.SessionID = sessionID
+	} else {
+		log.Println("[ERROR] Invalid SessionID")
+		http.Error(w, "Invalid SessionID", http.StatusBadRequest)
+		return
+	}
+
+	msg := marketdatarequest.New(
+		field.NewMDReqID("1"),
+		field.NewSubscriptionRequestType(enum.SubscriptionRequestType(mktDataRequest.SecurityRequestType)),
+		field.NewMarketDepth(0),
+	)
+
+	err = quickfix.SendToTarget(msg, mktDataRequest.SessionID)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
 func main() {
 	flag.Parse()
 
@@ -438,6 +473,7 @@ func main() {
 	router.HandleFunc("/executions/{id:[0-9]+}", app.getExecution).Methods("GET")
 
 	router.HandleFunc("/securitydefinitionrequest", app.onSecurityListRequest).Methods("POST")
+	router.HandleFunc("/marketdatarequest", app.onMarketDataRequest).Methods("POST")
 
 	router.PathPrefix("/assets/").Handler(http.StripPrefix("/assets/", http.FileServer(http.Dir("assets"))))
 	router.HandleFunc("/", app.traderView)
