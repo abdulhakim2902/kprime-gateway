@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"flag"
 	"fmt"
 	"log"
 	"net/http"
@@ -10,28 +9,16 @@ import (
 	"os/signal"
 	"path"
 	"runtime"
-	"strings"
 	"syscall"
 	"time"
 
-	"gateway/database/seeder/seeds"
-	"gateway/internal/admin/controller"
-	_adminModel "gateway/internal/admin/model"
-	"gateway/internal/admin/repository"
-	"gateway/internal/admin/service"
-	_authModel "gateway/internal/auth/model"
 	ordermatch "gateway/internal/fix-acceptor"
 	"gateway/internal/repositories"
-	"gateway/internal/user/model"
 	"gateway/pkg/kafka/consumer"
 	"gateway/pkg/mongo"
 	"gateway/pkg/redis"
 
 	// "gateway/pkg/kafka/consumer"
-
-	_authCtrl "gateway/internal/auth/controller"
-	_authRepo "gateway/internal/auth/repository"
-	_authSvc "gateway/internal/auth/service"
 
 	_deribitCtrl "gateway/internal/deribit/controller"
 	_deribitSvc "gateway/internal/deribit/service"
@@ -39,24 +26,22 @@ import (
 	_wsOrderbookSvc "gateway/internal/ws/service"
 	_wsSvc "gateway/internal/ws/service"
 
+	_authSvc "gateway/internal/auth/service"
 	_engSvc "gateway/internal/engine/service"
 	_obSvc "gateway/internal/orderbook/service"
 
 	_wsCtrl "gateway/internal/ws/controller"
 
 	"github.com/casbin/casbin/v2"
-	gormadapter "github.com/casbin/gorm-adapter/v3"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
-	"gorm.io/driver/mysql"
-	"gorm.io/gorm"
 )
 
 var (
-	db      *gorm.DB
-	err     error
-	rootDir string
-	mode    string
+	mongoConn *mongo.Database
+	err       error
+	rootDir   string
+	mode      string
 )
 
 func init() {
@@ -68,52 +53,9 @@ func init() {
 	}
 	mode = os.Getenv("NODE_ENV")
 
-	dsn := os.Getenv("DB_CONNECTION")
-	db, err = gorm.Open(mysql.Open(dsn), &gorm.Config{})
+	mongoConn, err = mongo.InitConnection(os.Getenv("MONGO_URL"))
 	if err != nil {
 		panic(err)
-	}
-
-	// Flags
-	cmd := flag.String("migrate", "", "up or down")
-	flag.Parse()
-
-	if len(os.Args) > 1 {
-		arg := os.Args[1]
-
-		if strings.Contains(arg, "-migrate") {
-			argVal := *cmd
-			fmt.Println("Migration " + argVal)
-
-			switch argVal {
-			case "up":
-				db.AutoMigrate(
-					&_adminModel.Permission{},
-					&model.Client{},
-					&_adminModel.Admin{},
-					&_adminModel.Role{},
-					&_authModel.TokenAuth{},
-				)
-			case "down":
-				if mode == "production" {
-					fmt.Println("Migration down is not allowed while running production mode")
-				} else {
-					db.Migrator().DropTable(
-						&_adminModel.Permission{},
-						&model.Client{},
-						&_adminModel.Admin{},
-						&_adminModel.Role{},
-						&_authModel.TokenAuth{},
-					)
-				}
-
-			}
-
-		} else {
-			fmt.Println("Invalid arguments")
-		}
-
-		os.Exit(0)
 	}
 }
 
@@ -127,41 +69,8 @@ func main() {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
-	// Gorm adapter
-	adapter, err := gormadapter.NewAdapterByDB(db)
-	if err != nil {
-		panic("failed to load rbac config")
-	}
-
-	enforcer, err := casbin.NewEnforcer(path.Join(rootDir, "pkg/rbac/config/model.conf"), adapter)
-	if err != nil {
-		panic(err)
-	}
-
-	// Seed Database
-	for _, seed := range seeds.All() {
-		if err := seed.Run(db); err != nil {
-			log.Fatalf("Running seed '%s', failed with error:\n%s", seed.Name, err)
-		}
-	}
-	setupRBAC(enforcer)
-
 	// Initiate Redis Connection Here
 	redis := redis.NewRedisConnectionPool(os.Getenv("REDIS_URL"))
-
-	// Mongo DB Init
-	mongoDb, err := mongo.InitConnection(os.Getenv("MONGO_URL"))
-	if err != nil {
-		panic(err)
-	}
-
-	adminRepo := repository.NewAdminRepo(db)
-	adminSvc := service.NewAdminService(adminRepo)
-	controller.NewAdminHandler(r, adminSvc, enforcer)
-
-	authRepo := _authRepo.NewAuthRepo(db)
-	authSvc := _authSvc.NewAuthService(authRepo)
-	_authCtrl.NewAuthHandler(r, authSvc, enforcer)
 
 	_deribitSvc := _deribitSvc.NewDeribitService()
 	_deribitCtrl.NewDeribitHandler(r, _deribitSvc)
@@ -172,19 +81,20 @@ func main() {
 	// Websocket handlers
 	_wsEngineSvc := _wsEngineSvc.NewwsEngineService(redis)
 
-	orderRepo := repositories.NewOrderRepository(mongoDb)
-	tradeRepo := repositories.NewTradeRepository(mongoDb)
-	rawPriceRepo := repositories.NewRawPriceRepository(mongoDb)
-	settlementPriceRepo := repositories.NewSettlementPriceRepository(mongoDb)
+	authRepo := repositories.NewAuthRepositoryRepository(mongoConn)
+	orderRepo := repositories.NewOrderRepository(mongoConn)
+	tradeRepo := repositories.NewTradeRepository(mongoConn)
+	rawPriceRepo := repositories.NewRawPriceRepository(mongoConn)
+	settlementPriceRepo := repositories.NewSettlementPriceRepository(mongoConn)
 
+	_wsAuthSvc := _authSvc.NewAuthService(authRepo)
 	_wsOrderbookSvc := _wsOrderbookSvc.NewWSOrderbookService(redis, orderRepo, tradeRepo, rawPriceRepo, settlementPriceRepo)
 	_wsOrderSvc := _wsSvc.NewWSOrderService(redis, orderRepo)
-
 	_wsTradeSvc := _wsSvc.NewWSTradeService(redis, tradeRepo)
 
 	_wsCtrl.NewWebsocketHandler(
 		r,
-		authSvc,
+		_wsAuthSvc,
 		_deribitSvc,
 		_wsOrderbookSvc,
 		_wsEngineSvc,

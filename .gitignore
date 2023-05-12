@@ -3,3 +3,4 @@ pkg/logs/*.log
 .idea
 logs
 internal/fix-acceptor/config/ordermatch.cfg
+traderui/bin/traderui

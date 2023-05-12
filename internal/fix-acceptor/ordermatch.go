@@ -17,11 +17,11 @@ package ordermatch
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"gateway/internal/engine/types"
 	"gateway/internal/repositories"
-	"gateway/internal/user/model"
 	"gateway/pkg/utils"
 	"io"
 	"io/ioutil"
@@ -50,9 +50,6 @@ import (
 	"github.com/quickfixgo/tag"
 	"github.com/shopspring/decimal"
 	"github.com/spf13/cobra"
-	"golang.org/x/crypto/bcrypt"
-	"gorm.io/driver/mysql"
-	"gorm.io/gorm"
 
 	_producer "gateway/pkg/kafka/producer"
 
@@ -104,7 +101,7 @@ type Orderbook struct {
 type Application struct {
 	*quickfix.MessageRouter
 	execID int
-	*gorm.DB
+	*repositories.AuthRepository
 	*repositories.OrderRepository
 }
 
@@ -124,13 +121,14 @@ type KafkaOrder struct {
 }
 
 func newApplication() *Application {
-	dsn := os.Getenv("DB_CONNECTION")
+
 	mongoDb, _ := _mongo.InitConnection(os.Getenv("MONGO_URL"))
 	orderRepo := repositories.NewOrderRepository(mongoDb)
-	db, _ := gorm.Open(mysql.Open(dsn), &gorm.Config{})
+	authRepo := repositories.NewAuthRepositoryRepository(mongoDb)
+
 	app := &Application{
 		MessageRouter:   quickfix.NewMessageRouter(),
-		DB:              db,
+		AuthRepository:  authRepo,
 		OrderRepository: orderRepo,
 	}
 	app.AddRoute(newordersingle.Route(app.onNewOrderSingle))
@@ -170,25 +168,16 @@ func (a Application) FromAdmin(msg *quickfix.Message, sessionID quickfix.Session
 		if err := msg.Body.Get(&uname); err != nil {
 			return err
 		}
-		var user model.Client
-		res := a.DB.Where(model.Client{
-			APIKey: uname.String(),
-		}).Find(&user)
 
-		if res.Error != nil {
+		user, err := a.AuthRepository.FindByAPIKeyAndSecret(context.TODO(), uname.String(), pwd.String())
+		if err != nil {
 			return quickfix.NewMessageRejectError("Failed getting user", 1, nil)
-		}
-
-		if err := bcrypt.CompareHashAndPassword([]byte(user.APISecret), []byte(pwd.String())); err != nil {
-			// return quickfix.NewMessageRejectError("Wrong API Secret", 1, nil)
 		}
 
 		if userSession == nil {
 			userSession = make(map[string]*quickfix.SessionID)
 		}
-		userSession[strconv.Itoa(int(user.ID))] = &sessionID
-		fmt.Println(user.ID)
-		fmt.Println(userSession)
+		userSession[user.ID.Hex()] = &sessionID
 	}
 	return nil
 }
@@ -203,17 +192,16 @@ func (a *Application) onNewOrderSingle(msg newordersingle.NewOrderSingle, sessio
 	if userSession == nil {
 		return quickfix.NewMessageRejectError("User not logged in", 1, nil)
 	}
-	clientId := ""
+
+	userId := ""
 	for i, v := range userSession {
 		if v.String() == sessionID.String() {
-			clientId = i
+			userId = i
 		}
 	}
 
-	strClientId, _ := strconv.Atoi(clientId)
-	var client model.Client
-	res := a.DB.Where(model.Client{ID: uint(strClientId)}).Find(&client)
-	if res.Error != nil {
+	user, e := a.AuthRepository.FindById(context.TODO(), userId)
+	if e != nil {
 		return quickfix.NewMessageRejectError("Failed getting user", 1, nil)
 	}
 
@@ -279,7 +267,7 @@ func (a *Application) onNewOrderSingle(msg newordersingle.NewOrderSingle, sessio
 	data := KafkaOrder{
 		ClOrdID:        clOrId,
 		ClientID:       partyId.String(),
-		UserID:         strconv.Itoa(int(client.ID)),
+		UserID:         user.ID.Hex(),
 		Underlying:     underlying,
 		ExpirationDate: expiryDate,
 		StrikePrice:    strikePriceFloat,
@@ -306,17 +294,15 @@ func (a Application) broadcastInstrumentList(currency string) {
 
 func (a *Application) onOrderUpdateRequest(msg ordercancelreplacerequest.OrderCancelReplaceRequest, sessionID quickfix.SessionID) quickfix.MessageRejectError {
 	fmt.Println("onOrderUpdateRequest")
-	clientId := ""
+	userId := ""
 	for i, v := range userSession {
 		if v.String() == sessionID.String() {
-			clientId = i
+			userId = i
 		}
 	}
 
-	strClientId, _ := strconv.Atoi(clientId)
-	var client model.Client
-	res := a.DB.Where(model.Client{ID: uint(strClientId)}).Find(&client)
-	if res.Error != nil {
+	user, e := a.AuthRepository.FindById(context.TODO(), userId)
+	if e != nil {
 		return quickfix.NewMessageRejectError("Failed getting user", 1, nil)
 	}
 
@@ -373,7 +359,7 @@ func (a *Application) onOrderUpdateRequest(msg ordercancelreplacerequest.OrderCa
 	data := KafkaOrder{
 		ID:             orderId,
 		ClientID:       partyId.String(),
-		UserID:         strconv.Itoa(int(client.ID)),
+		UserID:         user.ID.Hex(),
 		Amount:         amountFloat,
 		Price:          priceFloat,
 		Side:           "EDIT",
@@ -392,17 +378,15 @@ func (a *Application) onOrderUpdateRequest(msg ordercancelreplacerequest.OrderCa
 }
 
 func (a *Application) onOrderCancelRequest(msg ordercancelrequest.OrderCancelRequest, sessionID quickfix.SessionID) quickfix.MessageRejectError {
-	clientId := ""
+	userId := ""
 	for i, v := range userSession {
 		if v.String() == sessionID.String() {
-			clientId = i
+			userId = i
 		}
 	}
 
-	strClientId, _ := strconv.Atoi(clientId)
-	var client model.Client
-	res := a.DB.Where(model.Client{ID: uint(strClientId)}).Find(&client)
-	if res.Error != nil {
+	user, e := a.AuthRepository.FindById(context.TODO(), userId)
+	if e != nil {
 		return quickfix.NewMessageRejectError("Failed getting user", 1, nil)
 	}
 
@@ -423,7 +407,7 @@ func (a *Application) onOrderCancelRequest(msg ordercancelrequest.OrderCancelReq
 		ID:       orderId,
 		ClOrdID:  clOrdID,
 		ClientID: partyId.String(),
-		UserID:   strconv.Itoa(int(client.ID)),
+		UserID:   user.ID.Hex(),
 		Side:     "CANCEL",
 	}
 	if err := quickfix.SendToTarget(msg, sessionID); err != nil {

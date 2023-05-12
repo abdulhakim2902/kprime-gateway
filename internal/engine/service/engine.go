@@ -129,7 +129,7 @@ func (svc engineHandler) HandleConsumeQuote(msg *sarama.ConsumerMessage) {
 	}
 
 	//save to redis
-	svc.redis.Set("ENGINE-"+_instrument, string(jsonBytes))
+	svc.redis.Set("QUOTE-"+_instrument, string(jsonBytes))
 
 	//broadcast to websocket
 
@@ -233,6 +233,11 @@ func (svc engineHandler) PublishOrder(data _engineType.EngineResponse) {
 					State:          element.Status,
 					Timestamp:      utils.MakeTimestamp(element.CreatedAt),
 					TradeId:        element.ID,
+					Api:            true,
+					Label:          data.Order.Label,
+					TickDirection:  element.TickDirection,
+					TradeSequence:  element.TradeSequence,
+					IndexPrice:     element.IndexPrice,
 				})
 			}
 		}

@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"gateway/internal/auth/model"
 	"gateway/internal/auth/service"
+	authType "gateway/internal/auth/types"
 	deribitModel "gateway/internal/deribit/model"
 	deribitService "gateway/internal/deribit/service"
 	engService "gateway/internal/ws/engine/service"
@@ -78,6 +78,7 @@ func (svc wsHandler) PublicAuth(input interface{}, c *ws.Client) {
 		GrantType    string `json:"grant_type"`
 		ClientID     string `json:"client_id"`
 		ClientSecret string `json:"client_secret"`
+		RefreshToken string `json:"refresh_token"`
 	}
 
 	type WebsocketAuth struct {
@@ -96,24 +97,74 @@ func (svc wsHandler) PublicAuth(input interface{}, c *ws.Client) {
 		return
 	}
 
-	signedToken, err := svc.authSvc.APILogin(context.TODO(), model.APILoginRequest{
-		APIKey:    msg.Params.ClientID,
-		APISecret: msg.Params.ClientSecret,
-	})
-	if err != nil {
-		fmt.Println(err)
-		c.SendMessage(gin.H{"err": err.Error()}, ws.SendMessageParams{
-			ID:            msg.Id,
-			RequestedTime: requestedTime,
-		})
-		return
+	var res any
+	var err error
+
+	switch msg.Params.GrantType {
+	case "client_credentials":
+		payload := authType.AuthRequest{
+			APIKey:    msg.Params.ClientID,
+			APISecret: msg.Params.ClientSecret,
+		}
+
+		if payload.APIKey == "" || payload.APISecret == "" {
+			c.SendMessage(gin.H{"err": "invalid credential"}, ws.SendMessageParams{
+				ID:            msg.Id,
+				RequestedTime: requestedTime,
+			})
+			return
+		}
+
+		res, err = svc.authSvc.Login(context.TODO(), payload)
+		if err != nil {
+			if strings.Contains(err.Error(), "invalid credential") {
+				c.SendMessage(gin.H{"err": err.Error()}, ws.SendMessageParams{
+					ID:            msg.Id,
+					RequestedTime: requestedTime,
+				})
+				return
+			}
+
+			fmt.Println(err)
+			c.SendMessage(gin.H{"err": "something went wrong"}, ws.SendMessageParams{
+				ID:            msg.Id,
+				RequestedTime: requestedTime,
+			})
+			return
+		}
+	case "refresh_token":
+		if msg.Params.RefreshToken == "" {
+			c.SendMessage(gin.H{"err": "refresh_token is required"}, ws.SendMessageParams{
+				ID:            msg.Id,
+				RequestedTime: requestedTime,
+			})
+			return
+		}
+
+		claim, err := svc.authSvc.ClaimJWT(msg.Params.RefreshToken)
+		if err != nil {
+			c.SendMessage(gin.H{"err": err.Error()}, ws.SendMessageParams{
+				ID:            msg.Id,
+				RequestedTime: requestedTime,
+			})
+			return
+		}
+
+		res, err = svc.authSvc.RefreshToken(context.TODO(), claim)
+		if err != nil {
+			fmt.Println(err)
+			c.SendMessage(gin.H{"err": "something went wrong"}, ws.SendMessageParams{
+				ID:            msg.Id,
+				RequestedTime: requestedTime,
+			})
+			return
+		}
 	}
 
-	c.SendMessage(gin.H{"access_token": signedToken}, ws.SendMessageParams{
+	c.SendMessage(res, ws.SendMessageParams{
 		ID:            msg.Id,
 		RequestedTime: requestedTime,
 	})
-	return
 }
 
 func (svc wsHandler) PrivateBuy(input interface{}, c *ws.Client) {
@@ -146,7 +197,7 @@ func (svc wsHandler) PrivateBuy(input interface{}, c *ws.Client) {
 	}
 
 	// Check the Access Token
-	JWTData, err := svc.authSvc.JWTCheck(msg.Params.AccessToken)
+	claim, err := svc.authSvc.ClaimJWT(msg.Params.AccessToken)
 	if err != nil {
 		c.SendMessage(gin.H{"err": err.Error()}, ws.SendMessageParams{
 			ID:            msg.Id,
@@ -156,14 +207,14 @@ func (svc wsHandler) PrivateBuy(input interface{}, c *ws.Client) {
 		return
 	}
 
-	ID := utils.GetKeyFromIdUserID(msg.Id, JWTData.UserID)
+	ID := utils.GetKeyFromIdUserID(msg.Id, claim.UserID)
 	duplicateRpcID, errorMessage := c.RegisterRequestRpcIDS(ID, requestedTime)
 
 	if !duplicateRpcID {
 		c.SendMessage(gin.H{"err": errorMessage}, ws.SendMessageParams{
 			ID:            msg.Id,
 			RequestedTime: requestedTime,
-			UserID:        JWTData.UserID,
+			UserID:        claim.UserID,
 		})
 		return
 	}
@@ -171,7 +222,7 @@ func (svc wsHandler) PrivateBuy(input interface{}, c *ws.Client) {
 	// TODO: Validation
 
 	// Parse the Deribit BUY
-	_, err = svc.deribitSvc.DeribitParseBuy(context.TODO(), JWTData.UserID, deribitModel.DeribitRequest{
+	_, err = svc.deribitSvc.DeribitParseBuy(context.TODO(), claim.UserID, deribitModel.DeribitRequest{
 		InstrumentName: msg.Params.InstrumentName,
 		Amount:         msg.Params.Amount,
 		Type:           msg.Params.Type,
@@ -218,17 +269,17 @@ func (svc wsHandler) PrivateSell(input interface{}, c *ws.Client) {
 	}
 
 	// Check the Access Token
-	JWTData, err := svc.authSvc.JWTCheck(msg.Params.AccessToken)
+	claim, err := svc.authSvc.ClaimJWT(msg.Params.AccessToken)
 	if err != nil {
 		c.SendMessage(gin.H{"err": err.Error()}, ws.SendMessageParams{
 			ID:            msg.Id,
 			RequestedTime: requestedTime,
-			UserID:        JWTData.UserID,
+			UserID:        claim.UserID,
 		})
 		return
 	}
 
-	ID := utils.GetKeyFromIdUserID(msg.Id, JWTData.UserID)
+	ID := utils.GetKeyFromIdUserID(msg.Id, claim.UserID)
 
 	duplicateRpcID, errorMessage := c.RegisterRequestRpcIDS(ID, requestedTime)
 
@@ -236,7 +287,7 @@ func (svc wsHandler) PrivateSell(input interface{}, c *ws.Client) {
 		c.SendMessage(gin.H{"err": errorMessage}, ws.SendMessageParams{
 			ID:            msg.Id,
 			RequestedTime: requestedTime,
-			UserID:        JWTData.UserID,
+			UserID:        claim.UserID,
 		})
 		return
 	}
@@ -244,7 +295,7 @@ func (svc wsHandler) PrivateSell(input interface{}, c *ws.Client) {
 	// TODO: Validation
 
 	// Parse the Deribit Sell
-	_, err = svc.deribitSvc.DeribitParseSell(context.TODO(), JWTData.UserID, deribitModel.DeribitRequest{
+	_, err = svc.deribitSvc.DeribitParseSell(context.TODO(), claim.UserID, deribitModel.DeribitRequest{
 		InstrumentName: msg.Params.InstrumentName,
 		Amount:         msg.Params.Amount,
 		Type:           msg.Params.Type,
@@ -287,7 +338,7 @@ func (svc wsHandler) PrivateEdit(input interface{}, c *ws.Client) {
 	}
 
 	// Check the Access Token
-	JWTData, err := svc.authSvc.JWTCheck(msg.Params.AccessToken)
+	claim, err := svc.authSvc.ClaimJWT(msg.Params.AccessToken)
 	if err != nil {
 		c.SendMessage(gin.H{"err": err.Error()}, ws.SendMessageParams{
 			ID:            msg.Id,
@@ -296,7 +347,7 @@ func (svc wsHandler) PrivateEdit(input interface{}, c *ws.Client) {
 		return
 	}
 
-	ID := utils.GetKeyFromIdUserID(msg.Id, JWTData.UserID)
+	ID := utils.GetKeyFromIdUserID(msg.Id, claim.UserID)
 
 	duplicateRpcID, errorMessage := c.RegisterRequestRpcIDS(ID, requestedTime)
 
@@ -304,7 +355,7 @@ func (svc wsHandler) PrivateEdit(input interface{}, c *ws.Client) {
 		c.SendMessage(gin.H{"err": errorMessage}, ws.SendMessageParams{
 			ID:            msg.Id,
 			RequestedTime: requestedTime,
-			UserID:        JWTData.UserID,
+			UserID:        claim.UserID,
 		})
 		return
 	}
@@ -312,7 +363,7 @@ func (svc wsHandler) PrivateEdit(input interface{}, c *ws.Client) {
 	// TODO: Validation
 
 	// Parse the Deribit Sell
-	_, err = svc.deribitSvc.DeribitParseEdit(context.TODO(), JWTData.UserID, deribitModel.DeribitEditRequest{
+	_, err = svc.deribitSvc.DeribitParseEdit(context.TODO(), claim.UserID, deribitModel.DeribitEditRequest{
 		Id:      msg.Params.Id,
 		Price:   msg.Params.Price,
 		Amount:  msg.Params.Amount,
@@ -348,7 +399,7 @@ func (svc wsHandler) PrivateCancel(input interface{}, c *ws.Client) {
 	}
 
 	// Check the Access Token
-	JWTData, err := svc.authSvc.JWTCheck(msg.Params.AccessToken)
+	claim, err := svc.authSvc.ClaimJWT(msg.Params.AccessToken)
 	if err != nil {
 		c.SendMessage(gin.H{"err": err.Error()}, ws.SendMessageParams{
 			ID:            msg.Id,
@@ -357,7 +408,7 @@ func (svc wsHandler) PrivateCancel(input interface{}, c *ws.Client) {
 		return
 	}
 
-	ID := utils.GetKeyFromIdUserID(msg.Id, JWTData.UserID)
+	ID := utils.GetKeyFromIdUserID(msg.Id, claim.UserID)
 
 	duplicateRpcID, errorMessage := c.RegisterRequestRpcIDS(ID, requestedTime)
 
@@ -365,7 +416,7 @@ func (svc wsHandler) PrivateCancel(input interface{}, c *ws.Client) {
 		c.SendMessage(gin.H{"err": errorMessage}, ws.SendMessageParams{
 			ID:            msg.Id,
 			RequestedTime: requestedTime,
-			UserID:        JWTData.UserID,
+			UserID:        claim.UserID,
 		})
 		return
 	}
@@ -373,7 +424,7 @@ func (svc wsHandler) PrivateCancel(input interface{}, c *ws.Client) {
 	// TODO: Validation
 
 	// Parse the Deribit Sell
-	_, err = svc.deribitSvc.DeribitParseCancel(context.TODO(), JWTData.UserID, deribitModel.DeribitCancelRequest{
+	_, err = svc.deribitSvc.DeribitParseCancel(context.TODO(), claim.UserID, deribitModel.DeribitCancelRequest{
 		Id:      msg.Params.Id,
 		ClOrdID: strconv.FormatUint(msg.Id, 10),
 	})
@@ -407,7 +458,7 @@ func (svc wsHandler) PrivateCancelByInstrument(input interface{}, c *ws.Client) 
 	}
 
 	// Check the Access Token
-	JWTData, err := svc.authSvc.JWTCheck(msg.Params.AccessToken)
+	claim, err := svc.authSvc.ClaimJWT(msg.Params.AccessToken)
 	if err != nil {
 		c.SendMessage(gin.H{"err": err.Error()}, ws.SendMessageParams{
 			ID:            msg.Id,
@@ -416,7 +467,7 @@ func (svc wsHandler) PrivateCancelByInstrument(input interface{}, c *ws.Client) 
 		return
 	}
 
-	ID := utils.GetKeyFromIdUserID(msg.Id, JWTData.UserID)
+	ID := utils.GetKeyFromIdUserID(msg.Id, claim.UserID)
 
 	duplicateRpcID, errorMessage := c.RegisterRequestRpcIDS(ID, requestedTime)
 
@@ -424,7 +475,7 @@ func (svc wsHandler) PrivateCancelByInstrument(input interface{}, c *ws.Client) 
 		c.SendMessage(gin.H{"err": errorMessage}, ws.SendMessageParams{
 			ID:            msg.Id,
 			RequestedTime: requestedTime,
-			UserID:        JWTData.UserID,
+			UserID:        claim.UserID,
 		})
 		return
 	}
@@ -432,7 +483,7 @@ func (svc wsHandler) PrivateCancelByInstrument(input interface{}, c *ws.Client) 
 	// TODO: Validation
 
 	// Parse the Deribit Sell
-	_, err = svc.deribitSvc.DeribitCancelByInstrument(context.TODO(), JWTData.UserID, deribitModel.DeribitCancelByInstrumentRequest{
+	_, err = svc.deribitSvc.DeribitCancelByInstrument(context.TODO(), claim.UserID, deribitModel.DeribitCancelByInstrumentRequest{
 		InstrumentName: msg.Params.InstrumentName,
 		ClOrdID:        strconv.FormatUint(msg.Id, 10),
 	})
@@ -476,7 +527,7 @@ func (svc wsHandler) PrivateCancelAll(input interface{}, c *ws.Client) {
 	}
 
 	// Check the Access Token
-	JWTData, err := svc.authSvc.JWTCheck(msg.Params.AccessToken)
+	claim, err := svc.authSvc.ClaimJWT(msg.Params.AccessToken)
 	if err != nil {
 		c.SendMessage(gin.H{"err": err.Error()}, ws.SendMessageParams{
 			ID:            msg.Id,
@@ -485,7 +536,7 @@ func (svc wsHandler) PrivateCancelAll(input interface{}, c *ws.Client) {
 		return
 	}
 
-	ID := utils.GetKeyFromIdUserID(msg.Id, JWTData.UserID)
+	ID := utils.GetKeyFromIdUserID(msg.Id, claim.UserID)
 
 	duplicateRpcID, errorMessage := c.RegisterRequestRpcIDS(ID, requestedTime)
 
@@ -493,7 +544,7 @@ func (svc wsHandler) PrivateCancelAll(input interface{}, c *ws.Client) {
 		c.SendMessage(gin.H{"err": errorMessage}, ws.SendMessageParams{
 			ID:            msg.Id,
 			RequestedTime: requestedTime,
-			UserID:        JWTData.UserID,
+			UserID:        claim.UserID,
 		})
 		return
 	}
@@ -501,7 +552,7 @@ func (svc wsHandler) PrivateCancelAll(input interface{}, c *ws.Client) {
 	// TODO: Validation
 
 	// Parse the Deribit Sell
-	_, err = svc.deribitSvc.DeribitParseCancelAll(context.TODO(), JWTData.UserID, deribitModel.DeribitCancelAllRequest{
+	_, err = svc.deribitSvc.DeribitParseCancelAll(context.TODO(), claim.UserID, deribitModel.DeribitCancelAllRequest{
 		ClOrdID: strconv.FormatUint(msg.Id, 10),
 	})
 	if err != nil {
@@ -742,7 +793,7 @@ func (svc wsHandler) PrivateGetUserTradesByInstrument(input interface{}, c *ws.C
 		msg.Params.Count = 10
 	}
 
-	JWTData, err := svc.authSvc.JWTCheck(msg.Params.AccessToken)
+	claim, err := svc.authSvc.ClaimJWT(msg.Params.AccessToken)
 	if err != nil {
 		fmt.Println(err)
 		c.SendMessage(gin.H{"err": err.Error()}, ws.SendMessageParams{
@@ -755,7 +806,7 @@ func (svc wsHandler) PrivateGetUserTradesByInstrument(input interface{}, c *ws.C
 
 	res := svc.wsTradeSvc.GetUserTradesByInstrument(
 		context.TODO(),
-		JWTData.UserID,
+		claim.UserID,
 		deribitModel.DeribitGetUserTradesByInstrumentsRequest{
 			InstrumentName: msg.Params.InstrumentName,
 			Count:          msg.Params.Count,
@@ -811,7 +862,7 @@ func (svc wsHandler) PrivateGetOpenOrdersByInstrument(input interface{}, c *ws.C
 		msg.Params.Type = "all"
 	}
 
-	JWTData, err := svc.authSvc.JWTCheck(msg.Params.AccessToken)
+	claim, err := svc.authSvc.ClaimJWT(msg.Params.AccessToken)
 	if err != nil {
 		fmt.Println(err)
 		c.SendMessage(gin.H{"err": err.Error()}, ws.SendMessageParams{
@@ -824,7 +875,7 @@ func (svc wsHandler) PrivateGetOpenOrdersByInstrument(input interface{}, c *ws.C
 
 	res := svc.wsOSvc.GetOpenOrdersByInstrument(
 		context.TODO(),
-		JWTData.UserID,
+		claim.UserID,
 		deribitModel.DeribitGetOpenOrdersByInstrumentRequest{
 			InstrumentName: msg.Params.InstrumentName,
 			Type:           msg.Params.Type,
@@ -880,7 +931,7 @@ func (svc wsHandler) PrivateGetOrderHistoryByInstrument(input interface{}, c *ws
 		msg.Params.Count = 20
 	}
 
-	JWTData, err := svc.authSvc.JWTCheck(msg.Params.AccessToken)
+	claim, err := svc.authSvc.ClaimJWT(msg.Params.AccessToken)
 	if err != nil {
 		fmt.Println(err)
 		c.SendMessage(gin.H{"err": err.Error()}, ws.SendMessageParams{
@@ -893,7 +944,7 @@ func (svc wsHandler) PrivateGetOrderHistoryByInstrument(input interface{}, c *ws
 
 	res := svc.wsOSvc.GetGetOrderHistoryByInstrument(
 		context.TODO(),
-		JWTData.UserID,
+		claim.UserID,
 		deribitModel.DeribitGetOrderHistoryByInstrumentRequest{
 			InstrumentName:  msg.Params.InstrumentName,
 			Count:           msg.Params.Count,

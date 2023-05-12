@@ -2,13 +2,11 @@ package service
 
 import (
 	"context"
-	"gateway/internal/auth/model"
+	"gateway/internal/auth/types"
 )
 
 type IAuthService interface {
-	Login(context.Context, model.LoginRequest) (string, error)
-	AdminLogin(context.Context, model.LoginRequest) (string, uint, error)
-	APILogin(context.Context, model.APILoginRequest) (string, error)
-	Logout(context.Context) error
-	JWTCheck(string) (model.JWTData, error)
+	Login(context.Context, types.AuthRequest) (*types.AuthResponse, error)
+	RefreshToken(context.Context, types.JwtClaim) (*types.AuthResponse, error)
+	ClaimJWT(string) (types.JwtClaim, error)
 }

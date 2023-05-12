@@ -4,116 +4,80 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"gateway/internal/auth/model"
-	"gateway/internal/auth/repository"
+	"gateway/internal/auth/types"
+	"gateway/internal/repositories"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt"
-
-	"golang.org/x/crypto/bcrypt"
 )
 
 type AuthService struct {
-	repo repository.IAuthRepo
+	repo *repositories.AuthRepository
 }
 
-func NewAuthService(repo repository.IAuthRepo) IAuthService {
+func NewAuthService(repo *repositories.AuthRepository) IAuthService {
 	return &AuthService{repo}
 }
 
-func (s AuthService) Login(ctx context.Context, data model.LoginRequest) (signedToken string, err error) {
-	user, err := s.repo.GetOneUserByEmail(ctx, data.Email)
-	if err != nil {
-		return "", err
-	}
-	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(data.Password))
-	if err != nil {
-		return "", bcrypt.ErrMismatchedHashAndPassword
+func (s AuthService) Login(ctx context.Context, req types.AuthRequest) (res *types.AuthResponse, err error) {
+	var user *types.User
+	user, err = s.repo.FindByAPIKeyAndSecret(ctx, req.APIKey, req.APISecret)
+	if err != nil && !strings.Contains(err.Error(), "no documents in result") {
+		fmt.Printf("err:%+v\n", err)
+		return
 	}
 
-	authToken, err := s.repo.GenerateAuthDetail(ctx, user.ID)
-	claim := jwt.MapClaims{
-		"exp":      time.Now().Add(time.Hour * 3).Unix(),
-		"iat":      time.Now().Unix(),
-		"userID":   user.ID,
-		"role":     user.Role.Name,
-		"authUUID": authToken.AuthUUID,
+	if user == nil {
+		return nil, errors.New("invalid credential")
 	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claim)
 
-	jwtKey := os.Getenv("JWT_KEY")
-	signedToken, err = token.SignedString([]byte(jwtKey))
+	accessToken, refreshToken, accessTokenExp, err := s.generateToken(user.ID.Hex())
 	if err != nil {
-		return "", err
+		return nil, errors.New("failed to generate token")
 	}
-	return signedToken, nil
+
+	return &types.AuthResponse{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+		ExpiresIn:    int64(accessTokenExp),
+		Scope:        "connection mainaccount",
+		TokenType:    "bearer",
+	}, nil
 }
 
-func (s AuthService) AdminLogin(ctx context.Context, data model.LoginRequest) (signedToken string, dataId uint, err error) {
-	admin, err := s.repo.GetAdminByEmail(ctx, data.Email)
-	if err != nil {
-		return "", 0, err
+func (s AuthService) RefreshToken(ctx context.Context, claim types.JwtClaim) (res *types.AuthResponse, err error) {
+	var user *types.User
+	user, err = s.repo.FindById(ctx, claim.UserID)
+	if err != nil && !strings.Contains(err.Error(), "no documents in result") {
+		fmt.Printf("err:%+v\n", err)
+		return
 	}
-	err = bcrypt.CompareHashAndPassword([]byte(admin.Password), []byte(data.Password))
-	if err != nil {
-		return "", 0, bcrypt.ErrMismatchedHashAndPassword
-	}
-	authToken, err := s.repo.GenerateAuthDetail(ctx, admin.ID)
-	claim := jwt.MapClaims{
-		"exp":      time.Now().Add(time.Hour * 3).Unix(),
-		"iat":      time.Now().Unix(),
-		"userID":   admin.ID,
-		"role":     admin.Role.Name,
-		"authUUID": authToken.AuthUUID,
-	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claim)
 
-	jwtKey := os.Getenv("JWT_KEY")
-	signedToken, err = token.SignedString([]byte(jwtKey))
-	if err != nil {
-		return "", 0, err
+	if user == nil {
+		return nil, errors.New("invalid refresh token")
 	}
-	return signedToken, admin.ID, nil
+
+	accessToken, refreshToken, accessTokenExp, err := s.generateToken(user.ID.Hex())
+	if err != nil {
+		return nil, errors.New("failed to generate token")
+	}
+
+	return &types.AuthResponse{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+		ExpiresIn:    int64(accessTokenExp),
+		Scope:        "connection mainaccount",
+		TokenType:    "bearer",
+	}, nil
 }
 
-func (s AuthService) APILogin(ctx context.Context, data model.APILoginRequest) (signedToken string, err error) {
-	admin, err := s.repo.GetOneUserByAPIKey(ctx, data.APIKey)
-	if err != nil {
-		return "", err
-	}
-	err = bcrypt.CompareHashAndPassword([]byte(admin.APISecret), []byte(data.APISecret))
-	if err != nil {
-		return "", bcrypt.ErrMismatchedHashAndPassword
-	}
-	authToken, err := s.repo.GenerateAuthDetail(ctx, admin.ID)
-	claim := jwt.MapClaims{
-		"exp":      time.Now().Add(time.Hour * 3).Unix(),
-		"iat":      time.Now().Unix(),
-		"userID":   admin.ID,
-		"role":     admin.Role.Name,
-		"authUUID": authToken.AuthUUID,
-	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claim)
-
+func (s AuthService) ClaimJWT(jwtToken string) (types.JwtClaim, error) {
 	jwtKey := os.Getenv("JWT_KEY")
-	signedToken, err = token.SignedString([]byte(jwtKey))
-	if err != nil {
-		return "", err
-	}
-	return signedToken, nil
-}
 
-func (s AuthService) Logout(ctx context.Context) error {
-	s.repo.InvalidateToken(ctx, ctx.Value("userID").(uint), ctx.Value("authUUID").(string))
-	return nil
-}
-
-func (s AuthService) JWTCheck(jwtToken string) (model.JWTData, error) {
-	jwtKey := os.Getenv("JWT_KEY")
-	tokenString := jwtToken
-	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+	token, err := jwt.Parse(jwtToken, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, errors.New("unexpected signing method")
 		}
@@ -121,20 +85,56 @@ func (s AuthService) JWTCheck(jwtToken string) (model.JWTData, error) {
 	})
 
 	if err != nil || !token.Valid {
-		return model.JWTData{}, errors.New("Invalid token")
+		if strings.Contains(err.Error(), "Token is expired") {
+			return types.JwtClaim{}, errors.New("token is expired")
+		}
+		return types.JwtClaim{}, errors.New("invalid token")
 	}
 
 	claims := token.Claims.(jwt.MapClaims)
-	fmt.Println(claims["userID"])
 
-	userIdFloat, ok := claims["userID"].(float64)
+	userId, ok := claims["userID"].(string)
 	if !ok {
-		return model.JWTData{}, errors.New("Error: val is not a string")
+		return types.JwtClaim{}, errors.New("invalid token")
 	}
 
-	userIDStr := strconv.FormatFloat(userIdFloat, 'f', 0, 64)
-
-	return model.JWTData{
-		UserID: userIDStr,
+	return types.JwtClaim{
+		UserID: userId,
 	}, nil
+}
+
+func (s AuthService) generateToken(userId string) (accessToken, refreshToken string, accessTokenExp int, err error) {
+	// JWT Secret
+	jwtKey := os.Getenv("JWT_KEY")
+
+	// Access Token
+	accessTokenExp, err = strconv.Atoi(os.Getenv("JWT_REMEMBER_TOKEN_EXPIRE"))
+	accessTokenClaim := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"exp":    time.Now().Add(time.Second * time.Duration(accessTokenExp)).Unix(),
+		"iat":    time.Now().Unix(),
+		"userID": userId,
+	})
+
+	accessToken, err = accessTokenClaim.SignedString([]byte(jwtKey))
+	if err != nil {
+		fmt.Printf("err:%+v\n", err)
+		return
+	}
+
+	// Refresh Token
+	var refreshTokenExp int
+	refreshTokenExp, err = strconv.Atoi(os.Getenv("JWT_REMEMBER_REFRESH_TOKEN_EXPIRE"))
+	refreshTokenClaim := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"exp":    time.Now().Add(time.Second * time.Duration(refreshTokenExp)).Unix(),
+		"iat":    time.Now().Unix(),
+		"userID": userId,
+	})
+
+	refreshToken, err = refreshTokenClaim.SignedString([]byte(jwtKey))
+	if err != nil {
+		fmt.Printf("err:%+v\n", err)
+		return
+	}
+
+	return
 }
