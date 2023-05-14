@@ -16,6 +16,7 @@ setInterval(function () {
   App.orders.fetch({ reset: true });
   App.executions.fetch({ reset: true });
   App.instruments.fetch({ reset: true });
+  App.marketdata.fetch({ reset: true });
 
 }, 1000);
 
@@ -134,6 +135,7 @@ App.Router = Backbone.Router.extend({
     "orders": "index",
     "executions": "executions",
     "instruments": "instruments",
+    "marketdata": "marketdata",
     "secdefs": "secdefs",
     "marketdata": "marketdata",
     "orders/:id": "orderDetails",
@@ -175,6 +177,10 @@ App.Models.Execution = Backbone.Model.extend({
 
 App.Models.Instruments = Backbone.Model.extend({
   urlRoot: "/instruments"
+});
+
+App.Models.MarketData = Backbone.Model.extend({
+  urlRoot: "/marketdata"
 });
 
 App.Models.SecurityDefinitionRequest = Backbone.Model.extend({

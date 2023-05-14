@@ -34,6 +34,7 @@ type fixFactory interface {
 
 type fixApp interface {
 	GetAllSecurityList() []basic.Instruments
+	GetMarketData() []basic.MarketData
 }
 
 type tradeClient struct {
@@ -89,6 +90,16 @@ func (c tradeClient) SecurityListAsJSON() (string, error) {
 	defer c.RUnlock()
 
 	b, err := json.Marshal(c.GetAllSecurityList())
+	return string(b), err
+}
+
+func (c tradeClient) MarketDataAsJSON() (string, error) {
+	fmt.Println("marketdata as json")
+
+	c.RLock()
+	defer c.RUnlock()
+
+	b, err := json.Marshal(c.GetMarketData())
 	return string(b), err
 }
 
@@ -181,6 +192,25 @@ func (c tradeClient) getInstruments(w http.ResponseWriter, r *http.Request) {
 	fmt.Println(string(b))
 	if string(b) == "null" {
 		b = []byte("[no instruments]")
+	}
+	w.Header().Set("Content-Type", "application/json")
+	fmt.Fprint(w, string(b))
+}
+
+func (c tradeClient) getMarketData(w http.ResponseWriter, r *http.Request) {
+
+	c.RLock()
+	defer c.RUnlock()
+
+	b, err := json.Marshal(c.GetMarketData())
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+
+	fmt.Println(string(b))
+	if string(b) == "null" {
+		b = []byte("[no market data]")
 	}
 	w.Header().Set("Content-Type", "application/json")
 	fmt.Fprint(w, string(b))
@@ -495,6 +525,7 @@ func main() {
 	router.HandleFunc("/orders/{id:[0-9]+}", app.deleteOrder).Methods("DELETE")
 
 	router.HandleFunc("/instruments", app.getInstruments).Methods("GET")
+	router.HandleFunc("/marketdata", app.getMarketData).Methods("GET")
 
 	router.HandleFunc("/executions", app.getExecutions).Methods("GET")
 	router.HandleFunc("/executions/{id:[0-9]+}", app.getExecution).Methods("GET")

@@ -102,6 +102,7 @@ type MarketDataResponse struct {
 	Contract       string  `json:"contract"`
 	Price          float64 `json:"price"`
 	Amount         float64 `json:"amount"`
+	Date           string  `json:"date"`
 }
 
 type Orderbook struct {
@@ -473,6 +474,7 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 					Side:   "ASK",
 					InstrumentName: ask.Underlying + "-" + ask.ExpirationDate + "-" + strconv.FormatFloat(ask.StrikePrice, 'f', 2, 64) +
 						"-" + ask.Contracts,
+					Date: ask.CreatedAt.String(),
 				})
 			}
 		}
@@ -486,6 +488,7 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 					Side:   "BID",
 					InstrumentName: bid.Underlying + "-" + bid.ExpirationDate + "-" + strconv.FormatFloat(bid.StrikePrice, 'f', 2, 64) +
 						"-" + bid.Contracts,
+					Date: bid.CreatedAt.String(),
 				})
 			}
 
@@ -500,6 +503,7 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 					Side:   "TRADE",
 					InstrumentName: trade.Underlying + "-" + trade.ExpiryDate + "-" + strconv.FormatFloat(trade.StrikePrice, 'f', 2, 64) +
 						"-" + string(trade.Contracts),
+					Date: trade.CreatedAt.String(),
 				})
 			}
 		}
@@ -510,6 +514,16 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 	grp := marketdatasnapshotfullrefresh.NewNoMDEntriesRepeatingGroup()
 	for _, res := range response {
 		row := grp.Add()
+		row.SetMDEntryType(enum.MDEntryType(res.Side))
+		row.SetMDEntrySize(decimal.NewFromFloat(res.Amount), 2)
+		row.SetMDEntryPx(decimal.NewFromFloat(res.Price), 2)
+		row.SetMDEntryDate(res.Date)
+	}
+	snap.SetNoMDEntries(grp)
+	error := quickfix.SendToTarget(snap, sessionID)
+	fmt.Println("replying to market data request")
+	if error != nil {
+		fmt.Println(error.Error())
 	}
 	return
 }

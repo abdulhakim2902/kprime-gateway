@@ -11,6 +11,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/quickfixgo/enum"
 	"github.com/quickfixgo/field"
+	"github.com/quickfixgo/fix44/marketdatasnapshotfullrefresh"
 	"github.com/quickfixgo/fix44/securitylist"
 	"github.com/quickfixgo/tag"
 	"github.com/quickfixgo/traderui/oms"
@@ -31,7 +32,17 @@ type Instruments struct {
 	SecurityStatus string  `json:"security_status"`
 }
 
+type MarketData struct {
+	InstrumentName string  `json:"instrumentName"`
+	Side           string  `json:"side"`
+	Contract       string  `json:"contract"`
+	Price          float64 `json:"price"`
+	Amount         float64 `json:"amount"`
+	Date           string  `json:"date"`
+}
+
 var instruments []Instruments
+var marketData []MarketData
 
 // FIXApplication implements a basic quickfix.Application
 type FIXApplication struct {
@@ -89,6 +100,9 @@ func (a *FIXApplication) FromApp(msg *quickfix.Message, sessionID quickfix.Sessi
 	case enum.MsgType_SECURITY_LIST:
 		fmt.Println("Security List")
 		return a.onSecurityList(msg, sessionID)
+	case enum.MsgType_MARKET_DATA_SNAPSHOT_FULL_REFRESH:
+		fmt.Println("Market Data Snapshot Full Refresh")
+		return a.onMarketDataSnapshot(msg, sessionID)
 	}
 
 	return quickfix.UnsupportedMessageType()
@@ -252,4 +266,60 @@ func (a *FIXApplication) onExecutionReport(msg *quickfix.Message, sessionID quic
 func (a FIXApplication) GetAllSecurityList() []Instruments {
 	fmt.Println("Instrument List: ", len(instruments))
 	return instruments
+}
+
+func (a FIXApplication) GetMarketData() []MarketData {
+	fmt.Println("Market Data: ", len(marketData))
+	return marketData
+}
+
+func (a FIXApplication) onMarketDataSnapshot(msg *quickfix.Message, sessionID quickfix.SessionID) quickfix.MessageRejectError {
+	a.Lock()
+	defer a.Unlock()
+
+	var symbol field.SymbolField
+	if err := msg.Body.Get(&symbol); err != nil {
+		return err
+	}
+
+	var mdEntries marketdatasnapshotfullrefresh.NoMDEntriesRepeatingGroup
+	if err := msg.Body.GetGroup(&mdEntries); err != nil {
+		return err
+	}
+
+	sym, _ := msg.Body.GetString(tag.Symbol)
+
+	for i := 0; i < mdEntries.Len(); i++ {
+		entry := mdEntries.Get(i)
+		entryType, err := entry.GetMDEntryType()
+		if err != nil {
+			fmt.Println("Error getting the entry type: ", err)
+		}
+
+		entrySize, err := entry.GetMDEntrySize()
+		if err != nil {
+			fmt.Println("Error getting the entry size: ", err)
+		}
+
+		entryPx, err := entry.GetMDEntryPx()
+		if err != nil {
+			fmt.Println("Error getting the entry price: ", err)
+		}
+
+		entryDate, err := entry.GetMDEntryDate()
+		if err != nil {
+			fmt.Println("Error getting the entry date: ", err)
+		}
+
+		marketData = append(marketData, MarketData{
+			InstrumentName: sym,
+			Side:           string(entryType),
+			Amount:         entrySize.InexactFloat64(),
+			Price:          entryPx.InexactFloat64(),
+			Date:           entryDate,
+		})
+
+	}
+
+	return nil
 }
