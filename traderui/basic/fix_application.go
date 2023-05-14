@@ -277,11 +277,6 @@ func (a FIXApplication) onMarketDataSnapshot(msg *quickfix.Message, sessionID qu
 	a.Lock()
 	defer a.Unlock()
 
-	var symbol field.SymbolField
-	if err := msg.Body.Get(&symbol); err != nil {
-		return err
-	}
-
 	var mdEntries marketdatasnapshotfullrefresh.NoMDEntriesRepeatingGroup
 	if err := msg.Body.GetGroup(&mdEntries); err != nil {
 		return err

@@ -438,9 +438,10 @@ func (c tradeClient) onMarketDataRequest(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	fmt.Println("type", mktDataRequest.SecurityRequestType)
 	msg := marketdatarequest.New(
 		field.NewMDReqID("1"),
-		field.NewSubscriptionRequestType(enum.SubscriptionRequestType(mktDataRequest.SecurityRequestType)),
+		field.NewSubscriptionRequestType(enum.SubscriptionRequestType(mktDataRequest.SubscriptionRequestType)),
 		field.NewMarketDepth(0),
 	)
 

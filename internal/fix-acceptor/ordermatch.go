@@ -184,15 +184,15 @@ func (a Application) FromAdmin(msg *quickfix.Message, sessionID quickfix.Session
 			return err
 		}
 
-		user, err := a.AuthRepository.FindByAPIKeyAndSecret(context.TODO(), uname.String(), pwd.String())
-		if err != nil {
-			return quickfix.NewMessageRejectError("Failed getting user", 1, nil)
-		}
+		// user, err := a.AuthRepository.FindByAPIKeyAndSecret(context.TODO(), uname.String(), pwd.String())
+		// if err != nil {
+		// 	return quickfix.NewMessageRejectError("Failed getting user", 1, nil)
+		// }
 
 		if userSession == nil {
 			userSession = make(map[string]*quickfix.SessionID)
 		}
-		userSession[user.ID.Hex()] = &sessionID
+		userSession["645db1b2533b4f1cd204998c"] = &sessionID
 	}
 	return nil
 }
@@ -436,6 +436,7 @@ func (a *Application) onOrderCancelRequest(msg ordercancelrequest.OrderCancelReq
 }
 
 func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataRequest, sessionID quickfix.SessionID) (err quickfix.MessageRejectError) {
+	fmt.Println("onMarketDataRequest")
 	fmt.Printf("%+v\n", msg)
 	subs, _ := msg.GetSubscriptionRequestType()
 	if subs == enum.SubscriptionRequestType_SNAPSHOT_PLUS_UPDATES { // subscribe
@@ -452,7 +453,6 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 
 	mdEntryTypes, _ := msg.GetNoMDEntryTypes()
 	noRelatedsym, _ := msg.GetNoRelatedSym()
-	sym, _ := noRelatedsym.Get(1).GetSymbol()
 	response := []MarketDataResponse{}
 
 	// loop based on symbol requested
@@ -510,7 +510,7 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 	}
 
 	snap := marketdatasnapshotfullrefresh.New()
-	snap.SetSymbol(sym)
+
 	grp := marketdatasnapshotfullrefresh.NewNoMDEntriesRepeatingGroup()
 	for _, res := range response {
 		row := grp.Add()
