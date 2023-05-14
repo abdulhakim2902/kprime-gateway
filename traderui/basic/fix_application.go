@@ -277,7 +277,7 @@ func (a FIXApplication) onMarketDataSnapshot(msg *quickfix.Message, sessionID qu
 	a.Lock()
 	defer a.Unlock()
 
-	var mdEntries marketdatasnapshotfullrefresh.NoMDEntriesRepeatingGroup
+	mdEntries := marketdatasnapshotfullrefresh.NewNoMDEntriesRepeatingGroup()
 	if err := msg.Body.GetGroup(&mdEntries); err != nil {
 		return err
 	}
@@ -306,6 +306,7 @@ func (a FIXApplication) onMarketDataSnapshot(msg *quickfix.Message, sessionID qu
 			fmt.Println("Error getting the entry date: ", err)
 		}
 
+		fmt.Println("appending market data", sym, entryType, entrySize, entryPx, entryDate)
 		marketData = append(marketData, MarketData{
 			InstrumentName: sym,
 			Side:           string(entryType),
