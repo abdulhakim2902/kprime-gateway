@@ -48,7 +48,7 @@ func (svc engineHandler) HandleConsume(msg *sarama.ConsumerMessage) {
 	}
 
 	//convert instrument name
-	_instrument := data.Order.Underlying + "-" + data.Order.ExpiryDate + "-" + fmt.Sprintf("%.0f", data.Order.StrikePrice) + "-" + string(data.Order.Contracts[0])
+	_instrument := data.Matches.TakerOrder.Underlying + "-" + data.Matches.TakerOrder.ExpiryDate + "-" + fmt.Sprintf("%.0f", data.Matches.TakerOrder.StrikePrice) + "-" + string(data.Matches.TakerOrder.Contracts[0])
 
 	// Publish actions
 	switch data.Status {
@@ -57,7 +57,7 @@ func (svc engineHandler) HandleConsume(msg *sarama.ConsumerMessage) {
 	}
 
 	//check date if more than 3 days ago, remove from redis
-	checkDateToRemoveRedis(data.Order.ExpiryDate, _instrument, svc)
+	checkDateToRemoveRedis(data.Matches.TakerOrder.ExpiryDate, _instrument, svc)
 
 	//init redisDataArray variable
 	redisDataArray := []_engineType.EngineResponse{}
@@ -110,13 +110,13 @@ func (svc engineHandler) HandleConsumeQuote(msg *sarama.ConsumerMessage) {
 	}
 
 	//convert instrument name
-	_instrument := data.Order.Underlying + "-" + data.Order.ExpiryDate + "-" + fmt.Sprintf("%.0f", data.Order.StrikePrice) + "-" + string(data.Order.Contracts[0])
+	_instrument := data.Matches.TakerOrder.Underlying + "-" + data.Matches.TakerOrder.ExpiryDate + "-" + fmt.Sprintf("%.0f", data.Matches.TakerOrder.StrikePrice) + "-" + string(data.Matches.TakerOrder.Contracts[0])
 
 	_order := _orderbookTypes.GetOrderBook{
 		InstrumentName: _instrument,
-		Underlying:     data.Order.Underlying,
-		ExpiryDate:     data.Order.ExpiryDate,
-		StrikePrice:    data.Order.StrikePrice,
+		Underlying:     data.Matches.TakerOrder.Underlying,
+		ExpiryDate:     data.Matches.TakerOrder.ExpiryDate,
+		StrikePrice:    data.Matches.TakerOrder.StrikePrice,
 	}
 
 	initData, _ := svc.wsOBSvc.GetDataQuote(_order)
@@ -175,13 +175,13 @@ func checkDateToRemoveRedis(_expiryDate string, _instrument string, svc engineHa
 }
 
 func (svc engineHandler) PublishOrder(data _engineType.EngineResponse) {
-	instrumentName := data.Order.Underlying + "-" + data.Order.ExpiryDate + "-" + fmt.Sprintf("%.0f", data.Order.StrikePrice) + "-" + string(data.Order.Contracts[0])
+	instrumentName := data.Matches.TakerOrder.Underlying + "-" + data.Matches.TakerOrder.ExpiryDate + "-" + fmt.Sprintf("%.0f", data.Matches.TakerOrder.StrikePrice) + "-" + string(data.Matches.TakerOrder.Contracts[0])
 
 	tradePriceAvg, err := svc.tradeRepo.GetPriceAvg(
-		data.Order.Underlying,
-		data.Order.ExpiryDate,
-		string(data.Order.Contracts),
-		data.Order.StrikePrice,
+		data.Matches.TakerOrder.Underlying,
+		data.Matches.TakerOrder.ExpiryDate,
+		string(data.Matches.TakerOrder.Contracts),
+		data.Matches.TakerOrder.StrikePrice,
 	)
 	if err != nil {
 		fmt.Println("tradeRepo.GetPriceAvg:", err)
@@ -189,26 +189,26 @@ func (svc engineHandler) PublishOrder(data _engineType.EngineResponse) {
 	}
 
 	order := _engineType.BuySellEditCancelOrder{
-		OrderState:          types.OrderStatus(data.Order.Status),
-		Usd:                 data.Order.Price,
-		FilledAmount:        data.Order.FilledAmount,
+		OrderState:          types.OrderStatus(data.Matches.TakerOrder.Status),
+		Usd:                 data.Matches.TakerOrder.Price,
+		FilledAmount:        data.Matches.TakerOrder.FilledAmount,
 		InstrumentName:      instrumentName,
-		Direction:           types.Side(data.Order.Side),
-		LastUpdateTimestamp: utils.MakeTimestamp(data.Order.UpdatedAt),
-		Price:               data.Order.Price,
-		Replaced:            len(data.Order.Amendments) > 0,
-		Amount:              data.Order.Amount,
-		OrderId:             data.Order.ID,
-		OrderType:           types.Type(data.Order.Type),
-		TimeInForce:         types.TimeInForce(data.Order.TimeInForce),
-		CreationTimestamp:   utils.MakeTimestamp(data.Order.CreatedAt),
-		Label:               data.Order.Label,
+		Direction:           types.Side(data.Matches.TakerOrder.Side),
+		LastUpdateTimestamp: utils.MakeTimestamp(data.Matches.TakerOrder.UpdatedAt),
+		Price:               data.Matches.TakerOrder.Price,
+		Replaced:            len(data.Matches.TakerOrder.Amendments) > 0,
+		Amount:              data.Matches.TakerOrder.Amount,
+		OrderId:             data.Matches.TakerOrder.ID,
+		OrderType:           types.Type(data.Matches.TakerOrder.Type),
+		TimeInForce:         types.TimeInForce(data.Matches.TakerOrder.TimeInForce),
+		CreationTimestamp:   utils.MakeTimestamp(data.Matches.TakerOrder.CreatedAt),
+		Label:               data.Matches.TakerOrder.Label,
 		Api:                 true,
-		CancelReason:        data.Order.CancelledReason.String(),
+		CancelReason:        data.Matches.TakerOrder.CancelledReason.String(),
 		AveragePrice:        tradePriceAvg,
 	}
-	userIDStr := fmt.Sprintf("%v", data.Order.UserID)
-	ClOrdID := fmt.Sprintf("%v", data.Order.ClOrdID)
+	userIDStr := fmt.Sprintf("%v", data.Matches.TakerOrder.UserID)
+	ClOrdID := fmt.Sprintf("%v", data.Matches.TakerOrder.ClOrdID)
 	ID, _ := strconv.ParseUint(ClOrdID, 0, 64)
 	connectionKey := utils.GetKeyFromIdUserID(ID, userIDStr)
 	switch data.Status {
@@ -228,14 +228,14 @@ func (svc engineHandler) PublishOrder(data _engineType.EngineResponse) {
 					Amount:         element.Amount,
 					Direction:      element.Side,
 					InstrumentName: instrumentName,
-					OrderId:        data.Order.ID,
-					OrderType:      types.Type(data.Order.Type),
+					OrderId:        data.Matches.TakerOrder.ID,
+					OrderType:      types.Type(data.Matches.TakerOrder.Type),
 					Price:          element.Price,
 					State:          element.Status,
 					Timestamp:      utils.MakeTimestamp(element.CreatedAt),
 					TradeId:        element.ID,
 					Api:            true,
-					Label:          data.Order.Label,
+					Label:          data.Matches.TakerOrder.Label,
 					TickDirection:  element.TickDirection,
 					TradeSequence:  element.TradeSequence,
 					IndexPrice:     element.IndexPrice,
