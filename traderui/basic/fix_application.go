@@ -307,7 +307,8 @@ func (a FIXApplication) onMarketDataSnapshot(msg *quickfix.Message, sessionID qu
 		}
 
 		fmt.Println("appending market data", sym, entryType, entrySize, entryPx, entryDate)
-		marketData = append(marketData, MarketData{
+
+		marketData = appendMarketData(MarketData{
 			InstrumentName: sym,
 			Side:           string(entryType),
 			Amount:         entrySize.InexactFloat64(),
@@ -318,4 +319,24 @@ func (a FIXApplication) onMarketDataSnapshot(msg *quickfix.Message, sessionID qu
 	}
 
 	return nil
+}
+
+func appendMarketData(market MarketData) []MarketData {
+	duplicate := false
+	fmt.Println("appending market data", market.Side)
+	if len(marketData) == 0 {
+		marketData = append(marketData, market)
+	} else {
+		for _, m := range marketData {
+			if m.InstrumentName == market.InstrumentName && m.Side == market.Side {
+				duplicate = true
+			}
+			fmt.Println("duplicate", duplicate)
+			if !duplicate {
+				marketData = append(marketData, market)
+			}
+		}
+	}
+
+	return marketData
 }

@@ -523,7 +523,7 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 	}
 
 	snap := marketdatasnapshotfullrefresh.New()
-
+	snap.SetSymbol(response[0].InstrumentName)
 	grp := marketdatasnapshotfullrefresh.NewNoMDEntriesRepeatingGroup()
 	fmt.Println("response", response)
 	for _, res := range response {

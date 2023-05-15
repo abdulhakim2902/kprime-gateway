@@ -791,9 +791,9 @@ App.Views.MarketDataRequest = Backbone.View.extend({
   <p>
   <div class='form-group'>
     <input type="checkbox" id="md_entry_type_1" name="md_entry_type_1" value="Bid">
-    <label for="md_entry_type_1"> Bid</label><br>
+    <label for="md_entry_type_1"> Ask</label><br>
     <input type="checkbox" id="md_entry_type_2" name="md_entry_type_2" value="Ask">
-    <label for="md_entry_type_2"> Ask</label><br>
+    <label for="md_entry_type_2"> Bid</label><br>
     <input type="checkbox" id="md_entry_type_3" name="md_entry_type_3" value="Trade">
     <label for="md_entry_type_3"> Trade</label><br>
   </div>
@@ -828,13 +828,17 @@ App.Views.MarketDataRequest = Backbone.View.extend({
     console.log("submit market data request")
     e.preventDefault();
     var req = new App.Models.MarketDataRequest();
+    const bid = this.$('input[name=md_entry_type_1]').is(':checked');
+    const ask = this.$('input[name=md_entry_type_2]').is(':checked');
+    const trade = this.$('input[name=md_entry_type_3]').is(':checked');
+    console.log(bid, ask, trade)
     req.set({
       session_id: this.$('select[name=session]').val(),
       subscription_request_type: this.$('select[name=subscription_request_type]').val(),
       symbol: this.$('input[name=symbol]').val(),
-      md_entry_type_1: this.$('input[name=md_entry_type_1]').val(),
-      md_entry_type_2: this.$('input[name=md_entry_type_2]').val(),
-      md_entry_type_3: this.$('input[name=md_entry_type_3]').val(),
+      md_entry_type_1: bid,
+      md_entry_type_2: ask,
+      md_entry_type_3: trade,
     });
     req.save();
   },

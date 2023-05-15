@@ -15,7 +15,7 @@ type MarketDataRequest struct {
 	Symbol                  string                   `json:"symbol"`
 	SubscriptionRequestType string                   `json:"subscription_request_type"`
 	MdEntryTypes            string                   `json:"md_entry_types"`
-	Ask                     string                   `json:"md_entry_type_2"`
-	Bid                     string                   `json:"md_entry_type_1"`
-	Trade                   string                   `json:"md_entry_type_3"`
+	Ask                     bool                     `json:"md_entry_type_2"`
+	Bid                     bool                     `json:"md_entry_type_1"`
+	Trade                   bool                     `json:"md_entry_type_3"`
 }

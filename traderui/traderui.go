@@ -446,19 +446,19 @@ func (c tradeClient) onMarketDataRequest(w http.ResponseWriter, r *http.Request)
 	mdEntryGrp := marketdatarequest.NewNoMDEntryTypesRepeatingGroup()
 
 	fmt.Println("mktDataRequest.Bid", mktDataRequest.Bid)
-	if mktDataRequest.Bid == "Bid" {
+	if mktDataRequest.Bid {
 		fmt.Println("adding bid")
 		mdEntryGrp.Add().SetMDEntryType(enum.MDEntryType_BID)
 	}
 
 	fmt.Println("mktDataRequest.Ask", mktDataRequest.Ask)
-	if mktDataRequest.Ask == "Ask" {
+	if mktDataRequest.Ask {
 		fmt.Println("adding ask")
 		mdEntryGrp.Add().SetMDEntryType(enum.MDEntryType_OFFER)
 	}
 
 	fmt.Println("mktDataRequest.Trade", mktDataRequest.Trade)
-	if mktDataRequest.Trade == "Trade" {
+	if mktDataRequest.Trade {
 		fmt.Println("adding trade")
 		mdEntryGrp.Add().SetMDEntryType(enum.MDEntryType_TRADE)
 	}

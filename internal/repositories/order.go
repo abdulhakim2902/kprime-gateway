@@ -366,12 +366,14 @@ func (r OrderRepository) GetOpenOrdersByInstrument(InstrumentName string, OrderT
 func (r OrderRepository) GetMarketData(instrumentName string, side string) (res []_deribitModel.DeribitResponse) {
 	splits := strings.Split(instrumentName, "-")
 	fmt.Println(splits, side)
-	// price, _ := strconv.ParseFloat(splits[2], 64)
+	price, _ := strconv.ParseFloat(splits[2], 64)
+	// contract := splits[3][0]
+	fmt.Println(price)
 	curr, err := r.collection.Find(context.Background(), bson.M{
-		"underlying": splits[0],
-		"expiryDate": splits[1],
-		// "strikePrice": price,
-		// "contracts":   splits[3],
+		"underlying":  splits[0],
+		"expiryDate":  splits[1],
+		"strikePrice": price,
+		// "contracts":   contract,
 		"side": side,
 	})
 	if err != nil {
