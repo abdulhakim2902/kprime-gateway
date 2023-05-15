@@ -539,6 +539,9 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 			}
 		}
 
+		if len(response) == 0 {
+			continue
+		}
 		snap := marketdatasnapshotfullrefresh.New()
 		snap.SetSymbol(response[0].InstrumentName)
 		reqId, _ := msg.GetMDReqID()
