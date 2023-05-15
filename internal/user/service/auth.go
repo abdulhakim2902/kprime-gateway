@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"gateway/internal/auth/types"
 	"gateway/internal/repositories"
+	"gateway/internal/user/types"
 	"os"
 	"strconv"
 	"strings"
@@ -15,10 +15,10 @@ import (
 )
 
 type AuthService struct {
-	repo *repositories.AuthRepository
+	repo *repositories.UserRepository
 }
 
-func NewAuthService(repo *repositories.AuthRepository) IAuthService {
+func NewAuthService(repo *repositories.UserRepository) IAuthService {
 	return &AuthService{repo}
 }
 

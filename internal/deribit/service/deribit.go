@@ -57,6 +57,9 @@ func (svc deribitService) DeribitParseBuy(ctx context.Context, userId string, da
 		Contracts:      _contracts,
 		TimeInForce:    _timeInForce,
 		Label:          data.Label,
+
+		OrderExclusions: data.OrderExclusions,
+		TypeInclusions:  data.TypeInclusions,
 	}
 
 	_buy, err := json.Marshal(buy)
@@ -105,6 +108,9 @@ func (svc deribitService) DeribitParseSell(ctx context.Context, userId string, d
 		Contracts:      _contracts,
 		TimeInForce:    _timeInForce,
 		Label:          data.Label,
+
+		OrderExclusions: data.OrderExclusions,
+		TypeInclusions:  data.TypeInclusions,
 	}
 
 	_sell, err := json.Marshal(sell)

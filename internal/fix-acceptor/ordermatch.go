@@ -119,7 +119,7 @@ type Orderbook struct {
 type Application struct {
 	*quickfix.MessageRouter
 	execID int
-	*repositories.AuthRepository
+	*repositories.UserRepository
 	*repositories.OrderRepository
 	*repositories.TradeRepository
 }
@@ -143,12 +143,12 @@ func newApplication() *Application {
 
 	mongoDb, _ := _mongo.InitConnection(os.Getenv("MONGO_URL"))
 	orderRepo := repositories.NewOrderRepository(mongoDb)
-	authRepo := repositories.NewAuthRepositoryRepository(mongoDb)
 	tradeRepo := repositories.NewTradeRepository(mongoDb)
+	userRepo := repositories.NewUserRepository(mongoDb)
 
 	app := &Application{
 		MessageRouter:   quickfix.NewMessageRouter(),
-		AuthRepository:  authRepo,
+		UserRepository:  userRepo,
 		OrderRepository: orderRepo,
 		TradeRepository: tradeRepo,
 	}
@@ -190,15 +190,15 @@ func (a Application) FromAdmin(msg *quickfix.Message, sessionID quickfix.Session
 			return err
 		}
 
-		// user, err := a.AuthRepository.FindByAPIKeyAndSecret(context.TODO(), uname.String(), pwd.String())
-		// if err != nil {
-		// 	return quickfix.NewMessageRejectError("Failed getting user", 1, nil)
-		// }
+		user, err := a.UserRepository.FindByAPIKeyAndSecret(context.TODO(), uname.String(), pwd.String())
+		if err != nil {
+			return quickfix.NewMessageRejectError("Failed getting user", 1, nil)
+		}
 
 		if userSession == nil {
 			userSession = make(map[string]*quickfix.SessionID)
 		}
-		userSession["645db1b2533b4f1cd204998c"] = &sessionID
+		userSession[user.ID] = &sessionID
 	}
 	return nil
 }
@@ -221,7 +221,7 @@ func (a *Application) onNewOrderSingle(msg newordersingle.NewOrderSingle, sessio
 		}
 	}
 
-	user, e := a.AuthRepository.FindById(context.TODO(), userId)
+	user, e := a.UserRepository.FindById(context.TODO(), userId)
 	if e != nil {
 		return quickfix.NewMessageRejectError("Failed getting user", 1, nil)
 	}
@@ -322,7 +322,7 @@ func (a *Application) onOrderUpdateRequest(msg ordercancelreplacerequest.OrderCa
 		}
 	}
 
-	user, e := a.AuthRepository.FindById(context.TODO(), userId)
+	user, e := a.UserRepository.FindById(context.TODO(), userId)
 	if e != nil {
 		return quickfix.NewMessageRejectError("Failed getting user", 1, nil)
 	}
@@ -406,7 +406,7 @@ func (a *Application) onOrderCancelRequest(msg ordercancelrequest.OrderCancelReq
 		}
 	}
 
-	user, e := a.AuthRepository.FindById(context.TODO(), userId)
+	user, e := a.UserRepository.FindById(context.TODO(), userId)
 	if e != nil {
 		return quickfix.NewMessageRejectError("Failed getting user", 1, nil)
 	}
