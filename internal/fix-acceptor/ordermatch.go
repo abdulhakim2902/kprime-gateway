@@ -103,6 +103,10 @@ type MarketDataResponse struct {
 	Price          float64 `json:"price"`
 	Amount         float64 `json:"amount"`
 	Date           string  `json:"date"`
+	Type           string  `json:"type"`
+	MakerID        string  `json:"makerId"`
+	TakerID        string  `json:"takerId"`
+	Status         string  `json:"status"`
 }
 
 type Orderbook struct {
@@ -484,10 +488,11 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 				response = append(response, MarketDataResponse{
 					Price:  ask.Price,
 					Amount: ask.Amount,
-					Side:   "ASK",
+					Side:   ask.Side,
 					InstrumentName: ask.Underlying + "-" + ask.ExpirationDate + "-" + strconv.FormatFloat(ask.StrikePrice, 'f', 2, 64) +
 						"-" + ask.Contracts,
 					Date: ask.CreatedAt.String(),
+					Type: "ASK",
 				})
 			}
 		}
@@ -499,10 +504,11 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 				response = append(response, MarketDataResponse{
 					Price:  bid.Price,
 					Amount: bid.Amount,
-					Side:   "BID",
+					Side:   bid.Side,
 					InstrumentName: bid.Underlying + "-" + bid.ExpirationDate + "-" + strconv.FormatFloat(bid.StrikePrice, 'f', 2, 64) +
 						"-" + bid.Contracts,
 					Date: bid.CreatedAt.String(),
+					Type: "BID",
 				})
 			}
 
@@ -515,16 +521,21 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 				response = append(response, MarketDataResponse{
 					Price:  trade.Price,
 					Amount: trade.Amount,
-					Side:   "TRADE",
+					Side:   string(trade.Side),
 					InstrumentName: trade.Underlying + "-" + trade.ExpiryDate + "-" + strconv.FormatFloat(trade.StrikePrice, 'f', 2, 64) +
 						"-" + string(trade.Contracts),
-					Date: trade.CreatedAt.String(),
+					Date:    trade.CreatedAt.String(),
+					Type:    "TRADE",
+					MakerID: trade.MakerOrderID.Hex(),
+					TakerID: trade.TakerOrderID.Hex(),
 				})
 			}
 		}
 
 		snap := marketdatasnapshotfullrefresh.New()
 		snap.SetSymbol(response[0].InstrumentName)
+		reqId, _ := msg.GetMDReqID()
+		snap.SetMDReqID(reqId)
 		grp := marketdatasnapshotfullrefresh.NewNoMDEntriesRepeatingGroup()
 		fmt.Println("response", response)
 		for _, res := range response {
@@ -533,6 +544,22 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 			row.SetMDEntrySize(decimal.NewFromFloat(res.Amount), 2)
 			row.SetMDEntryPx(decimal.NewFromFloat(res.Price), 2)
 			row.SetMDEntryDate(res.Date)
+
+			//trade
+			if res.Type == "TRADE" {
+				side := field.NewSide(enum.Side(res.Side))
+				amount := field.NewQuantity(decimal.NewFromFloat(res.Amount), 10)
+				status := field.NewStatusText(res.Status)
+				orderId := field.NewOrderID(res.MakerID)
+				secondaryOrderId := field.NewOrderID(res.TakerID)
+
+				row.Set(side)
+				row.Set(amount)
+				row.Set(status)
+				row.Set(orderId)
+				row.Set(secondaryOrderId)
+			}
+
 		}
 		snap.SetNoMDEntries(grp)
 		error := quickfix.SendToTarget(snap, sessionID)
