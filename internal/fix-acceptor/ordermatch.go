@@ -198,7 +198,7 @@ func (a Application) FromAdmin(msg *quickfix.Message, sessionID quickfix.Session
 		if userSession == nil {
 			userSession = make(map[string]*quickfix.SessionID)
 		}
-		userSession[user.ID] = &sessionID
+		userSession[user.ID.Hex()] = &sessionID
 	}
 	return nil
 }
