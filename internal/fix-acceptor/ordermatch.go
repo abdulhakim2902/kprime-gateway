@@ -778,6 +778,9 @@ func OrderConfirmation(userId string, order Order, symbol string) {
 	msg.SetString(tag.OrderID, order.ID)
 	msg.SetString(tag.ClOrdID, order.ClientOrderId)
 
+	if sessionId == nil {
+		return
+	}
 	err := quickfix.SendToTarget(msg, *sessionId)
 	if err != nil {
 		fmt.Print(err.Error())
