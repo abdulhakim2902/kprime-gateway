@@ -65,7 +65,6 @@ func (svc wsOrderService) HandleConsume(msg *sarama.ConsumerMessage, userId stri
 	svc.redis.Set("ORDER-"+userId, string(jsonBytes))
 
 	// Then broadcast
-
 	ws.GetOrderSocket().BroadcastMessage(userId, orders)
 }
 

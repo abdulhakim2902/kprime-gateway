@@ -196,9 +196,8 @@ func (svc wsHandler) PrivateBuy(input interface{}, c *ws.Client) {
 	bytes, _ := json.Marshal(input)
 	if err := json.Unmarshal(bytes, &msg); err != nil {
 		c.SendMessage(gin.H{"err": err}, ws.SendMessageParams{
-			ID:            msg.Id,
-			RequestedTime: requestedTime,
-			UserID:        "",
+			ID:     msg.Id,
+			UserID: "",
 		})
 		return
 	}
@@ -206,21 +205,18 @@ func (svc wsHandler) PrivateBuy(input interface{}, c *ws.Client) {
 	claim, err := svc.authSvc.ClaimJWT(msg.Params.AccessToken)
 	if err != nil {
 		c.SendMessage(gin.H{"err": err.Error()}, ws.SendMessageParams{
-			ID:            msg.Id,
-			RequestedTime: requestedTime,
-			UserID:        "",
+			ID:     msg.Id,
+			UserID: "",
 		})
 		return
 	}
 
 	ID := utils.GetKeyFromIdUserID(msg.Id, claim.UserID)
 	duplicateRpcID, errorMessage := c.RegisterRequestRpcIDS(ID, requestedTime)
-
 	if !duplicateRpcID {
 		c.SendMessage(gin.H{"err": errorMessage}, ws.SendMessageParams{
-			ID:            msg.Id,
-			RequestedTime: requestedTime,
-			UserID:        claim.UserID,
+			ID:     msg.Id,
+			UserID: claim.UserID,
 		})
 		return
 	}
@@ -229,10 +225,9 @@ func (svc wsHandler) PrivateBuy(input interface{}, c *ws.Client) {
 	if err != nil {
 		fmt.Println("userRepo.FindById:", err)
 
-		c.SendMessage(gin.H{"err": "failed while getting user"}, ws.SendMessageParams{
-			ID:            msg.Id,
-			RequestedTime: requestedTime,
-			UserID:        "",
+		c.SendMessage(gin.H{"err": ""}, ws.SendMessageParams{
+			ID:     msg.Id,
+			UserID: claim.UserID,
 		})
 		return
 	}
@@ -253,9 +248,8 @@ func (svc wsHandler) PrivateBuy(input interface{}, c *ws.Client) {
 		err := fmt.Errorf("order type does not match any user order type")
 
 		c.SendMessage(gin.H{"err": err.Error()}, ws.SendMessageParams{
-			ID:            msg.Id,
-			RequestedTime: requestedTime,
-			UserID:        "",
+			ID:     msg.Id,
+			UserID: claim.UserID,
 		})
 		return
 	}
@@ -310,9 +304,7 @@ func (svc wsHandler) PrivateSell(input interface{}, c *ws.Client) {
 	bytes, _ := json.Marshal(input)
 	if err := json.Unmarshal(bytes, &msg); err != nil {
 		c.SendMessage(gin.H{"err": err}, ws.SendMessageParams{
-			ID:            msg.Id,
-			RequestedTime: requestedTime,
-			UserID:        "",
+			ID: msg.Id,
 		})
 		return
 	}
@@ -321,22 +313,17 @@ func (svc wsHandler) PrivateSell(input interface{}, c *ws.Client) {
 	claim, err := svc.authSvc.ClaimJWT(msg.Params.AccessToken)
 	if err != nil {
 		c.SendMessage(gin.H{"err": err.Error()}, ws.SendMessageParams{
-			ID:            msg.Id,
-			RequestedTime: requestedTime,
-			UserID:        claim.UserID,
+			ID: msg.Id,
 		})
 		return
 	}
 
 	ID := utils.GetKeyFromIdUserID(msg.Id, claim.UserID)
-
 	duplicateRpcID, errorMessage := c.RegisterRequestRpcIDS(ID, requestedTime)
-
 	if !duplicateRpcID {
 		c.SendMessage(gin.H{"err": errorMessage}, ws.SendMessageParams{
-			ID:            msg.Id,
-			RequestedTime: requestedTime,
-			UserID:        claim.UserID,
+			ID:     msg.Id,
+			UserID: claim.UserID,
 		})
 		return
 	}
@@ -346,9 +333,8 @@ func (svc wsHandler) PrivateSell(input interface{}, c *ws.Client) {
 		fmt.Println("userRepo.FindById:", err)
 
 		c.SendMessage(gin.H{"err": "failed while getting user"}, ws.SendMessageParams{
-			ID:            msg.Id,
-			RequestedTime: requestedTime,
-			UserID:        "",
+			ID:     msg.Id,
+			UserID: claim.UserID,
 		})
 		return
 	}
@@ -369,9 +355,8 @@ func (svc wsHandler) PrivateSell(input interface{}, c *ws.Client) {
 		err := fmt.Errorf("order type does not match any user order type")
 
 		c.SendMessage(gin.H{"err": err.Error()}, ws.SendMessageParams{
-			ID:            msg.Id,
-			RequestedTime: requestedTime,
-			UserID:        "",
+			ID:     msg.Id,
+			UserID: claim.UserID,
 		})
 		return
 	}
