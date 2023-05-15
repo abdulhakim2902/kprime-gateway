@@ -460,11 +460,13 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 	}
 
 	noRelatedsym, _ := msg.GetNoRelatedSym()
-	response := []MarketDataResponse{}
 
+	fmt.Println("noRelatedsym", noRelatedsym.Len())
 	// loop based on symbol requested
 	for i := 0; i < noRelatedsym.Len(); i++ {
+		response := []MarketDataResponse{}
 		sym, _ := noRelatedsym.Get(i).GetSymbol()
+		fmt.Println("sym", sym)
 		fmt.Println("md entries", mdEntryTypes.Len())
 		entries := make([]string, mdEntryTypes.Len())
 		for j := 0; j < mdEntryTypes.Len(); j++ {
@@ -520,25 +522,26 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 				})
 			}
 		}
+
+		snap := marketdatasnapshotfullrefresh.New()
+		snap.SetSymbol(response[0].InstrumentName)
+		grp := marketdatasnapshotfullrefresh.NewNoMDEntriesRepeatingGroup()
+		fmt.Println("response", response)
+		for _, res := range response {
+			row := grp.Add()
+			row.SetMDEntryType(enum.MDEntryType(res.Side))
+			row.SetMDEntrySize(decimal.NewFromFloat(res.Amount), 2)
+			row.SetMDEntryPx(decimal.NewFromFloat(res.Price), 2)
+			row.SetMDEntryDate(res.Date)
+		}
+		snap.SetNoMDEntries(grp)
+		error := quickfix.SendToTarget(snap, sessionID)
+		fmt.Println("replying to market data request")
+		if error != nil {
+			fmt.Println(error.Error())
+		}
 	}
 
-	snap := marketdatasnapshotfullrefresh.New()
-	snap.SetSymbol(response[0].InstrumentName)
-	grp := marketdatasnapshotfullrefresh.NewNoMDEntriesRepeatingGroup()
-	fmt.Println("response", response)
-	for _, res := range response {
-		row := grp.Add()
-		row.SetMDEntryType(enum.MDEntryType(res.Side))
-		row.SetMDEntrySize(decimal.NewFromFloat(res.Amount), 2)
-		row.SetMDEntryPx(decimal.NewFromFloat(res.Price), 2)
-		row.SetMDEntryDate(res.Date)
-	}
-	snap.SetNoMDEntries(grp)
-	error := quickfix.SendToTarget(snap, sessionID)
-	fmt.Println("replying to market data request")
-	if error != nil {
-		fmt.Println(error.Error())
-	}
 	return
 }
 

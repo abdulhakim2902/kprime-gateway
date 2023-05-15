@@ -471,6 +471,7 @@ func (c tradeClient) onMarketDataRequest(w http.ResponseWriter, r *http.Request)
 	symbols := strings.Split(mktDataRequest.Symbol, ",")
 
 	for _, symbol := range symbols {
+		fmt.Println("adding symbol", symbol)
 		mdReqGrp.Add().SetString(tag.Symbol, symbol)
 	}
 
