@@ -198,7 +198,7 @@ func (c tradeClient) getInstruments(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c tradeClient) getMarketData(w http.ResponseWriter, r *http.Request) {
-
+	fmt.Println("get market data")
 	c.RLock()
 	defer c.RUnlock()
 
@@ -422,13 +422,12 @@ func (c tradeClient) onMarketDataRequest(w http.ResponseWriter, r *http.Request)
 	var mktDataRequest secmaster.MarketDataRequest
 	decoder := json.NewDecoder(r.Body)
 	err := decoder.Decode(&mktDataRequest)
+	fmt.Println("mktDataRequest", mktDataRequest)
 	if err != nil {
 		log.Printf("[ERROR] %v\n", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-
-	fmt.Println(mktDataRequest.Session)
 
 	if sessionID, ok := c.SessionIDs[mktDataRequest.Session]; ok {
 		mktDataRequest.SessionID = sessionID
@@ -438,7 +437,6 @@ func (c tradeClient) onMarketDataRequest(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	fmt.Println("type", mktDataRequest.SecurityRequestType)
 	msg := marketdatarequest.New(
 		field.NewMDReqID("1"),
 		field.NewSubscriptionRequestType(enum.SubscriptionRequestType(mktDataRequest.SubscriptionRequestType)),
@@ -447,18 +445,25 @@ func (c tradeClient) onMarketDataRequest(w http.ResponseWriter, r *http.Request)
 
 	mdEntryGrp := marketdatarequest.NewNoMDEntryTypesRepeatingGroup()
 
+	fmt.Println("mktDataRequest.Bid", mktDataRequest.Bid)
 	if mktDataRequest.Bid == "Bid" {
+		fmt.Println("adding bid")
 		mdEntryGrp.Add().SetMDEntryType(enum.MDEntryType_BID)
 	}
 
+	fmt.Println("mktDataRequest.Ask", mktDataRequest.Ask)
 	if mktDataRequest.Ask == "Ask" {
+		fmt.Println("adding ask")
 		mdEntryGrp.Add().SetMDEntryType(enum.MDEntryType_OFFER)
 	}
 
+	fmt.Println("mktDataRequest.Trade", mktDataRequest.Trade)
 	if mktDataRequest.Trade == "Trade" {
+		fmt.Println("adding trade")
 		mdEntryGrp.Add().SetMDEntryType(enum.MDEntryType_TRADE)
 	}
 
+	fmt.Println("mdEntryGrp", mdEntryGrp, mdEntryGrp.Len())
 	msg.SetNoMDEntryTypes(mdEntryGrp)
 
 	mdReqGrp := marketdatarequest.NewNoRelatedSymRepeatingGroup()

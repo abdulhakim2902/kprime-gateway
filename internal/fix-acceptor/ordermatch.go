@@ -140,11 +140,13 @@ func newApplication() *Application {
 	mongoDb, _ := _mongo.InitConnection(os.Getenv("MONGO_URL"))
 	orderRepo := repositories.NewOrderRepository(mongoDb)
 	authRepo := repositories.NewAuthRepositoryRepository(mongoDb)
+	tradeRepo := repositories.NewTradeRepository(mongoDb)
 
 	app := &Application{
 		MessageRouter:   quickfix.NewMessageRouter(),
 		AuthRepository:  authRepo,
 		OrderRepository: orderRepo,
+		TradeRepository: tradeRepo,
 	}
 	app.AddRoute(newordersingle.Route(app.onNewOrderSingle))
 	app.AddRoute(ordercancelrequest.Route(app.onOrderCancelRequest))
@@ -451,22 +453,31 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 		}
 	}
 
-	mdEntryTypes, _ := msg.GetNoMDEntryTypes()
+	mdEntryTypes := marketdatarequest.NewNoMDEntryTypesRepeatingGroup()
+	err = msg.GetGroup(mdEntryTypes)
+	if err != nil {
+		fmt.Println("Error getting mdEntryTypes", err)
+	}
+
 	noRelatedsym, _ := msg.GetNoRelatedSym()
 	response := []MarketDataResponse{}
 
 	// loop based on symbol requested
 	for i := 0; i < noRelatedsym.Len(); i++ {
 		sym, _ := noRelatedsym.Get(i).GetSymbol()
-		fmt.Println(sym)
+		fmt.Println("md entries", mdEntryTypes.Len())
 		entries := make([]string, mdEntryTypes.Len())
 		for j := 0; j < mdEntryTypes.Len(); j++ {
 			entry, _ := mdEntryTypes.Get(j).GetMDEntryType()
-			entries[j] = string(entry)
+			fmt.Println("entry", entry)
+			entries = append(entries, string(entry))
 		}
 
+		fmt.Println("entries", entries, len(entries))
+
 		if utils.ArrContains(entries, "0") {
-			asks := a.OrderRepository.GetMarketData(sym, "ask")
+			asks := a.OrderRepository.GetMarketData(sym, "BUY")
+			fmt.Println("asks found", asks, sym)
 			for _, ask := range asks {
 				response = append(response, MarketDataResponse{
 					Price:  ask.Price,
@@ -480,7 +491,8 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 		}
 
 		if utils.ArrContains(entries, "1") {
-			bids := a.OrderRepository.GetMarketData(sym, "BID")
+			bids := a.OrderRepository.GetMarketData(sym, "SELL")
+			fmt.Println("bids found", bids, sym)
 			for _, bid := range bids {
 				response = append(response, MarketDataResponse{
 					Price:  bid.Price,
@@ -496,6 +508,7 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 
 		if utils.ArrContains(entries, "2") {
 			trades, _ := a.TradeRepository.Find(bson.M{"symbol": sym}, nil, 10, 99)
+			fmt.Println("trades found")
 			for _, trade := range trades {
 				response = append(response, MarketDataResponse{
 					Price:  trade.Price,
@@ -512,6 +525,7 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 	snap := marketdatasnapshotfullrefresh.New()
 
 	grp := marketdatasnapshotfullrefresh.NewNoMDEntriesRepeatingGroup()
+	fmt.Println("response", response)
 	for _, res := range response {
 		row := grp.Add()
 		row.SetMDEntryType(enum.MDEntryType(res.Side))

@@ -364,15 +364,25 @@ func (r OrderRepository) GetOpenOrdersByInstrument(InstrumentName string, OrderT
 }
 
 func (r OrderRepository) GetMarketData(instrumentName string, side string) (res []_deribitModel.DeribitResponse) {
-	curr, err := r.collection.Find(context.Background(), bson.M{"instrumentName": instrumentName, "side": side})
+	splits := strings.Split(instrumentName, "-")
+	fmt.Println(splits, side)
+	// price, _ := strconv.ParseFloat(splits[2], 64)
+	curr, err := r.collection.Find(context.Background(), bson.M{
+		"underlying": splits[0],
+		"expiryDate": splits[1],
+		// "strikePrice": price,
+		// "contracts":   splits[3],
+		"side": side,
+	})
 	if err != nil {
 		fmt.Printf("%+v\n", err)
 	}
 
-	if err = curr.All(context.Background(), &res); err != nil {
+	if err = curr.All(context.TODO(), &res); err != nil {
 		fmt.Printf("%+v\n", err)
 	}
 
+	fmt.Println("res", res)
 	return res
 }
 

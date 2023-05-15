@@ -52,6 +52,7 @@ var App = new (Backbone.View.extend({
     this.orders = new App.Collections.Orders(options.orders);
     this.executions = new App.Collections.Executions(options.executions);
     this.instruments = new App.Collections.Instruments(options.symbols);
+    this.marketdata = new App.Collections.MarketData(options.market);
     this.router = new App.Router();
     Backbone.history.start({ pushState: true });
   },
@@ -93,7 +94,7 @@ var App = new (Backbone.View.extend({
 
   showMarketData: function () {
     var mrktDataReq = new App.Views.MarketDataRequest({ model: this.marketDataForm });
-    var mrktListView = new App.Views.MarketData({model: this.instruments})
+    var mrktListView = new App.Views.MarketData({model: this.marketdata})
     $("#app").html(mrktDataReq.render().el);
     $("#app").append(mrktListView.render().el);
     $("#nav-order").removeClass("active");
@@ -137,7 +138,6 @@ App.Router = Backbone.Router.extend({
     "instruments": "instruments",
     "marketdata": "marketdata",
     "secdefs": "secdefs",
-    "marketdata": "marketdata",
     "orders/:id": "orderDetails",
     "executions/:id": "executionDetails",
   },
@@ -207,6 +207,11 @@ App.Collections.Executions = Backbone.Collection.extend({
 
 App.Collections.Instruments = Backbone.Collection.extend({
   url: '/instruments',
+  comparator: 'id'
+});
+
+App.Collections.MarketData = Backbone.Collection.extend({
+  url: '/marketdata',
   comparator: 'id'
 });
 
@@ -476,12 +481,12 @@ App.Views.MarketDataRowView = Backbone.View.extend({
 <td>
 <button class="btn btn-info details">Details</button>
 </td>
-<td><%= request_id %></td>
-<td><%= instrument_name %></td>
-<td><%= security_desc %></td>
-<td><%= security_type %></td>
-<td><%= strike_currency %></td>
-<td><%= strike_price %></td>
+<td><%= instrumentName %></td>
+<td><%= side %></td>
+<td><%= contract %></td>
+<td><%= price %></td>
+<td><%= amount %></td>
+<td><%= date %></td>
 `),
 
 
@@ -615,23 +620,23 @@ App.Views.SecurityList = Backbone.View.extend({
 
 App.Views.MarketData = Backbone.View.extend({
   initialize: function () {
-    console.log("security list view")
+    console.log("market data view")
     this.listenTo(this.model, 'reset', this.addAll);
   },
 
   render: function () {
-    console.log("renderinggg", this)
+    console.log("renderinggg market data", this)
     this.$el.html(`
 <table class='table table-striped' id='security-list'>
   <thead>
     <tr>
       <th></th>
-      <th>RequestID</th>
       <th>Instrument Name</th>
-      <th>Sec Desx</th>
-      <th>Sec Type</th>
-      <th>Strike Currency</th>
-      <th>Strike Price</th>
+      <th>Side</th>
+      <th>Contracts</th>
+      <th>Price</th>
+      <th>Amount</th>
+      <th>Date</th>
     </tr>
   </thead>
   <tbody>
@@ -644,7 +649,7 @@ App.Views.MarketData = Backbone.View.extend({
   },
 
   addAll: function () {
-    console.log(this)
+    console.log(this.model)
     this.$("tbody").empty();
     this.model.models.forEach(this.addOne, this);
     return this;
@@ -785,11 +790,11 @@ App.Views.MarketDataRequest = Backbone.View.extend({
   </p>
   <p>
   <div class='form-group'>
-    <input type="checkbox" id="md_entry_type_1" name="md_entry_type_1" value="bid">
+    <input type="checkbox" id="md_entry_type_1" name="md_entry_type_1" value="Bid">
     <label for="md_entry_type_1"> Bid</label><br>
-    <input type="checkbox" id="md_entry_type_2" name="md_entry_type_2" value="ask">
-    <label for="md_entry_type_1"> Ask</label><br>
-    <input type="checkbox" id="md_entry_type_3" name="md_entry_type_3" value="trade">
+    <input type="checkbox" id="md_entry_type_2" name="md_entry_type_2" value="Ask">
+    <label for="md_entry_type_2"> Ask</label><br>
+    <input type="checkbox" id="md_entry_type_3" name="md_entry_type_3" value="Trade">
     <label for="md_entry_type_3"> Trade</label><br>
   </div>
   </p>
@@ -827,6 +832,9 @@ App.Views.MarketDataRequest = Backbone.View.extend({
       session_id: this.$('select[name=session]').val(),
       subscription_request_type: this.$('select[name=subscription_request_type]').val(),
       symbol: this.$('input[name=symbol]').val(),
+      md_entry_type_1: this.$('input[name=md_entry_type_1]').val(),
+      md_entry_type_2: this.$('input[name=md_entry_type_2]').val(),
+      md_entry_type_3: this.$('input[name=md_entry_type_3]').val(),
     });
     req.save();
   },

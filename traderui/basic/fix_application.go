@@ -283,7 +283,7 @@ func (a FIXApplication) onMarketDataSnapshot(msg *quickfix.Message, sessionID qu
 	}
 
 	sym, _ := msg.Body.GetString(tag.Symbol)
-
+	fmt.Println("mapping market data", mdEntries.Len())
 	for i := 0; i < mdEntries.Len(); i++ {
 		entry := mdEntries.Get(i)
 		entryType, err := entry.GetMDEntryType()
