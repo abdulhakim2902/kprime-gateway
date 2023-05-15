@@ -515,8 +515,15 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 		}
 
 		if utils.ArrContains(entries, "2") {
-			trades, _ := a.TradeRepository.Find(bson.M{"symbol": sym}, nil, 10, 99)
-			fmt.Println("trades found")
+			splits := strings.Split(sym, "-")
+			price, _ := strconv.ParseFloat(splits[2], 64)
+
+			trades, _ := a.TradeRepository.Find(bson.M{
+				"underlying":  splits[0],
+				"expiryDate":  splits[1],
+				"strikePrice": price,
+			}, nil, 10, 99)
+			fmt.Println("trades found", len(trades), sym)
 			for _, trade := range trades {
 				response = append(response, MarketDataResponse{
 					Price:  trade.Price,

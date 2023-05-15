@@ -39,6 +39,9 @@ type MarketData struct {
 	Price          float64 `json:"price"`
 	Amount         float64 `json:"amount"`
 	Date           string  `json:"date"`
+	OrderId        string  `json:"orderId"`
+	SecondaryOrdId string  `json:"secondaryOrderId"`
+	Status         string  `json:"status"`
 }
 
 var instruments []Instruments
@@ -306,7 +309,20 @@ func (a FIXApplication) onMarketDataSnapshot(msg *quickfix.Message, sessionID qu
 			fmt.Println("Error getting the entry date: ", err)
 		}
 
-		fmt.Println("appending market data", sym, entryType, entrySize, entryPx, entryDate)
+		var status field.StatusTextField
+		if err := entry.Get(&status); err != nil {
+			fmt.Println("Error getting the entry status: ", err)
+		}
+
+		var orderId field.OrderIDField
+		if err := entry.Get(&orderId); err != nil {
+			fmt.Println("Error getting the entry order id: ", err)
+		}
+
+		var secondaryOrderId field.SecondaryOrderIDField
+		if err := entry.Get(&secondaryOrderId); err != nil {
+			fmt.Println("Error getting the entry secondary order id: ", err)
+		}
 
 		marketData = appendMarketData(MarketData{
 			InstrumentName: sym,
@@ -314,6 +330,9 @@ func (a FIXApplication) onMarketDataSnapshot(msg *quickfix.Message, sessionID qu
 			Amount:         entrySize.InexactFloat64(),
 			Price:          entryPx.InexactFloat64(),
 			Date:           entryDate,
+			Status:         status.String(),
+			OrderId:        orderId.String(),
+			SecondaryOrdId: secondaryOrderId.String(),
 		})
 
 	}

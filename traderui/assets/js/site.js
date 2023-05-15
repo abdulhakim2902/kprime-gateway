@@ -487,6 +487,9 @@ App.Views.MarketDataRowView = Backbone.View.extend({
 <td><%= price %></td>
 <td><%= amount %></td>
 <td><%= date %></td>
+<td><%= status %></td>
+<td><%= orderId %></td>
+<td><%= secondaryOrderId %></td>
 `),
 
 
@@ -637,6 +640,9 @@ App.Views.MarketData = Backbone.View.extend({
       <th>Price</th>
       <th>Amount</th>
       <th>Date</th>
+      <th>Status</th>
+      <th>OrderID</th>
+      <th>Secondary Order ID</th>
     </tr>
   </thead>
   <tbody>
