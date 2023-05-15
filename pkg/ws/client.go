@@ -112,6 +112,7 @@ func (c *Client) SendMessage(payload interface{}, params SendMessageParams) {
 		// Read requested time
 		ID := utils.GetKeyFromIdUserID(params.ID, params.UserID)
 		requestedTime := orderRequestRpcIDS[ID]
+
 		// Return times
 		if requestedTime > 0 {
 			m.UsIn = requestedTime

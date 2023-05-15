@@ -3,7 +3,7 @@ package repositories
 import (
 	"context"
 	"errors"
-	"gateway/internal/auth/types"
+	"gateway/internal/user/types"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -11,16 +11,16 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-type AuthRepository struct {
+type UserRepository struct {
 	collection *mongo.Collection
 }
 
-func NewAuthRepositoryRepository(db Database) *AuthRepository {
+func NewUserRepository(db Database) *UserRepository {
 	collection := db.InitCollection("users")
-	return &AuthRepository{collection}
+	return &UserRepository{collection}
 }
 
-func (r AuthRepository) Find(filter interface{}, sort interface{}, offset, limit int64) ([]*types.User, error) {
+func (r UserRepository) Find(filter interface{}, sort interface{}, offset, limit int64) ([]*types.User, error) {
 	options := options.FindOptions{
 		MaxTime: &defaultTimeout,
 	}
@@ -58,7 +58,7 @@ func (r AuthRepository) Find(filter interface{}, sort interface{}, offset, limit
 	return users, nil
 }
 
-func (r AuthRepository) FindOne(filter interface{}) (user *types.User, err error) {
+func (r UserRepository) FindOne(filter interface{}) (user *types.User, err error) {
 	res := r.collection.FindOne(context.Background(), filter)
 	if err = res.Err(); err != nil {
 		return
@@ -69,7 +69,7 @@ func (r AuthRepository) FindOne(filter interface{}) (user *types.User, err error
 	return
 }
 
-func (r *AuthRepository) FindByAPIKeyAndSecret(ctx context.Context, apiKey, apiSecret string) (user *types.User, err error) {
+func (r *UserRepository) FindByAPIKeyAndSecret(ctx context.Context, apiKey, apiSecret string) (user *types.User, err error) {
 	user, err = r.FindOne(bson.D{
 		{"$and",
 			bson.A{
@@ -82,7 +82,7 @@ func (r *AuthRepository) FindByAPIKeyAndSecret(ctx context.Context, apiKey, apiS
 	return
 }
 
-func (r *AuthRepository) FindById(ctx context.Context, userId string) (user *types.User, err error) {
+func (r *UserRepository) FindById(ctx context.Context, userId string) (user *types.User, err error) {
 	var id primitive.ObjectID
 	id, err = primitive.ObjectIDFromHex(userId)
 	if err != nil {

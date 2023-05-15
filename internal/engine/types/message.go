@@ -3,6 +3,7 @@ package types
 import (
 	"time"
 
+	"git.devucc.name/dependencies/utilities/models/order"
 	"git.devucc.name/dependencies/utilities/models/trade"
 	"git.devucc.name/dependencies/utilities/types"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -67,6 +68,9 @@ type BuySellEditCancelOrder struct {
 	Api                 bool               `json:"api"`
 	AveragePrice        float64            `json:"average_price,omitempty"`
 	CancelReason        string             `json:"cancel_reason"`
+
+	OrderExclusions []order.OrderExclusion `json:"order_exclusions"`
+	TypeInclusions  []order.TypeInclusions `json:"type_inclusions"`
 }
 
 type BuySellEditTrade struct {
