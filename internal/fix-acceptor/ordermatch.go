@@ -190,15 +190,15 @@ func (a Application) FromAdmin(msg *quickfix.Message, sessionID quickfix.Session
 			return err
 		}
 
-		// user, err := a.UserRepository.FindByAPIKeyAndSecret(context.TODO(), uname.String(), pwd.String())
-		// if err != nil {
-		// 	return quickfix.NewMessageRejectError("Failed getting user", 1, nil)
-		// }
+		user, err := a.UserRepository.FindByAPIKeyAndSecret(context.TODO(), uname.String(), pwd.String())
+		if err != nil {
+			return quickfix.NewMessageRejectError("Failed getting user", 1, nil)
+		}
 
 		if userSession == nil {
 			userSession = make(map[string]*quickfix.SessionID)
 		}
-		userSession["645db1b2533b4f1cd204998c"] = &sessionID
+		userSession[user.ID.Hex()] = &sessionID
 	}
 	return nil
 }
