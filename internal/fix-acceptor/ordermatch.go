@@ -50,6 +50,7 @@ import (
 	"github.com/quickfixgo/tag"
 	"github.com/shopspring/decimal"
 	"github.com/spf13/cobra"
+	"go.mongodb.org/mongo-driver/bson"
 
 	_producer "gateway/pkg/kafka/producer"
 
@@ -61,8 +62,12 @@ type XMessageSubscriber struct {
 	secReq     string
 }
 
+type VMessageSubscriber struct {
+	sessiondID quickfix.SessionID
+}
+
 var userSession map[string]*quickfix.SessionID
-var orderSubs map[string][]quickfix.SessionID
+var vMessageSubs []VMessageSubscriber
 var xMessagesSubs []XMessageSubscriber
 
 type Order struct {
@@ -91,6 +96,19 @@ type Order struct {
 	LastExecutedPrice    decimal.Decimal
 }
 
+type MarketDataResponse struct {
+	InstrumentName string  `json:"instrumentName"`
+	Side           string  `json:"side"`
+	Contract       string  `json:"contract"`
+	Price          float64 `json:"price"`
+	Amount         float64 `json:"amount"`
+	Date           string  `json:"date"`
+	Type           string  `json:"type"`
+	MakerID        string  `json:"makerId"`
+	TakerID        string  `json:"takerId"`
+	Status         string  `json:"status"`
+}
+
 type Orderbook struct {
 	InstrumentName string   `json:"instrumentName" bson:"instrumentName"`
 	Bids           []*Order `json:"bids" bson:"bids"`
@@ -103,6 +121,7 @@ type Application struct {
 	execID int
 	*repositories.UserRepository
 	*repositories.OrderRepository
+	*repositories.TradeRepository
 }
 
 type KafkaOrder struct {
@@ -124,12 +143,14 @@ func newApplication() *Application {
 
 	mongoDb, _ := _mongo.InitConnection(os.Getenv("MONGO_URL"))
 	orderRepo := repositories.NewOrderRepository(mongoDb)
+	tradeRepo := repositories.NewTradeRepository(mongoDb)
 	userRepo := repositories.NewUserRepository(mongoDb)
 
 	app := &Application{
 		MessageRouter:   quickfix.NewMessageRouter(),
 		UserRepository:  userRepo,
 		OrderRepository: orderRepo,
+		TradeRepository: tradeRepo,
 	}
 	app.AddRoute(newordersingle.Route(app.onNewOrderSingle))
 	app.AddRoute(ordercancelrequest.Route(app.onOrderCancelRequest))
@@ -421,20 +442,180 @@ func (a *Application) onOrderCancelRequest(msg ordercancelrequest.OrderCancelReq
 }
 
 func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataRequest, sessionID quickfix.SessionID) (err quickfix.MessageRejectError) {
+	fmt.Println("onMarketDataRequest")
 	fmt.Printf("%+v\n", msg)
-	var symbol field.SymbolField
-	msg.Body.GetField(quickfix.Tag(55), &symbol)
-	subs, _ := msg.Body.GetInt(quickfix.Tag(263))
-	if subs == 1 { // subscribe
-		orderSubs[symbol.String()] = append(orderSubs[symbol.String()], sessionID)
-	} else if subs == 2 { // unsubscribe
-		for i, sess := range orderSubs[symbol.String()] {
-			if sess == sessionID {
-				orderSubs[symbol.String()] = append(orderSubs[symbol.String()][:i], orderSubs[symbol.String()][i+1:]...)
+	subs, _ := msg.GetSubscriptionRequestType()
+	if subs == enum.SubscriptionRequestType_SNAPSHOT_PLUS_UPDATES { // subscribe
+		vMessageSubs = append(vMessageSubs, VMessageSubscriber{
+			sessiondID: sessionID,
+		})
+	} else if subs == enum.SubscriptionRequestType_DISABLE_PREVIOUS_SNAPSHOT_PLUS_UPDATE_REQUEST { // unsubscribe
+		for _, subs := range vMessageSubs {
+			if subs.sessiondID.String() == sessionID.String() {
+				vMessageSubs = removeVMessageSubscriber(vMessageSubs, subs)
 			}
 		}
 	}
+
+	mdEntryTypes := marketdatarequest.NewNoMDEntryTypesRepeatingGroup()
+	err = msg.GetGroup(mdEntryTypes)
+	if err != nil {
+		fmt.Println("Error getting mdEntryTypes", err)
+	}
+
+	noRelatedsym, _ := msg.GetNoRelatedSym()
+
+	fmt.Println("noRelatedsym", noRelatedsym.Len())
+	// loop based on symbol requested
+	for i := 0; i < noRelatedsym.Len(); i++ {
+		response := []MarketDataResponse{}
+		sym, _ := noRelatedsym.Get(i).GetSymbol()
+		fmt.Println("sym", sym)
+		fmt.Println("md entries", mdEntryTypes.Len())
+		entries := make([]string, mdEntryTypes.Len())
+		for j := 0; j < mdEntryTypes.Len(); j++ {
+			entry, _ := mdEntryTypes.Get(j).GetMDEntryType()
+			fmt.Println("entry", entry)
+			entries = append(entries, string(entry))
+		}
+
+		fmt.Println("entries", entries, len(entries))
+
+		if utils.ArrContains(entries, "0") {
+			asks := a.OrderRepository.GetMarketData(sym, "BUY")
+			fmt.Println("asks found", asks, sym)
+			for _, ask := range asks {
+				if ask.Status == "FILLED" {
+					continue
+				}
+				response = append(response, MarketDataResponse{
+					Price:  ask.Price,
+					Amount: ask.Amount - ask.FilledAmount,
+					Side:   ask.Side,
+					InstrumentName: ask.Underlying + "-" + ask.ExpirationDate + "-" + strconv.FormatFloat(ask.StrikePrice, 'f', 0, 64) +
+						"-" + ask.Contracts[0:1],
+					Date: ask.CreatedAt.String(),
+					Type: "ASK",
+				})
+			}
+		}
+
+		if utils.ArrContains(entries, "1") {
+			bids := a.OrderRepository.GetMarketData(sym, "SELL")
+			fmt.Println("bids found", bids, sym)
+			for _, bid := range bids {
+				if bid.Status == "FILLED" {
+					continue
+				}
+				response = append(response, MarketDataResponse{
+					Price:  bid.Price,
+					Amount: bid.Amount - bid.FilledAmount,
+					Side:   bid.Side,
+					InstrumentName: bid.Underlying + "-" + bid.ExpirationDate + "-" + strconv.FormatFloat(bid.StrikePrice, 'f', 0, 64) +
+						"-" + bid.Contracts[0:1],
+					Date: bid.CreatedAt.String(),
+					Type: "BID",
+				})
+			}
+
+		}
+
+		if utils.ArrContains(entries, "2") {
+			splits := strings.Split(sym, "-")
+			price, _ := strconv.ParseFloat(splits[2], 64)
+			trades, _ := a.TradeRepository.Find(bson.M{
+				"underlying":  splits[0],
+				"expiryDate":  splits[1],
+				"strikePrice": price,
+			}, nil, 0, -1)
+			fmt.Println("trades found", len(trades), sym)
+			for _, trade := range trades {
+				response = append(response, MarketDataResponse{
+					Price:  trade.Price,
+					Amount: trade.Amount,
+					Side:   string(trade.Side),
+					InstrumentName: trade.Underlying + "-" + trade.ExpiryDate + "-" + strconv.FormatFloat(trade.StrikePrice, 'f', 0, 64) +
+						"-" + string(trade.Contracts)[0:1],
+					Date:    trade.CreatedAt.String(),
+					Type:    "TRADE",
+					MakerID: trade.MakerOrderID.Hex(),
+					TakerID: trade.TakerOrderID.Hex(),
+					Status:  string(trade.Status),
+				})
+			}
+		}
+
+		if len(response) == 0 {
+			continue
+		}
+		snap := marketdatasnapshotfullrefresh.New()
+		snap.SetSymbol(response[0].InstrumentName)
+		reqId, _ := msg.GetMDReqID()
+		snap.SetMDReqID(reqId)
+		grp := marketdatasnapshotfullrefresh.NewNoMDEntriesRepeatingGroup()
+		response = mapMarketDataResponse(response)
+		fmt.Println("response", response)
+		for _, res := range response {
+			row := grp.Add()
+			row.SetMDEntryType(enum.MDEntryType(res.Side))
+			row.SetMDEntrySize(decimal.NewFromFloat(res.Amount), 2)
+			row.SetMDEntryPx(decimal.NewFromFloat(res.Price), 2)
+			row.SetMDEntryDate(res.Date)
+
+			//trade
+			if res.Type == "TRADE" {
+				side := field.NewSide(enum.Side(res.Side))
+				amount := field.NewQuantity(decimal.NewFromFloat(res.Amount), 10)
+				status := field.NewStatusText(res.Status)
+				orderId := field.NewOrderID(res.MakerID)
+				secondaryOrderId := field.NewOrderID(res.TakerID)
+
+				row.Set(side)
+				row.Set(amount)
+				row.Set(status)
+				row.Set(orderId)
+				row.Set(secondaryOrderId)
+			}
+
+		}
+		snap.SetNoMDEntries(grp)
+		error := quickfix.SendToTarget(snap, sessionID)
+		fmt.Println("replying to market data request")
+		if error != nil {
+			fmt.Println(error.Error())
+		}
+	}
+
 	return
+}
+
+func mapMarketDataResponse(res []MarketDataResponse) []MarketDataResponse {
+	result := []MarketDataResponse{}
+
+	for _, r := range res {
+		if len(result) == 0 {
+			result = append(result, r)
+			continue
+		}
+		result, exist := isInstrumentExists(result, r)
+		fmt.Println("exist", exist, result)
+		if !exist {
+			result = append(result, r)
+		}
+	}
+	return result
+}
+
+func isInstrumentExists(data []MarketDataResponse, marketData MarketDataResponse) ([]MarketDataResponse, bool) {
+	for i, d := range data {
+		fmt.Println("d", d, marketData)
+		if d.InstrumentName == marketData.InstrumentName && d.Price == marketData.Price && d.Side == marketData.Side {
+			data[i].Amount = data[i].Amount + marketData.Amount
+			fmt.Println("d2", d)
+			return data, true
+		}
+	}
+	return data, false
 }
 
 func OnMatchingOrder(data types.EngineResponse) {
@@ -542,8 +723,8 @@ func OnOrderboookUpdate(symbol string, data map[string]interface{}) {
 		msg.SetNoMDEntries(grp)
 	}
 
-	for _, sess := range orderSubs[symbol] {
-		quickfix.SendToTarget(msg, sess)
+	for _, sess := range vMessageSubs {
+		quickfix.SendToTarget(msg, sess.sessiondID)
 	}
 }
 
@@ -633,6 +814,9 @@ func OrderConfirmation(userId string, order Order, symbol string) {
 	msg.SetString(tag.OrderID, order.ID)
 	msg.SetString(tag.ClOrdID, order.ClientOrderId)
 
+	if sessionId == nil {
+		return
+	}
 	err := quickfix.SendToTarget(msg, *sessionId)
 	if err != nil {
 		fmt.Print(err.Error())
@@ -682,6 +866,15 @@ func (a Application) onSecurityListRequest(msg securitylistrequest.SecurityListR
 }
 
 func removeXMessageSubscriber(array []XMessageSubscriber, element XMessageSubscriber) []XMessageSubscriber {
+	for i, v := range array {
+		if v == element {
+			return append(array[:i], array[i+1:]...)
+		}
+	}
+	return array
+}
+
+func removeVMessageSubscriber(array []VMessageSubscriber, element VMessageSubscriber) []VMessageSubscriber {
 	for i, v := range array {
 		if v == element {
 			return append(array[:i], array[i+1:]...)

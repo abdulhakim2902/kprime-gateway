@@ -9,12 +9,14 @@ import (
 	"os"
 	"path"
 	"strconv"
+	"strings"
 	"text/template"
 
 	"github.com/gorilla/mux"
 	"github.com/quickfixgo/enum"
 	"github.com/quickfixgo/field"
 	"github.com/quickfixgo/fix43/securitylistrequest"
+	"github.com/quickfixgo/fix44/marketdatarequest"
 	"github.com/quickfixgo/tag"
 	"github.com/quickfixgo/traderui/basic"
 	"github.com/quickfixgo/traderui/oms"
@@ -32,6 +34,7 @@ type fixFactory interface {
 
 type fixApp interface {
 	GetAllSecurityList() []basic.Instruments
+	GetMarketData() []basic.MarketData
 }
 
 type tradeClient struct {
@@ -87,6 +90,16 @@ func (c tradeClient) SecurityListAsJSON() (string, error) {
 	defer c.RUnlock()
 
 	b, err := json.Marshal(c.GetAllSecurityList())
+	return string(b), err
+}
+
+func (c tradeClient) MarketDataAsJSON() (string, error) {
+	fmt.Println("marketdata as json")
+
+	c.RLock()
+	defer c.RUnlock()
+
+	b, err := json.Marshal(c.GetMarketData())
 	return string(b), err
 }
 
@@ -179,6 +192,25 @@ func (c tradeClient) getInstruments(w http.ResponseWriter, r *http.Request) {
 	fmt.Println(string(b))
 	if string(b) == "null" {
 		b = []byte("[no instruments]")
+	}
+	w.Header().Set("Content-Type", "application/json")
+	fmt.Fprint(w, string(b))
+}
+
+func (c tradeClient) getMarketData(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("get market data")
+	c.RLock()
+	defer c.RUnlock()
+
+	b, err := json.Marshal(c.GetMarketData())
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+
+	fmt.Println(string(b))
+	if string(b) == "null" {
+		b = []byte("[no market data]")
 	}
 	w.Header().Set("Content-Type", "application/json")
 	fmt.Fprint(w, string(b))
@@ -385,6 +417,73 @@ func (c tradeClient) onSecurityListRequest(w http.ResponseWriter, r *http.Reques
 	}
 }
 
+func (c tradeClient) onMarketDataRequest(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("onMarketDataRequest")
+	var mktDataRequest secmaster.MarketDataRequest
+	decoder := json.NewDecoder(r.Body)
+	err := decoder.Decode(&mktDataRequest)
+	fmt.Println("mktDataRequest", mktDataRequest)
+	if err != nil {
+		log.Printf("[ERROR] %v\n", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if sessionID, ok := c.SessionIDs[mktDataRequest.Session]; ok {
+		mktDataRequest.SessionID = sessionID
+	} else {
+		log.Println("[ERROR] Invalid SessionID")
+		http.Error(w, "Invalid SessionID", http.StatusBadRequest)
+		return
+	}
+
+	msg := marketdatarequest.New(
+		field.NewMDReqID("1"),
+		field.NewSubscriptionRequestType(enum.SubscriptionRequestType(mktDataRequest.SubscriptionRequestType)),
+		field.NewMarketDepth(0),
+	)
+
+	mdEntryGrp := marketdatarequest.NewNoMDEntryTypesRepeatingGroup()
+
+	fmt.Println("mktDataRequest.Bid", mktDataRequest.Bid)
+	if mktDataRequest.Bid {
+		fmt.Println("adding bid")
+		mdEntryGrp.Add().SetMDEntryType(enum.MDEntryType_BID)
+	}
+
+	fmt.Println("mktDataRequest.Ask", mktDataRequest.Ask)
+	if mktDataRequest.Ask {
+		fmt.Println("adding ask")
+		mdEntryGrp.Add().SetMDEntryType(enum.MDEntryType_OFFER)
+	}
+
+	fmt.Println("mktDataRequest.Trade", mktDataRequest.Trade)
+	if mktDataRequest.Trade {
+		fmt.Println("adding trade")
+		mdEntryGrp.Add().SetMDEntryType(enum.MDEntryType_TRADE)
+	}
+
+	fmt.Println("mdEntryGrp", mdEntryGrp, mdEntryGrp.Len())
+	msg.SetNoMDEntryTypes(mdEntryGrp)
+
+	mdReqGrp := marketdatarequest.NewNoRelatedSymRepeatingGroup()
+
+	symbols := strings.Split(mktDataRequest.Symbol, ",")
+
+	for _, symbol := range symbols {
+		fmt.Println("adding symbol", symbol)
+		mdReqGrp.Add().SetString(tag.Symbol, symbol)
+	}
+
+	msg.SetNoRelatedSym(mdReqGrp)
+	fmt.Println(msg.Message.String())
+	err = quickfix.SendToTarget(msg, mktDataRequest.SessionID)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
 func main() {
 	flag.Parse()
 
@@ -433,11 +532,13 @@ func main() {
 	router.HandleFunc("/orders/{id:[0-9]+}", app.deleteOrder).Methods("DELETE")
 
 	router.HandleFunc("/instruments", app.getInstruments).Methods("GET")
+	router.HandleFunc("/marketdata", app.getMarketData).Methods("GET")
 
 	router.HandleFunc("/executions", app.getExecutions).Methods("GET")
 	router.HandleFunc("/executions/{id:[0-9]+}", app.getExecution).Methods("GET")
 
 	router.HandleFunc("/securitydefinitionrequest", app.onSecurityListRequest).Methods("POST")
+	router.HandleFunc("/marketdatarequest", app.onMarketDataRequest).Methods("POST")
 
 	router.PathPrefix("/assets/").Handler(http.StripPrefix("/assets/", http.FileServer(http.Dir("assets"))))
 	router.HandleFunc("/", app.traderView)

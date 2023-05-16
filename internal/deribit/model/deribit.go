@@ -93,11 +93,13 @@ type DeribitResponse struct {
 	Side           string    `json:"side"`
 	Price          float64   `json:"price"`
 	Amount         float64   `json:"amount"`
+	FilledAmount   float64   `json:"filledAmount"`
 	Contracts      string    `json:"contracts"`
 	TimeInForce    string    `json:"timeInForce"`
 	ClOrdID        string    `json:"clOrdID"`
 	CreatedAt      time.Time `json:"createdAt"`
 	Label          string    `json:"label,omitempty"`
+	Status         string    `json:"status"`
 
 	OrderExclusions []order.OrderExclusion `json:"order_exclusions"`
 	TypeInclusions  []order.TypeInclusions `json:"type_inclusions"`
