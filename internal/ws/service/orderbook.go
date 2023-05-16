@@ -154,17 +154,6 @@ func (svc wsOrderbookService) SubscribeBook(c *ws.Client, channel string) {
 		StrikePrice:    _strikePrice,
 	}
 
-	// Get initial data
-	var orderBook _orderbookTypes.Orderbook
-	switch s[2] {
-	case "raw":
-		_, orderBook = svc.GetDataQuote(_order)
-	case "100ms":
-		_, orderBook = svc.GetDataQuote(_order)
-	case "agg2":
-		orderBook = svc._getOrderBookAgg2(_order)
-	}
-
 	// Subscribe
 	id := fmt.Sprintf("%s-%s", instrument, s[2])
 	err = socket.Subscribe(id, c)
@@ -182,11 +171,77 @@ func (svc wsOrderbookService) SubscribeBook(c *ws.Client, channel string) {
 	// Get change_id
 	res, err := svc.redis.GetValue("CHANGEID-" + _string)
 	if res == "" || err != nil {
+		changeId.Timestamp = ts
+	} else {
+		err = json.Unmarshal([]byte(res), &changeId)
+		if err != nil {
+			msg := map[string]string{"Message": err.Error()}
+			socket.SendErrorMessage(c, msg)
+			return
+		}
+	}
+
+	// Get initial data
+	var orderBook _orderbookTypes.Orderbook
+	switch s[2] {
+	case "raw":
+		orderBook = svc.GetOrderLatestTimestamp(_order, changeId.Timestamp)
+	case "100ms":
+		orderBook = svc.GetOrderLatestTimestamp(_order, changeId.Timestamp)
+	case "agg2":
+		orderBook = svc._getOrderBookAgg2(_order)
+	}
+
+	var bidsData [][]interface{}
+	var asksData [][]interface{}
+
+	var changeAsksRaw = make(map[string]float64)
+	var changeBidsRaw = make(map[string]float64)
+
+	if len(orderBook.Asks) > 0 {
+		for _, ask := range orderBook.Asks {
+			var askData []interface{}
+			askData = append(askData, "new")
+			askData = append(askData, ask.Price)
+			askData = append(askData, ask.Amount)
+			asksData = append(asksData, askData)
+			changeAsksRaw[fmt.Sprintf("%f", ask.Price)] = ask.Amount
+		}
+	} else {
+		asksData = make([][]interface{}, 0)
+	}
+	if len(orderBook.Bids) > 0 {
+		for _, bid := range orderBook.Bids {
+			var bidData []interface{}
+			bidData = append(bidData, "new")
+			bidData = append(bidData, bid.Price)
+			bidData = append(bidData, bid.Amount)
+			bidsData = append(bidsData, bidData)
+			changeBidsRaw[fmt.Sprintf("%f", bid.Price)] = bid.Amount
+		}
+	} else {
+		bidsData = make([][]interface{}, 0)
+	}
+
+	if res == "" {
 		// Set initial data if null
-		changeIdData := _orderbookTypes.Change{
-			Id:            1,
-			Timestamp:     ts,
-			TimestampPrev: ts,
+		var changeIdData _orderbookTypes.Change
+		if s[2] == "agg2" {
+			changeIdData = _orderbookTypes.Change{
+				Id:            1,
+				Timestamp:     ts,
+				TimestampPrev: ts,
+				AsksAgg:       changeAsksRaw,
+				BidsAgg:       changeBidsRaw,
+			}
+		} else {
+			changeIdData = _orderbookTypes.Change{
+				Id:            1,
+				Timestamp:     ts,
+				TimestampPrev: ts,
+				Asks:          changeAsksRaw,
+				Bids:          changeBidsRaw,
+			}
 		}
 
 		//convert changeIdData to json
@@ -201,38 +256,6 @@ func (svc wsOrderbookService) SubscribeBook(c *ws.Client, channel string) {
 			Timestamp:     ts,
 			TimestampPrev: ts,
 		}
-	} else {
-		err = json.Unmarshal([]byte(res), &changeId)
-		if err != nil {
-			msg := map[string]string{"Message": err.Error()}
-			socket.SendErrorMessage(c, msg)
-			return
-		}
-	}
-
-	var bidsData [][]interface{}
-	var asksData [][]interface{}
-	if len(orderBook.Asks) > 0 {
-		for _, ask := range orderBook.Asks {
-			var askData []interface{}
-			askData = append(askData, "new")
-			askData = append(askData, ask.Amount)
-			askData = append(askData, ask.Price)
-			asksData = append(asksData, askData)
-		}
-	} else {
-		asksData = make([][]interface{}, 0)
-	}
-	if len(orderBook.Bids) > 0 {
-		for _, bid := range orderBook.Bids {
-			var bidData []interface{}
-			bidData = append(bidData, "new")
-			bidData = append(bidData, bid.Amount)
-			bidData = append(bidData, bid.Price)
-			bidsData = append(bidsData, bidData)
-		}
-	} else {
-		bidsData = make([][]interface{}, 0)
 	}
 
 	bookData := _orderbookTypes.BookData{
@@ -432,19 +455,18 @@ func (svc wsOrderbookService) GetOrderBook(ctx context.Context, data _deribitMod
 	return results
 }
 
-func (svc wsOrderbookService) GetOrderLatestTimestamp(o _orderbookTypes.GetOrderBook, before int64, after int64) _orderbookTypes.Orderbook {
-	timeBefore := time.UnixMilli(before)
+func (svc wsOrderbookService) GetOrderLatestTimestamp(o _orderbookTypes.GetOrderBook, after int64) _orderbookTypes.Orderbook {
 	timeAfter := time.UnixMilli(after)
 	queryBuilder := func(side types.Side, priceOrder int) interface{} {
 		return []bson.M{
 			{
 				"$match": bson.M{
-					"status":      bson.M{"$in": []types.OrderStatus{types.OPEN, types.PARTIAL_FILLED, types.CANCELLED}},
+					"status":      bson.M{"$in": []types.OrderStatus{types.OPEN, types.PARTIAL_FILLED}},
 					"underlying":  o.Underlying,
 					"strikePrice": o.StrikePrice,
 					"expiryDate":  o.ExpiryDate,
 					"side":        side,
-					"updatedAt":   bson.M{"$gte": timeBefore, "$lt": timeAfter},
+					"updatedAt":   bson.M{"$lt": timeAfter},
 				},
 			},
 			{
@@ -487,19 +509,18 @@ func (svc wsOrderbookService) GetOrderLatestTimestamp(o _orderbookTypes.GetOrder
 	return orderbooks
 }
 
-func (svc wsOrderbookService) GetOrderLatestTimestampAgg(o _orderbookTypes.GetOrderBook, before int64, after int64) _orderbookTypes.Orderbook {
-	timeBefore := time.UnixMilli(before)
+func (svc wsOrderbookService) GetOrderLatestTimestampAgg(o _orderbookTypes.GetOrderBook, after int64) _orderbookTypes.Orderbook {
 	timeAfter := time.UnixMilli(after)
 	queryBuilderCount := func(side types.Side) interface{} {
 		return []bson.M{
 			{
 				"$match": bson.M{
-					"status":      bson.M{"$in": []types.OrderStatus{types.OPEN, types.PARTIAL_FILLED, types.CANCELLED}},
+					"status":      bson.M{"$in": []types.OrderStatus{types.OPEN, types.PARTIAL_FILLED}},
 					"underlying":  o.Underlying,
 					"strikePrice": o.StrikePrice,
 					"expiryDate":  o.ExpiryDate,
 					"side":        side,
-					"updatedAt":   bson.M{"$gte": timeBefore, "$lt": timeAfter},
+					"updatedAt":   bson.M{"$lt": timeAfter},
 				},
 			},
 			{
@@ -518,12 +539,12 @@ func (svc wsOrderbookService) GetOrderLatestTimestampAgg(o _orderbookTypes.GetOr
 		return []bson.M{
 			{
 				"$match": bson.M{
-					"status":      bson.M{"$in": []types.OrderStatus{types.OPEN, types.PARTIAL_FILLED, types.CANCELLED}},
+					"status":      bson.M{"$in": []types.OrderStatus{types.OPEN, types.PARTIAL_FILLED}},
 					"underlying":  o.Underlying,
 					"strikePrice": o.StrikePrice,
 					"expiryDate":  o.ExpiryDate,
 					"side":        side,
-					"updatedAt":   bson.M{"$gte": timeBefore, "$lt": timeAfter},
+					"updatedAt":   bson.M{"$lt": timeAfter},
 				},
 			},
 			{

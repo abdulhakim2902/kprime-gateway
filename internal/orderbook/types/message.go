@@ -82,8 +82,12 @@ type BookData struct {
 }
 
 type Change struct {
-	Id            int   `json:"id"`
-	IdPrev        int   `json:"id_prev"`
-	Timestamp     int64 `json:"timestamp"`
-	TimestampPrev int64 `json:"timestamp_prev"`
+	Id            int                `json:"id"`
+	IdPrev        int                `json:"id_prev"`
+	Timestamp     int64              `json:"timestamp"`
+	TimestampPrev int64              `json:"timestamp_prev"`
+	Bids          map[string]float64 `json:"bids"`
+	Asks          map[string]float64 `json:"asks"`
+	BidsAgg       map[string]float64 `json:"bids_agg"`
+	AsksAgg       map[string]float64 `json:"asks_agg"`
 }

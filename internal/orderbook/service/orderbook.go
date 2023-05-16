@@ -75,15 +75,6 @@ func (svc orderbookHandler) HandleConsumeBook(msg *sarama.ConsumerMessage) {
 		StrikePrice:    order.StrikePrice,
 	}
 
-	var status string
-	if order.Status == "CANCELLED" {
-		status = "delete"
-	} else if len(order.Amendments) > 0 {
-		status = "change"
-	} else {
-		status = "new"
-	}
-
 	ts := time.Now().UnixNano() / int64(time.Millisecond)
 	var changeId types.Change
 	var changeIdNew types.Change
@@ -95,70 +86,133 @@ func (svc orderbookHandler) HandleConsumeBook(msg *sarama.ConsumerMessage) {
 			Id:        1,
 			Timestamp: ts,
 		}
-
-		//convert changeIdNew to json
-		jsonBytes, err := json.Marshal(changeIdNew)
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-		svc.redis.Set("CHANGEID-"+_instrument, string(jsonBytes))
-		changeId = types.Change{
-			Id:        1,
-			Timestamp: ts,
-		}
 	} else {
 		err = json.Unmarshal([]byte(res), &changeId)
 		if err != nil {
 			fmt.Println(err)
 			return
 		}
-		// Set new data
-		id := changeId.Id + 1
-		changeIdNew = types.Change{
-			Id:            id,
-			IdPrev:        changeId.Id,
-			Timestamp:     ts,
-			TimestampPrev: changeId.Timestamp,
-		}
-
-		//convert changeIdNew to json
-		jsonBytes, err := json.Marshal(changeIdNew)
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-		svc.redis.Set("CHANGEID-"+_instrument, string(jsonBytes))
 	}
-	go svc.HandleConsumeBookAgg(msg)
-
 	// Get data
-	orderBook := svc.wsOBSvc.GetOrderLatestTimestamp(_order, changeId.Timestamp, ts)
+	orderBook := svc.wsOBSvc.GetOrderLatestTimestamp(_order, ts)
 
-	var bidsData [][]interface{}
-	var asksData [][]interface{}
+	var bidsData = make([][]interface{}, 0)
+	var asksData = make([][]interface{}, 0)
+	var changeAsksRaw = make(map[string]float64)
+	var changeBidsRaw = make(map[string]float64)
+
 	if len(orderBook.Asks) > 0 {
 		for _, ask := range orderBook.Asks {
 			var askData []interface{}
-			askData = append(askData, status)
-			askData = append(askData, ask.Amount)
-			askData = append(askData, ask.Price)
-			asksData = append(asksData, askData)
+			if val, ok := changeId.Asks[fmt.Sprintf("%f", ask.Price)]; ok {
+				if val != ask.Amount {
+					askData = append(askData, "change")
+					askData = append(askData, ask.Price)
+					askData = append(askData, ask.Amount)
+					bidsData = append(bidsData, askData)
+				}
+			} else {
+				askData = append(askData, "new")
+				askData = append(askData, ask.Price)
+				askData = append(askData, ask.Amount)
+				asksData = append(asksData, askData)
+			}
+			changeAsksRaw[fmt.Sprintf("%f", ask.Price)] = ask.Amount
 		}
 	} else {
 		asksData = make([][]interface{}, 0)
 	}
+
 	if len(orderBook.Bids) > 0 {
 		for _, bid := range orderBook.Bids {
 			var bidData []interface{}
-			bidData = append(bidData, status)
-			bidData = append(bidData, bid.Amount)
-			bidData = append(bidData, bid.Price)
-			bidsData = append(bidsData, bidData)
+			if val, ok := changeId.Bids[fmt.Sprintf("%f", bid.Price)]; ok {
+				if val != bid.Amount {
+					bidData = append(bidData, "change")
+					bidData = append(bidData, bid.Price)
+					bidData = append(bidData, bid.Amount)
+					bidsData = append(bidsData, bidData)
+				}
+			} else {
+				bidData = append(bidData, "new")
+				bidData = append(bidData, bid.Price)
+				bidData = append(bidData, bid.Amount)
+				bidsData = append(bidsData, bidData)
+			}
+			changeBidsRaw[fmt.Sprintf("%f", bid.Price)] = bid.Amount
 		}
 	} else {
 		bidsData = make([][]interface{}, 0)
 	}
+	if order.Status == "CANCELLED" {
+		if amount, ok := changeId.Bids[fmt.Sprintf("%f", order.Price)]; ok {
+			if amount-order.Amount == 0 {
+				switch order.Side {
+				case "BUY":
+					var bidData []interface{}
+					bidData = append(bidData, "delete")
+					bidData = append(bidData, order.Price)
+					bidData = append(bidData, 0)
+					bidsData = append(bidsData, bidData)
+				case "SELL":
+					var askData []interface{}
+					askData = append(askData, "delete")
+					askData = append(askData, order.Price)
+					askData = append(askData, 0)
+					asksData = append(asksData, askData)
+				}
+			}
+		}
+	} else if len(order.Amendments) > 0 {
+		updated := order.Amendments[len(order.Amendments)-1].UpdatedFields
+		switch order.Side {
+		case "BUY":
+			if val, ok := updated["price"]; ok {
+				if amount, ok := changeId.Bids[fmt.Sprintf("%f", val.OldValue)]; ok {
+					if amount-order.Amount == 0 {
+						var bidData []interface{}
+						bidData = append(bidData, "delete")
+						bidData = append(bidData, val.OldValue)
+						bidData = append(bidData, 0)
+						bidsData = append(bidsData, bidData)
+					}
+				}
+			}
+		case "SELL":
+			if val, ok := updated["price"]; ok {
+				if amount, ok := changeId.Asks[fmt.Sprintf("%f", val.OldValue)]; ok {
+					if amount-order.Amount == 0 {
+						var askData []interface{}
+						askData = append(askData, "delete")
+						askData = append(askData, val.OldValue)
+						askData = append(askData, 0)
+						asksData = append(asksData, askData)
+					}
+				}
+			}
+		}
+	}
+
+	// Set new data
+	id := changeId.Id + 1
+	changeIdNew = types.Change{
+		Id:            id,
+		IdPrev:        changeId.Id,
+		Timestamp:     ts,
+		TimestampPrev: changeId.Timestamp,
+		Asks:          changeAsksRaw,
+		Bids:          changeBidsRaw,
+	}
+
+	//convert changeIdNew to json
+	jsonBytes, err := json.Marshal(changeIdNew)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	svc.redis.Set("CHANGEID-"+_instrument, string(jsonBytes))
+
+	go svc.HandleConsumeBookAgg(msg)
 
 	bookData := types.BookData{
 		Type:           "change",
@@ -175,8 +229,8 @@ func (svc orderbookHandler) HandleConsumeBook(msg *sarama.ConsumerMessage) {
 		Data:    bookData,
 	}
 	method := "subscription"
-	id := fmt.Sprintf("%s-raw", _instrument)
-	ws.GetBookSocket().BroadcastMessage(id, method, params)
+	broadcastId := fmt.Sprintf("%s-raw", _instrument)
+	ws.GetBookSocket().BroadcastMessage(broadcastId, method, params)
 }
 
 func (svc orderbookHandler) HandleConsumeBookAgg(msg *sarama.ConsumerMessage) {
@@ -219,7 +273,7 @@ func (svc orderbookHandler) HandleConsumeBookAgg(msg *sarama.ConsumerMessage) {
 	}
 
 	// Get data
-	orderBook := svc.wsOBSvc.GetOrderLatestTimestampAgg(_order, changeId.TimestampPrev, changeId.Timestamp)
+	orderBook := svc.wsOBSvc.GetOrderLatestTimestampAgg(_order, changeId.Timestamp)
 
 	var bidsData [][]interface{}
 	var asksData [][]interface{}
@@ -263,4 +317,8 @@ func (svc orderbookHandler) HandleConsumeBookAgg(msg *sarama.ConsumerMessage) {
 	method := "subscription"
 	id := fmt.Sprintf("%s-agg2", _instrument)
 	ws.GetBookSocket().BroadcastMessage(id, method, params)
+}
+
+func (svc orderbookHandler) Handle100msInterval(instrument string) {
+	// to do
 }
