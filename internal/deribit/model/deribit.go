@@ -10,14 +10,27 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
+type RequestParams struct {
+	AccessToken    string            `json:"access_token"`
+	InstrumentName string            `json:"instrument_name"`
+	Amount         float64           `json:"amount"`
+	Type           types.Type        `json:"type"`
+	Price          float64           `json:"price"`
+	TimeInForce    types.TimeInForce `json:"time_in_force"`
+	Label          string            `json:"label"`
+}
+
 type DeribitRequest struct {
-	InstrumentName string  `json:"instrument_name" validate:"required"`
-	Amount         float64 `json:"amount"`
-	Type           string  `json:"type"`
-	Price          float64 `json:"price"`
-	ClOrdID        string  `json:"clOrdID"`
-	TimeInForce    string  `json:"time_in_force"`
-	Label          string  `json:"label"`
+	ID             string            `json:"id"`
+	ClientId       string            `json:"clientId"`
+	InstrumentName string            `json:"instrument_name" validate:"required"`
+	Amount         float64           `json:"amount"`
+	Type           types.Type        `json:"type"`
+	Price          float64           `json:"price"`
+	ClOrdID        string            `json:"clOrdID"`
+	TimeInForce    types.TimeInForce `json:"time_in_force"`
+	Label          string            `json:"label"`
+	Side           types.Side        `json:"side"`
 
 	OrderExclusions []order.OrderExclusion `json:"order_exclusions"`
 	TypeInclusions  []order.TypeInclusions `json:"type_inclusions"`
@@ -83,24 +96,24 @@ type DeribitEditResponse struct {
 }
 
 type DeribitResponse struct {
-	ID             string    `json:"id"`
-	UserId         string    `json:"userId"`
-	ClientId       string    `json:"clientId"`
-	Underlying     string    `json:"underlying"`
-	ExpirationDate string    `json:"expiryDate" bson:"expiryDate"`
-	StrikePrice    float64   `json:"strikePrice"`
-	Type           string    `json:"type"`
-	Side           string    `json:"side"`
-	Price          float64   `json:"price"`
-	Amount         float64   `json:"amount"`
-	Contracts      string    `json:"contracts"`
-	TimeInForce    string    `json:"timeInForce"`
-	ClOrdID        string    `json:"clOrdID"`
-	CreatedAt      time.Time `json:"createdAt"`
-	Label          string    `json:"label,omitempty"`
+	ID             string            `json:"id,omitempty"`
+	UserId         string            `json:"userId,omitempty"`
+	ClientId       string            `json:"clientId,omitempty"`
+	Underlying     string            `json:"underlying,omitempty"`
+	ExpirationDate string            `json:"expiryDate,omitempty" bson:"expiryDate"`
+	StrikePrice    float64           `json:"strikePrice,omitempty"`
+	Type           types.Type        `json:"type,omitempty"`
+	Side           types.Side        `json:"side,omitempty"`
+	Price          float64           `json:"price,omitempty"`
+	Amount         float64           `json:"amount,omitempty"`
+	Contracts      types.Contracts   `json:"contracts,omitempty"`
+	TimeInForce    types.TimeInForce `json:"timeInForce,omitempty"`
+	ClOrdID        string            `json:"clOrdID,omitempty"`
+	CreatedAt      time.Time         `json:"createdAt,omitempty"`
+	Label          string            `json:"label,omitempty,omitempty"`
 
-	OrderExclusions []order.OrderExclusion `json:"order_exclusions"`
-	TypeInclusions  []order.TypeInclusions `json:"type_inclusions"`
+	OrderExclusions []order.OrderExclusion `json:"order_exclusions,omitempty"`
+	TypeInclusions  []order.TypeInclusions `json:"type_inclusions,omitempty"`
 }
 
 type DeribitGetInstrumentsRequest struct {

@@ -3,11 +3,12 @@ package service
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"gateway/internal/deribit/model"
 	"gateway/pkg/kafka/producer"
 	"strconv"
 	"strings"
+
+	"git.devucc.name/dependencies/utilities/types"
 )
 
 type deribitService struct {
@@ -18,39 +19,49 @@ func NewDeribitService() IDeribitService {
 	return &deribitService{}
 }
 
-func (svc deribitService) DeribitParseBuy(ctx context.Context, userId string, data model.DeribitRequest) (model.DeribitResponse, error) {
-	_string := data.InstrumentName
-	substring := strings.Split(_string, "-")
-	fmt.Println("data.InstrumentName")
-	fmt.Println(data)
-	fmt.Println(substring)
-	_contracts := ""
-	if substring[3] == "P" {
-		_contracts = "PUT"
-	} else {
-		_contracts = "CALL"
+func (svc deribitService) DeribitRequest(
+	ctx context.Context,
+	userId string,
+	data model.DeribitRequest,
+) (model.DeribitResponse, error) {
+	substring := strings.Split(data.InstrumentName, "-")
+
+	var _underlying, _expDate string
+	var _contracts types.Contracts
+
+	strikePrice := new(float64)
+	if len(substring) == 4 {
+		_underlying = substring[0]
+		_expDate = strings.ToUpper(substring[1])
+
+		strike, err := strconv.ParseFloat(substring[2], 64)
+		if err != nil {
+			panic(err)
+		}
+		*strikePrice = strike
+
+		if substring[3] == "P" {
+			_contracts = types.PUT
+		} else {
+			_contracts = types.CALL
+		}
 	}
 
-	strikePrice, err := strconv.ParseFloat(substring[2], 64)
-	if err != nil {
-		panic(err)
-	}
-
-	_timeInForce := ""
-	if data.TimeInForce == "" {
-		_timeInForce = "good_til_canceled"
+	var _timeInForce types.TimeInForce
+	if !data.TimeInForce.IsValid() {
+		_timeInForce = types.GOOD_TIL_CANCELLED
 	} else {
 		_timeInForce = data.TimeInForce
 	}
 
-	buy := model.DeribitResponse{
+	payload := model.DeribitResponse{
 		UserId:         userId,
-		ClientId:       "",
-		Underlying:     substring[0],
-		ExpirationDate: strings.ToUpper(substring[1]),
-		StrikePrice:    strikePrice,
+		ClientId:       data.ClientId,
+		Underlying:     _underlying,
+		ExpirationDate: _expDate,
+		StrikePrice:    *strikePrice,
 		Type:           data.Type,
-		Side:           "BUY",
+		Side:           data.Side,
 		ClOrdID:        data.ClOrdID,
 		Price:          data.Price,
 		Amount:         data.Amount,
@@ -62,65 +73,14 @@ func (svc deribitService) DeribitParseBuy(ctx context.Context, userId string, da
 		TypeInclusions:  data.TypeInclusions,
 	}
 
-	_buy, err := json.Marshal(buy)
+	out, err := json.Marshal(payload)
 	if err != nil {
 		panic(err)
 	}
 	//send to kafka
-	producer.KafkaProducer(string(_buy), "NEW_ORDER")
+	producer.KafkaProducer(string(out), "NEW_ORDER")
 
-	return buy, nil
-}
-
-func (svc deribitService) DeribitParseSell(ctx context.Context, userId string, data model.DeribitRequest) (model.DeribitResponse, error) {
-	_string := data.InstrumentName
-	substring := strings.Split(_string, "-")
-	_contracts := ""
-	if substring[3] == "P" {
-		_contracts = "PUT"
-	} else {
-		_contracts = "CALL"
-	}
-
-	strikePrice, err := strconv.ParseFloat(substring[2], 64)
-	if err != nil {
-		panic(err)
-	}
-
-	_timeInForce := ""
-	if data.TimeInForce == "" {
-		_timeInForce = "good_til_canceled"
-	} else {
-		_timeInForce = data.TimeInForce
-	}
-
-	sell := model.DeribitResponse{
-		UserId:         userId,
-		ClientId:       "",
-		Underlying:     substring[0],
-		ExpirationDate: strings.ToUpper(substring[1]),
-		StrikePrice:    strikePrice,
-		Type:           data.Type,
-		Side:           "SELL",
-		ClOrdID:        data.ClOrdID,
-		Price:          data.Price,
-		Amount:         data.Amount,
-		Contracts:      _contracts,
-		TimeInForce:    _timeInForce,
-		Label:          data.Label,
-
-		OrderExclusions: data.OrderExclusions,
-		TypeInclusions:  data.TypeInclusions,
-	}
-
-	_sell, err := json.Marshal(sell)
-	if err != nil {
-		panic(err)
-	}
-	//send to kafka
-	producer.KafkaProducer(string(_sell), "NEW_ORDER")
-
-	return sell, nil
+	return payload, nil
 }
 
 func (svc deribitService) DeribitParseEdit(ctx context.Context, userId string, data model.DeribitEditRequest) (model.DeribitEditResponse, error) {

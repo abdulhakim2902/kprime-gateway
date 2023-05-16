@@ -7,10 +7,11 @@ import (
 	"gateway/internal/deribit/service"
 	"gateway/pkg/model"
 	"gateway/pkg/rbac/middleware"
-	"github.com/gin-gonic/gin"
-	validator "github.com/go-playground/validator/v10"
 	"net/http"
 	"strconv"
+
+	"github.com/gin-gonic/gin"
+	validator "github.com/go-playground/validator/v10"
 )
 
 // Create a new instance of the validator
@@ -81,7 +82,7 @@ func (h DeribitHandler) DeribitParseBuy(r *gin.Context) {
 	}
 
 	// Call service
-	order, errJson := h.svc.DeribitParseBuy(r.Request.Context(), userIDStr, req)
+	order, errJson := h.svc.DeribitRequest(r.Request.Context(), userIDStr, req)
 	if errJson != nil {
 		r.JSON(http.StatusInternalServerError, &model.Response{
 			Error:   true,
@@ -141,7 +142,7 @@ func (h DeribitHandler) DeribitParseSell(r *gin.Context) {
 	}
 
 	// Call service
-	order, err := h.svc.DeribitParseSell(r.Request.Context(), userIDStr, req)
+	order, err := h.svc.DeribitRequest(r.Request.Context(), userIDStr, req)
 	if err != nil {
 		r.JSON(http.StatusInternalServerError, &model.Response{
 			Error:   true,

@@ -19,6 +19,7 @@ import (
 	wsService "gateway/internal/ws/service"
 
 	"git.devucc.name/dependencies/utilities/models/order"
+	"git.devucc.name/dependencies/utilities/types"
 	"github.com/go-playground/validator/v10"
 	cors "github.com/rs/cors/wrapper/gin"
 
@@ -177,19 +178,9 @@ func (svc wsHandler) PublicAuth(input interface{}, c *ws.Client) {
 func (svc wsHandler) PrivateBuy(input interface{}, c *ws.Client) {
 	requestedTime := uint64(time.Now().UnixMicro())
 
-	type Params struct {
-		AccessToken    string  `json:"access_token"`
-		InstrumentName string  `json:"instrument_name"`
-		Amount         float64 `json:"amount"`
-		Type           string  `json:"type"`
-		Price          float64 `json:"price"`
-		TimeInForce    string  `json:"time_in_force"`
-		Label          string  `json:"label"`
-	}
-
 	type Req struct {
-		Params Params `json:"params"`
-		Id     uint64 `json:"id"`
+		Params deribitModel.RequestParams `json:"params"`
+		Id     uint64                     `json:"id"`
 	}
 
 	msg := &Req{}
@@ -235,7 +226,7 @@ func (svc wsHandler) PrivateBuy(input interface{}, c *ws.Client) {
 	var typeInclusions []order.TypeInclusions
 	userHasOrderType := false
 	for _, orderType := range user.OrderTypes {
-		if strings.ToLower(orderType.Name) == strings.ToLower(msg.Params.Type) {
+		if strings.ToLower(orderType.Name) == strings.ToLower(string(msg.Params.Type)) {
 			userHasOrderType = true
 		}
 
@@ -262,7 +253,7 @@ func (svc wsHandler) PrivateBuy(input interface{}, c *ws.Client) {
 	}
 
 	// Parse the Deribit BUY
-	_, err = svc.deribitSvc.DeribitParseBuy(context.TODO(), claim.UserID, deribitModel.DeribitRequest{
+	_, err = svc.deribitSvc.DeribitRequest(context.TODO(), claim.UserID, deribitModel.DeribitRequest{
 		InstrumentName: msg.Params.InstrumentName,
 		Amount:         msg.Params.Amount,
 		Type:           msg.Params.Type,
@@ -270,6 +261,7 @@ func (svc wsHandler) PrivateBuy(input interface{}, c *ws.Client) {
 		ClOrdID:        strconv.FormatUint(msg.Id, 10),
 		TimeInForce:    msg.Params.TimeInForce,
 		Label:          msg.Params.Label,
+		Side:           types.BUY,
 
 		OrderExclusions: orderExclusions,
 		TypeInclusions:  typeInclusions,
@@ -285,19 +277,9 @@ func (svc wsHandler) PrivateBuy(input interface{}, c *ws.Client) {
 func (svc wsHandler) PrivateSell(input interface{}, c *ws.Client) {
 	requestedTime := uint64(time.Now().UnixMicro())
 
-	type Params struct {
-		AccessToken    string  `json:"access_token"`
-		InstrumentName string  `json:"instrument_name"`
-		Amount         float64 `json:"amount"`
-		Type           string  `json:"type"`
-		Price          float64 `json:"price"`
-		TimeInForce    string  `json:"time_in_force"`
-		Label          string  `json:"label"`
-	}
-
 	type Req struct {
-		Params Params `json:"params"`
-		Id     uint64 `json:"id"`
+		Params deribitModel.RequestParams `json:"params"`
+		Id     uint64                     `json:"id"`
 	}
 
 	msg := &Req{}
@@ -342,7 +324,7 @@ func (svc wsHandler) PrivateSell(input interface{}, c *ws.Client) {
 	var typeInclusions []order.TypeInclusions
 	userHasOrderType := false
 	for _, orderType := range user.OrderTypes {
-		if strings.ToLower(orderType.Name) == strings.ToLower(msg.Params.Type) {
+		if strings.ToLower(orderType.Name) == strings.ToLower(string(msg.Params.Type)) {
 			userHasOrderType = true
 		}
 
@@ -369,7 +351,7 @@ func (svc wsHandler) PrivateSell(input interface{}, c *ws.Client) {
 	}
 
 	// Parse the Deribit Sell
-	_, err = svc.deribitSvc.DeribitParseSell(context.TODO(), claim.UserID, deribitModel.DeribitRequest{
+	_, err = svc.deribitSvc.DeribitRequest(context.TODO(), claim.UserID, deribitModel.DeribitRequest{
 		InstrumentName: msg.Params.InstrumentName,
 		Amount:         msg.Params.Amount,
 		Type:           msg.Params.Type,
@@ -377,6 +359,7 @@ func (svc wsHandler) PrivateSell(input interface{}, c *ws.Client) {
 		ClOrdID:        strconv.FormatUint(msg.Id, 10),
 		TimeInForce:    msg.Params.TimeInForce,
 		Label:          msg.Params.Label,
+		Side:           types.SELL,
 
 		OrderExclusions: orderExclusions,
 		TypeInclusions:  typeInclusions,
