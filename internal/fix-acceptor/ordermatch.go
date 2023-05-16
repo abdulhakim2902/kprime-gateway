@@ -459,7 +459,7 @@ func OnMatchingOrder(data types.EngineResponse) {
 		if sessionID == nil {
 			return
 		}
-		order := data.Order
+		order := data.Matches.TakerOrder
 		msg := executionreport.New(
 			field.NewOrderID(trd.ID.String()),
 			field.NewExecID(order.ClOrdID),
