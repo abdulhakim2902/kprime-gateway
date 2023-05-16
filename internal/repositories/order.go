@@ -522,6 +522,28 @@ func (r OrderRepository) WsAggregate(pipeline interface{}) []*_orderbookType.WsO
 	return orders
 }
 
+func (r OrderRepository) CountAggregate(pipeline interface{}) []_orderbookType.Count {
+	opt := options.AggregateOptions{
+		MaxTime: &defaultTimeout,
+	}
+
+	cursor, err := r.collection.Aggregate(context.Background(), pipeline, &opt)
+	if err != nil {
+		return []_orderbookType.Count{}
+	}
+
+	err = cursor.Err()
+	if err != nil {
+		return []_orderbookType.Count{}
+	}
+
+	counts := []_orderbookType.Count{}
+
+	cursor.All(context.Background(), &counts)
+
+	return counts
+}
+
 func canceledReasonQuery() bson.D {
 	return bson.D{
 		{"$switch",

@@ -156,10 +156,17 @@ func (svc wsOrderbookService) SubscribeBook(c *ws.Client, channel string) {
 
 	// Get initial data
 	var orderBook _orderbookTypes.Orderbook
-	_, orderBook = svc.GetDataQuote(_order)
+	switch s[2] {
+	case "raw":
+		_, orderBook = svc.GetDataQuote(_order)
+	case "100ms":
+		_, orderBook = svc.GetDataQuote(_order)
+	case "agg2":
+		orderBook = svc._getOrderBookAgg2(_order)
+	}
 
 	// Subscribe
-	id := instrument
+	id := fmt.Sprintf("%s-%s", instrument, s[2])
 	err = socket.Subscribe(id, c)
 	if err != nil {
 		msg := map[string]string{"Message": err.Error()}
@@ -177,8 +184,9 @@ func (svc wsOrderbookService) SubscribeBook(c *ws.Client, channel string) {
 	if res == "" || err != nil {
 		// Set initial data if null
 		changeIdData := _orderbookTypes.Change{
-			Id:        1,
-			Timestamp: ts,
+			Id:            1,
+			Timestamp:     ts,
+			TimestampPrev: ts,
 		}
 
 		//convert changeIdData to json
@@ -189,8 +197,9 @@ func (svc wsOrderbookService) SubscribeBook(c *ws.Client, channel string) {
 		}
 		svc.redis.Set("CHANGEID-"+_string, string(jsonBytes))
 		changeId = _orderbookTypes.Change{
-			Id:        1,
-			Timestamp: ts,
+			Id:            1,
+			Timestamp:     ts,
+			TimestampPrev: ts,
 		}
 	} else {
 		err = json.Unmarshal([]byte(res), &changeId)
@@ -478,6 +487,109 @@ func (svc wsOrderbookService) GetOrderLatestTimestamp(o _orderbookTypes.GetOrder
 	return orderbooks
 }
 
+func (svc wsOrderbookService) GetOrderLatestTimestampAgg(o _orderbookTypes.GetOrderBook, before int64, after int64) _orderbookTypes.Orderbook {
+	timeBefore := time.UnixMilli(before)
+	timeAfter := time.UnixMilli(after)
+	queryBuilderCount := func(side types.Side) interface{} {
+		return []bson.M{
+			{
+				"$match": bson.M{
+					"status":      bson.M{"$in": []types.OrderStatus{types.OPEN, types.PARTIAL_FILLED, types.CANCELLED}},
+					"underlying":  o.Underlying,
+					"strikePrice": o.StrikePrice,
+					"expiryDate":  o.ExpiryDate,
+					"side":        side,
+					"updatedAt":   bson.M{"$gte": timeBefore, "$lt": timeAfter},
+				},
+			},
+			{
+				"$group": bson.D{
+					{"_id", "$price"},
+					{"amount", bson.D{{"$sum", bson.M{"$subtract": []string{"$amount", "$filledAmount"}}}}},
+					{"detail", bson.D{{"$first", "$$ROOT"}}},
+				},
+			},
+			{
+				"$count": "count",
+			},
+		}
+	}
+	queryBuilder := func(side types.Side, priceOrder int, buckets int) interface{} {
+		return []bson.M{
+			{
+				"$match": bson.M{
+					"status":      bson.M{"$in": []types.OrderStatus{types.OPEN, types.PARTIAL_FILLED, types.CANCELLED}},
+					"underlying":  o.Underlying,
+					"strikePrice": o.StrikePrice,
+					"expiryDate":  o.ExpiryDate,
+					"side":        side,
+					"updatedAt":   bson.M{"$gte": timeBefore, "$lt": timeAfter},
+				},
+			},
+			{
+				"$group": bson.D{
+					{"_id", "$price"},
+					{"amount", bson.D{{"$sum", bson.M{"$subtract": []string{"$amount", "$filledAmount"}}}}},
+					{"detail", bson.D{{"$first", "$$ROOT"}}},
+				},
+			},
+			{"$sort": bson.M{"price": priceOrder, "createdAt": 1}},
+			{
+				"$replaceRoot": bson.D{
+					{"newRoot",
+						bson.D{
+							{"$mergeObjects",
+								bson.A{
+									"$detail",
+									bson.D{{"amount", "$amount"}},
+								},
+							},
+						},
+					},
+				},
+			},
+			{
+				"$bucketAuto": bson.D{
+					{"groupBy", "$price"},
+					{"buckets", buckets},
+					{"output", bson.M{
+						"amount": bson.D{{"$sum", "$amount"}},
+						"price":  bson.D{{"$min", "$price"}},
+					},
+					},
+				},
+			},
+		}
+	}
+
+	countAsk := queryBuilderCount(types.SELL)
+	countA := svc.orderRepository.CountAggregate(countAsk)
+
+	countBid := queryBuilderCount(types.BUY)
+	countB := svc.orderRepository.CountAggregate(countBid)
+	var asks []*_orderbookTypes.WsOrder
+	if len(countA) > 0 {
+		buckets := (countA[0].Count + 1) / 2
+		asksQuery := queryBuilder(types.SELL, -1, buckets)
+		asks = svc.orderRepository.WsAggregate(asksQuery)
+	}
+
+	var bids []*_orderbookTypes.WsOrder
+	if len(countB) > 0 {
+		buckets := (countB[0].Count + 1) / 2
+		bidsQuery := queryBuilder(types.BUY, 1, buckets)
+		bids = svc.orderRepository.WsAggregate(bidsQuery)
+	}
+
+	orderbooks := _orderbookTypes.Orderbook{
+		InstrumentName: o.InstrumentName,
+		Asks:           asks,
+		Bids:           bids,
+	}
+
+	return orderbooks
+}
+
 func (svc wsOrderbookService) _getOrderBook(o _orderbookTypes.GetOrderBook) *_orderbookTypes.Orderbook {
 	queryBuilder := func(side types.Side, priceOrder int) interface{} {
 		return []bson.M{
@@ -522,6 +634,106 @@ func (svc wsOrderbookService) _getOrderBook(o _orderbookTypes.GetOrderBook) *_or
 	bids := svc.orderRepository.WsAggregate(bidsQuery)
 
 	orderbooks := &_orderbookTypes.Orderbook{
+		InstrumentName: o.InstrumentName,
+		Asks:           asks,
+		Bids:           bids,
+	}
+
+	return orderbooks
+}
+
+func (svc wsOrderbookService) _getOrderBookAgg2(o _orderbookTypes.GetOrderBook) _orderbookTypes.Orderbook {
+	queryBuilderCount := func(side types.Side) interface{} {
+		return []bson.M{
+			{
+				"$match": bson.M{
+					"status":      bson.M{"$in": []types.OrderStatus{types.OPEN, types.PARTIAL_FILLED}},
+					"underlying":  o.Underlying,
+					"strikePrice": o.StrikePrice,
+					"expiryDate":  o.ExpiryDate,
+					"side":        side,
+				},
+			},
+			{
+				"$group": bson.D{
+					{"_id", "$price"},
+					{"amount", bson.D{{"$sum", bson.M{"$subtract": []string{"$amount", "$filledAmount"}}}}},
+					{"detail", bson.D{{"$first", "$$ROOT"}}},
+				},
+			},
+			{
+				"$count": "count",
+			},
+		}
+	}
+	queryBuilder := func(side types.Side, priceOrder int, buckets int) interface{} {
+		return []bson.M{
+			{
+				"$match": bson.M{
+					"status":      bson.M{"$in": []types.OrderStatus{types.OPEN, types.PARTIAL_FILLED}},
+					"underlying":  o.Underlying,
+					"strikePrice": o.StrikePrice,
+					"expiryDate":  o.ExpiryDate,
+					"side":        side,
+				},
+			},
+			{
+				"$group": bson.D{
+					{"_id", "$price"},
+					{"amount", bson.D{{"$sum", bson.M{"$subtract": []string{"$amount", "$filledAmount"}}}}},
+					{"detail", bson.D{{"$first", "$$ROOT"}}},
+				},
+			},
+			{"$sort": bson.M{"price": priceOrder, "createdAt": 1}},
+			{
+				"$replaceRoot": bson.D{
+					{"newRoot",
+						bson.D{
+							{"$mergeObjects",
+								bson.A{
+									"$detail",
+									bson.D{{"amount", "$amount"}},
+								},
+							},
+						},
+					},
+				},
+			},
+			{
+				"$bucketAuto": bson.D{
+					{"groupBy", "$price"},
+					{"buckets", buckets},
+					{"output", bson.M{
+						"amount": bson.D{{"$sum", "$amount"}},
+						"price":  bson.D{{"$min", "$price"}},
+					},
+					},
+				},
+			},
+		}
+	}
+
+	countAsk := queryBuilderCount(types.SELL)
+	countA := svc.orderRepository.CountAggregate(countAsk)
+
+	countBid := queryBuilderCount(types.BUY)
+	countB := svc.orderRepository.CountAggregate(countBid)
+
+	var asks []*_orderbookTypes.WsOrder
+	if len(countA) > 0 {
+		buckets := (countA[0].Count + 1) / 2
+		asksQuery := queryBuilder(types.SELL, -1, buckets)
+		asks = svc.orderRepository.WsAggregate(asksQuery)
+	}
+
+	var bids []*_orderbookTypes.WsOrder
+	if len(countB) > 0 {
+		buckets := (countB[0].Count + 1) / 2
+		bidsQuery := queryBuilder(types.BUY, 1, buckets)
+		bids = svc.orderRepository.WsAggregate(bidsQuery)
+	}
+
+	orderbooks := _orderbookTypes.Orderbook{
 		InstrumentName: o.InstrumentName,
 		Asks:           asks,
 		Bids:           bids,

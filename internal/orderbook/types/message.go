@@ -36,6 +36,10 @@ type WsOrder struct {
 	Amount float64 `json:"amount" bson:"amount"`
 }
 
+type Count struct {
+	Count int `json:"count" bson:"count"`
+}
+
 type Order struct {
 	order.Order          `bson:",inline"`
 	InstrumentName       string `json:"instrumentName" bson:"instrumentName"`
@@ -79,6 +83,7 @@ type BookData struct {
 
 type Change struct {
 	Id            int   `json:"id"`
+	IdPrev        int   `json:"id_prev"`
 	Timestamp     int64 `json:"timestamp"`
 	TimestampPrev int64 `json:"timestamp_prev"`
 }

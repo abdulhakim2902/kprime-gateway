@@ -117,6 +117,7 @@ func (svc orderbookHandler) HandleConsumeBook(msg *sarama.ConsumerMessage) {
 		id := changeId.Id + 1
 		changeIdNew = types.Change{
 			Id:            id,
+			IdPrev:        changeId.Id,
 			Timestamp:     ts,
 			TimestampPrev: changeId.Timestamp,
 		}
@@ -129,6 +130,7 @@ func (svc orderbookHandler) HandleConsumeBook(msg *sarama.ConsumerMessage) {
 		}
 		svc.redis.Set("CHANGEID-"+_instrument, string(jsonBytes))
 	}
+	go svc.HandleConsumeBookAgg(msg)
 
 	// Get data
 	orderBook := svc.wsOBSvc.GetOrderLatestTimestamp(_order, changeId.Timestamp, ts)
@@ -163,7 +165,7 @@ func (svc orderbookHandler) HandleConsumeBook(msg *sarama.ConsumerMessage) {
 		Timestamp:      changeIdNew.Timestamp,
 		InstrumentName: _instrument,
 		ChangeId:       changeIdNew.Id,
-		PrevChangeId:   changeId.Id,
+		PrevChangeId:   changeIdNew.IdPrev,
 		Bids:           bidsData,
 		Asks:           asksData,
 	}
@@ -173,5 +175,92 @@ func (svc orderbookHandler) HandleConsumeBook(msg *sarama.ConsumerMessage) {
 		Data:    bookData,
 	}
 	method := "subscription"
-	ws.GetBookSocket().BroadcastMessage(_instrument, method, params)
+	id := fmt.Sprintf("%s-raw", _instrument)
+	ws.GetBookSocket().BroadcastMessage(id, method, params)
+}
+
+func (svc orderbookHandler) HandleConsumeBookAgg(msg *sarama.ConsumerMessage) {
+	var order _orderbookType.Order
+
+	err := json.Unmarshal(msg.Value, &order)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	_instrument := order.Underlying + "-" + order.ExpiryDate + "-" + fmt.Sprintf("%.0f", order.StrikePrice) + "-" + string(order.Contracts[0])
+
+	_order := types.GetOrderBook{
+		InstrumentName: _instrument,
+		Underlying:     order.Underlying,
+		ExpiryDate:     order.ExpiryDate,
+		StrikePrice:    order.StrikePrice,
+	}
+
+	var status string
+	if order.Status == "CANCELLED" {
+		status = "delete"
+	} else if len(order.Amendments) > 0 {
+		status = "change"
+	} else {
+		status = "new"
+	}
+
+	var changeId types.Change
+	// Get change_id
+	res, err := svc.redis.GetValue("CHANGEID-" + _instrument)
+	if res == "" || err != nil {
+		return
+	} else {
+		err = json.Unmarshal([]byte(res), &changeId)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+	}
+
+	// Get data
+	orderBook := svc.wsOBSvc.GetOrderLatestTimestampAgg(_order, changeId.TimestampPrev, changeId.Timestamp)
+
+	var bidsData [][]interface{}
+	var asksData [][]interface{}
+	if len(orderBook.Asks) > 0 {
+		for _, ask := range orderBook.Asks {
+			var askData []interface{}
+			askData = append(askData, status)
+			askData = append(askData, ask.Amount)
+			askData = append(askData, ask.Price)
+			asksData = append(asksData, askData)
+		}
+	} else {
+		asksData = make([][]interface{}, 0)
+	}
+	if len(orderBook.Bids) > 0 {
+		for _, bid := range orderBook.Bids {
+			var bidData []interface{}
+			bidData = append(bidData, status)
+			bidData = append(bidData, bid.Amount)
+			bidData = append(bidData, bid.Price)
+			bidsData = append(bidsData, bidData)
+		}
+	} else {
+		bidsData = make([][]interface{}, 0)
+	}
+
+	bookData := types.BookData{
+		Type:           "change",
+		Timestamp:      changeId.Timestamp,
+		InstrumentName: _instrument,
+		ChangeId:       changeId.Id,
+		PrevChangeId:   changeId.IdPrev,
+		Bids:           bidsData,
+		Asks:           asksData,
+	}
+
+	params := types.QuoteResponse{
+		Channel: fmt.Sprintf("book.%s.agg2", _instrument),
+		Data:    bookData,
+	}
+	method := "subscription"
+	id := fmt.Sprintf("%s-agg2", _instrument)
+	ws.GetBookSocket().BroadcastMessage(id, method, params)
 }
