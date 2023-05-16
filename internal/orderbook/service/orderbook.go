@@ -149,16 +149,20 @@ func (svc orderbookHandler) HandleConsumeBook(msg *sarama.ConsumerMessage) {
 	// Check on order cancel
 	if order.Status == "CANCELLED" {
 		// Check if price point deleted
-		if amount, ok := changeId.Bids[fmt.Sprintf("%f", order.Price)]; ok {
-			if amount-order.Amount == 0 {
-				switch order.Side {
-				case "BUY":
+		switch order.Side {
+		case "BUY":
+			if amount, ok := changeId.Bids[fmt.Sprintf("%f", order.Price)]; ok {
+				if amount-order.Amount == 0 {
 					var bidData []interface{}
 					bidData = append(bidData, "delete")
 					bidData = append(bidData, order.Price)
 					bidData = append(bidData, 0)
 					bidsData = append(bidsData, bidData)
-				case "SELL":
+				}
+			}
+		case "SELL":
+			if amount, ok := changeId.Asks[fmt.Sprintf("%f", order.Price)]; ok {
+				if amount-order.Amount == 0 {
 					var askData []interface{}
 					askData = append(askData, "delete")
 					askData = append(askData, order.Price)
@@ -209,6 +213,8 @@ func (svc orderbookHandler) HandleConsumeBook(msg *sarama.ConsumerMessage) {
 		TimestampPrev: changeId.Timestamp,
 		Asks:          changeAsksRaw,
 		Bids:          changeBidsRaw,
+		AsksAgg:       changeId.AsksAgg,
+		BidsAgg:       changeId.BidsAgg,
 	}
 
 	//convert changeIdNew to json
@@ -257,15 +263,6 @@ func (svc orderbookHandler) HandleConsumeBookAgg(msg *sarama.ConsumerMessage) {
 		StrikePrice:    order.StrikePrice,
 	}
 
-	var status string
-	if order.Status == "CANCELLED" {
-		status = "delete"
-	} else if len(order.Amendments) > 0 {
-		status = "change"
-	} else {
-		status = "new"
-	}
-
 	var changeId types.Change
 	// Get change_id
 	res, err := svc.redis.GetValue("CHANGEID-" + _instrument)
@@ -282,30 +279,136 @@ func (svc orderbookHandler) HandleConsumeBookAgg(msg *sarama.ConsumerMessage) {
 	// Get data
 	orderBook := svc.wsOBSvc.GetOrderLatestTimestampAgg(_order, changeId.Timestamp)
 
-	var bidsData [][]interface{}
-	var asksData [][]interface{}
+	var bidsData = make([][]interface{}, 0)
+	var asksData = make([][]interface{}, 0)
+	var changeAsksRaw = make(map[string]float64)
+	var changeBidsRaw = make(map[string]float64)
+
 	if len(orderBook.Asks) > 0 {
 		for _, ask := range orderBook.Asks {
 			var askData []interface{}
-			askData = append(askData, status)
-			askData = append(askData, ask.Amount)
-			askData = append(askData, ask.Price)
-			asksData = append(asksData, askData)
+			// check if data from last changeId is changed or is there new data incoming
+			if val, ok := changeId.AsksAgg[fmt.Sprintf("%f", ask.Price)]; ok {
+				if val != ask.Amount {
+					askData = append(askData, "change")
+					askData = append(askData, ask.Price)
+					askData = append(askData, ask.Amount)
+					bidsData = append(bidsData, askData)
+				}
+			} else {
+				askData = append(askData, "new")
+				askData = append(askData, ask.Price)
+				askData = append(askData, ask.Amount)
+				asksData = append(asksData, askData)
+			}
+			changeAsksRaw[fmt.Sprintf("%f", ask.Price)] = ask.Amount
 		}
 	} else {
 		asksData = make([][]interface{}, 0)
 	}
+
 	if len(orderBook.Bids) > 0 {
 		for _, bid := range orderBook.Bids {
 			var bidData []interface{}
-			bidData = append(bidData, status)
-			bidData = append(bidData, bid.Amount)
-			bidData = append(bidData, bid.Price)
-			bidsData = append(bidsData, bidData)
+			// check if data from last changeId is changed or is there new data incoming
+			if val, ok := changeId.BidsAgg[fmt.Sprintf("%f", bid.Price)]; ok {
+				if val != bid.Amount {
+					bidData = append(bidData, "change")
+					bidData = append(bidData, bid.Price)
+					bidData = append(bidData, bid.Amount)
+					bidsData = append(bidsData, bidData)
+				}
+			} else {
+				bidData = append(bidData, "new")
+				bidData = append(bidData, bid.Price)
+				bidData = append(bidData, bid.Amount)
+				bidsData = append(bidsData, bidData)
+			}
+			changeBidsRaw[fmt.Sprintf("%f", bid.Price)] = bid.Amount
 		}
 	} else {
 		bidsData = make([][]interface{}, 0)
 	}
+
+	// Check on order cancel
+	if order.Status == "CANCELLED" {
+		// Check if price point deleted
+
+		switch order.Side {
+		case "BUY":
+			if amount, ok := changeId.BidsAgg[fmt.Sprintf("%f", order.Price)]; ok {
+				if amount-order.Amount == 0 {
+					var bidData []interface{}
+					bidData = append(bidData, "delete")
+					bidData = append(bidData, order.Price)
+					bidData = append(bidData, 0)
+					bidsData = append(bidsData, bidData)
+				}
+			}
+		case "SELL":
+			if amount, ok := changeId.AsksAgg[fmt.Sprintf("%f", order.Price)]; ok {
+				if amount-order.Amount == 0 {
+					var askData []interface{}
+					askData = append(askData, "delete")
+					askData = append(askData, order.Price)
+					askData = append(askData, 0)
+					asksData = append(asksData, askData)
+				}
+			}
+		}
+	} else if len(order.Amendments) > 0 {
+		// Check on order edit
+		updated := order.Amendments[len(order.Amendments)-1].UpdatedFields
+		switch order.Side {
+		case "BUY":
+			if val, ok := updated["price"]; ok {
+				if amount, ok := changeId.BidsAgg[fmt.Sprintf("%f", val.OldValue)]; ok {
+					// check if old price point deleted
+					if amount-order.Amount == 0 {
+						var bidData []interface{}
+						bidData = append(bidData, "delete")
+						bidData = append(bidData, val.OldValue)
+						bidData = append(bidData, 0)
+						bidsData = append(bidsData, bidData)
+					}
+				}
+			}
+		case "SELL":
+			if val, ok := updated["price"]; ok {
+				if amount, ok := changeId.AsksAgg[fmt.Sprintf("%f", val.OldValue)]; ok {
+					// check if old price point deleted
+					if amount-order.Amount == 0 {
+						var askData []interface{}
+						askData = append(askData, "delete")
+						askData = append(askData, val.OldValue)
+						askData = append(askData, 0)
+						asksData = append(asksData, askData)
+					}
+				}
+			}
+		}
+	}
+
+	// Set new data into redis
+	changeIdNew := types.Change{
+		Id:            changeId.Id,
+		IdPrev:        changeId.IdPrev,
+		Timestamp:     changeId.Timestamp,
+		TimestampPrev: changeId.TimestampPrev,
+		Bids:          changeId.Bids,
+		Asks:          changeId.Asks,
+		AsksAgg:       changeAsksRaw,
+		BidsAgg:       changeBidsRaw,
+	}
+
+	//convert changeIdNew to json
+	jsonBytes, err := json.Marshal(changeIdNew)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	svc.redis.Set("CHANGEID-"+_instrument, string(jsonBytes))
 
 	bookData := types.BookData{
 		Type:           "change",

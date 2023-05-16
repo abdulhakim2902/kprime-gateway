@@ -256,6 +256,29 @@ func (svc wsOrderbookService) SubscribeBook(c *ws.Client, channel string) {
 			Timestamp:     ts,
 			TimestampPrev: ts,
 		}
+	} else {
+		if s[2] == "agg2" {
+			if len(changeId.AsksAgg) == 0 && len(changeId.BidsAgg) == 0 {
+				changeIdData := _orderbookTypes.Change{
+					Id:            changeId.Id,
+					IdPrev:        changeId.IdPrev,
+					Timestamp:     changeId.Timestamp,
+					TimestampPrev: changeId.TimestampPrev,
+					Bids:          changeId.Bids,
+					Asks:          changeId.Asks,
+					AsksAgg:       changeAsksRaw,
+					BidsAgg:       changeBidsRaw,
+				}
+				//convert changeIdData to json
+				jsonBytes, err := json.Marshal(changeIdData)
+				if err != nil {
+					fmt.Println(err)
+					return
+				}
+
+				svc.redis.Set("CHANGEID-"+_string, string(jsonBytes))
+			}
+		}
 	}
 
 	bookData := _orderbookTypes.BookData{
