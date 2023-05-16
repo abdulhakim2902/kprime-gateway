@@ -485,9 +485,12 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 			asks := a.OrderRepository.GetMarketData(sym, "BUY")
 			fmt.Println("asks found", asks, sym)
 			for _, ask := range asks {
+				if ask.Status == "FILLED" {
+					continue
+				}
 				response = append(response, MarketDataResponse{
 					Price:  ask.Price,
-					Amount: ask.Amount,
+					Amount: ask.Amount - ask.FilledAmount,
 					Side:   ask.Side,
 					InstrumentName: ask.Underlying + "-" + ask.ExpirationDate + "-" + strconv.FormatFloat(ask.StrikePrice, 'f', 0, 64) +
 						"-" + ask.Contracts[0:1],
@@ -501,9 +504,12 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 			bids := a.OrderRepository.GetMarketData(sym, "SELL")
 			fmt.Println("bids found", bids, sym)
 			for _, bid := range bids {
+				if bid.Status == "FILLED" {
+					continue
+				}
 				response = append(response, MarketDataResponse{
 					Price:  bid.Price,
-					Amount: bid.Amount,
+					Amount: bid.Amount - bid.FilledAmount,
 					Side:   bid.Side,
 					InstrumentName: bid.Underlying + "-" + bid.ExpirationDate + "-" + strconv.FormatFloat(bid.StrikePrice, 'f', 0, 64) +
 						"-" + bid.Contracts[0:1],
@@ -547,6 +553,7 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 		reqId, _ := msg.GetMDReqID()
 		snap.SetMDReqID(reqId)
 		grp := marketdatasnapshotfullrefresh.NewNoMDEntriesRepeatingGroup()
+		response = mapMarketDataResponse(response)
 		fmt.Println("response", response)
 		for _, res := range response {
 			row := grp.Add()
@@ -580,6 +587,35 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 	}
 
 	return
+}
+
+func mapMarketDataResponse(res []MarketDataResponse) []MarketDataResponse {
+	result := []MarketDataResponse{}
+
+	for _, r := range res {
+		if len(result) == 0 {
+			result = append(result, r)
+			continue
+		}
+		result, exist := isInstrumentExists(result, r)
+		fmt.Println("exist", exist, result)
+		if !exist {
+			result = append(result, r)
+		}
+	}
+	return result
+}
+
+func isInstrumentExists(data []MarketDataResponse, marketData MarketDataResponse) ([]MarketDataResponse, bool) {
+	for i, d := range data {
+		fmt.Println("d", d, marketData)
+		if d.InstrumentName == marketData.InstrumentName && d.Price == marketData.Price && d.Side == marketData.Side {
+			data[i].Amount = data[i].Amount + marketData.Amount
+			fmt.Println("d2", d)
+			return data, true
+		}
+	}
+	return data, false
 }
 
 func OnMatchingOrder(data types.EngineResponse) {

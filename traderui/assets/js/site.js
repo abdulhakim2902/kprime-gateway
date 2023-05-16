@@ -797,9 +797,9 @@ App.Views.MarketDataRequest = Backbone.View.extend({
   <p>
   <div class='form-group'>
     <input type="checkbox" id="md_entry_type_1" name="md_entry_type_1" value="Bid">
-    <label for="md_entry_type_1"> Ask</label><br>
+    <label for="md_entry_type_1"> Buy</label><br>
     <input type="checkbox" id="md_entry_type_2" name="md_entry_type_2" value="Ask">
-    <label for="md_entry_type_2"> Bid</label><br>
+    <label for="md_entry_type_2"> Ask</label><br>
     <input type="checkbox" id="md_entry_type_3" name="md_entry_type_3" value="Trade">
     <label for="md_entry_type_3"> Trade</label><br>
   </div>
