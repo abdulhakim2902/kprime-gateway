@@ -181,7 +181,7 @@ func (svc wsOrderbookService) SubscribeBook(c *ws.Client, channel string) {
 		}
 	}
 
-	// Get initial data
+	// Get initial data from db
 	var orderBook _orderbookTypes.Orderbook
 	switch s[2] {
 	case "raw":

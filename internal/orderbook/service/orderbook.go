@@ -78,7 +78,7 @@ func (svc orderbookHandler) HandleConsumeBook(msg *sarama.ConsumerMessage) {
 	ts := time.Now().UnixNano() / int64(time.Millisecond)
 	var changeId types.Change
 	var changeIdNew types.Change
-	// Get change_id
+	// Get saved orderbook from redis
 	res, err := svc.redis.GetValue("CHANGEID-" + _instrument)
 	if res == "" || err != nil {
 		// Set initial data if null
@@ -93,7 +93,7 @@ func (svc orderbookHandler) HandleConsumeBook(msg *sarama.ConsumerMessage) {
 			return
 		}
 	}
-	// Get data
+	// Get latest data from db
 	orderBook := svc.wsOBSvc.GetOrderLatestTimestamp(_order, ts)
 
 	var bidsData = make([][]interface{}, 0)
@@ -104,6 +104,7 @@ func (svc orderbookHandler) HandleConsumeBook(msg *sarama.ConsumerMessage) {
 	if len(orderBook.Asks) > 0 {
 		for _, ask := range orderBook.Asks {
 			var askData []interface{}
+			// check if data from last changeId is changed or is there new data incoming
 			if val, ok := changeId.Asks[fmt.Sprintf("%f", ask.Price)]; ok {
 				if val != ask.Amount {
 					askData = append(askData, "change")
@@ -126,6 +127,7 @@ func (svc orderbookHandler) HandleConsumeBook(msg *sarama.ConsumerMessage) {
 	if len(orderBook.Bids) > 0 {
 		for _, bid := range orderBook.Bids {
 			var bidData []interface{}
+			// check if data from last changeId is changed or is there new data incoming
 			if val, ok := changeId.Bids[fmt.Sprintf("%f", bid.Price)]; ok {
 				if val != bid.Amount {
 					bidData = append(bidData, "change")
@@ -144,7 +146,9 @@ func (svc orderbookHandler) HandleConsumeBook(msg *sarama.ConsumerMessage) {
 	} else {
 		bidsData = make([][]interface{}, 0)
 	}
+	// Check on order cancel
 	if order.Status == "CANCELLED" {
+		// Check if price point deleted
 		if amount, ok := changeId.Bids[fmt.Sprintf("%f", order.Price)]; ok {
 			if amount-order.Amount == 0 {
 				switch order.Side {
@@ -164,11 +168,13 @@ func (svc orderbookHandler) HandleConsumeBook(msg *sarama.ConsumerMessage) {
 			}
 		}
 	} else if len(order.Amendments) > 0 {
+		// Check on order edit
 		updated := order.Amendments[len(order.Amendments)-1].UpdatedFields
 		switch order.Side {
 		case "BUY":
 			if val, ok := updated["price"]; ok {
 				if amount, ok := changeId.Bids[fmt.Sprintf("%f", val.OldValue)]; ok {
+					// check if old price point deleted
 					if amount-order.Amount == 0 {
 						var bidData []interface{}
 						bidData = append(bidData, "delete")
@@ -181,6 +187,7 @@ func (svc orderbookHandler) HandleConsumeBook(msg *sarama.ConsumerMessage) {
 		case "SELL":
 			if val, ok := updated["price"]; ok {
 				if amount, ok := changeId.Asks[fmt.Sprintf("%f", val.OldValue)]; ok {
+					// check if old price point deleted
 					if amount-order.Amount == 0 {
 						var askData []interface{}
 						askData = append(askData, "delete")
@@ -193,7 +200,7 @@ func (svc orderbookHandler) HandleConsumeBook(msg *sarama.ConsumerMessage) {
 		}
 	}
 
-	// Set new data
+	// Set new data into redis
 	id := changeId.Id + 1
 	changeIdNew = types.Change{
 		Id:            id,
