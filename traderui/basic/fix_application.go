@@ -324,7 +324,7 @@ func (a FIXApplication) onMarketDataSnapshot(msg *quickfix.Message, sessionID qu
 			fmt.Println("Error getting the entry secondary order id: ", err)
 		}
 
-		marketData = appendMarketData(MarketData{
+		marketData = append(marketData, MarketData{
 			InstrumentName: sym,
 			Side:           string(entryType),
 			Amount:         entrySize.InexactFloat64(),
