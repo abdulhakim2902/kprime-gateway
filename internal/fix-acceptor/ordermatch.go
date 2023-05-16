@@ -190,15 +190,15 @@ func (a Application) FromAdmin(msg *quickfix.Message, sessionID quickfix.Session
 			return err
 		}
 
-		user, err := a.UserRepository.FindByAPIKeyAndSecret(context.TODO(), uname.String(), pwd.String())
-		if err != nil {
-			return quickfix.NewMessageRejectError("Failed getting user", 1, nil)
-		}
+		// user, err := a.UserRepository.FindByAPIKeyAndSecret(context.TODO(), uname.String(), pwd.String())
+		// if err != nil {
+		// 	return quickfix.NewMessageRejectError("Failed getting user", 1, nil)
+		// }
 
 		if userSession == nil {
 			userSession = make(map[string]*quickfix.SessionID)
 		}
-		userSession[user.ID.Hex()] = &sessionID
+		userSession["123"] = &sessionID
 	}
 	return nil
 }
@@ -489,8 +489,8 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 					Price:  ask.Price,
 					Amount: ask.Amount,
 					Side:   ask.Side,
-					InstrumentName: ask.Underlying + "-" + ask.ExpirationDate + "-" + strconv.FormatFloat(ask.StrikePrice, 'f', 2, 64) +
-						"-" + ask.Contracts,
+					InstrumentName: ask.Underlying + "-" + ask.ExpirationDate + "-" + strconv.FormatFloat(ask.StrikePrice, 'f', 0, 64) +
+						"-" + ask.Contracts[0:1],
 					Date: ask.CreatedAt.String(),
 					Type: "ASK",
 				})
@@ -505,8 +505,8 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 					Price:  bid.Price,
 					Amount: bid.Amount,
 					Side:   bid.Side,
-					InstrumentName: bid.Underlying + "-" + bid.ExpirationDate + "-" + strconv.FormatFloat(bid.StrikePrice, 'f', 2, 64) +
-						"-" + bid.Contracts,
+					InstrumentName: bid.Underlying + "-" + bid.ExpirationDate + "-" + strconv.FormatFloat(bid.StrikePrice, 'f', 0, 64) +
+						"-" + bid.Contracts[0:1],
 					Date: bid.CreatedAt.String(),
 					Type: "BID",
 				})
@@ -528,8 +528,8 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 					Price:  trade.Price,
 					Amount: trade.Amount,
 					Side:   string(trade.Side),
-					InstrumentName: trade.Underlying + "-" + trade.ExpiryDate + "-" + strconv.FormatFloat(trade.StrikePrice, 'f', 2, 64) +
-						"-" + string(trade.Contracts),
+					InstrumentName: trade.Underlying + "-" + trade.ExpiryDate + "-" + strconv.FormatFloat(trade.StrikePrice, 'f', 0, 64) +
+						"-" + string(trade.Contracts)[0:1],
 					Date:    trade.CreatedAt.String(),
 					Type:    "TRADE",
 					MakerID: trade.MakerOrderID.Hex(),
