@@ -111,6 +111,8 @@ type DeribitResponse struct {
 	ClOrdID        string            `json:"clOrdID,omitempty"`
 	CreatedAt      time.Time         `json:"createdAt,omitempty"`
 	Label          string            `json:"label,omitempty,omitempty"`
+	FilledAmount   float64           `json:"filledAmount,omitempty"`
+	Status         string            `json:"status,omitempty"`
 
 	OrderExclusions []order.OrderExclusion `json:"order_exclusions,omitempty"`
 	TypeInclusions  []order.TypeInclusions `json:"type_inclusions,omitempty"`
