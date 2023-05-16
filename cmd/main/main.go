@@ -26,9 +26,9 @@ import (
 	_wsOrderbookSvc "gateway/internal/ws/service"
 	_wsSvc "gateway/internal/ws/service"
 
-	_authSvc "gateway/internal/auth/service"
 	_engSvc "gateway/internal/engine/service"
 	_obSvc "gateway/internal/orderbook/service"
+	_authSvc "gateway/internal/user/service"
 
 	_wsCtrl "gateway/internal/ws/controller"
 
@@ -81,13 +81,13 @@ func main() {
 	// Websocket handlers
 	_wsEngineSvc := _wsEngineSvc.NewwsEngineService(redis)
 
-	authRepo := repositories.NewAuthRepositoryRepository(mongoConn)
+	userRepo := repositories.NewUserRepository(mongoConn)
 	orderRepo := repositories.NewOrderRepository(mongoConn)
 	tradeRepo := repositories.NewTradeRepository(mongoConn)
 	rawPriceRepo := repositories.NewRawPriceRepository(mongoConn)
 	settlementPriceRepo := repositories.NewSettlementPriceRepository(mongoConn)
 
-	_wsAuthSvc := _authSvc.NewAuthService(authRepo)
+	_wsAuthSvc := _authSvc.NewAuthService(userRepo)
 	_wsOrderbookSvc := _wsOrderbookSvc.NewWSOrderbookService(redis, orderRepo, tradeRepo, rawPriceRepo, settlementPriceRepo)
 	_wsOrderSvc := _wsSvc.NewWSOrderService(redis, orderRepo)
 	_wsTradeSvc := _wsSvc.NewWSTradeService(redis, tradeRepo)
@@ -100,6 +100,7 @@ func main() {
 		_wsEngineSvc,
 		_wsOrderSvc,
 		_wsTradeSvc,
+		userRepo,
 	)
 
 	fmt.Printf("Server is running on %s \n", os.Getenv("PORT"))

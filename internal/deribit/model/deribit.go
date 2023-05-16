@@ -5,6 +5,7 @@ import (
 
 	"time"
 
+	"git.devucc.name/dependencies/utilities/models/order"
 	"git.devucc.name/dependencies/utilities/types"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -17,6 +18,9 @@ type DeribitRequest struct {
 	ClOrdID        string  `json:"clOrdID"`
 	TimeInForce    string  `json:"time_in_force"`
 	Label          string  `json:"label"`
+
+	OrderExclusions []order.OrderExclusion `json:"order_exclusions"`
+	TypeInclusions  []order.TypeInclusions `json:"type_inclusions"`
 }
 
 type DeribitCancelRequest struct {
@@ -94,6 +98,9 @@ type DeribitResponse struct {
 	ClOrdID        string    `json:"clOrdID"`
 	CreatedAt      time.Time `json:"createdAt"`
 	Label          string    `json:"label,omitempty"`
+
+	OrderExclusions []order.OrderExclusion `json:"order_exclusions"`
+	TypeInclusions  []order.TypeInclusions `json:"type_inclusions"`
 }
 
 type DeribitGetInstrumentsRequest struct {

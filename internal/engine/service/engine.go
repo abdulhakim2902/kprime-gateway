@@ -65,7 +65,7 @@ func (svc engineHandler) HandleConsume(msg *sarama.ConsumerMessage) {
 	//get redis
 	redisData, err := svc.redis.GetValue("ENGINE-" + _instrument)
 	if err != nil {
-		fmt.Println("error get redis or redis is empty")
+		fmt.Println("ENGINE: error get redis or redis is empty")
 	}
 
 	//create new variable with array of object and append to redisDataArray
@@ -185,6 +185,7 @@ func (svc engineHandler) PublishOrder(data _engineType.EngineResponse) {
 	)
 	if err != nil {
 		fmt.Println("tradeRepo.GetPriceAvg:", err)
+		return
 	}
 
 	order := _engineType.BuySellEditCancelOrder{
