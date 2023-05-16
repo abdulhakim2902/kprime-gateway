@@ -347,7 +347,7 @@ func appendMarketData(market MarketData) []MarketData {
 		marketData = append(marketData, market)
 	} else {
 		for _, m := range marketData {
-			if m.InstrumentName == market.InstrumentName && m.Side == market.Side {
+			if m.InstrumentName == market.InstrumentName && m.Side == market.Side && m.Price == market.Price {
 				duplicate = true
 			}
 			fmt.Println("duplicate", duplicate)
