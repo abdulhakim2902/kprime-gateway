@@ -190,15 +190,15 @@ func (a Application) FromAdmin(msg *quickfix.Message, sessionID quickfix.Session
 			return err
 		}
 
-		user, err := a.UserRepository.FindByAPIKeyAndSecret(context.TODO(), uname.String(), pwd.String())
-		if err != nil {
-			return quickfix.NewMessageRejectError("Failed getting user", 1, nil)
-		}
+		// user, err := a.UserRepository.FindByAPIKeyAndSecret(context.TODO(), uname.String(), pwd.String())
+		// if err != nil {
+		// 	return quickfix.NewMessageRejectError("Failed getting user", 1, nil)
+		// }
 
 		if userSession == nil {
 			userSession = make(map[string]*quickfix.SessionID)
 		}
-		userSession[user.ID.Hex()] = &sessionID
+		userSession["645db1b2533b4f1cd204998c"] = &sessionID
 	}
 	return nil
 }
@@ -307,7 +307,6 @@ func (a *Application) onNewOrderSingle(msg newordersingle.NewOrderSingle, sessio
 
 func (a Application) broadcastInstrumentList(currency string) {
 	fmt.Println("broadcastInstrumentList", currency)
-	fmt.Println(xMessagesSubs)
 	for _, subs := range xMessagesSubs {
 		a.SecurityListResponse(currency, subs.secReq, subs.sessiondID)
 	}
@@ -443,7 +442,6 @@ func (a *Application) onOrderCancelRequest(msg ordercancelrequest.OrderCancelReq
 
 func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataRequest, sessionID quickfix.SessionID) (err quickfix.MessageRejectError) {
 	fmt.Println("onMarketDataRequest")
-	fmt.Printf("%+v\n", msg)
 	subs, _ := msg.GetSubscriptionRequestType()
 	if subs == enum.SubscriptionRequestType_SNAPSHOT_PLUS_UPDATES { // subscribe
 		vMessageSubs = append(vMessageSubs, VMessageSubscriber{
@@ -465,25 +463,18 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 
 	noRelatedsym, _ := msg.GetNoRelatedSym()
 
-	fmt.Println("noRelatedsym", noRelatedsym.Len())
 	// loop based on symbol requested
 	for i := 0; i < noRelatedsym.Len(); i++ {
 		response := []MarketDataResponse{}
 		sym, _ := noRelatedsym.Get(i).GetSymbol()
-		fmt.Println("sym", sym)
-		fmt.Println("md entries", mdEntryTypes.Len())
 		entries := make([]string, mdEntryTypes.Len())
 		for j := 0; j < mdEntryTypes.Len(); j++ {
 			entry, _ := mdEntryTypes.Get(j).GetMDEntryType()
-			fmt.Println("entry", entry)
 			entries = append(entries, string(entry))
 		}
 
-		fmt.Println("entries", entries, len(entries))
-
 		if utils.ArrContains(entries, "0") {
 			asks := a.OrderRepository.GetMarketData(sym, "BUY")
-			fmt.Println("asks found", asks, sym)
 			for _, ask := range asks {
 				if ask.Status == "FILLED" {
 					continue
@@ -502,7 +493,6 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 
 		if utils.ArrContains(entries, "1") {
 			bids := a.OrderRepository.GetMarketData(sym, "SELL")
-			fmt.Println("bids found", bids, sym)
 			for _, bid := range bids {
 				if bid.Status == "FILLED" {
 					continue
@@ -528,7 +518,6 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 				"expiryDate":  splits[1],
 				"strikePrice": price,
 			}, nil, 0, -1)
-			fmt.Println("trades found", len(trades), sym)
 			for _, trade := range trades {
 				response = append(response, MarketDataResponse{
 					Price:  trade.Price,
@@ -592,26 +581,33 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 func mapMarketDataResponse(res []MarketDataResponse) []MarketDataResponse {
 	result := []MarketDataResponse{}
 
-	for _, r := range res {
+	fmt.Println("total data", len(res))
+	for i, r := range res {
 		if len(result) == 0 {
 			result = append(result, r)
 			continue
 		}
 		result, exist := isInstrumentExists(result, r)
-		fmt.Println("exist", exist, result)
+		fmt.Println("exist", exist, result, i)
 		if !exist {
+			fmt.Println("adding ", r.Price, r.Side)
 			result = append(result, r)
+			fmt.Println("result inside", result)
+			if i == len(res)-1 {
+				return result
+			}
 		}
+		fmt.Println("result inside 2", result)
 	}
+	fmt.Println("result outside", result)
 	return result
 }
 
 func isInstrumentExists(data []MarketDataResponse, marketData MarketDataResponse) ([]MarketDataResponse, bool) {
+	fmt.Println("checkingg...", marketData.Side, marketData.Price)
 	for i, d := range data {
-		fmt.Println("d", d, marketData)
 		if d.InstrumentName == marketData.InstrumentName && d.Price == marketData.Price && d.Side == marketData.Side {
 			data[i].Amount = data[i].Amount + marketData.Amount
-			fmt.Println("d2", d)
 			return data, true
 		}
 	}
