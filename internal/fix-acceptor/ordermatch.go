@@ -18,8 +18,9 @@ package ordermatch
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
+	_deribitModel "gateway/internal/deribit/model"
+	_deribitSvc "gateway/internal/deribit/service"
 	"gateway/internal/engine/types"
 	"gateway/internal/repositories"
 	"gateway/pkg/utils"
@@ -37,6 +38,7 @@ import (
 	_mongo "gateway/pkg/mongo"
 
 	"git.devucc.name/dependencies/utilities/commons/log"
+	_utilitiesType "git.devucc.name/dependencies/utilities/types"
 	"github.com/quickfixgo/enum"
 	"github.com/quickfixgo/field"
 	"github.com/quickfixgo/fix44/executionreport"
@@ -51,8 +53,6 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/spf13/cobra"
 	"go.mongodb.org/mongo-driver/bson"
-
-	_producer "gateway/pkg/kafka/producer"
 
 	"github.com/quickfixgo/quickfix"
 )
@@ -97,16 +97,16 @@ type Order struct {
 }
 
 type MarketDataResponse struct {
-	InstrumentName string  `json:"instrumentName"`
-	Side           string  `json:"side"`
-	Contract       string  `json:"contract"`
-	Price          float64 `json:"price"`
-	Amount         float64 `json:"amount"`
-	Date           string  `json:"date"`
-	Type           string  `json:"type"`
-	MakerID        string  `json:"makerId"`
-	TakerID        string  `json:"takerId"`
-	Status         string  `json:"status"`
+	InstrumentName string                   `json:"instrumentName"`
+	Side           _utilitiesType.Side      `json:"side"`
+	Contract       _utilitiesType.Contracts `json:"contract"`
+	Price          float64                  `json:"price"`
+	Amount         float64                  `json:"amount"`
+	Date           string                   `json:"date"`
+	Type           string                   `json:"type"`
+	MakerID        string                   `json:"makerId"`
+	TakerID        string                   `json:"takerId"`
+	Status         string                   `json:"status"`
 }
 
 type Orderbook struct {
@@ -122,21 +122,7 @@ type Application struct {
 	*repositories.UserRepository
 	*repositories.OrderRepository
 	*repositories.TradeRepository
-}
-
-type KafkaOrder struct {
-	ID             string  `json:"id"`
-	ClOrdID        string  `json:"clOrdID,omitempty"`
-	UserID         string  `json:"userId,omitempty"`
-	ClientID       string  `json:"clientId,omitempty"`
-	Side           string  `json:"side,omitempty"`
-	Price          float64 `json:"price,omitempty"`
-	Amount         float64 `json:"amount,omitempty"`
-	Underlying     string  `json:"underlying,omitempty"`
-	ExpirationDate string  `json:"expiryDate,omitempty"`
-	StrikePrice    float64 `json:"strikePrice,omitempty"`
-	Type           string  `json:"type,omitempty"`
-	Contracts      string  `json:"contracts,omitempty"`
+	DeribitService _deribitSvc.IDeribitService
 }
 
 func newApplication() *Application {
@@ -146,11 +132,14 @@ func newApplication() *Application {
 	tradeRepo := repositories.NewTradeRepository(mongoDb)
 	userRepo := repositories.NewUserRepository(mongoDb)
 
+	deribitSvc := _deribitSvc.NewDeribitService()
+
 	app := &Application{
 		MessageRouter:   quickfix.NewMessageRouter(),
 		UserRepository:  userRepo,
 		OrderRepository: orderRepo,
 		TradeRepository: tradeRepo,
+		DeribitService:  deribitSvc,
 	}
 	app.AddRoute(newordersingle.Route(app.onNewOrderSingle))
 	app.AddRoute(ordercancelrequest.Route(app.onOrderCancelRequest))
@@ -256,51 +245,33 @@ func (a *Application) onNewOrderSingle(msg newordersingle.NewOrderSingle, sessio
 		return err
 	}
 
-	details := strings.Split(symbol, "-")
-	underlying := details[0]
-	expiryDate := details[1]
-	strikePrice := details[2]
-	options := details[3]
-
 	var partyId quickfix.FIXString
 	err = msg.GetField(tag.PartyID, &partyId)
 	if err != nil {
 		return err
 	}
 
-	strType := "LIMIT"
+	orderType := _utilitiesType.LIMIT
 	if ordType == enum.OrdType_MARKET {
-		strType = "MARKET"
+		orderType = _utilitiesType.MARKET
 	}
 
-	putOrCall := "CALL"
-	if options == string(enum.PutOrCall_PUT) {
-		putOrCall = "PUT"
-	}
-
-	sideStr := "BUY"
+	sideType := _utilitiesType.BUY
 	if side == enum.Side_SELL {
-		sideStr = "SELL"
+		sideType = _utilitiesType.SELL
 	}
-	strikePriceFloat, _ := strconv.ParseFloat(strikePrice, 64)
 	priceFloat, _ := strconv.ParseFloat(price.String(), 64)
 	amountFloat, _ := strconv.ParseFloat(orderQty.String(), 64)
-	data := KafkaOrder{
+
+	a.DeribitService.DeribitRequest(context.TODO(), user.ID.Hex(), _deribitModel.DeribitRequest{
+		ClientId:       partyId.String(),
+		InstrumentName: symbol,
 		ClOrdID:        clOrId,
-		ClientID:       partyId.String(),
-		UserID:         user.ID.Hex(),
-		Underlying:     underlying,
-		ExpirationDate: expiryDate,
-		StrikePrice:    strikePriceFloat,
-		Type:           strType,
-		Side:           sideStr,
+		Type:           orderType,
+		Side:           sideType,
 		Price:          priceFloat,
 		Amount:         amountFloat,
-		Contracts:      string(putOrCall),
-	}
-
-	_data, _ := json.Marshal(data)
-	_producer.KafkaProducer(string(_data), "NEW_ORDER")
+	})
 
 	return nil
 }
@@ -349,9 +320,10 @@ func (a *Application) onOrderUpdateRequest(msg ordercancelreplacerequest.OrderCa
 		return err
 	}
 
-	strType := "LIMIT"
-	if ordType == enum.OrdType_MARKET {
-		strType = "MARKET"
+	var partyId quickfix.FIXString
+	err = msg.GetField(tag.PartyID, &partyId)
+	if err != nil {
+		return err
 	}
 
 	symbol, err := msg.GetSymbol()
@@ -360,40 +332,23 @@ func (a *Application) onOrderUpdateRequest(msg ordercancelreplacerequest.OrderCa
 		return err
 	}
 
-	details := strings.Split(symbol, "-")
-	underlying := details[0]
-	expiryDate := details[1]
-	strikePrice := details[2]
-	options := details[3]
-
-	putOrCall := "CALL"
-	if options == string(enum.PutOrCall_PUT) {
-		putOrCall = "PUT"
-	}
 	amountFloat, _ := amount.Float64()
 	priceFloat, _ := price.Float64()
-	strikePriceFloat, _ := strconv.ParseFloat(strikePrice, 64)
 
-	var partyId quickfix.FIXString
-	msg.GetField(tag.PartyID, &partyId)
-
-	data := KafkaOrder{
-		ID:             orderId,
-		ClientID:       partyId.String(),
-		UserID:         user.ID.Hex(),
-		Amount:         amountFloat,
-		Price:          priceFloat,
-		Side:           "EDIT",
-		Underlying:     underlying,
-		ExpirationDate: expiryDate,
-		StrikePrice:    strikePriceFloat,
-		Type:           string(strType),
-		Contracts:      string(putOrCall),
+	orderType := _utilitiesType.LIMIT
+	if ordType == enum.OrdType_MARKET {
+		orderType = _utilitiesType.MARKET
 	}
 
-	_data, _ := json.Marshal(data)
-	fmt.Println(_data)
-	_producer.KafkaProducer(string(_data), "NEW_ORDER")
+	a.DeribitService.DeribitRequest(context.TODO(), user.ID.Hex(), _deribitModel.DeribitRequest{
+		ID:             orderId,
+		ClientId:       partyId.String(),
+		InstrumentName: symbol,
+		Type:           orderType,
+		Side:           _utilitiesType.EDIT,
+		Price:          priceFloat,
+		Amount:         amountFloat,
+	})
 
 	return nil
 }
@@ -424,19 +379,16 @@ func (a *Application) onOrderCancelRequest(msg ordercancelrequest.OrderCancelReq
 	var partyId quickfix.FIXString
 	msg.GetField(tag.PartyID, &partyId)
 
-	data := KafkaOrder{
-		ID:       orderId,
-		ClOrdID:  clOrdID,
-		ClientID: partyId.String(),
-		UserID:   user.ID.Hex(),
-		Side:     "CANCEL",
-	}
 	if err := quickfix.SendToTarget(msg, sessionID); err != nil {
 		return quickfix.NewMessageRejectError("Failed to send cancel request", 1, nil)
 	}
-	_data, _ := json.Marshal(data)
-	fmt.Println(string(_data))
-	_producer.KafkaProducer(string(_data), "NEW_ORDER")
+
+	a.DeribitService.DeribitRequest(context.TODO(), user.ID.Hex(), _deribitModel.DeribitRequest{
+		ID:       orderId,
+		ClOrdID:  clOrdID,
+		ClientId: partyId.String(),
+		Side:     _utilitiesType.CANCEL,
+	})
 
 	return nil
 }
@@ -493,7 +445,7 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 					Amount: ask.Amount - ask.FilledAmount,
 					Side:   ask.Side,
 					InstrumentName: ask.Underlying + "-" + ask.ExpirationDate + "-" + strconv.FormatFloat(ask.StrikePrice, 'f', 0, 64) +
-						"-" + ask.Contracts[0:1],
+						"-" + string(ask.Contracts)[0:1],
 					Date: ask.CreatedAt.String(),
 					Type: "ASK",
 				})
@@ -512,7 +464,7 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 					Amount: bid.Amount - bid.FilledAmount,
 					Side:   bid.Side,
 					InstrumentName: bid.Underlying + "-" + bid.ExpirationDate + "-" + strconv.FormatFloat(bid.StrikePrice, 'f', 0, 64) +
-						"-" + bid.Contracts[0:1],
+						"-" + string(bid.Contracts)[0:1],
 					Date: bid.CreatedAt.String(),
 					Type: "BID",
 				})
@@ -533,7 +485,7 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 				response = append(response, MarketDataResponse{
 					Price:  trade.Price,
 					Amount: trade.Amount,
-					Side:   string(trade.Side),
+					Side:   trade.Side,
 					InstrumentName: trade.Underlying + "-" + trade.ExpiryDate + "-" + strconv.FormatFloat(trade.StrikePrice, 'f', 0, 64) +
 						"-" + string(trade.Contracts)[0:1],
 					Date:    trade.CreatedAt.String(),
@@ -659,9 +611,9 @@ func OnMatchingOrder(data types.EngineResponse) {
 		msg.SetClOrdID(trd.ClOrdID)
 		msg.SetLastPx(decimal.NewFromFloat(trd.Price), 2)
 		msg.SetLastQty(decimal.NewFromFloat(trd.Amount), 2)
+
 		fmt.Println("Sending execution report for matching order")
-		err := quickfix.SendToTarget(msg, *sessionID)
-		if err != nil {
+		if err := quickfix.SendToTarget(msg, *sessionID); err != nil {
 			fmt.Println("Error sending execution report")
 		}
 	}
