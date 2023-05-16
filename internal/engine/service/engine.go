@@ -211,6 +211,8 @@ func (svc engineHandler) PublishOrder(data _engineType.EngineResponse) {
 	ClOrdID := fmt.Sprintf("%v", data.Matches.TakerOrder.ClOrdID)
 	ID, _ := strconv.ParseUint(ClOrdID, 0, 64)
 	connectionKey := utils.GetKeyFromIdUserID(ID, userIDStr)
+	fmt.Println("connectionKey")
+	fmt.Println(connectionKey)
 	switch data.Status {
 	case types.ORDER_CANCELLED:
 		ws.SendOrderMessage(connectionKey, _engineType.CancelResponse{
