@@ -37,6 +37,7 @@ type WebsocketResponseMessage struct {
 	ID      uint64      `json:"id,omitempty"`
 	Method  string      `json:"method,omitempty"`
 	Result  interface{} `json:"result,omitempty"`
+	Error   interface{} `json:"error,omitempty"`
 	Params  interface{} `json:"params,omitempty"`
 	UsIn    uint64      `json:"usIn,omitempty"`
 	UsOut   uint64      `json:"usOut,omitempty"`
@@ -48,6 +49,18 @@ type WebsocketEvent struct {
 	Type    string      `json:"type"`
 	Hash    string      `json:"hash,omitempty"`
 	Payload interface{} `json:"payload"`
+}
+
+type WebsocketResponseErrMessage struct {
+	Params SendMessageParams `json:"-"`
+
+	Message string        `json:"message"`
+	Data    ReasonMessage `json:"data"`
+	Code    int64         `json:"code"`
+}
+
+type ReasonMessage struct {
+	Reason string `json:"reason"`
 }
 
 var unsubscribeHandlers map[*Client][]func(*Client)
@@ -123,6 +136,30 @@ func (c *Client) SendMessage(payload interface{}, params SendMessageParams) {
 			delete(orderRequestRpcIDS, ID)
 		}
 	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.send <- m
+}
+
+// SendErrorMessage constructs the error message with proper structure to be sent over websocket
+func (c *Client) SendErrorMessage(msg WebsocketResponseErrMessage) {
+	m := WebsocketResponseMessage{
+		Error:   msg,
+		JSONRPC: "2.0",
+		ID:      msg.Params.ID,
+		Testnet: true,
+	}
+
+	ID := utils.GetKeyFromIdUserID(msg.Params.ID, msg.Params.UserID)
+	requestedTime := orderRequestRpcIDS[ID]
+
+	m.UsIn = requestedTime
+	m.UsOut = uint64(time.Now().UnixMicro())
+	m.UsDiff = m.UsOut - m.UsIn
+
+	// release orderRequestRpcIDS
+	delete(orderRequestRpcIDS, ID)
 
 	c.mu.Lock()
 	defer c.mu.Unlock()
