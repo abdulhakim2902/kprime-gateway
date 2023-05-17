@@ -18,11 +18,13 @@ package ordermatch
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	_deribitModel "gateway/internal/deribit/model"
 	_deribitSvc "gateway/internal/deribit/service"
 	"gateway/internal/engine/types"
 	"gateway/internal/repositories"
+	"gateway/pkg/redis"
 	"gateway/pkg/utils"
 	"io"
 	"io/ioutil"
@@ -123,6 +125,7 @@ type Application struct {
 	*repositories.OrderRepository
 	*repositories.TradeRepository
 	DeribitService _deribitSvc.IDeribitService
+	redis          *redis.RedisConnectionPool
 }
 
 func newApplication() *Application {
@@ -131,8 +134,8 @@ func newApplication() *Application {
 	orderRepo := repositories.NewOrderRepository(mongoDb)
 	tradeRepo := repositories.NewTradeRepository(mongoDb)
 	userRepo := repositories.NewUserRepository(mongoDb)
-
 	deribitSvc := _deribitSvc.NewDeribitService()
+	redis := redis.NewRedisConnectionPool(os.Getenv("REDIS_URL"))
 
 	app := &Application{
 		MessageRouter:   quickfix.NewMessageRouter(),
@@ -140,6 +143,7 @@ func newApplication() *Application {
 		OrderRepository: orderRepo,
 		TradeRepository: tradeRepo,
 		DeribitService:  deribitSvc,
+		redis:           redis,
 	}
 	app.AddRoute(newordersingle.Route(app.onNewOrderSingle))
 	app.AddRoute(ordercancelrequest.Route(app.onOrderCancelRequest))
@@ -495,6 +499,9 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 		snap.SetMDReqID(reqId)
 		grp := marketdatasnapshotfullrefresh.NewNoMDEntriesRepeatingGroup()
 		response = mapMarketDataResponse(response)
+
+		bytes, _ := json.Marshal(response)
+		a.redis.Set("MARKETDATA-"+response[0].InstrumentName, string(bytes))
 		fmt.Println("response", response)
 		for _, res := range response {
 			row := grp.Add()
