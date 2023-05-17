@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"git.devucc.name/dependencies/utilities/types"
+	"git.devucc.name/dependencies/utilities/types/validation_reason"
 	"github.com/Shopify/sarama"
 	"github.com/gin-gonic/gin"
 
@@ -43,7 +44,15 @@ func (svc engineHandler) HandleConsume(msg *sarama.ConsumerMessage) {
 	var data _engineType.EngineResponse
 	err := json.Unmarshal(msg.Value, &data)
 	if err != nil {
-		fmt.Println(err)
+		reason := validation_reason.PARSE_ERROR
+		data.Validation = reason
+
+		svc.PublishValidation(data)
+		return
+	}
+
+	if data.Validation.IsValid() {
+		svc.PublishValidation(data)
 		return
 	}
 
@@ -73,8 +82,10 @@ func (svc engineHandler) HandleConsume(msg *sarama.ConsumerMessage) {
 		var _redisDataArray []_engineType.EngineResponse
 		err = json.Unmarshal([]byte(redisData), &_redisDataArray)
 		if err != nil {
-			fmt.Println("error unmarshal redisData")
-			fmt.Println(err)
+			reason := validation_reason.PARSE_ERROR
+			data.Validation = reason
+
+			svc.PublishValidation(data)
 			return
 		}
 
@@ -86,7 +97,10 @@ func (svc engineHandler) HandleConsume(msg *sarama.ConsumerMessage) {
 	//convert redisDataArray to json
 	jsonBytes, err := json.Marshal(redisDataArray)
 	if err != nil {
-		fmt.Println(err)
+		reason := validation_reason.PARSE_ERROR
+		data.Validation = reason
+
+		svc.PublishValidation(data)
 		return
 	}
 
@@ -104,8 +118,15 @@ func (svc engineHandler) HandleConsumeQuote(msg *sarama.ConsumerMessage) {
 	var data _engineType.EngineResponse
 	err := json.Unmarshal(msg.Value, &data)
 	if err != nil {
-		fmt.Println(err)
-		fmt.Println(msg.Value)
+		reason := validation_reason.PARSE_ERROR
+		data.Validation = reason
+
+		svc.PublishValidation(data)
+		return
+	}
+
+	if data.Validation.IsValid() {
+		svc.PublishValidation(data)
 		return
 	}
 
@@ -124,7 +145,10 @@ func (svc engineHandler) HandleConsumeQuote(msg *sarama.ConsumerMessage) {
 	//convert redisDataArray to json
 	jsonBytes, err := json.Marshal(initData)
 	if err != nil {
-		fmt.Println(err)
+		reason := validation_reason.PARSE_ERROR
+		data.Validation = reason
+
+		svc.PublishValidation(data)
 		return
 	}
 
@@ -207,12 +231,12 @@ func (svc engineHandler) PublishOrder(data _engineType.EngineResponse) {
 		CancelReason:        data.Matches.TakerOrder.CancelledReason.String(),
 		AveragePrice:        tradePriceAvg,
 	}
+
 	userIDStr := fmt.Sprintf("%v", data.Matches.TakerOrder.UserID)
 	ClOrdID := fmt.Sprintf("%v", data.Matches.TakerOrder.ClOrdID)
 	ID, _ := strconv.ParseUint(ClOrdID, 0, 64)
 	connectionKey := utils.GetKeyFromIdUserID(ID, userIDStr)
-	fmt.Println("connectionKey")
-	fmt.Println(connectionKey)
+
 	switch data.Status {
 	case types.ORDER_CANCELLED:
 		ws.SendOrderMessage(connectionKey, _engineType.CancelResponse{
@@ -254,4 +278,25 @@ func (svc engineHandler) PublishOrder(data _engineType.EngineResponse) {
 
 	}
 
+}
+
+func (svc engineHandler) PublishValidation(data _engineType.EngineResponse) {
+	userIDStr := fmt.Sprintf("%v", data.Matches.TakerOrder.UserID)
+	ClOrdID := fmt.Sprintf("%v", data.Matches.TakerOrder.ClOrdID)
+	ID, _ := strconv.ParseUint(ClOrdID, 0, 64)
+
+	connectionKey := utils.GetKeyFromIdUserID(ID, userIDStr)
+	code, codeStr := data.Validation.Code()
+
+	ws.SendOrderErrorMessage(connectionKey, ws.WebsocketResponseErrMessage{
+		Params: ws.SendMessageParams{
+			UserID: userIDStr,
+		},
+
+		Message: data.Validation.String(),
+		Code:    code,
+		Data: ws.ReasonMessage{
+			Reason: codeStr,
+		},
+	})
 }

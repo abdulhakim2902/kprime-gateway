@@ -151,15 +151,17 @@ func (c *Client) SendErrorMessage(msg WebsocketResponseErrMessage) {
 		Testnet: true,
 	}
 
-	ID := utils.GetKeyFromIdUserID(msg.Params.ID, msg.Params.UserID)
-	requestedTime := orderRequestRpcIDS[ID]
+	if msg.Params.ID > 0 {
+		ID := utils.GetKeyFromIdUserID(msg.Params.ID, msg.Params.UserID)
+		requestedTime := orderRequestRpcIDS[ID]
 
-	m.UsIn = requestedTime
-	m.UsOut = uint64(time.Now().UnixMicro())
-	m.UsDiff = m.UsOut - m.UsIn
+		m.UsIn = requestedTime
+		m.UsOut = uint64(time.Now().UnixMicro())
+		m.UsDiff = m.UsOut - m.UsIn
 
-	// release orderRequestRpcIDS
-	delete(orderRequestRpcIDS, ID)
+		// release orderRequestRpcIDS
+		delete(orderRequestRpcIDS, ID)
+	}
 
 	c.mu.Lock()
 	defer c.mu.Unlock()
