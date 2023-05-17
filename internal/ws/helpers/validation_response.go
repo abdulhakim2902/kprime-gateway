@@ -20,12 +20,17 @@ func SendValidationResponse(
 		validationReason = *reason
 	}
 
+	params := ws.SendMessageParams{
+		ID:            msgID,
+		RequestedTime: reqTime,
+	}
+
+	if userId != nil {
+		params.UserID = *userId
+	}
+
 	c.SendErrorMessage(ws.WebsocketResponseErrMessage{
-		Params: ws.SendMessageParams{
-			ID:            msgID,
-			RequestedTime: reqTime,
-			UserID:        *userId,
-		},
+		Params: params,
 
 		Message: msg,
 		Code:    code,
