@@ -587,31 +587,41 @@ func mapMarketDataResponse(res []MarketDataResponse) []MarketDataResponse {
 			result = append(result, r)
 			continue
 		}
-		result, exist := isInstrumentExists(result, r)
-		fmt.Println("exist", exist, result, i)
+		exist := isInstrumentExists(result, r)
 		if !exist {
-			fmt.Println("adding ", r.Price, r.Side)
 			result = append(result, r)
-			fmt.Println("result inside", result)
 			if i == len(res)-1 {
 				return result
 			}
 		}
-		fmt.Println("result inside 2", result)
 	}
-	fmt.Println("result outside", result)
-	return result
+	fmt.Println("total data after transfrom", len(result))
+	after := sumAmount(result, res)
+	return after
 }
 
-func isInstrumentExists(data []MarketDataResponse, marketData MarketDataResponse) ([]MarketDataResponse, bool) {
-	fmt.Println("checkingg...", marketData.Side, marketData.Price)
-	for i, d := range data {
+func isInstrumentExists(data []MarketDataResponse, marketData MarketDataResponse) bool {
+	fmt.Println("checkingg...", len(data))
+	for _, d := range data {
 		if d.InstrumentName == marketData.InstrumentName && d.Price == marketData.Price && d.Side == marketData.Side {
-			data[i].Amount = data[i].Amount + marketData.Amount
-			return data, true
+			return true
 		}
 	}
-	return data, false
+	return false
+}
+
+func sumAmount(data []MarketDataResponse, og []MarketDataResponse) (res []MarketDataResponse) {
+	for _, r := range data {
+		amount := float64(0)
+		for _, rr := range og {
+			if r.InstrumentName == rr.InstrumentName && r.Price == rr.Price && r.Side == rr.Side {
+				amount += rr.Amount
+			}
+		}
+		r.Amount = amount
+		res = append(res, r)
+	}
+	return res
 }
 
 func OnMatchingOrder(data types.EngineResponse) {
