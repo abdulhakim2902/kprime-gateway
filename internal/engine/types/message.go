@@ -3,12 +3,13 @@ package types
 import (
 	"time"
 
+	_orderbookType "gateway/internal/orderbook/types"
+
 	"git.devucc.name/dependencies/utilities/models/order"
 	"git.devucc.name/dependencies/utilities/models/trade"
 	"git.devucc.name/dependencies/utilities/types"
+	"git.devucc.name/dependencies/utilities/types/validation_reason"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-
-	_orderbookType "gateway/internal/orderbook/types"
 )
 
 type Message struct {
@@ -18,9 +19,9 @@ type Message struct {
 }
 
 type EngineResponse struct {
-	Status  types.EngineStatus    `json:"status,omitempty"`
-	Order   *_orderbookType.Order `json:"order,omitempty"`
-	Matches *Matches              `json:"matches,omitempty"`
+	Status     types.EngineStatus                 `json:"status,omitempty"`
+	Matches    *Matches                           `json:"matches,omitempty"`
+	Validation validation_reason.ValidationReason `json:"validation"`
 }
 
 type Matches struct {
