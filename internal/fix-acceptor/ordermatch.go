@@ -469,6 +469,7 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 				"underlying":  splits[0],
 				"expiryDate":  splits[1],
 				"strikePrice": price,
+				"status":      "SUCCESS",
 			}, nil, 0, -1)
 			for _, trade := range trades {
 				response = append(response, MarketDataResponse{
@@ -479,8 +480,8 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 						"-" + string(trade.Contracts)[0:1],
 					Date:    trade.CreatedAt.String(),
 					Type:    "TRADE",
-					MakerID: trade.MakerOrderID.Hex(),
-					TakerID: trade.TakerOrderID.Hex(),
+					MakerID: trade.Maker.OrderID.Hex(),
+					TakerID: trade.Taker.OrderID.Hex(),
 					Status:  string(trade.Status),
 				})
 			}
@@ -502,21 +503,7 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 			row.SetMDEntrySize(decimal.NewFromFloat(res.Amount), 2)
 			row.SetMDEntryPx(decimal.NewFromFloat(res.Price), 2)
 			row.SetMDEntryDate(res.Date)
-
-			//trade
-			if res.Type == "TRADE" {
-				side := field.NewSide(enum.Side(res.Side))
-				amount := field.NewQuantity(decimal.NewFromFloat(res.Amount), 10)
-				status := field.NewStatusText(res.Status)
-				orderId := field.NewOrderID(res.MakerID)
-				secondaryOrderId := field.NewOrderID(res.TakerID)
-
-				row.Set(side)
-				row.Set(amount)
-				row.Set(status)
-				row.Set(orderId)
-				row.Set(secondaryOrderId)
-			}
+			row.SetOrderID(res.MakerID)
 
 		}
 		snap.SetNoMDEntries(grp)
