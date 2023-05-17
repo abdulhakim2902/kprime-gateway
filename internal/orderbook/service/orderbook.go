@@ -10,6 +10,7 @@ import (
 	"github.com/Shopify/sarama"
 	"github.com/gin-gonic/gin"
 
+	_engineType "gateway/internal/engine/types"
 	"gateway/internal/orderbook/types"
 	wsService "gateway/internal/ws/service"
 
@@ -61,13 +62,15 @@ func (svc orderbookHandler) HandleConsume(msg *sarama.ConsumerMessage) {
 
 func (svc orderbookHandler) HandleConsumeBook(msg *sarama.ConsumerMessage) {
 	var order types.Order
+	var data _engineType.EngineResponse
 
-	err := json.Unmarshal(msg.Value, &order)
+	err := json.Unmarshal(msg.Value, &data)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	_instrument := order.Underlying + "-" + order.ExpiryDate + "-" + fmt.Sprintf("%.0f", order.StrikePrice) + "-" + string(order.Contracts[0])
+	order = *data.Matches.TakerOrder
+	_instrument := data.Matches.TakerOrder.Underlying + "-" + data.Matches.TakerOrder.ExpiryDate + "-" + fmt.Sprintf("%.0f", data.Matches.TakerOrder.StrikePrice) + "-" + string(data.Matches.TakerOrder.Contracts[0])
 
 	_order := types.GetOrderBook{
 		InstrumentName: _instrument,
@@ -274,13 +277,15 @@ func (svc orderbookHandler) HandleConsumeBook(msg *sarama.ConsumerMessage) {
 
 func (svc orderbookHandler) HandleConsumeBookAgg(msg *sarama.ConsumerMessage) {
 	var order types.Order
+	var data _engineType.EngineResponse
 
-	err := json.Unmarshal(msg.Value, &order)
+	err := json.Unmarshal(msg.Value, &data)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	_instrument := order.Underlying + "-" + order.ExpiryDate + "-" + fmt.Sprintf("%.0f", order.StrikePrice) + "-" + string(order.Contracts[0])
+	order = *data.Matches.TakerOrder
+	_instrument := data.Matches.TakerOrder.Underlying + "-" + data.Matches.TakerOrder.ExpiryDate + "-" + fmt.Sprintf("%.0f", data.Matches.TakerOrder.StrikePrice) + "-" + string(data.Matches.TakerOrder.Contracts[0])
 
 	_order := types.GetOrderBook{
 		InstrumentName: _instrument,
@@ -459,7 +464,7 @@ func (svc orderbookHandler) HandleConsumeBookAgg(msg *sarama.ConsumerMessage) {
 
 func (svc orderbookHandler) Handle100msInterval(instrument string) {
 	// create new ticker on 100ms intervak
-	ticker := time.NewTicker(199 * time.Millisecond)
+	ticker := time.NewTicker(100 * time.Millisecond)
 	var changeIdLocalVar types.ChangeStruct
 
 	// Creating channel
@@ -483,6 +488,7 @@ func (svc orderbookHandler) Handle100msInterval(instrument string) {
 					} else {
 						prevId = changeIdLocalVar.Id
 					}
+					changeIdLocalVar = changeId100ms[instrument]
 
 					substring := strings.Split(instrument, "-")
 					_strikePrice, err := strconv.ParseFloat(substring[2], 64)
