@@ -3,6 +3,8 @@ package types
 import (
 	"time"
 
+	"git.devucc.name/dependencies/utilities/types"
+
 	"git.devucc.name/dependencies/utilities/models/order"
 	"github.com/shopspring/decimal"
 )
@@ -90,4 +92,16 @@ type Change struct {
 	Asks          map[string]float64 `json:"asks"`
 	BidsAgg       map[string]float64 `json:"bids_agg"`
 	AsksAgg       map[string]float64 `json:"asks_agg"`
+	Bids100       map[string]float64 `json:"bids_100"`
+	Asks100       map[string]float64 `json:"asks_100"`
+}
+
+type ChangeStruct struct {
+	Id         int               `json:"id"`
+	IdPrev     int               `json:"id_prev"`
+	Status     types.OrderStatus `json:"status"`
+	Side       types.Side        `json:"side"`
+	Price      float64           `json:"price"`
+	Amount     float64           `json:"amount"`
+	Amendments []order.Amendment `json:"amendments"`
 }

@@ -142,7 +142,8 @@ func (svc wsOrderbookService) SubscribeBook(c *ws.Client, channel string) {
 
 	_strikePrice, err := strconv.ParseFloat(substring[2], 64)
 	if err != nil {
-		panic(err)
+		fmt.Println(err)
+		return
 	}
 	_underlying := substring[0]
 	_expiryDate := strings.ToUpper(substring[1])
@@ -234,6 +235,14 @@ func (svc wsOrderbookService) SubscribeBook(c *ws.Client, channel string) {
 				AsksAgg:       changeAsksRaw,
 				BidsAgg:       changeBidsRaw,
 			}
+		} else if s[2] == "100ms" {
+			changeIdData = _orderbookTypes.Change{
+				Id:            1,
+				Timestamp:     ts,
+				TimestampPrev: ts,
+				Asks100:       changeAsksRaw,
+				Bids100:       changeBidsRaw,
+			}
 		} else {
 			changeIdData = _orderbookTypes.Change{
 				Id:            1,
@@ -266,6 +275,8 @@ func (svc wsOrderbookService) SubscribeBook(c *ws.Client, channel string) {
 					TimestampPrev: changeId.TimestampPrev,
 					Bids:          changeId.Bids,
 					Asks:          changeId.Asks,
+					Asks100:       changeId.Asks100,
+					Bids100:       changeId.Bids100,
 					AsksAgg:       changeAsksRaw,
 					BidsAgg:       changeBidsRaw,
 				}
@@ -278,7 +289,34 @@ func (svc wsOrderbookService) SubscribeBook(c *ws.Client, channel string) {
 
 				svc.redis.Set("CHANGEID-"+_string, string(jsonBytes))
 			}
+		} else if s[2] == "100ms" {
+			if len(changeId.Asks100) == 0 && len(changeId.Bids100) == 0 {
+				changeIdData := _orderbookTypes.Change{
+					Id:            changeId.Id,
+					IdPrev:        changeId.IdPrev,
+					Timestamp:     changeId.Timestamp,
+					TimestampPrev: changeId.TimestampPrev,
+					Bids:          changeId.Bids,
+					Asks:          changeId.Asks,
+					Asks100:       changeAsksRaw,
+					Bids100:       changeBidsRaw,
+					AsksAgg:       changeId.AsksAgg,
+					BidsAgg:       changeId.BidsAgg,
+				}
+				//convert changeIdData to json
+				jsonBytes, err := json.Marshal(changeIdData)
+				if err != nil {
+					fmt.Println(err)
+					return
+				}
+
+				svc.redis.Set("CHANGEID-"+_string, string(jsonBytes))
+			}
 		}
+	}
+
+	if s[2] == "100ms" {
+		svc.redis.Set("SNAPSHOTID-"+_string, strconv.Itoa(changeId.Id))
 	}
 
 	bookData := _orderbookTypes.BookData{
