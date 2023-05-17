@@ -2,8 +2,6 @@ module gateway
 
 go 1.20
 
-replace git.devucc.name/dependencies/utilities => /Users/zd/Nguli/labs/ucc/utilities
-
 require (
 	git.devucc.name/dependencies/utilities v1.0.12
 	github.com/DATA-DOG/go-sqlmock v1.5.0
