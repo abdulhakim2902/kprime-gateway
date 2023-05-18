@@ -123,7 +123,7 @@ func (svc wsHandler) PublicAuth(input interface{}, c *ws.Client) {
 			return
 		}
 
-		res, err = svc.authSvc.Login(context.TODO(), payload)
+		res, err = svc.authSvc.Login(context.TODO(), payload, c)
 		if err != nil {
 			if strings.Contains(err.Error(), "invalid credential") {
 				c.SendMessage(gin.H{"err": err.Error()}, ws.SendMessageParams{
@@ -149,7 +149,7 @@ func (svc wsHandler) PublicAuth(input interface{}, c *ws.Client) {
 			return
 		}
 
-		claim, err := svc.authSvc.ClaimJWT(msg.Params.RefreshToken)
+		claim, err := svc.authSvc.ClaimJWT(msg.Params.RefreshToken, c)
 		if err != nil {
 			c.SendMessage(gin.H{"err": err.Error()}, ws.SendMessageParams{
 				ID:            msg.Id,
@@ -158,7 +158,7 @@ func (svc wsHandler) PublicAuth(input interface{}, c *ws.Client) {
 			return
 		}
 
-		res, err = svc.authSvc.RefreshToken(context.TODO(), claim)
+		res, err = svc.authSvc.RefreshToken(context.TODO(), claim, c)
 		if err != nil {
 			fmt.Println(err)
 			c.SendMessage(gin.H{"err": "something went wrong"}, ws.SendMessageParams{
@@ -193,7 +193,7 @@ func (svc wsHandler) PrivateBuy(input interface{}, c *ws.Client) {
 		return
 	}
 	// Check the Access Token
-	claim, err := svc.authSvc.ClaimJWT(msg.Params.AccessToken)
+	claim, err := svc.authSvc.ClaimJWT(msg.Params.AccessToken, c)
 	if err != nil {
 		c.SendMessage(gin.H{"err": err.Error()}, ws.SendMessageParams{
 			ID:     msg.Id,
@@ -292,7 +292,7 @@ func (svc wsHandler) PrivateSell(input interface{}, c *ws.Client) {
 	}
 
 	// Check the Access Token
-	claim, err := svc.authSvc.ClaimJWT(msg.Params.AccessToken)
+	claim, err := svc.authSvc.ClaimJWT(msg.Params.AccessToken, c)
 	if err != nil {
 		c.SendMessage(gin.H{"err": err.Error()}, ws.SendMessageParams{
 			ID: msg.Id,
@@ -398,7 +398,7 @@ func (svc wsHandler) PrivateEdit(input interface{}, c *ws.Client) {
 	}
 
 	// Check the Access Token
-	claim, err := svc.authSvc.ClaimJWT(msg.Params.AccessToken)
+	claim, err := svc.authSvc.ClaimJWT(msg.Params.AccessToken, c)
 	if err != nil {
 		c.SendMessage(gin.H{"err": err.Error()}, ws.SendMessageParams{
 			ID:            msg.Id,
@@ -459,7 +459,7 @@ func (svc wsHandler) PrivateCancel(input interface{}, c *ws.Client) {
 	}
 
 	// Check the Access Token
-	claim, err := svc.authSvc.ClaimJWT(msg.Params.AccessToken)
+	claim, err := svc.authSvc.ClaimJWT(msg.Params.AccessToken, c)
 	if err != nil {
 		c.SendMessage(gin.H{"err": err.Error()}, ws.SendMessageParams{
 			ID:            msg.Id,
@@ -518,7 +518,7 @@ func (svc wsHandler) PrivateCancelByInstrument(input interface{}, c *ws.Client) 
 	}
 
 	// Check the Access Token
-	claim, err := svc.authSvc.ClaimJWT(msg.Params.AccessToken)
+	claim, err := svc.authSvc.ClaimJWT(msg.Params.AccessToken, c)
 	if err != nil {
 		c.SendMessage(gin.H{"err": err.Error()}, ws.SendMessageParams{
 			ID:            msg.Id,
@@ -587,7 +587,7 @@ func (svc wsHandler) PrivateCancelAll(input interface{}, c *ws.Client) {
 	}
 
 	// Check the Access Token
-	claim, err := svc.authSvc.ClaimJWT(msg.Params.AccessToken)
+	claim, err := svc.authSvc.ClaimJWT(msg.Params.AccessToken, c)
 	if err != nil {
 		c.SendMessage(gin.H{"err": err.Error()}, ws.SendMessageParams{
 			ID:            msg.Id,
@@ -853,7 +853,7 @@ func (svc wsHandler) PrivateGetUserTradesByInstrument(input interface{}, c *ws.C
 		msg.Params.Count = 10
 	}
 
-	claim, err := svc.authSvc.ClaimJWT(msg.Params.AccessToken)
+	claim, err := svc.authSvc.ClaimJWT(msg.Params.AccessToken, c)
 	if err != nil {
 		fmt.Println(err)
 		c.SendMessage(gin.H{"err": err.Error()}, ws.SendMessageParams{
@@ -922,7 +922,7 @@ func (svc wsHandler) PrivateGetOpenOrdersByInstrument(input interface{}, c *ws.C
 		msg.Params.Type = "all"
 	}
 
-	claim, err := svc.authSvc.ClaimJWT(msg.Params.AccessToken)
+	claim, err := svc.authSvc.ClaimJWT(msg.Params.AccessToken, c)
 	if err != nil {
 		fmt.Println(err)
 		c.SendMessage(gin.H{"err": err.Error()}, ws.SendMessageParams{
@@ -991,7 +991,7 @@ func (svc wsHandler) PrivateGetOrderHistoryByInstrument(input interface{}, c *ws
 		msg.Params.Count = 20
 	}
 
-	claim, err := svc.authSvc.ClaimJWT(msg.Params.AccessToken)
+	claim, err := svc.authSvc.ClaimJWT(msg.Params.AccessToken, c)
 	if err != nil {
 		fmt.Println(err)
 		c.SendMessage(gin.H{"err": err.Error()}, ws.SendMessageParams{
