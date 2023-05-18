@@ -39,11 +39,14 @@ import (
 
 	_mongo "gateway/pkg/mongo"
 
+	_orderbookType "gateway/internal/orderbook/types"
+
 	"git.devucc.name/dependencies/utilities/commons/log"
 	_utilitiesType "git.devucc.name/dependencies/utilities/types"
 	"github.com/quickfixgo/enum"
 	"github.com/quickfixgo/field"
 	"github.com/quickfixgo/fix44/executionreport"
+	"github.com/quickfixgo/fix44/marketdataincrementalrefresh"
 	"github.com/quickfixgo/fix44/marketdatarequest"
 	"github.com/quickfixgo/fix44/marketdatasnapshotfullrefresh"
 	"github.com/quickfixgo/fix44/newordersingle"
@@ -113,6 +116,7 @@ type MarketDataResponse struct {
 	MakerID        string                   `json:"makerId"`
 	TakerID        string                   `json:"takerId"`
 	Status         string                   `json:"status"`
+	UpdateType     string                   `json:"updateType"`
 }
 
 type Orderbook struct {
@@ -416,8 +420,10 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 		entry, _ := mdEntryTypes.Get(j).GetMDEntryType()
 		entries = append(entries, string(entry))
 	}
+
+	noRelatedsym, _ := msg.GetNoRelatedSym()
 	if subs == enum.SubscriptionRequestType_SNAPSHOT_PLUS_UPDATES { // subscribe
-		vMessageSubs = addVMessagesSubscriber(vMessageSubs, sessionID, utils.ArrContains(entries, "0"), utils.ArrContains(entries, "1"), utils.ArrContains(entries, "2"))
+		vMessageSubs = addVMessagesSubscriber(vMessageSubs, sessionID, utils.ArrContains(entries, "0"), utils.ArrContains(entries, "1"), utils.ArrContains(entries, "2"), noRelatedsym)
 	} else if subs == enum.SubscriptionRequestType_DISABLE_PREVIOUS_SNAPSHOT_PLUS_UPDATE_REQUEST { // unsubscribe
 		for _, subs := range vMessageSubs {
 			if subs.sessiondID.String() == sessionID.String() {
@@ -425,8 +431,6 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 			}
 		}
 	}
-
-	noRelatedsym, _ := msg.GetNoRelatedSym()
 
 	// loop based on symbol requested
 	for i := 0; i < noRelatedsym.Len(); i++ {
@@ -528,8 +532,62 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 	return
 }
 
-func (a *Application) onMarketDataUpdate() {
+func OnMarketDataUpdate(instrument string, book _orderbookType.BookData) {
+	fmt.Println("OnMarketDataUpdate", book.Bids, book.Asks)
+	for _, subs := range vMessageSubs {
+		response := []MarketDataResponse{}
+		if subs.InstrumentName != instrument {
+			continue
+		}
 
+		if subs.Bid {
+			for _, bid := range book.Bids {
+				fmt.Println(bid)
+				response = append(response, MarketDataResponse{
+					Price:          bid[1].(float64),
+					Amount:         bid[2].(float64),
+					InstrumentName: instrument,
+					Type:           "BID",
+					UpdateType:     bid[0].(string),
+				})
+			}
+		}
+		if subs.Ask {
+			for _, ask := range book.Asks {
+				fmt.Println(ask)
+				response = append(response, MarketDataResponse{
+					Price:          ask[1].(float64),
+					Amount:         ask[2].(float64),
+					InstrumentName: instrument,
+					Type:           "ASK",
+					UpdateType:     ask[0].(string),
+				})
+			}
+		}
+
+		msg := marketdataincrementalrefresh.New()
+		grp := marketdataincrementalrefresh.NewNoMDEntriesRepeatingGroup()
+		for _, res := range response {
+			update := enum.MDUpdateAction_NEW
+			if res.UpdateType == "delete" {
+				update = enum.MDUpdateAction_DELETE
+			} else if res.UpdateType == "change" {
+				update = enum.MDUpdateAction_CHANGE
+			}
+			row := grp.Add()
+			row.SetSymbol(res.InstrumentName)
+			row.SetMDUpdateAction(update)
+			row.SetMDEntryType(enum.MDEntryType(res.Side))
+			row.SetMDEntrySize(decimal.NewFromFloat(res.Amount), 2)
+			row.SetMDEntryPx(decimal.NewFromFloat(res.Price), 2)
+			row.SetMDEntryDate(res.Date)
+		}
+		msg.SetNoMDEntries(grp)
+		fmt.Println("Sending market data update")
+		if err := quickfix.SendToTarget(msg, subs.sessiondID); err != nil {
+			fmt.Println("Error sending market data update")
+		}
+	}
 }
 
 func mapMarketDataResponse(res []MarketDataResponse) []MarketDataResponse {
@@ -834,20 +892,24 @@ func removeXMessageSubscriber(array []XMessageSubscriber, element XMessageSubscr
 	return array
 }
 
-func addVMessagesSubscriber(array []VMessageSubscriber, sessionID quickfix.SessionID, bid bool, ask bool, trade bool) []VMessageSubscriber {
+func addVMessagesSubscriber(array []VMessageSubscriber, sessionID quickfix.SessionID, bid bool, ask bool, trade bool, symbolsEntry marketdatarequest.NoRelatedSymRepeatingGroup) []VMessageSubscriber {
 	exist := false
-	for _, v := range array {
-		if v.sessiondID == sessionID {
-			exist = true
+	for i := 0; i < symbolsEntry.Len(); i++ {
+		for _, v := range array {
+			if v.sessiondID == sessionID {
+				exist = true
+			}
 		}
-	}
-	if !exist {
-		array = append(array, VMessageSubscriber{
-			sessiondID: sessionID,
-			Bid:        bid,
-			Ask:        ask,
-			Trade:      trade,
-		})
+		if !exist {
+			instrument, _ := symbolsEntry.Get(i).GetSymbol()
+			array = append(array, VMessageSubscriber{
+				InstrumentName: instrument,
+				sessiondID:     sessionID,
+				Bid:            bid,
+				Ask:            ask,
+				Trade:          trade,
+			})
+		}
 	}
 	return array
 }
