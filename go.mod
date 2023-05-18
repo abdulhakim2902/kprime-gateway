@@ -3,7 +3,7 @@ module gateway
 go 1.20
 
 require (
-	git.devucc.name/dependencies/utilities v1.0.12
+	git.devucc.name/dependencies/utilities v1.0.13
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/Shopify/sarama v1.38.1
 	github.com/casbin/casbin/v2 v2.66.0

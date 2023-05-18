@@ -16,10 +16,12 @@ import (
 	deribitService "gateway/internal/deribit/service"
 	authService "gateway/internal/user/service"
 	engService "gateway/internal/ws/engine/service"
+	"gateway/internal/ws/helpers"
 	wsService "gateway/internal/ws/service"
 
 	"git.devucc.name/dependencies/utilities/models/order"
 	"git.devucc.name/dependencies/utilities/types"
+	"git.devucc.name/dependencies/utilities/types/validation_reason"
 	"github.com/go-playground/validator/v10"
 	cors "github.com/rs/cors/wrapper/gin"
 
@@ -97,11 +99,8 @@ func (svc wsHandler) PublicAuth(input interface{}, c *ws.Client) {
 	msg := &WebsocketAuth{}
 	bytes, _ := json.Marshal(input)
 	if err := json.Unmarshal(bytes, &msg); err != nil {
-		c.SendMessage(gin.H{"err": err}, ws.SendMessageParams{
-			ID:            msg.Id,
-			RequestedTime: requestedTime,
-			UserID:        "",
-		})
+		helpers.SendValidationResponse(c,
+			validation_reason.PARSE_ERROR, msg.Id, requestedTime, nil, nil)
 		return
 	}
 
@@ -116,55 +115,45 @@ func (svc wsHandler) PublicAuth(input interface{}, c *ws.Client) {
 		}
 
 		if payload.APIKey == "" || payload.APISecret == "" {
-			c.SendMessage(gin.H{"err": "invalid credential"}, ws.SendMessageParams{
-				ID:            msg.Id,
-				RequestedTime: requestedTime,
-			})
+			helpers.SendValidationResponse(c,
+				validation_reason.UNAUTHORIZED, msg.Id, requestedTime, nil, nil)
 			return
 		}
 
 		res, err = svc.authSvc.Login(context.TODO(), payload, c)
 		if err != nil {
 			if strings.Contains(err.Error(), "invalid credential") {
-				c.SendMessage(gin.H{"err": err.Error()}, ws.SendMessageParams{
-					ID:            msg.Id,
-					RequestedTime: requestedTime,
-				})
+				helpers.SendValidationResponse(c,
+					validation_reason.UNAUTHORIZED, msg.Id, requestedTime, nil, nil)
 				return
 			}
 
 			fmt.Println(err)
-			c.SendMessage(gin.H{"err": "something went wrong"}, ws.SendMessageParams{
-				ID:            msg.Id,
-				RequestedTime: requestedTime,
-			})
+			helpers.SendValidationResponse(c,
+				validation_reason.OTHER, msg.Id, requestedTime, nil, nil)
 			return
 		}
 	case "refresh_token":
 		if msg.Params.RefreshToken == "" {
-			c.SendMessage(gin.H{"err": "refresh_token is required"}, ws.SendMessageParams{
-				ID:            msg.Id,
-				RequestedTime: requestedTime,
-			})
+			reason := "refresh_token is required"
+			helpers.SendValidationResponse(c,
+				validation_reason.INVALID_PARAMS, msg.Id, requestedTime, nil, &reason)
 			return
 		}
 
 		claim, err := svc.authSvc.ClaimJWT(msg.Params.RefreshToken, c)
 		if err != nil {
-			c.SendMessage(gin.H{"err": err.Error()}, ws.SendMessageParams{
-				ID:            msg.Id,
-				RequestedTime: requestedTime,
-			})
+			reason := err.Error()
+			helpers.SendValidationResponse(c,
+				validation_reason.UNAUTHORIZED, msg.Id, requestedTime, nil, &reason)
 			return
 		}
 
 		res, err = svc.authSvc.RefreshToken(context.TODO(), claim, c)
 		if err != nil {
 			fmt.Println(err)
-			c.SendMessage(gin.H{"err": "something went wrong"}, ws.SendMessageParams{
-				ID:            msg.Id,
-				RequestedTime: requestedTime,
-			})
+			helpers.SendValidationResponse(c,
+				validation_reason.OTHER, msg.Id, requestedTime, nil, nil)
 			return
 		}
 	}
@@ -186,29 +175,24 @@ func (svc wsHandler) PrivateBuy(input interface{}, c *ws.Client) {
 	msg := &Req{}
 	bytes, _ := json.Marshal(input)
 	if err := json.Unmarshal(bytes, &msg); err != nil {
-		c.SendMessage(gin.H{"err": err}, ws.SendMessageParams{
-			ID:     msg.Id,
-			UserID: "",
-		})
+		helpers.SendValidationResponse(c,
+			validation_reason.PARSE_ERROR, msg.Id, requestedTime, nil, nil)
 		return
 	}
 	// Check the Access Token
 	claim, err := svc.authSvc.ClaimJWT(msg.Params.AccessToken, c)
 	if err != nil {
-		c.SendMessage(gin.H{"err": err.Error()}, ws.SendMessageParams{
-			ID:     msg.Id,
-			UserID: "",
-		})
+		reason := err.Error()
+		helpers.SendValidationResponse(c,
+			validation_reason.UNAUTHORIZED, msg.Id, requestedTime, nil, &reason)
 		return
 	}
 
 	ID := utils.GetKeyFromIdUserID(msg.Id, claim.UserID)
 	duplicateRpcID, errorMessage := c.RegisterRequestRpcIDS(ID, requestedTime)
 	if !duplicateRpcID {
-		c.SendMessage(gin.H{"err": errorMessage}, ws.SendMessageParams{
-			ID:     msg.Id,
-			UserID: claim.UserID,
-		})
+		helpers.SendValidationResponse(c,
+			validation_reason.DUPLICATED_REQUEST_ID, msg.Id, requestedTime, &claim.UserID, &errorMessage)
 		return
 	}
 
@@ -216,10 +200,8 @@ func (svc wsHandler) PrivateBuy(input interface{}, c *ws.Client) {
 	if err != nil {
 		fmt.Println("userRepo.FindById:", err)
 
-		c.SendMessage(gin.H{"err": ""}, ws.SendMessageParams{
-			ID:     msg.Id,
-			UserID: claim.UserID,
-		})
+		helpers.SendValidationResponse(c,
+			validation_reason.OTHER, msg.Id, requestedTime, &claim.UserID, nil)
 		return
 	}
 
@@ -236,12 +218,8 @@ func (svc wsHandler) PrivateBuy(input interface{}, c *ws.Client) {
 	}
 
 	if !userHasOrderType {
-		err := fmt.Errorf("order type does not match any user order type")
-
-		c.SendMessage(gin.H{"err": err.Error()}, ws.SendMessageParams{
-			ID:     msg.Id,
-			UserID: claim.UserID,
-		})
+		helpers.SendValidationResponse(c,
+			validation_reason.ORDER_TYPE_NO_MATCH, msg.Id, requestedTime, &claim.UserID, nil)
 		return
 	}
 
@@ -285,28 +263,25 @@ func (svc wsHandler) PrivateSell(input interface{}, c *ws.Client) {
 	msg := &Req{}
 	bytes, _ := json.Marshal(input)
 	if err := json.Unmarshal(bytes, &msg); err != nil {
-		c.SendMessage(gin.H{"err": err}, ws.SendMessageParams{
-			ID: msg.Id,
-		})
+		helpers.SendValidationResponse(c,
+			validation_reason.PARSE_ERROR, msg.Id, requestedTime, nil, nil)
 		return
 	}
 
 	// Check the Access Token
 	claim, err := svc.authSvc.ClaimJWT(msg.Params.AccessToken, c)
 	if err != nil {
-		c.SendMessage(gin.H{"err": err.Error()}, ws.SendMessageParams{
-			ID: msg.Id,
-		})
+		reason := err.Error()
+		helpers.SendValidationResponse(c,
+			validation_reason.UNAUTHORIZED, msg.Id, requestedTime, nil, &reason)
 		return
 	}
 
 	ID := utils.GetKeyFromIdUserID(msg.Id, claim.UserID)
 	duplicateRpcID, errorMessage := c.RegisterRequestRpcIDS(ID, requestedTime)
 	if !duplicateRpcID {
-		c.SendMessage(gin.H{"err": errorMessage}, ws.SendMessageParams{
-			ID:     msg.Id,
-			UserID: claim.UserID,
-		})
+		helpers.SendValidationResponse(c,
+			validation_reason.DUPLICATED_REQUEST_ID, msg.Id, requestedTime, &claim.UserID, &errorMessage)
 		return
 	}
 
@@ -314,10 +289,8 @@ func (svc wsHandler) PrivateSell(input interface{}, c *ws.Client) {
 	if err != nil {
 		fmt.Println("userRepo.FindById:", err)
 
-		c.SendMessage(gin.H{"err": "failed while getting user"}, ws.SendMessageParams{
-			ID:     msg.Id,
-			UserID: claim.UserID,
-		})
+		helpers.SendValidationResponse(c,
+			validation_reason.OTHER, msg.Id, requestedTime, &claim.UserID, nil)
 		return
 	}
 
@@ -334,12 +307,8 @@ func (svc wsHandler) PrivateSell(input interface{}, c *ws.Client) {
 	}
 
 	if !userHasOrderType {
-		err := fmt.Errorf("order type does not match any user order type")
-
-		c.SendMessage(gin.H{"err": err.Error()}, ws.SendMessageParams{
-			ID:     msg.Id,
-			UserID: claim.UserID,
-		})
+		helpers.SendValidationResponse(c,
+			validation_reason.ORDER_TYPE_NO_MATCH, msg.Id, requestedTime, &claim.UserID, nil)
 		return
 	}
 
@@ -390,33 +359,25 @@ func (svc wsHandler) PrivateEdit(input interface{}, c *ws.Client) {
 	msg := &Req{}
 	bytes, _ := json.Marshal(input)
 	if err := json.Unmarshal(bytes, &msg); err != nil {
-		c.SendMessage(gin.H{"err": err}, ws.SendMessageParams{
-			ID:            msg.Id,
-			RequestedTime: requestedTime,
-		})
+		helpers.SendValidationResponse(c,
+			validation_reason.PARSE_ERROR, msg.Id, requestedTime, nil, nil)
 		return
 	}
 
 	// Check the Access Token
 	claim, err := svc.authSvc.ClaimJWT(msg.Params.AccessToken, c)
 	if err != nil {
-		c.SendMessage(gin.H{"err": err.Error()}, ws.SendMessageParams{
-			ID:            msg.Id,
-			RequestedTime: requestedTime,
-		})
+		reason := err.Error()
+		helpers.SendValidationResponse(c,
+			validation_reason.UNAUTHORIZED, msg.Id, requestedTime, nil, &reason)
 		return
 	}
 
 	ID := utils.GetKeyFromIdUserID(msg.Id, claim.UserID)
-
 	duplicateRpcID, errorMessage := c.RegisterRequestRpcIDS(ID, requestedTime)
-
 	if !duplicateRpcID {
-		c.SendMessage(gin.H{"err": errorMessage}, ws.SendMessageParams{
-			ID:            msg.Id,
-			RequestedTime: requestedTime,
-			UserID:        claim.UserID,
-		})
+		helpers.SendValidationResponse(c,
+			validation_reason.DUPLICATED_REQUEST_ID, msg.Id, requestedTime, &claim.UserID, &errorMessage)
 		return
 	}
 
@@ -451,33 +412,25 @@ func (svc wsHandler) PrivateCancel(input interface{}, c *ws.Client) {
 	msg := &Req{}
 	bytes, _ := json.Marshal(input)
 	if err := json.Unmarshal(bytes, &msg); err != nil {
-		c.SendMessage(gin.H{"err": err}, ws.SendMessageParams{
-			ID:            msg.Id,
-			RequestedTime: requestedTime,
-		})
+		helpers.SendValidationResponse(c,
+			validation_reason.PARSE_ERROR, msg.Id, requestedTime, nil, nil)
 		return
 	}
 
 	// Check the Access Token
 	claim, err := svc.authSvc.ClaimJWT(msg.Params.AccessToken, c)
 	if err != nil {
-		c.SendMessage(gin.H{"err": err.Error()}, ws.SendMessageParams{
-			ID:            msg.Id,
-			RequestedTime: requestedTime,
-		})
+		reason := err.Error()
+		helpers.SendValidationResponse(c,
+			validation_reason.UNAUTHORIZED, msg.Id, requestedTime, nil, &reason)
 		return
 	}
 
 	ID := utils.GetKeyFromIdUserID(msg.Id, claim.UserID)
-
 	duplicateRpcID, errorMessage := c.RegisterRequestRpcIDS(ID, requestedTime)
-
 	if !duplicateRpcID {
-		c.SendMessage(gin.H{"err": errorMessage}, ws.SendMessageParams{
-			ID:            msg.Id,
-			RequestedTime: requestedTime,
-			UserID:        claim.UserID,
-		})
+		helpers.SendValidationResponse(c,
+			validation_reason.DUPLICATED_REQUEST_ID, msg.Id, requestedTime, &claim.UserID, &errorMessage)
 		return
 	}
 
@@ -510,33 +463,25 @@ func (svc wsHandler) PrivateCancelByInstrument(input interface{}, c *ws.Client) 
 	msg := &Req{}
 	bytes, _ := json.Marshal(input)
 	if err := json.Unmarshal(bytes, &msg); err != nil {
-		c.SendMessage(gin.H{"err": err}, ws.SendMessageParams{
-			ID:            msg.Id,
-			RequestedTime: requestedTime,
-		})
+		helpers.SendValidationResponse(c,
+			validation_reason.PARSE_ERROR, msg.Id, requestedTime, nil, nil)
 		return
 	}
 
 	// Check the Access Token
 	claim, err := svc.authSvc.ClaimJWT(msg.Params.AccessToken, c)
 	if err != nil {
-		c.SendMessage(gin.H{"err": err.Error()}, ws.SendMessageParams{
-			ID:            msg.Id,
-			RequestedTime: requestedTime,
-		})
+		reason := err.Error()
+		helpers.SendValidationResponse(c,
+			validation_reason.UNAUTHORIZED, msg.Id, requestedTime, nil, &reason)
 		return
 	}
 
 	ID := utils.GetKeyFromIdUserID(msg.Id, claim.UserID)
-
 	duplicateRpcID, errorMessage := c.RegisterRequestRpcIDS(ID, requestedTime)
-
 	if !duplicateRpcID {
-		c.SendMessage(gin.H{"err": errorMessage}, ws.SendMessageParams{
-			ID:            msg.Id,
-			RequestedTime: requestedTime,
-			UserID:        claim.UserID,
-		})
+		helpers.SendValidationResponse(c,
+			validation_reason.DUPLICATED_REQUEST_ID, msg.Id, requestedTime, &claim.UserID, &errorMessage)
 		return
 	}
 
@@ -579,33 +524,25 @@ func (svc wsHandler) PrivateCancelAll(input interface{}, c *ws.Client) {
 	msg := &Req{}
 	bytes, _ := json.Marshal(input)
 	if err := json.Unmarshal(bytes, &msg); err != nil {
-		c.SendMessage(gin.H{"err": err}, ws.SendMessageParams{
-			ID:            msg.Id,
-			RequestedTime: requestedTime,
-		})
+		helpers.SendValidationResponse(c,
+			validation_reason.PARSE_ERROR, msg.Id, requestedTime, nil, nil)
 		return
 	}
 
 	// Check the Access Token
 	claim, err := svc.authSvc.ClaimJWT(msg.Params.AccessToken, c)
 	if err != nil {
-		c.SendMessage(gin.H{"err": err.Error()}, ws.SendMessageParams{
-			ID:            msg.Id,
-			RequestedTime: requestedTime,
-		})
+		reason := err.Error()
+		helpers.SendValidationResponse(c,
+			validation_reason.UNAUTHORIZED, msg.Id, requestedTime, nil, &reason)
 		return
 	}
 
 	ID := utils.GetKeyFromIdUserID(msg.Id, claim.UserID)
-
 	duplicateRpcID, errorMessage := c.RegisterRequestRpcIDS(ID, requestedTime)
-
 	if !duplicateRpcID {
-		c.SendMessage(gin.H{"err": errorMessage}, ws.SendMessageParams{
-			ID:            msg.Id,
-			RequestedTime: requestedTime,
-			UserID:        claim.UserID,
-		})
+		helpers.SendValidationResponse(c,
+			validation_reason.DUPLICATED_REQUEST_ID, msg.Id, requestedTime, &claim.UserID, &errorMessage)
 		return
 	}
 
@@ -647,10 +584,8 @@ func (svc wsHandler) SubscribeHandler(input interface{}, c *ws.Client) {
 	msg := &Req{}
 	bytes, _ := json.Marshal(input)
 	if err := json.Unmarshal(bytes, &msg); err != nil {
-		c.SendMessage(gin.H{"err": err}, ws.SendMessageParams{
-			ID:            msg.Id,
-			RequestedTime: requestedTime,
-		})
+		helpers.SendValidationResponse(c,
+			validation_reason.PARSE_ERROR, msg.Id, requestedTime, nil, nil)
 		return
 	}
 
@@ -693,10 +628,8 @@ func (svc wsHandler) UnsubscribeHandler(input interface{}, c *ws.Client) {
 	msg := &Req{}
 	bytes, _ := json.Marshal(input)
 	if err := json.Unmarshal(bytes, &msg); err != nil {
-		c.SendMessage(gin.H{"err": err}, ws.SendMessageParams{
-			ID:            msg.Id,
-			RequestedTime: requestedTime,
-		})
+		helpers.SendValidationResponse(c,
+			validation_reason.PARSE_ERROR, msg.Id, requestedTime, nil, nil)
 		return
 	}
 
@@ -740,10 +673,8 @@ func (svc wsHandler) GetInstruments(input interface{}, c *ws.Client) {
 	msg := &Req{}
 	bytes, _ := json.Marshal(input)
 	if err := json.Unmarshal(bytes, &msg); err != nil {
-		c.SendMessage(gin.H{"err": err}, ws.SendMessageParams{
-			ID:            msg.Id,
-			RequestedTime: requestedTime,
-		})
+		helpers.SendValidationResponse(c,
+			validation_reason.PARSE_ERROR, msg.Id, requestedTime, nil, nil)
 		return
 	}
 
@@ -783,18 +714,15 @@ func (svc wsHandler) GetOrderBook(input interface{}, c *ws.Client) {
 	msg := &Req{}
 	bytes, _ := json.Marshal(input)
 	if err := json.Unmarshal(bytes, &msg); err != nil {
-		c.SendMessage(gin.H{"err": err}, ws.SendMessageParams{
-			ID:            msg.Id,
-			RequestedTime: requestedTime,
-		})
+		helpers.SendValidationResponse(c,
+			validation_reason.PARSE_ERROR, msg.Id, requestedTime, nil, nil)
 		return
 	}
 
 	if msg.Params.InstrumentName == "" {
-		c.SendMessage(gin.H{"err": "Please provide instrument_name"}, ws.SendMessageParams{
-			ID:            msg.Id,
-			RequestedTime: requestedTime,
-		})
+		reason := "Please provide instrument_name"
+		helpers.SendValidationResponse(c,
+			validation_reason.INVALID_PARAMS, msg.Id, requestedTime, nil, &reason)
 		return
 	}
 
@@ -830,21 +758,16 @@ func (svc wsHandler) PrivateGetUserTradesByInstrument(input interface{}, c *ws.C
 	msg := &Req{}
 	bytes, _ := json.Marshal(input)
 	if err := json.Unmarshal(bytes, &msg); err != nil {
-		fmt.Println(err)
-		c.SendMessage(gin.H{"err": err}, ws.SendMessageParams{
-			ID:            msg.Id,
-			RequestedTime: requestedTime,
-		})
+		helpers.SendValidationResponse(c,
+			validation_reason.PARSE_ERROR, msg.Id, requestedTime, nil, nil)
 		return
 	}
 
 	validate := validator.New()
 	if err := validate.Struct(msg); err != nil {
-		fmt.Println(err)
-		c.SendMessage(gin.H{"err": err}, ws.SendMessageParams{
-			ID:            msg.Id,
-			RequestedTime: requestedTime,
-		})
+		reason := err.Error()
+		helpers.SendValidationResponse(c,
+			validation_reason.INVALID_PARAMS, msg.Id, requestedTime, nil, &reason)
 		return
 	}
 
@@ -855,12 +778,9 @@ func (svc wsHandler) PrivateGetUserTradesByInstrument(input interface{}, c *ws.C
 
 	claim, err := svc.authSvc.ClaimJWT(msg.Params.AccessToken, c)
 	if err != nil {
-		fmt.Println(err)
-		c.SendMessage(gin.H{"err": err.Error()}, ws.SendMessageParams{
-			ID:            msg.Id,
-			RequestedTime: requestedTime,
-			UserID:        "",
-		})
+		reason := err.Error()
+		helpers.SendValidationResponse(c,
+			validation_reason.UNAUTHORIZED, msg.Id, requestedTime, nil, &reason)
 		return
 	}
 
@@ -899,21 +819,16 @@ func (svc wsHandler) PrivateGetOpenOrdersByInstrument(input interface{}, c *ws.C
 	msg := &Req{}
 	bytes, _ := json.Marshal(input)
 	if err := json.Unmarshal(bytes, &msg); err != nil {
-		fmt.Println(err)
-		c.SendMessage(gin.H{"err": err}, ws.SendMessageParams{
-			ID:            msg.Id,
-			RequestedTime: requestedTime,
-		})
+		helpers.SendValidationResponse(c,
+			validation_reason.PARSE_ERROR, msg.Id, requestedTime, nil, nil)
 		return
 	}
 
 	validate := validator.New()
 	if err := validate.Struct(msg); err != nil {
-		fmt.Println(err)
-		c.SendMessage(gin.H{"err": err}, ws.SendMessageParams{
-			ID:            msg.Id,
-			RequestedTime: requestedTime,
-		})
+		reason := err.Error()
+		helpers.SendValidationResponse(c,
+			validation_reason.INVALID_PARAMS, msg.Id, requestedTime, nil, &reason)
 		return
 	}
 
@@ -924,12 +839,9 @@ func (svc wsHandler) PrivateGetOpenOrdersByInstrument(input interface{}, c *ws.C
 
 	claim, err := svc.authSvc.ClaimJWT(msg.Params.AccessToken, c)
 	if err != nil {
-		fmt.Println(err)
-		c.SendMessage(gin.H{"err": err.Error()}, ws.SendMessageParams{
-			ID:            msg.Id,
-			RequestedTime: requestedTime,
-			UserID:        "",
-		})
+		reason := err.Error()
+		helpers.SendValidationResponse(c,
+			validation_reason.UNAUTHORIZED, msg.Id, requestedTime, nil, &reason)
 		return
 	}
 
@@ -969,20 +881,16 @@ func (svc wsHandler) PrivateGetOrderHistoryByInstrument(input interface{}, c *ws
 	bytes, _ := json.Marshal(input)
 	if err := json.Unmarshal(bytes, &msg); err != nil {
 		fmt.Println(err)
-		c.SendMessage(gin.H{"err": err}, ws.SendMessageParams{
-			ID:            msg.Id,
-			RequestedTime: requestedTime,
-		})
+		helpers.SendValidationResponse(c,
+			validation_reason.PARSE_ERROR, msg.Id, requestedTime, nil, nil)
 		return
 	}
 
 	validate := validator.New()
 	if err := validate.Struct(msg); err != nil {
-		fmt.Println(err)
-		c.SendMessage(gin.H{"err": err}, ws.SendMessageParams{
-			ID:            msg.Id,
-			RequestedTime: requestedTime,
-		})
+		reason := err.Error()
+		helpers.SendValidationResponse(c,
+			validation_reason.INVALID_PARAMS, msg.Id, requestedTime, nil, &reason)
 		return
 	}
 
@@ -993,12 +901,9 @@ func (svc wsHandler) PrivateGetOrderHistoryByInstrument(input interface{}, c *ws
 
 	claim, err := svc.authSvc.ClaimJWT(msg.Params.AccessToken, c)
 	if err != nil {
-		fmt.Println(err)
-		c.SendMessage(gin.H{"err": err.Error()}, ws.SendMessageParams{
-			ID:            msg.Id,
-			RequestedTime: requestedTime,
-			UserID:        "",
-		})
+		reason := err.Error()
+		helpers.SendValidationResponse(c,
+			validation_reason.UNAUTHORIZED, msg.Id, requestedTime, nil, &reason)
 		return
 	}
 

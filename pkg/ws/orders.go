@@ -99,3 +99,15 @@ func SendOrderMessage(a string, payload interface{}, params SendMessageParams) {
 		OrderSocketUnsubscribeHandler(a)
 	}
 }
+
+func SendOrderErrorMessage(key string, err WebsocketResponseErrMessage) {
+	conn := GetOrderConnections(key)
+	if conn == nil {
+		return
+	}
+
+	for _, c := range conn {
+		c.SendErrorMessage(err)
+		OrderSocketUnsubscribeHandler(key)
+	}
+}
