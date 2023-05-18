@@ -57,6 +57,8 @@ func KafkaConsumer(
 					obSvc.HandleConsume(message)
 				case "ENGINE":
 					engSvc.HandleConsume(message)
+
+					go oSvc.HandleConsumeUserOrder(message)
 				case "CANCELLED_ORDERS":
 					handleTopicCancelledOrders(message)
 				default:

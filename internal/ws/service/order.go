@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	deribitModel "gateway/internal/deribit/model"
+	"strings"
 
 	"gateway/internal/repositories"
 	"gateway/pkg/redis"
@@ -68,6 +69,44 @@ func (svc wsOrderService) HandleConsume(msg *sarama.ConsumerMessage, userId stri
 	ws.GetOrderSocket().BroadcastMessage(userId, orders)
 }
 
+func (svc wsOrderService) HandleConsumeUserOrder(msg *sarama.ConsumerMessage) {
+	var data engineType.EngineResponse
+	err := json.Unmarshal(msg.Value, &data)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	_instrument := data.Matches.TakerOrder.Underlying + "-" + data.Matches.TakerOrder.ExpiryDate + "-" + fmt.Sprintf("%.0f", data.Matches.TakerOrder.StrikePrice) + "-" + string(data.Matches.TakerOrder.Contracts[0])
+
+	var orderId []interface{}
+	var userId []interface{}
+	if len(data.Matches.MakerOrders) > 0 {
+		for _, order := range data.Matches.MakerOrders {
+			orderId = append(orderId, order.ID)
+			userId = append(userId, order.UserID)
+		}
+	}
+	if data.Matches.TakerOrder != nil {
+		order := data.Matches.TakerOrder
+		orderId = append(orderId, order.ID)
+		userId = append(userId, order.UserID)
+	}
+
+	orders, err := svc.repo.GetChangeOrdersByInstrument(
+		_instrument,
+		userId,
+		orderId,
+	)
+	if err != nil {
+		return
+	}
+	for _, id := range userId {
+		// broadcast to user id
+		broadcastId := fmt.Sprintf("%s.%s.%s-%s", "user", "orders", _instrument, id)
+		ws.GetOrderSocket().BroadcastMessage(broadcastId, orders)
+	}
+}
+
 // Key can be all or user Id. So channel: ORDER.all or ORDER.user123
 func (svc wsOrderService) Subscribe(c *ws.Client, key string) {
 	socket := ws.GetOrderSocket()
@@ -117,6 +156,23 @@ func (svc wsOrderService) Subscribe(c *ws.Client, key string) {
 
 	// Send initial data from the redis
 	socket.SendInitMessage(c, initData)
+}
+
+func (svc wsOrderService) SubscribeUserOrder(c *ws.Client, channel string, userId string) {
+	socket := ws.GetOrderSocket()
+	key := strings.Split(channel, ".")
+
+	// Subscribe
+	id := fmt.Sprintf("%s.%s.%s-%s", key[0], key[1], key[2], userId)
+	err := socket.Subscribe(id, c)
+	if err != nil {
+		msg := map[string]string{"Message": err.Error()}
+		socket.SendErrorMessage(c, msg)
+		return
+	}
+
+	// Prepare when user is doing unsubscribe
+	ws.RegisterConnectionUnsubscribeHandler(c, socket.UnsubscribeHandler(id))
 }
 
 func (svc wsOrderService) Unsubscribe(c *ws.Client) {

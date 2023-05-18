@@ -22,7 +22,9 @@ type IwsOrderbookService interface {
 type IwsOrderService interface {
 	Subscribe(c *ws.Client, instrument string)
 	Unsubscribe(c *ws.Client)
+	SubscribeUserOrder(c *ws.Client, instrument string, userId string)
 	HandleConsume(msg *sarama.ConsumerMessage, userId string)
+	HandleConsumeUserOrder(msg *sarama.ConsumerMessage)
 	GetInstruments(ctx context.Context, request deribitModel.DeribitGetInstrumentsRequest) []deribitModel.DeribitGetInstrumentsResponse
 	GetOpenOrdersByInstrument(ctx context.Context, userId string, request deribitModel.DeribitGetOpenOrdersByInstrumentRequest) []deribitModel.DeribitGetOpenOrdersByInstrumentResponse
 	GetGetOrderHistoryByInstrument(ctx context.Context, userId string, request deribitModel.DeribitGetOrderHistoryByInstrumentRequest) []deribitModel.DeribitGetOrderHistoryByInstrumentResponse
