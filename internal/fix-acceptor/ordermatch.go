@@ -65,10 +65,11 @@ type XMessageSubscriber struct {
 }
 
 type VMessageSubscriber struct {
-	sessiondID quickfix.SessionID
-	Bid        bool
-	Ask        bool
-	Trade      bool
+	sessiondID     quickfix.SessionID
+	InstrumentName string
+	Bid            bool
+	Ask            bool
+	Trade          bool
 }
 
 var userSession map[string]*quickfix.SessionID
@@ -416,12 +417,7 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 		entries = append(entries, string(entry))
 	}
 	if subs == enum.SubscriptionRequestType_SNAPSHOT_PLUS_UPDATES { // subscribe
-		vMessageSubs = append(vMessageSubs, VMessageSubscriber{
-			sessiondID: sessionID,
-			Bid:        utils.ArrContains(entries, "0"),
-			Ask:        utils.ArrContains(entries, "1"),
-			Trade:      utils.ArrContains(entries, "2"),
-		})
+		vMessageSubs = addVMessagesSubscriber(vMessageSubs, sessionID, utils.ArrContains(entries, "0"), utils.ArrContains(entries, "1"), utils.ArrContains(entries, "2"))
 	} else if subs == enum.SubscriptionRequestType_DISABLE_PREVIOUS_SNAPSHOT_PLUS_UPDATE_REQUEST { // unsubscribe
 		for _, subs := range vMessageSubs {
 			if subs.sessiondID.String() == sessionID.String() {
@@ -530,6 +526,10 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 	}
 
 	return
+}
+
+func (a *Application) onMarketDataUpdate() {
+
 }
 
 func mapMarketDataResponse(res []MarketDataResponse) []MarketDataResponse {
@@ -830,6 +830,24 @@ func removeXMessageSubscriber(array []XMessageSubscriber, element XMessageSubscr
 		if v == element {
 			return append(array[:i], array[i+1:]...)
 		}
+	}
+	return array
+}
+
+func addVMessagesSubscriber(array []VMessageSubscriber, sessionID quickfix.SessionID, bid bool, ask bool, trade bool) []VMessageSubscriber {
+	exist := false
+	for _, v := range array {
+		if v.sessiondID == sessionID {
+			exist = true
+		}
+	}
+	if !exist {
+		array = append(array, VMessageSubscriber{
+			sessiondID: sessionID,
+			Bid:        bid,
+			Ask:        ask,
+			Trade:      trade,
+		})
 	}
 	return array
 }
