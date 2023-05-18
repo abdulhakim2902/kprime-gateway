@@ -608,6 +608,8 @@ func (svc wsHandler) SubscribeHandler(input interface{}, c *ws.Client) {
 			svc.wsTradeSvc.Subscribe(c, s[1])
 		case "quote":
 			svc.wsOBSvc.SubscribeQuote(c, s[1])
+		case "book":
+			svc.wsOBSvc.SubscribeBook(c, channel)
 		}
 
 	}
