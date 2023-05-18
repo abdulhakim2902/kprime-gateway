@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"strconv"
 
+	cors "github.com/rs/cors/wrapper/gin"
+
 	"github.com/gin-gonic/gin"
 	validator "github.com/go-playground/validator/v10"
 )
@@ -25,6 +27,7 @@ func NewDeribitHandler(r *gin.Engine, svc service.IDeribitService) {
 	handler := &DeribitHandler{
 		svc: svc,
 	}
+	r.Use(cors.AllowAll())
 
 	private := r.Group("/private")
 	public := r.Group("/api/v2/public")

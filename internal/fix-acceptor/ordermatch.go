@@ -473,6 +473,7 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 				"underlying":  splits[0],
 				"expiryDate":  splits[1],
 				"strikePrice": price,
+				"status":      "SUCCESS",
 			}, nil, 0, -1)
 			for _, trade := range trades {
 				response = append(response, MarketDataResponse{
@@ -483,8 +484,8 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 						"-" + string(trade.Contracts)[0:1],
 					Date:    trade.CreatedAt.String(),
 					Type:    "TRADE",
-					MakerID: trade.MakerOrderID.Hex(),
-					TakerID: trade.TakerOrderID.Hex(),
+					MakerID: trade.Maker.OrderID.Hex(),
+					TakerID: trade.Taker.OrderID.Hex(),
 					Status:  string(trade.Status),
 				})
 			}
@@ -509,21 +510,7 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 			row.SetMDEntrySize(decimal.NewFromFloat(res.Amount), 2)
 			row.SetMDEntryPx(decimal.NewFromFloat(res.Price), 2)
 			row.SetMDEntryDate(res.Date)
-
-			//trade
-			if res.Type == "TRADE" {
-				side := field.NewSide(enum.Side(res.Side))
-				amount := field.NewQuantity(decimal.NewFromFloat(res.Amount), 10)
-				status := field.NewStatusText(res.Status)
-				orderId := field.NewOrderID(res.MakerID)
-				secondaryOrderId := field.NewOrderID(res.TakerID)
-
-				row.Set(side)
-				row.Set(amount)
-				row.Set(status)
-				row.Set(orderId)
-				row.Set(secondaryOrderId)
-			}
+			row.SetOrderID(res.MakerID)
 
 		}
 		snap.SetNoMDEntries(grp)
@@ -546,31 +533,41 @@ func mapMarketDataResponse(res []MarketDataResponse) []MarketDataResponse {
 			result = append(result, r)
 			continue
 		}
-		result, exist := isInstrumentExists(result, r)
-		fmt.Println("exist", exist, result, i)
+		exist := isInstrumentExists(result, r)
 		if !exist {
-			fmt.Println("adding ", r.Price, r.Side)
 			result = append(result, r)
-			fmt.Println("result inside", result)
 			if i == len(res)-1 {
 				return result
 			}
 		}
-		fmt.Println("result inside 2", result)
 	}
-	fmt.Println("result outside", result)
-	return result
+	fmt.Println("total data after transfrom", len(result))
+	after := sumAmount(result, res)
+	return after
 }
 
-func isInstrumentExists(data []MarketDataResponse, marketData MarketDataResponse) ([]MarketDataResponse, bool) {
-	fmt.Println("checkingg...", marketData.Side, marketData.Price)
-	for i, d := range data {
+func isInstrumentExists(data []MarketDataResponse, marketData MarketDataResponse) bool {
+	fmt.Println("checkingg...", len(data))
+	for _, d := range data {
 		if d.InstrumentName == marketData.InstrumentName && d.Price == marketData.Price && d.Side == marketData.Side {
-			data[i].Amount = data[i].Amount + marketData.Amount
-			return data, true
+			return true
 		}
 	}
-	return data, false
+	return false
+}
+
+func sumAmount(data []MarketDataResponse, og []MarketDataResponse) (res []MarketDataResponse) {
+	for _, r := range data {
+		amount := float64(0)
+		for _, rr := range og {
+			if r.InstrumentName == rr.InstrumentName && r.Price == rr.Price && r.Side == rr.Side {
+				amount += rr.Amount
+			}
+		}
+		r.Amount = amount
+		res = append(res, r)
+	}
+	return res
 }
 
 func OnMatchingOrder(data types.EngineResponse) {

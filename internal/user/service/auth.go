@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"gateway/internal/repositories"
 	"gateway/internal/user/types"
+	"gateway/pkg/ws"
 	"os"
 	"strconv"
 	"strings"
@@ -22,7 +23,7 @@ func NewAuthService(repo *repositories.UserRepository) IAuthService {
 	return &AuthService{repo}
 }
 
-func (s AuthService) Login(ctx context.Context, req types.AuthRequest) (res *types.AuthResponse, err error) {
+func (s AuthService) Login(ctx context.Context, req types.AuthRequest, c *ws.Client) (res *types.AuthResponse, err error) {
 	var user *types.User
 	user, err = s.repo.FindByAPIKeyAndSecret(ctx, req.APIKey, req.APISecret)
 	if err != nil && !strings.Contains(err.Error(), "no documents in result") {
@@ -39,6 +40,8 @@ func (s AuthService) Login(ctx context.Context, req types.AuthRequest) (res *typ
 		return nil, errors.New("failed to generate token")
 	}
 
+	c.RegisterAuthedConnection(user.ID.Hex())
+
 	return &types.AuthResponse{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
@@ -48,7 +51,7 @@ func (s AuthService) Login(ctx context.Context, req types.AuthRequest) (res *typ
 	}, nil
 }
 
-func (s AuthService) RefreshToken(ctx context.Context, claim types.JwtClaim) (res *types.AuthResponse, err error) {
+func (s AuthService) RefreshToken(ctx context.Context, claim types.JwtClaim, c *ws.Client) (res *types.AuthResponse, err error) {
 	var user *types.User
 	user, err = s.repo.FindById(ctx, claim.UserID)
 	if err != nil && !strings.Contains(err.Error(), "no documents in result") {
@@ -65,6 +68,8 @@ func (s AuthService) RefreshToken(ctx context.Context, claim types.JwtClaim) (re
 		return nil, errors.New("failed to generate token")
 	}
 
+	c.RegisterAuthedConnection(user.ID.Hex())
+
 	return &types.AuthResponse{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
@@ -74,9 +79,18 @@ func (s AuthService) RefreshToken(ctx context.Context, claim types.JwtClaim) (re
 	}, nil
 }
 
-func (s AuthService) ClaimJWT(jwtToken string) (types.JwtClaim, error) {
+func (s AuthService) ClaimJWT(jwtToken string, c *ws.Client) (types.JwtClaim, error) {
 	jwtKey := os.Getenv("JWT_KEY")
 
+	// First check the websocket authed connection
+	isAuthed, userID := c.IsAuthed()
+	if isAuthed {
+		return types.JwtClaim{
+			UserID: userID,
+		}, nil
+	}
+
+	// Second if user is not authenticated using WS client, then check JWT Token
 	token, err := jwt.Parse(jwtToken, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, errors.New("unexpected signing method")
