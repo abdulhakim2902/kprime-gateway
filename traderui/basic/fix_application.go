@@ -11,6 +11,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/quickfixgo/enum"
 	"github.com/quickfixgo/field"
+	"github.com/quickfixgo/fix44/marketdataincrementalrefresh"
 	"github.com/quickfixgo/fix44/marketdatasnapshotfullrefresh"
 	"github.com/quickfixgo/fix44/securitylist"
 	"github.com/quickfixgo/tag"
@@ -42,6 +43,7 @@ type MarketData struct {
 	OrderId        string  `json:"orderId"`
 	SecondaryOrdId string  `json:"secondaryOrderId"`
 	Status         string  `json:"status"`
+	MDActionUpdate string  `json:"mdActionUpdate"`
 }
 
 var instruments []Instruments
@@ -106,6 +108,9 @@ func (a *FIXApplication) FromApp(msg *quickfix.Message, sessionID quickfix.Sessi
 	case enum.MsgType_MARKET_DATA_SNAPSHOT_FULL_REFRESH:
 		fmt.Println("Market Data Snapshot Full Refresh")
 		return a.onMarketDataSnapshot(msg, sessionID)
+	case enum.MsgType_MARKET_DATA_INCREMENTAL_REFRESH:
+		fmt.Println("Market Data Incremental Refresh")
+		return a.onMarketDataIncrementalRefresh(msg, sessionID)
 	}
 
 	return quickfix.UnsupportedMessageType()
@@ -276,6 +281,86 @@ func (a FIXApplication) GetMarketData() []MarketData {
 	return marketData
 }
 
+func (a FIXApplication) onMarketDataIncrementalRefresh(msg *quickfix.Message, sessionID quickfix.SessionID) quickfix.MessageRejectError {
+	fmt.Println("onMarketDataIncrementalRefresh")
+	a.Lock()
+	defer a.Unlock()
+
+	mdEntries := marketdataincrementalrefresh.NewNoMDEntriesRepeatingGroup()
+	if err := msg.Body.GetGroup(&mdEntries); err != nil {
+		return err
+	}
+
+	sym, _ := msg.Body.GetString(tag.Symbol)
+	fmt.Println("mapping market data", mdEntries.Len())
+	for i := 0; i < mdEntries.Len(); i++ {
+		entry := mdEntries.Get(i)
+		entryType, err := entry.GetMDEntryType()
+		if err != nil {
+			fmt.Println("Error getting the entry type: ", err)
+		}
+
+		entrySize, err := entry.GetMDEntrySize()
+		if err != nil {
+			fmt.Println("Error getting the entry size: ", err)
+		}
+
+		entryPx, err := entry.GetMDEntryPx()
+		if err != nil {
+			fmt.Println("Error getting the entry price: ", err)
+		}
+
+		entryDate, err := entry.GetMDEntryDate()
+		if err != nil {
+			fmt.Println("Error getting the entry date: ", err)
+		}
+
+		var status field.MDUpdateActionField
+		if err := entry.Get(&status); err != nil {
+			fmt.Println("Error getting the entry status: ", err)
+		}
+
+		var orderId field.OrderIDField
+		if err := entry.Get(&orderId); err != nil {
+			fmt.Println("Error getting the entry order id: ", err)
+		}
+
+		var secondaryOrderId field.SecondaryOrderIDField
+		if err := entry.Get(&secondaryOrderId); err != nil {
+			fmt.Println("Error getting the entry secondary order id: ", err)
+		}
+
+		var mdUpdate field.MDUpdateActionField
+		if err := entry.Get(&mdUpdate); err != nil {
+			fmt.Println("Error getting the entry md update action: ", err)
+		}
+
+		mdStatus := ""
+		if enum.MDUpdateAction(status.String()) == enum.MDUpdateAction_NEW {
+			mdStatus = "new"
+		} else if enum.MDUpdateAction(status.String()) == enum.MDUpdateAction_CHANGE {
+			mdStatus = "change"
+		} else if enum.MDUpdateAction(status.String()) == enum.MDUpdateAction_DELETE {
+			mdStatus = "delete"
+		}
+
+		marketData = append(marketData, MarketData{
+			InstrumentName: sym,
+			Side:           string(entryType),
+			Amount:         entrySize.InexactFloat64(),
+			Price:          entryPx.InexactFloat64(),
+			Date:           entryDate,
+			Status:         mdStatus,
+			OrderId:        orderId.String(),
+			SecondaryOrdId: secondaryOrderId.String(),
+			MDActionUpdate: mdUpdate.String(),
+		})
+
+	}
+
+	return nil
+}
+
 func (a FIXApplication) onMarketDataSnapshot(msg *quickfix.Message, sessionID quickfix.SessionID) quickfix.MessageRejectError {
 	a.Lock()
 	defer a.Unlock()
@@ -333,6 +418,7 @@ func (a FIXApplication) onMarketDataSnapshot(msg *quickfix.Message, sessionID qu
 			Status:         status.String(),
 			OrderId:        orderId.String(),
 			SecondaryOrdId: secondaryOrderId.String(),
+			MDActionUpdate: "new",
 		})
 
 	}

@@ -11,6 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	_engineType "gateway/internal/engine/types"
+	ordermatch "gateway/internal/fix-acceptor"
 	"gateway/internal/orderbook/types"
 	wsService "gateway/internal/ws/service"
 
@@ -700,6 +701,7 @@ func (svc orderbookHandler) Handle100msInterval(instrument string) {
 					}
 					method := "subscription"
 					broadcastId := fmt.Sprintf("%s-100ms", instrument)
+					ordermatch.OnMarketDataUpdate(instrument, bookData)
 					ws.GetBookSocket().BroadcastMessage(broadcastId, method, params)
 				}
 			}
