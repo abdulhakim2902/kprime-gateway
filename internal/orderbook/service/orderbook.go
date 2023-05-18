@@ -231,7 +231,7 @@ func (svc orderbookHandler) HandleConsumeBook(msg *sarama.ConsumerMessage) {
 	}
 	svc.redis.Set("CHANGEID-"+_instrument, string(jsonBytes))
 
-	go svc.HandleConsumeBookAgg(msg)
+	go svc.HandleConsumeBookAgg(_instrument, order)
 
 	if _, ok := changeId100ms[_instrument]; !ok {
 		changeId100ms[_instrument] = types.ChangeStruct{
@@ -275,18 +275,7 @@ func (svc orderbookHandler) HandleConsumeBook(msg *sarama.ConsumerMessage) {
 	ws.GetBookSocket().BroadcastMessage(broadcastId, method, params)
 }
 
-func (svc orderbookHandler) HandleConsumeBookAgg(msg *sarama.ConsumerMessage) {
-	var order types.Order
-	var data _engineType.EngineResponse
-
-	err := json.Unmarshal(msg.Value, &data)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	order = *data.Matches.TakerOrder
-	_instrument := data.Matches.TakerOrder.Underlying + "-" + data.Matches.TakerOrder.ExpiryDate + "-" + fmt.Sprintf("%.0f", data.Matches.TakerOrder.StrikePrice) + "-" + string(data.Matches.TakerOrder.Contracts[0])
-
+func (svc orderbookHandler) HandleConsumeBookAgg(_instrument string, order types.Order) {
 	_order := types.GetOrderBook{
 		InstrumentName: _instrument,
 		Underlying:     order.Underlying,
