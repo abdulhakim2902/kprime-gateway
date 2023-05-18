@@ -518,7 +518,7 @@ func (r OrderRepository) GetOrderHistoryByInstrument(InstrumentName string, Coun
 	return orders, nil
 }
 
-func (r OrderRepository) GetChangeOrdersByInstrument(InstrumentName string, userId []interface{}, orderId []interface{}) ([]*_deribitModel.DeribitGetOpenOrdersByInstrumentResponse, error) {
+func (r OrderRepository) GetChangeOrdersByInstrument(InstrumentName string, userId []interface{}, orderId []interface{}) ([]_deribitModel.DeribitGetOpenOrdersByInstrumentResponse, error) {
 	projectStage := bson.M{
 		"$project": bson.M{
 			"InstrumentName": bson.M{"$concat": bson.A{
@@ -600,22 +600,22 @@ func (r OrderRepository) GetChangeOrdersByInstrument(InstrumentName string, user
 	if err != nil {
 		fmt.Printf("err:%+v\n", err)
 
-		return []*_deribitModel.DeribitGetOpenOrdersByInstrumentResponse{}, nil
+		return []_deribitModel.DeribitGetOpenOrdersByInstrumentResponse{}, nil
 	}
 
 	err = cursor.Err()
 	if err != nil {
 		fmt.Printf("%+v\n", err)
 
-		return []*_deribitModel.DeribitGetOpenOrdersByInstrumentResponse{}, err
+		return []_deribitModel.DeribitGetOpenOrdersByInstrumentResponse{}, err
 	}
 
-	orders := []*_deribitModel.DeribitGetOpenOrdersByInstrumentResponse{}
+	orders := []_deribitModel.DeribitGetOpenOrdersByInstrumentResponse{}
 
 	if err = cursor.All(context.TODO(), &orders); err != nil {
 		fmt.Printf("%+v\n", err)
 
-		return []*_deribitModel.DeribitGetOpenOrdersByInstrumentResponse{}, nil
+		return []_deribitModel.DeribitGetOpenOrdersByInstrumentResponse{}, nil
 	}
 
 	return orders, nil

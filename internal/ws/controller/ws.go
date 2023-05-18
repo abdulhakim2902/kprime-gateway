@@ -766,7 +766,6 @@ func (svc wsHandler) SubscribeHandlerPrivate(input interface{}, c *ws.Client) {
 	})
 
 	for _, channel := range msg.Params.Channels {
-		fmt.Println(channel)
 		s := strings.Split(channel, ".")
 		switch s[1] {
 		case "orders":
@@ -799,17 +798,9 @@ func (svc wsHandler) UnsubscribeHandlerPrivate(input interface{}, c *ws.Client) 
 
 	for _, channel := range msg.Params.Channels {
 		s := strings.Split(channel, ".")
-		switch s[0] {
-		case "orderbook":
-			svc.wsOBSvc.Unsubscribe(c)
-		case "engine":
-			svc.wsEngSvc.Unsubscribe(c)
-		case "order":
+		switch s[1] {
+		case "orders":
 			svc.wsOSvc.Unsubscribe(c)
-		case "trade":
-			svc.wsTradeSvc.Unsubscribe(c)
-		case "quote":
-			svc.wsOBSvc.UnsubscribeQuote(c)
 		}
 
 	}
