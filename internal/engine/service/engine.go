@@ -118,15 +118,7 @@ func (svc engineHandler) HandleConsumeQuote(msg *sarama.ConsumerMessage) {
 	var data _engineType.EngineResponse
 	err := json.Unmarshal(msg.Value, &data)
 	if err != nil {
-		reason := validation_reason.PARSE_ERROR
-		data.Validation = reason
-
-		svc.PublishValidation(data)
-		return
-	}
-
-	if data.Status == types.ORDER_REJECTED {
-		svc.PublishValidation(data)
+		fmt.Println(err)
 		return
 	}
 
@@ -145,10 +137,7 @@ func (svc engineHandler) HandleConsumeQuote(msg *sarama.ConsumerMessage) {
 	//convert redisDataArray to json
 	jsonBytes, err := json.Marshal(initData)
 	if err != nil {
-		reason := validation_reason.PARSE_ERROR
-		data.Validation = reason
-
-		svc.PublishValidation(data)
+		fmt.Println(err)
 		return
 	}
 
