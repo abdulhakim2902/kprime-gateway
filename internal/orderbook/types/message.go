@@ -3,6 +3,8 @@ package types
 import (
 	"time"
 
+	"git.devucc.name/dependencies/utilities/types"
+
 	"git.devucc.name/dependencies/utilities/models/order"
 	"github.com/shopspring/decimal"
 )
@@ -11,6 +13,18 @@ type Message struct {
 	Instrument string      `json:"instrumentName"`
 	Bids       interface{} `json:"bids"`
 	Asks       interface{} `json:"asks"`
+}
+
+type OrderbookSubscribe struct {
+	InstrumentName string              `json:"instrumentName" bson:"instrumentName"`
+	Bids           []*WsOrderSubscribe `json:"bids" bson:"bids"`
+	Asks           []*WsOrderSubscribe `json:"asks" bson:"asks"`
+}
+
+type WsOrderSubscribe struct {
+	Price  float64     `json:"price" bson:"price"`
+	Amount float64     `json:"amount" bson:"amount"`
+	Detail interface{} `json:"detail,omitempty" bson:"detail,omitempty"`
 }
 
 type Orderbook struct {
@@ -22,6 +36,10 @@ type Orderbook struct {
 type WsOrder struct {
 	Price  float64 `json:"price" bson:"price"`
 	Amount float64 `json:"amount" bson:"amount"`
+}
+
+type Count struct {
+	Count int `json:"count" bson:"count"`
 }
 
 type Order struct {
@@ -42,8 +60,8 @@ type GetOrderBook struct {
 }
 
 type QuoteResponse struct {
-	Channel string       `json:"channel"`
-	Data    QuoteMessage `json:"data"`
+	Channel string      `json:"channel"`
+	Data    interface{} `json:"data"`
 }
 
 type QuoteMessage struct {
@@ -53,4 +71,37 @@ type QuoteMessage struct {
 	BestAskPrice  float64 `json:"best_ask_price"`
 	BestBidAmount float64 `json:"best_bid_amount"`
 	BestBidPrice  float64 `json:"best_bid_price"`
+}
+
+type BookData struct {
+	Type           string          `json:"type"`
+	Timestamp      int64           `json:"timestamp"`
+	InstrumentName string          `json:"instrument_name"`
+	ChangeId       int             `json:"change_id"`
+	PrevChangeId   int             `json:"prev_change_id,omitempty"`
+	Bids           [][]interface{} `json:"bids"`
+	Asks           [][]interface{} `json:"asks"`
+}
+
+type Change struct {
+	Id            int                `json:"id"`
+	IdPrev        int                `json:"id_prev"`
+	Timestamp     int64              `json:"timestamp"`
+	TimestampPrev int64              `json:"timestamp_prev"`
+	Bids          map[string]float64 `json:"bids"`
+	Asks          map[string]float64 `json:"asks"`
+	BidsAgg       map[string]float64 `json:"bids_agg"`
+	AsksAgg       map[string]float64 `json:"asks_agg"`
+	Bids100       map[string]float64 `json:"bids_100"`
+	Asks100       map[string]float64 `json:"asks_100"`
+}
+
+type ChangeStruct struct {
+	Id         int               `json:"id"`
+	IdPrev     int               `json:"id_prev"`
+	Status     types.OrderStatus `json:"status"`
+	Side       types.Side        `json:"side"`
+	Price      float64           `json:"price"`
+	Amount     float64           `json:"amount"`
+	Amendments []order.Amendment `json:"amendments"`
 }
