@@ -51,7 +51,7 @@ func (svc engineHandler) HandleConsume(msg *sarama.ConsumerMessage) {
 		return
 	}
 
-	if data.Validation.IsValid() {
+	if data.Status == types.ORDER_REJECTED {
 		svc.PublishValidation(data)
 		return
 	}
@@ -125,7 +125,7 @@ func (svc engineHandler) HandleConsumeQuote(msg *sarama.ConsumerMessage) {
 		return
 	}
 
-	if data.Validation.IsValid() {
+	if data.Status == types.ORDER_REJECTED {
 		svc.PublishValidation(data)
 		return
 	}
