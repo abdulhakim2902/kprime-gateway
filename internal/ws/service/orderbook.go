@@ -186,9 +186,9 @@ func (svc wsOrderbookService) SubscribeBook(c *ws.Client, channel string) {
 	var orderBook _orderbookTypes.Orderbook
 	switch s[2] {
 	case "raw":
-		orderBook = svc.GetOrderLatestTimestamp(_order, changeId.Timestamp)
+		orderBook = svc.GetOrderLatestTimestamp(_order, changeId.Timestamp, false)
 	case "100ms":
-		orderBook = svc.GetOrderLatestTimestamp(_order, changeId.Timestamp)
+		orderBook = svc.GetOrderLatestTimestamp(_order, changeId.Timestamp, false)
 	case "agg2":
 		orderBook = svc._getOrderBookAgg2(_order)
 	}
@@ -516,13 +516,17 @@ func (svc wsOrderbookService) GetOrderBook(ctx context.Context, data _deribitMod
 	return results
 }
 
-func (svc wsOrderbookService) GetOrderLatestTimestamp(o _orderbookTypes.GetOrderBook, after int64) _orderbookTypes.Orderbook {
+func (svc wsOrderbookService) GetOrderLatestTimestamp(o _orderbookTypes.GetOrderBook, after int64, isFilled bool) _orderbookTypes.Orderbook {
 	timeAfter := time.UnixMilli(after)
+	status := []types.OrderStatus{types.OPEN, types.PARTIAL_FILLED}
+	if isFilled {
+		status = append(status, types.FILLED)
+	}
 	queryBuilder := func(side types.Side, priceOrder int) interface{} {
 		return []bson.M{
 			{
 				"$match": bson.M{
-					"status":      bson.M{"$in": []types.OrderStatus{types.OPEN, types.PARTIAL_FILLED}},
+					"status":      bson.M{"$in": status},
 					"underlying":  o.Underlying,
 					"strikePrice": o.StrikePrice,
 					"expiryDate":  o.ExpiryDate,
@@ -576,7 +580,7 @@ func (svc wsOrderbookService) GetOrderLatestTimestampAgg(o _orderbookTypes.GetOr
 		return []bson.M{
 			{
 				"$match": bson.M{
-					"status":      bson.M{"$in": []types.OrderStatus{types.OPEN, types.PARTIAL_FILLED}},
+					"status":      bson.M{"$in": []types.OrderStatus{types.OPEN, types.PARTIAL_FILLED, types.FILLED}},
 					"underlying":  o.Underlying,
 					"strikePrice": o.StrikePrice,
 					"expiryDate":  o.ExpiryDate,

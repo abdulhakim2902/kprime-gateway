@@ -98,7 +98,7 @@ func (svc orderbookHandler) HandleConsumeBook(msg *sarama.ConsumerMessage) {
 		}
 	}
 	// Get latest data from db
-	orderBook := svc.wsOBSvc.GetOrderLatestTimestamp(_order, ts)
+	orderBook := svc.wsOBSvc.GetOrderLatestTimestamp(_order, ts, true)
 
 	var bidsData = make([][]interface{}, 0)
 	var asksData = make([][]interface{}, 0)
@@ -111,18 +111,25 @@ func (svc orderbookHandler) HandleConsumeBook(msg *sarama.ConsumerMessage) {
 			// check if data from last changeId is changed or is there new data incoming
 			if val, ok := changeId.Asks[fmt.Sprintf("%f", ask.Price)]; ok {
 				if val != ask.Amount {
-					askData = append(askData, "change")
+					if ask.Amount == 0 {
+						askData = append(askData, "delete")
+					} else {
+						askData = append(askData, "change")
+						changeAsksRaw[fmt.Sprintf("%f", ask.Price)] = ask.Amount
+					}
 					askData = append(askData, ask.Price)
 					askData = append(askData, ask.Amount)
-					bidsData = append(bidsData, askData)
+					asksData = append(asksData, askData)
 				}
 			} else {
-				askData = append(askData, "new")
-				askData = append(askData, ask.Price)
-				askData = append(askData, ask.Amount)
-				asksData = append(asksData, askData)
+				if ask.Amount != 0 {
+					askData = append(askData, "new")
+					askData = append(askData, ask.Price)
+					askData = append(askData, ask.Amount)
+					asksData = append(asksData, askData)
+					changeAsksRaw[fmt.Sprintf("%f", ask.Price)] = ask.Amount
+				}
 			}
-			changeAsksRaw[fmt.Sprintf("%f", ask.Price)] = ask.Amount
 		}
 	} else {
 		asksData = make([][]interface{}, 0)
@@ -134,18 +141,25 @@ func (svc orderbookHandler) HandleConsumeBook(msg *sarama.ConsumerMessage) {
 			// check if data from last changeId is changed or is there new data incoming
 			if val, ok := changeId.Bids[fmt.Sprintf("%f", bid.Price)]; ok {
 				if val != bid.Amount {
-					bidData = append(bidData, "change")
+					if bid.Amount == 0 {
+						bidData = append(bidData, "delete")
+					} else {
+						bidData = append(bidData, "change")
+						changeBidsRaw[fmt.Sprintf("%f", bid.Price)] = bid.Amount
+					}
 					bidData = append(bidData, bid.Price)
 					bidData = append(bidData, bid.Amount)
 					bidsData = append(bidsData, bidData)
 				}
 			} else {
-				bidData = append(bidData, "new")
-				bidData = append(bidData, bid.Price)
-				bidData = append(bidData, bid.Amount)
-				bidsData = append(bidsData, bidData)
+				if bid.Amount != 0 {
+					bidData = append(bidData, "new")
+					bidData = append(bidData, bid.Price)
+					bidData = append(bidData, bid.Amount)
+					bidsData = append(bidsData, bidData)
+					changeBidsRaw[fmt.Sprintf("%f", bid.Price)] = bid.Amount
+				}
 			}
-			changeBidsRaw[fmt.Sprintf("%f", bid.Price)] = bid.Amount
 		}
 	} else {
 		bidsData = make([][]interface{}, 0)
@@ -310,18 +324,25 @@ func (svc orderbookHandler) HandleConsumeBookAgg(_instrument string, order types
 			// check if data from last changeId is changed or is there new data incoming
 			if val, ok := changeId.AsksAgg[fmt.Sprintf("%f", ask.Price)]; ok {
 				if val != ask.Amount {
-					askData = append(askData, "change")
+					if ask.Amount == 0 {
+						askData = append(askData, "delete")
+					} else {
+						askData = append(askData, "change")
+						changeAsksRaw[fmt.Sprintf("%f", ask.Price)] = ask.Amount
+					}
 					askData = append(askData, ask.Price)
 					askData = append(askData, ask.Amount)
-					bidsData = append(bidsData, askData)
+					asksData = append(asksData, askData)
 				}
 			} else {
-				askData = append(askData, "new")
-				askData = append(askData, ask.Price)
-				askData = append(askData, ask.Amount)
-				asksData = append(asksData, askData)
+				if ask.Amount != 0 {
+					askData = append(askData, "new")
+					askData = append(askData, ask.Price)
+					askData = append(askData, ask.Amount)
+					asksData = append(asksData, askData)
+					changeAsksRaw[fmt.Sprintf("%f", ask.Price)] = ask.Amount
+				}
 			}
-			changeAsksRaw[fmt.Sprintf("%f", ask.Price)] = ask.Amount
 		}
 	} else {
 		asksData = make([][]interface{}, 0)
@@ -333,18 +354,25 @@ func (svc orderbookHandler) HandleConsumeBookAgg(_instrument string, order types
 			// check if data from last changeId is changed or is there new data incoming
 			if val, ok := changeId.BidsAgg[fmt.Sprintf("%f", bid.Price)]; ok {
 				if val != bid.Amount {
-					bidData = append(bidData, "change")
+					if bid.Amount == 0 {
+						bidData = append(bidData, "delete")
+					} else {
+						bidData = append(bidData, "change")
+						changeBidsRaw[fmt.Sprintf("%f", bid.Price)] = bid.Amount
+					}
 					bidData = append(bidData, bid.Price)
 					bidData = append(bidData, bid.Amount)
 					bidsData = append(bidsData, bidData)
 				}
 			} else {
-				bidData = append(bidData, "new")
-				bidData = append(bidData, bid.Price)
-				bidData = append(bidData, bid.Amount)
-				bidsData = append(bidsData, bidData)
+				if bid.Amount != 0 {
+					bidData = append(bidData, "new")
+					bidData = append(bidData, bid.Price)
+					bidData = append(bidData, bid.Amount)
+					bidsData = append(bidsData, bidData)
+					changeBidsRaw[fmt.Sprintf("%f", bid.Price)] = bid.Amount
+				}
 			}
-			changeBidsRaw[fmt.Sprintf("%f", bid.Price)] = bid.Amount
 		}
 	} else {
 		bidsData = make([][]interface{}, 0)
@@ -509,7 +537,7 @@ func (svc orderbookHandler) Handle100msInterval(instrument string) {
 						}
 					}
 					// Get latest data from db
-					orderBook := svc.wsOBSvc.GetOrderLatestTimestamp(_order, ts)
+					orderBook := svc.wsOBSvc.GetOrderLatestTimestamp(_order, ts, true)
 
 					var bidsData = make([][]interface{}, 0)
 					var asksData = make([][]interface{}, 0)
@@ -522,18 +550,25 @@ func (svc orderbookHandler) Handle100msInterval(instrument string) {
 							// check if data from last changeId is changed or is there new data incoming
 							if val, ok := changeId.Asks100[fmt.Sprintf("%f", ask.Price)]; ok {
 								if val != ask.Amount {
-									askData = append(askData, "change")
+									if ask.Amount == 0 {
+										askData = append(askData, "delete")
+									} else {
+										askData = append(askData, "change")
+										changeAsksRaw[fmt.Sprintf("%f", ask.Price)] = ask.Amount
+									}
 									askData = append(askData, ask.Price)
 									askData = append(askData, ask.Amount)
-									bidsData = append(bidsData, askData)
+									asksData = append(asksData, askData)
 								}
 							} else {
-								askData = append(askData, "new")
-								askData = append(askData, ask.Price)
-								askData = append(askData, ask.Amount)
-								asksData = append(asksData, askData)
+								if ask.Amount != 0 {
+									askData = append(askData, "new")
+									askData = append(askData, ask.Price)
+									askData = append(askData, ask.Amount)
+									asksData = append(asksData, askData)
+									changeAsksRaw[fmt.Sprintf("%f", ask.Price)] = ask.Amount
+								}
 							}
-							changeAsksRaw[fmt.Sprintf("%f", ask.Price)] = ask.Amount
 						}
 					} else {
 						asksData = make([][]interface{}, 0)
@@ -545,18 +580,25 @@ func (svc orderbookHandler) Handle100msInterval(instrument string) {
 							// check if data from last changeId is changed or is there new data incoming
 							if val, ok := changeId.Bids100[fmt.Sprintf("%f", bid.Price)]; ok {
 								if val != bid.Amount {
-									bidData = append(bidData, "change")
+									if bid.Amount == 0 {
+										bidData = append(bidData, "delete")
+									} else {
+										bidData = append(bidData, "change")
+										changeBidsRaw[fmt.Sprintf("%f", bid.Price)] = bid.Amount
+									}
 									bidData = append(bidData, bid.Price)
 									bidData = append(bidData, bid.Amount)
 									bidsData = append(bidsData, bidData)
 								}
 							} else {
-								bidData = append(bidData, "new")
-								bidData = append(bidData, bid.Price)
-								bidData = append(bidData, bid.Amount)
-								bidsData = append(bidsData, bidData)
+								if bid.Amount != 0 {
+									bidData = append(bidData, "new")
+									bidData = append(bidData, bid.Price)
+									bidData = append(bidData, bid.Amount)
+									bidsData = append(bidsData, bidData)
+									changeBidsRaw[fmt.Sprintf("%f", bid.Price)] = bid.Amount
+								}
 							}
-							changeBidsRaw[fmt.Sprintf("%f", bid.Price)] = bid.Amount
 						}
 					} else {
 						bidsData = make([][]interface{}, 0)
