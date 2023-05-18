@@ -66,6 +66,9 @@ type XMessageSubscriber struct {
 
 type VMessageSubscriber struct {
 	sessiondID quickfix.SessionID
+	Bid        bool
+	Ask        bool
+	Trade      bool
 }
 
 var userSession map[string]*quickfix.SessionID
@@ -399,9 +402,25 @@ func (a *Application) onOrderCancelRequest(msg ordercancelrequest.OrderCancelReq
 func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataRequest, sessionID quickfix.SessionID) (err quickfix.MessageRejectError) {
 	fmt.Println("onMarketDataRequest")
 	subs, _ := msg.GetSubscriptionRequestType()
+
+	mdEntryTypes := marketdatarequest.NewNoMDEntryTypesRepeatingGroup()
+	err = msg.GetGroup(mdEntryTypes)
+	if err != nil {
+		fmt.Println("Error getting mdEntryTypes", err)
+	}
+
+	//entries contain the type of market data requested (bid, ask, trade)
+	entries := make([]string, mdEntryTypes.Len())
+	for j := 0; j < mdEntryTypes.Len(); j++ {
+		entry, _ := mdEntryTypes.Get(j).GetMDEntryType()
+		entries = append(entries, string(entry))
+	}
 	if subs == enum.SubscriptionRequestType_SNAPSHOT_PLUS_UPDATES { // subscribe
 		vMessageSubs = append(vMessageSubs, VMessageSubscriber{
 			sessiondID: sessionID,
+			Bid:        utils.ArrContains(entries, "0"),
+			Ask:        utils.ArrContains(entries, "1"),
+			Trade:      utils.ArrContains(entries, "2"),
 		})
 	} else if subs == enum.SubscriptionRequestType_DISABLE_PREVIOUS_SNAPSHOT_PLUS_UPDATE_REQUEST { // unsubscribe
 		for _, subs := range vMessageSubs {
@@ -411,23 +430,12 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 		}
 	}
 
-	mdEntryTypes := marketdatarequest.NewNoMDEntryTypesRepeatingGroup()
-	err = msg.GetGroup(mdEntryTypes)
-	if err != nil {
-		fmt.Println("Error getting mdEntryTypes", err)
-	}
-
 	noRelatedsym, _ := msg.GetNoRelatedSym()
 
 	// loop based on symbol requested
 	for i := 0; i < noRelatedsym.Len(); i++ {
 		response := []MarketDataResponse{}
 		sym, _ := noRelatedsym.Get(i).GetSymbol()
-		entries := make([]string, mdEntryTypes.Len())
-		for j := 0; j < mdEntryTypes.Len(); j++ {
-			entry, _ := mdEntryTypes.Get(j).GetMDEntryType()
-			entries = append(entries, string(entry))
-		}
 
 		if utils.ArrContains(entries, "0") {
 			asks := a.OrderRepository.GetMarketData(sym, "BUY")
