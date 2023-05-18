@@ -6,10 +6,18 @@ import (
 	"strconv"
 	"time"
 
+	"git.devucc.name/dependencies/utilities/types/validation_reason"
 	"github.com/gin-gonic/gin"
 )
 
 type ProtocolType int
+
+const (
+	Websocket ProtocolType = iota
+	GET
+	POST
+	GRPC
+)
 
 type RPCResponseMessage struct {
 	JSONRPC string      `json:"jsonrpc"`
@@ -21,14 +29,20 @@ type RPCResponseMessage struct {
 	UsOut   uint64      `json:"usOut,omitempty"`
 	UsDiff  uint64      `json:"usDiff,omitempty"`
 	Testnet bool        `json:"testnet,omitempty"`
+
+	// Error Type
+	Error ErrorMessage `json:"error,omitempty"`
 }
 
-const (
-	Websocket ProtocolType = iota
-	GET
-	POST
-	GRPC
-)
+type ErrorMessage struct {
+	Message string        `json:"message"`
+	Data    ReasonMessage `json:"data"`
+	Code    int64         `json:"code"`
+}
+
+type ReasonMessage struct {
+	Reason string `json:"reason"`
+}
 
 type ProtocolRequest struct {
 	Protocol      ProtocolType
@@ -93,12 +107,33 @@ func GetProtocol(rpcID uint64, userID string) (bool, ProtocolRequest) {
 	return false, ProtocolRequest{}
 }
 
-func SendMessage(rpcID uint64, userID string, payload interface{}) bool {
+// Responsible for constructing the error message
+func SendErrorMessage(rpcID uint64, userID string, validation int, payload interface{}) bool {
 
-	ok, val := GetProtocol(rpcID, userID)
-	if !ok {
-		return false
+	// Construct the response structure
+	reason := validation_reason.ValidationReason(validation)
+	code, codeStr := reason.Code()
+	var m RPCResponseMessage
+	m = RPCResponseMessage{
+		Result:  payload,
+		JSONRPC: "2.0",
+		ID:      rpcID,
+		Testnet: true,
 	}
+	m.Error = ErrorMessage{
+		Message: reason.String(),
+		Data: ReasonMessage{
+			Reason: codeStr,
+		},
+		Code: code,
+	}
+
+	return doSend(rpcID, userID, m)
+
+}
+
+// Responsible for constructing the message
+func SendMessage(rpcID uint64, userID string, payload interface{}) bool {
 
 	// Construct the response structure
 	var m RPCResponseMessage
@@ -108,14 +143,26 @@ func SendMessage(rpcID uint64, userID string, payload interface{}) bool {
 		ID:      rpcID,
 		Testnet: true,
 	}
+
+	return doSend(rpcID, userID, m)
+
+}
+
+// Responsible for handling to send for different protocol
+func doSend(rpcID uint64, userID string, m RPCResponseMessage) bool {
+
+	ok, val := GetProtocol(rpcID, userID)
+	if !ok {
+		return false
+	}
+
 	m.UsIn = val.RequestedTime
 	m.UsOut = uint64(time.Now().UnixMicro())
 	m.UsDiff = m.UsOut - m.UsIn
-	// Message Constructed
 
 	// Websocket
 	if val.Protocol == Websocket {
-		val.ws.SendMessageRaw(m)
+		// val.ws.SendMessageRaw(m) TODO
 
 		UnregisterProtocol(rpcID, userID)
 	}
@@ -128,5 +175,4 @@ func SendMessage(rpcID uint64, userID string, payload interface{}) bool {
 
 	// TODO: GRPC?
 	return true
-
 }
