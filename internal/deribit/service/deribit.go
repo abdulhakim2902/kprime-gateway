@@ -54,13 +54,14 @@ func (svc deribitService) DeribitRequest(
 		_timeInForce = data.TimeInForce
 	}
 
+	upperType := strings.ToUpper(string(data.Type))
 	payload := model.DeribitResponse{
 		UserId:         userId,
 		ClientId:       data.ClientId,
 		Underlying:     _underlying,
 		ExpirationDate: _expDate,
 		StrikePrice:    *strikePrice,
-		Type:           data.Type,
+		Type:           types.Type(upperType),
 		Side:           data.Side,
 		ClOrdID:        data.ClOrdID,
 		Price:          data.Price,

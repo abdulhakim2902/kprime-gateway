@@ -13,6 +13,13 @@ const OrderbookChannel = "order_book"
 
 // const OrderChannel = "orders"
 
+type AuthedClient struct {
+	IsAuthed bool   `json:"is_authed"`
+	UserID   string `json:"user_id"`
+}
+
+var authedConnections map[Client]AuthedClient
+
 type Client struct {
 	*websocket.Conn
 	mu   sync.Mutex
@@ -69,6 +76,29 @@ var registerRequestRpcIdsMutex sync.Mutex
 
 // To Validate rps id-s and return usIn,usOut,usDiff
 var orderRequestRpcIDS map[string]uint64
+
+func (c *Client) RegisterAuthedConnection(userID string) {
+	if authedConnections == nil {
+		authedConnections = make(map[Client]AuthedClient)
+	}
+	authedConnections[*c] = AuthedClient{
+		IsAuthed: true,
+		UserID:   userID,
+	}
+}
+
+func (c *Client) UnregisterAuthedConnection() {
+	if authedConnections != nil {
+		delete(authedConnections, *c)
+	}
+}
+
+func (c *Client) IsAuthed() (bool, string) {
+	if authedClient, ok := authedConnections[*c]; ok {
+		return authedClient.IsAuthed, authedClient.UserID
+	}
+	return false, ""
+}
 
 func (c *Client) RegisterRequestRpcIDS(id string, requestedTime uint64) (bool, string) {
 	registerRequestRpcIdsMutex.Lock()
@@ -188,6 +218,7 @@ func (c *Client) closeConnection() {
 	for _, unsub := range unsubscribeHandlers[c] {
 		go unsub(c)
 	}
+	c.UnregisterAuthedConnection()
 
 	c.Close()
 }
