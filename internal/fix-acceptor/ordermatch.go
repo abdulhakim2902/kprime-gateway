@@ -18,11 +18,13 @@ package ordermatch
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	_deribitModel "gateway/internal/deribit/model"
 	_deribitSvc "gateway/internal/deribit/service"
 	"gateway/internal/engine/types"
 	"gateway/internal/repositories"
+	"gateway/pkg/redis"
 	"gateway/pkg/utils"
 	"io"
 	"io/ioutil"
@@ -37,11 +39,14 @@ import (
 
 	_mongo "gateway/pkg/mongo"
 
+	_orderbookType "gateway/internal/orderbook/types"
+
 	"git.devucc.name/dependencies/utilities/commons/log"
 	_utilitiesType "git.devucc.name/dependencies/utilities/types"
 	"github.com/quickfixgo/enum"
 	"github.com/quickfixgo/field"
 	"github.com/quickfixgo/fix44/executionreport"
+	"github.com/quickfixgo/fix44/marketdataincrementalrefresh"
 	"github.com/quickfixgo/fix44/marketdatarequest"
 	"github.com/quickfixgo/fix44/marketdatasnapshotfullrefresh"
 	"github.com/quickfixgo/fix44/newordersingle"
@@ -63,7 +68,11 @@ type XMessageSubscriber struct {
 }
 
 type VMessageSubscriber struct {
-	sessiondID quickfix.SessionID
+	sessiondID     quickfix.SessionID
+	InstrumentName string
+	Bid            bool
+	Ask            bool
+	Trade          bool
 }
 
 var userSession map[string]*quickfix.SessionID
@@ -107,6 +116,7 @@ type MarketDataResponse struct {
 	MakerID        string                   `json:"makerId"`
 	TakerID        string                   `json:"takerId"`
 	Status         string                   `json:"status"`
+	UpdateType     string                   `json:"updateType"`
 }
 
 type Orderbook struct {
@@ -123,6 +133,7 @@ type Application struct {
 	*repositories.OrderRepository
 	*repositories.TradeRepository
 	DeribitService _deribitSvc.IDeribitService
+	redis          *redis.RedisConnectionPool
 }
 
 func newApplication() *Application {
@@ -131,8 +142,8 @@ func newApplication() *Application {
 	orderRepo := repositories.NewOrderRepository(mongoDb)
 	tradeRepo := repositories.NewTradeRepository(mongoDb)
 	userRepo := repositories.NewUserRepository(mongoDb)
-
 	deribitSvc := _deribitSvc.NewDeribitService()
+	redis := redis.NewRedisConnectionPool(os.Getenv("REDIS_URL"))
 
 	app := &Application{
 		MessageRouter:   quickfix.NewMessageRouter(),
@@ -140,6 +151,7 @@ func newApplication() *Application {
 		OrderRepository: orderRepo,
 		TradeRepository: tradeRepo,
 		DeribitService:  deribitSvc,
+		redis:           redis,
 	}
 	app.AddRoute(newordersingle.Route(app.onNewOrderSingle))
 	app.AddRoute(ordercancelrequest.Route(app.onOrderCancelRequest))
@@ -395,10 +407,23 @@ func (a *Application) onOrderCancelRequest(msg ordercancelrequest.OrderCancelReq
 func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataRequest, sessionID quickfix.SessionID) (err quickfix.MessageRejectError) {
 	fmt.Println("onMarketDataRequest")
 	subs, _ := msg.GetSubscriptionRequestType()
+
+	mdEntryTypes := marketdatarequest.NewNoMDEntryTypesRepeatingGroup()
+	err = msg.GetGroup(mdEntryTypes)
+	if err != nil {
+		fmt.Println("Error getting mdEntryTypes", err)
+	}
+
+	//entries contain the type of market data requested (bid, ask, trade)
+	entries := make([]string, mdEntryTypes.Len())
+	for j := 0; j < mdEntryTypes.Len(); j++ {
+		entry, _ := mdEntryTypes.Get(j).GetMDEntryType()
+		entries = append(entries, string(entry))
+	}
+
+	noRelatedsym, _ := msg.GetNoRelatedSym()
 	if subs == enum.SubscriptionRequestType_SNAPSHOT_PLUS_UPDATES { // subscribe
-		vMessageSubs = append(vMessageSubs, VMessageSubscriber{
-			sessiondID: sessionID,
-		})
+		vMessageSubs = addVMessagesSubscriber(vMessageSubs, sessionID, utils.ArrContains(entries, "0"), utils.ArrContains(entries, "1"), utils.ArrContains(entries, "2"), noRelatedsym)
 	} else if subs == enum.SubscriptionRequestType_DISABLE_PREVIOUS_SNAPSHOT_PLUS_UPDATE_REQUEST { // unsubscribe
 		for _, subs := range vMessageSubs {
 			if subs.sessiondID.String() == sessionID.String() {
@@ -407,23 +432,10 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 		}
 	}
 
-	mdEntryTypes := marketdatarequest.NewNoMDEntryTypesRepeatingGroup()
-	err = msg.GetGroup(mdEntryTypes)
-	if err != nil {
-		fmt.Println("Error getting mdEntryTypes", err)
-	}
-
-	noRelatedsym, _ := msg.GetNoRelatedSym()
-
 	// loop based on symbol requested
 	for i := 0; i < noRelatedsym.Len(); i++ {
 		response := []MarketDataResponse{}
 		sym, _ := noRelatedsym.Get(i).GetSymbol()
-		entries := make([]string, mdEntryTypes.Len())
-		for j := 0; j < mdEntryTypes.Len(); j++ {
-			entry, _ := mdEntryTypes.Get(j).GetMDEntryType()
-			entries = append(entries, string(entry))
-		}
 
 		if utils.ArrContains(entries, "0") {
 			asks := a.OrderRepository.GetMarketData(sym, "BUY")
@@ -496,6 +508,9 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 		snap.SetMDReqID(reqId)
 		grp := marketdatasnapshotfullrefresh.NewNoMDEntriesRepeatingGroup()
 		response = mapMarketDataResponse(response)
+
+		bytes, _ := json.Marshal(response)
+		a.redis.Set("MARKETDATA-"+response[0].InstrumentName, string(bytes))
 		fmt.Println("response", response)
 		for _, res := range response {
 			row := grp.Add()
@@ -515,6 +530,64 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 	}
 
 	return
+}
+
+func OnMarketDataUpdate(instrument string, book _orderbookType.BookData) {
+	fmt.Println("OnMarketDataUpdate", book.Bids, book.Asks)
+	for _, subs := range vMessageSubs {
+		response := []MarketDataResponse{}
+		if subs.InstrumentName != instrument {
+			continue
+		}
+
+		if subs.Bid {
+			for _, bid := range book.Bids {
+				fmt.Println(bid)
+				response = append(response, MarketDataResponse{
+					Price:          bid[1].(float64),
+					Amount:         bid[2].(float64),
+					InstrumentName: instrument,
+					Type:           "BID",
+					UpdateType:     bid[0].(string),
+				})
+			}
+		}
+		if subs.Ask {
+			for _, ask := range book.Asks {
+				fmt.Println(ask)
+				response = append(response, MarketDataResponse{
+					Price:          ask[1].(float64),
+					Amount:         ask[2].(float64),
+					InstrumentName: instrument,
+					Type:           "ASK",
+					UpdateType:     ask[0].(string),
+				})
+			}
+		}
+
+		msg := marketdataincrementalrefresh.New()
+		grp := marketdataincrementalrefresh.NewNoMDEntriesRepeatingGroup()
+		for _, res := range response {
+			update := enum.MDUpdateAction_NEW
+			if res.UpdateType == "delete" {
+				update = enum.MDUpdateAction_DELETE
+			} else if res.UpdateType == "change" {
+				update = enum.MDUpdateAction_CHANGE
+			}
+			row := grp.Add()
+			row.SetSymbol(res.InstrumentName)
+			row.SetMDUpdateAction(update)
+			row.SetMDEntryType(enum.MDEntryType(res.Side))
+			row.SetMDEntrySize(decimal.NewFromFloat(res.Amount), 2)
+			row.SetMDEntryPx(decimal.NewFromFloat(res.Price), 2)
+			row.SetMDEntryDate(res.Date)
+		}
+		msg.SetNoMDEntries(grp)
+		fmt.Println("Sending market data update")
+		if err := quickfix.SendToTarget(msg, subs.sessiondID); err != nil {
+			fmt.Println("Error sending market data update")
+		}
+	}
 }
 
 func mapMarketDataResponse(res []MarketDataResponse) []MarketDataResponse {
@@ -814,6 +887,28 @@ func removeXMessageSubscriber(array []XMessageSubscriber, element XMessageSubscr
 	for i, v := range array {
 		if v == element {
 			return append(array[:i], array[i+1:]...)
+		}
+	}
+	return array
+}
+
+func addVMessagesSubscriber(array []VMessageSubscriber, sessionID quickfix.SessionID, bid bool, ask bool, trade bool, symbolsEntry marketdatarequest.NoRelatedSymRepeatingGroup) []VMessageSubscriber {
+	exist := false
+	for i := 0; i < symbolsEntry.Len(); i++ {
+		for _, v := range array {
+			if v.sessiondID == sessionID {
+				exist = true
+			}
+		}
+		if !exist {
+			instrument, _ := symbolsEntry.Get(i).GetSymbol()
+			array = append(array, VMessageSubscriber{
+				InstrumentName: instrument,
+				sessiondID:     sessionID,
+				Bid:            bid,
+				Ask:            ask,
+				Trade:          trade,
+			})
 		}
 	}
 	return array
