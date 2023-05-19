@@ -177,7 +177,7 @@ type DeribitGetUserTradesByInstrumentsRequest struct {
 }
 
 type DeribitGetUserTradesByInstruments struct {
-	TradeId        string             `json:"trade_id" bson:"_id"`
+	TradeId        primitive.ObjectID `json:"trade_id" bson:"_id"`
 	Amount         float64            `json:"amount" bson:"amount"`
 	Direction      types.Side         `json:"direction" bson:"direction"`
 	InstrumentName string             `json:"instrument_name" bson:"InstrumentName"`

@@ -35,8 +35,10 @@ type IwsOrderService interface {
 
 type IwsTradeService interface {
 	Subscribe(c *ws.Client, instrument string)
+	SubscribeUserTrades(c *ws.Client, instrument string, userId string)
 	Unsubscribe(c *ws.Client)
 	HandleConsume(msg *sarama.ConsumerMessage)
+	HandleConsumeUserTrades(msg *sarama.ConsumerMessage)
 	GetUserTradesByInstrument(
 		ctx context.Context,
 		userId string,

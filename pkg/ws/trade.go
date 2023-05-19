@@ -109,6 +109,20 @@ func (s *TradeSocket) BroadcastMessage(channelID string, p interface{}) error {
 	return nil
 }
 
+// BroadcastMessage streams message to all the subscribtions subscribed to the pair
+func (s *TradeSocket) BroadcastMessageTrade(channelID string, method string, p interface{}) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	for c, status := range s.subscriptions[channelID] {
+		if status {
+			s.SendUpdateMessageTrade(c, method, p)
+		}
+	}
+
+	return nil
+}
+
 // SendErrorMessage sends error message on orderbookchannel
 func (s *TradeSocket) SendErrorMessage(c *Client, data interface{}) {
 	c.SendMessage(data, SendMessageParams{})
@@ -122,4 +136,9 @@ func (s *TradeSocket) SendInitMessage(c *Client, data interface{}) {
 // SendUpdateMessage sends UPDATE message on enginechannel as new data is created
 func (s *TradeSocket) SendUpdateMessage(c *Client, data interface{}) {
 	c.SendMessage(data, SendMessageParams{})
+}
+
+// SendUpdateMessage sends UPDATE message on orderbookchannel as new data is created
+func (s *TradeSocket) SendUpdateMessageTrade(c *Client, method string, data interface{}) {
+	c.SendMessageSubcription(data, method, SendMessageParams{})
 }

@@ -138,6 +138,7 @@ func (svc wsOrderService) HandleConsumeUserOrder(msg *sarama.ConsumerMessage) {
 			ws.GetOrderSocket().BroadcastMessageOrder(broadcastId, method, params)
 		}
 	}
+	return
 }
 
 func (svc wsOrderService) HandleConsumeUserOrder100ms(instrument string, userId string) {
@@ -245,6 +246,7 @@ func (svc wsOrderService) SubscribeUserOrder(c *ws.Client, channel string, userI
 
 	// Prepare when user is doing unsubscribe
 	ws.RegisterConnectionUnsubscribeHandler(c, socket.UnsubscribeHandler(id))
+	return
 }
 
 func (svc wsOrderService) Unsubscribe(c *ws.Client) {

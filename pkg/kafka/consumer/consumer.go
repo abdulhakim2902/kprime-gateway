@@ -59,6 +59,7 @@ func KafkaConsumer(
 					engSvc.HandleConsume(message)
 
 					go oSvc.HandleConsumeUserOrder(message)
+					go tradeSvc.HandleConsumeUserTrades(message)
 					go obSvc.HandleConsumeBook(message)
 				case "CANCELLED_ORDERS":
 					handleTopicCancelledOrders(message)
