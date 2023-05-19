@@ -554,6 +554,7 @@ func OnMarketDataUpdate(instrument string, book _orderbookType.BookData) {
 					InstrumentName: instrument,
 					Type:           "BID",
 					UpdateType:     bid[0].(string),
+					Side:           "BUY",
 				})
 			}
 		}
@@ -565,6 +566,7 @@ func OnMarketDataUpdate(instrument string, book _orderbookType.BookData) {
 					Amount:         ask[2].(float64),
 					InstrumentName: instrument,
 					Type:           "ASK",
+					Side:           "SELL",
 					UpdateType:     ask[0].(string),
 				})
 			}
@@ -588,6 +590,7 @@ func OnMarketDataUpdate(instrument string, book _orderbookType.BookData) {
 					InstrumentName: instrument,
 					Type:           "TRADE",
 					UpdateType:     "change",
+					Side:           trade.Side,
 				})
 			}
 		}
