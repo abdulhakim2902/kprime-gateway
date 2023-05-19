@@ -143,7 +143,7 @@ func (svc wsOrderService) HandleConsumeUserOrder(msg *sarama.ConsumerMessage) {
 
 func (svc wsOrderService) HandleConsumeUserOrder100ms(instrument string, userId string) {
 	mapIndex := fmt.Sprintf("%s-%s", instrument, userId)
-	ticker := time.NewTicker(10000 * time.Millisecond)
+	ticker := time.NewTicker(100 * time.Millisecond)
 
 	// Creating channel
 	tickerChan := make(chan bool)

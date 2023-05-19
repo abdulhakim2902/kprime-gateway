@@ -180,7 +180,7 @@ func (svc wsTradeService) HandleConsumeUserTrades(msg *sarama.ConsumerMessage) {
 
 func (svc wsTradeService) HandleConsumeUserTrades100ms(instrument string, userId string) {
 	mapIndex := fmt.Sprintf("%s-%s", instrument, userId)
-	ticker := time.NewTicker(10000 * time.Millisecond)
+	ticker := time.NewTicker(100 * time.Millisecond)
 
 	// Creating channel
 	tickerChan := make(chan bool)
