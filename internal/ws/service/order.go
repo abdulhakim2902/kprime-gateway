@@ -85,16 +85,23 @@ func (svc wsOrderService) HandleConsumeUserOrder(msg *sarama.ConsumerMessage) {
 
 	var orderId []interface{}
 	var userId []interface{}
+	keys := make(map[interface{}]bool)
 	if len(data.Matches.MakerOrders) > 0 {
 		for _, order := range data.Matches.MakerOrders {
-			orderId = append(orderId, order.ID)
-			userId = append(userId, order.UserID)
+			if _, ok := keys[order.ID]; !ok {
+				keys[order.ID] = true
+				orderId = append(orderId, order.ID)
+				userId = append(userId, order.UserID)
+			}
 		}
 	}
 	if data.Matches.TakerOrder != nil {
 		order := data.Matches.TakerOrder
-		orderId = append(orderId, order.ID)
-		userId = append(userId, order.UserID)
+		if _, ok := keys[order.ID]; !ok {
+			keys[order.ID] = true
+			orderId = append(orderId, order.ID)
+			userId = append(userId, order.UserID)
+		}
 	}
 
 	orders, err := svc.repo.GetChangeOrdersByInstrument(
@@ -105,28 +112,37 @@ func (svc wsOrderService) HandleConsumeUserOrder(msg *sarama.ConsumerMessage) {
 	if err != nil {
 		return
 	}
+	keys = make(map[interface{}]bool)
 	for _, id := range userId {
-		mapIndex := fmt.Sprintf("%s-%s", _instrument, id)
-		if _, ok := userOrders[mapIndex]; !ok {
-			userOrdersMutex.Lock()
-			userOrders[mapIndex] = orders
-			userOrdersMutex.Unlock()
-			go svc.HandleConsumeUserOrder100ms(_instrument, id.(string))
-		} else {
-			userOrdersMutex.Lock()
-			userOrders[mapIndex] = append(userOrders[mapIndex], orders...)
-			userOrdersMutex.Unlock()
-		}
-		// broadcast to user id
-		broadcastId := fmt.Sprintf("%s.%s.%s-%s", "user", "orders", _instrument, id)
-		ws.GetOrderSocket().BroadcastMessage(broadcastId, orders)
+		if _, ok := keys[id]; !ok {
+			keys[id] = true
+			mapIndex := fmt.Sprintf("%s-%s", _instrument, id)
+			if _, ok := userOrders[mapIndex]; !ok {
+				userOrdersMutex.Lock()
+				userOrders[mapIndex] = orders
+				userOrdersMutex.Unlock()
+				go svc.HandleConsumeUserOrder100ms(_instrument, id.(string))
+			} else {
+				userOrdersMutex.Lock()
+				userOrders[mapIndex] = append(userOrders[mapIndex], orders...)
+				userOrdersMutex.Unlock()
+			}
+			// broadcast to user id
+			broadcastId := fmt.Sprintf("%s.%s.%s-%s", "user", "orders", _instrument, id)
 
+			params := _types.QuoteResponse{
+				Channel: fmt.Sprintf("user.orders.%s.raw", _instrument),
+				Data:    orders,
+			}
+			method := "subscription"
+			ws.GetOrderSocket().BroadcastMessageOrder(broadcastId, method, params)
+		}
 	}
 }
 
 func (svc wsOrderService) HandleConsumeUserOrder100ms(instrument string, userId string) {
 	mapIndex := fmt.Sprintf("%s-%s", instrument, userId)
-	ticker := time.NewTicker(100 * time.Millisecond)
+	ticker := time.NewTicker(10000 * time.Millisecond)
 
 	// Creating channel
 	tickerChan := make(chan bool)
@@ -142,7 +158,12 @@ func (svc wsOrderService) HandleConsumeUserOrder100ms(instrument string, userId 
 				userOrdersMutex.RUnlock()
 				if len(orders) > 0 {
 					broadcastId := fmt.Sprintf("%s.%s.%s-%s-100ms", "user", "orders", instrument, userId)
-					ws.GetOrderSocket().BroadcastMessage(broadcastId, orders)
+					params := _types.QuoteResponse{
+						Channel: fmt.Sprintf("user.orders.%s.100ms", instrument),
+						Data:    orders,
+					}
+					method := "subscription"
+					ws.GetOrderSocket().BroadcastMessageOrder(broadcastId, method, params)
 					userOrdersMutex.Lock()
 					userOrders[mapIndex] = []deribitModel.DeribitGetOpenOrdersByInstrumentResponse{}
 					userOrdersMutex.Unlock()
