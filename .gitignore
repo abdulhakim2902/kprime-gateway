@@ -1,5 +1,5 @@
 .env
-pkg/logs/*.log
+*.log
 .idea
 logs
 internal/fix-acceptor/config/ordermatch.cfg
