@@ -532,6 +532,11 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 	return
 }
 
+func (a *Application) GetTrade(filter bson.M) (trades []*types.Trade) {
+	trades, _ = a.TradeRepository.Find(filter, nil, 0, -1)
+	return trades
+}
+
 func OnMarketDataUpdate(instrument string, book _orderbookType.BookData) {
 	fmt.Println("OnMarketDataUpdate", book.Bids, book.Asks)
 	for _, subs := range vMessageSubs {
@@ -561,6 +566,26 @@ func OnMarketDataUpdate(instrument string, book _orderbookType.BookData) {
 					InstrumentName: instrument,
 					Type:           "ASK",
 					UpdateType:     ask[0].(string),
+				})
+			}
+		}
+		if subs.Trade {
+			splits := strings.Split(instrument, "-")
+			price, _ := strconv.ParseFloat(splits[2], 64)
+			trades := newApplication().GetTrade(bson.M{
+				"underlying":  splits[0],
+				"expiryDate":  splits[1],
+				"strikePrice": price,
+				"status":      "SUCCESS",
+			})
+
+			for _, trade := range trades {
+				response = append(response, MarketDataResponse{
+					Price:          trade.Price,
+					Amount:         trade.Amount,
+					InstrumentName: instrument,
+					Type:           "TRADE",
+					UpdateType:     "change",
 				})
 			}
 		}
