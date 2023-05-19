@@ -570,6 +570,7 @@ func OnMarketDataUpdate(instrument string, book _orderbookType.BookData) {
 			}
 		}
 		if subs.Trade {
+			fmt.Println("subs trade")
 			splits := strings.Split(instrument, "-")
 			price, _ := strconv.ParseFloat(splits[2], 64)
 			trades := newApplication().GetTrade(bson.M{
@@ -579,6 +580,7 @@ func OnMarketDataUpdate(instrument string, book _orderbookType.BookData) {
 				"status":      "SUCCESS",
 			})
 
+			fmt.Println("trades", trades)
 			for _, trade := range trades {
 				response = append(response, MarketDataResponse{
 					Price:          trade.Price,
