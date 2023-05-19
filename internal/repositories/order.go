@@ -518,6 +518,109 @@ func (r OrderRepository) GetOrderHistoryByInstrument(InstrumentName string, Coun
 	return orders, nil
 }
 
+func (r OrderRepository) GetChangeOrdersByInstrument(InstrumentName string, userId []interface{}, orderId []interface{}) ([]_deribitModel.DeribitGetOpenOrdersByInstrumentResponse, error) {
+	projectStage := bson.M{
+		"$project": bson.M{
+			"InstrumentName": bson.M{"$concat": bson.A{
+				bson.D{
+					{"$convert", bson.D{
+						{"input", "$underlying"},
+						{"to", "string"},
+					}}},
+				"-",
+				bson.D{
+					{"$convert", bson.D{
+						{"input", "$expiryDate"},
+						{"to", "string"},
+					}}},
+				"-",
+				bson.D{
+					{"$convert", bson.D{
+						{"input", "$strikePrice"},
+						{"to", "string"},
+					}}},
+				"-",
+				bson.M{"$substr": bson.A{"$contracts", 0, 1}},
+			}},
+			"replaced": bson.M{
+				"$cond": bson.M{"if": bson.M{"$and": []interface{}{bson.M{"$eq": []interface{}{bson.M{"$type": "$amendments"}, "array"}}, bson.M{"$ne": []interface{}{"$amendments", "[]"}}}},
+					"then": true,
+					"else": false}},
+			"filledAmount":        "$filledAmount",
+			"amount":              "$amount",
+			"direction":           "$side",
+			"price":               "$price",
+			"orderId":             "$_id",
+			"timeInForce":         "$timeInForce",
+			"orderType":           "$type",
+			"orderState":          "$status",
+			"userId":              "$userId",
+			"label":               "$label",
+			"usd":                 "$price",
+			"api":                 bson.M{"$toBool": "true"},
+			"creationTimestamp":   bson.M{"$toLong": "$createdAt"},
+			"lastUpdateTimestamp": bson.M{"$toLong": "$updatedAt"},
+			"cancelledReason":     canceledReasonQuery(),
+			"priceAvg": bson.M{
+				"$cond": bson.D{
+					{"if", bson.D{{"$gt", bson.A{"$tradePriceAvg.price", 0}}}},
+					{"then", "$tradePriceAvg.price"},
+					{"else", primitive.Null{}},
+				},
+			},
+		},
+	}
+
+	query := bson.M{
+		"$match": bson.M{
+			"_id":    bson.M{"$in": orderId},
+			"userId": bson.M{"$in": userId},
+		},
+	}
+
+	sortStage := bson.M{
+		"$sort": bson.M{
+			"createdAt": -1,
+		},
+	}
+
+	pipelineInstruments := bson.A{}
+
+	priceAvgStage, err := tradePriceAvgQuery(InstrumentName)
+	if err != nil {
+		return nil, err
+	}
+	pipelineInstruments = append(pipelineInstruments, priceAvgStage...)
+
+	pipelineInstruments = append(pipelineInstruments, projectStage)
+	pipelineInstruments = append(pipelineInstruments, query)
+	pipelineInstruments = append(pipelineInstruments, sortStage)
+
+	cursor, err := r.collection.Aggregate(context.Background(), pipelineInstruments)
+	if err != nil {
+		fmt.Printf("err:%+v\n", err)
+
+		return []_deribitModel.DeribitGetOpenOrdersByInstrumentResponse{}, nil
+	}
+
+	err = cursor.Err()
+	if err != nil {
+		fmt.Printf("%+v\n", err)
+
+		return []_deribitModel.DeribitGetOpenOrdersByInstrumentResponse{}, err
+	}
+
+	orders := []_deribitModel.DeribitGetOpenOrdersByInstrumentResponse{}
+
+	if err = cursor.All(context.TODO(), &orders); err != nil {
+		fmt.Printf("%+v\n", err)
+
+		return []_deribitModel.DeribitGetOpenOrdersByInstrumentResponse{}, nil
+	}
+
+	return orders, nil
+}
+
 func (r OrderRepository) WsAggregate(pipeline interface{}) []*_orderbookType.WsOrder {
 	opt := options.AggregateOptions{
 		MaxTime: &defaultTimeout,

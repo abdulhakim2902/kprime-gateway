@@ -25,7 +25,9 @@ type IwsOrderbookService interface {
 type IwsOrderService interface {
 	Subscribe(c *ws.Client, instrument string)
 	Unsubscribe(c *ws.Client)
+	SubscribeUserOrder(c *ws.Client, instrument string, userId string)
 	HandleConsume(msg *sarama.ConsumerMessage, userId string)
+	HandleConsumeUserOrder(msg *sarama.ConsumerMessage)
 	GetInstruments(ctx context.Context, request deribitModel.DeribitGetInstrumentsRequest) []deribitModel.DeribitGetInstrumentsResponse
 	GetOpenOrdersByInstrument(ctx context.Context, userId string, request deribitModel.DeribitGetOpenOrdersByInstrumentRequest) []deribitModel.DeribitGetOpenOrdersByInstrumentResponse
 	GetGetOrderHistoryByInstrument(ctx context.Context, userId string, request deribitModel.DeribitGetOrderHistoryByInstrumentRequest) []deribitModel.DeribitGetOrderHistoryByInstrumentResponse
@@ -33,8 +35,10 @@ type IwsOrderService interface {
 
 type IwsTradeService interface {
 	Subscribe(c *ws.Client, instrument string)
+	SubscribeUserTrades(c *ws.Client, instrument string, userId string)
 	Unsubscribe(c *ws.Client)
 	HandleConsume(msg *sarama.ConsumerMessage)
+	HandleConsumeUserTrades(msg *sarama.ConsumerMessage)
 	GetUserTradesByInstrument(
 		ctx context.Context,
 		userId string,

@@ -78,6 +78,9 @@ func NewWebsocketHandler(
 	ws.RegisterChannel("public/subscribe", handler.SubscribeHandler)
 	ws.RegisterChannel("public/unsubscribe", handler.UnsubscribeHandler)
 
+	ws.RegisterChannel("private/subscribe", handler.SubscribeHandlerPrivate)
+	ws.RegisterChannel("public/unsubscribe", handler.UnsubscribeHandlerPrivate)
+
 	ws.RegisterChannel("public/get_instruments", handler.GetInstruments)
 	ws.RegisterChannel("public/get_order_book", handler.GetOrderBook)
 }
@@ -648,6 +651,95 @@ func (svc wsHandler) UnsubscribeHandler(input interface{}, c *ws.Client) {
 			svc.wsTradeSvc.Unsubscribe(c)
 		case "quote":
 			svc.wsOBSvc.UnsubscribeQuote(c)
+		}
+
+	}
+
+	c.SendMessage(msg.Params.Channels, ws.SendMessageParams{
+		ID:            msg.Id,
+		RequestedTime: requestedTime,
+	})
+}
+
+func (svc wsHandler) SubscribeHandlerPrivate(input interface{}, c *ws.Client) {
+	requestedTime := uint64(time.Now().UnixMicro())
+
+	type Params struct {
+		AccessToken string   `json:"access_token"`
+		Channels    []string `json:"channels"`
+	}
+
+	type Req struct {
+		Params Params `json:"params"`
+		Id     uint64 `json:"id"`
+	}
+
+	msg := &Req{}
+	bytes, _ := json.Marshal(input)
+	if err := json.Unmarshal(bytes, &msg); err != nil {
+		c.SendMessage(gin.H{"err": err}, ws.SendMessageParams{
+			ID:            msg.Id,
+			RequestedTime: requestedTime,
+		})
+		return
+	}
+	fmt.Println(msg.Params.AccessToken)
+
+	// Check the Access Token
+	claim, err := svc.authSvc.ClaimJWT(msg.Params.AccessToken, c)
+	if err != nil {
+		c.SendMessage(gin.H{"err": err.Error()}, ws.SendMessageParams{
+			ID:     msg.Id,
+			UserID: "",
+		})
+		return
+	}
+
+	c.SendMessage(msg.Params.Channels, ws.SendMessageParams{
+		ID:            msg.Id,
+		RequestedTime: requestedTime,
+	})
+
+	for _, channel := range msg.Params.Channels {
+		s := strings.Split(channel, ".")
+		switch s[1] {
+		case "orders":
+			svc.wsOSvc.SubscribeUserOrder(c, channel, claim.UserID)
+		case "trades":
+			svc.wsTradeSvc.SubscribeUserTrades(c, channel, claim.UserID)
+		}
+	}
+}
+
+func (svc wsHandler) UnsubscribeHandlerPrivate(input interface{}, c *ws.Client) {
+	requestedTime := uint64(time.Now().UnixMicro())
+
+	type Params struct {
+		Channels []string `json:"channels"`
+	}
+
+	type Req struct {
+		Params Params `json:"params"`
+		Id     uint64 `json:"id"`
+	}
+
+	msg := &Req{}
+	bytes, _ := json.Marshal(input)
+	if err := json.Unmarshal(bytes, &msg); err != nil {
+		c.SendMessage(gin.H{"err": err}, ws.SendMessageParams{
+			ID:            msg.Id,
+			RequestedTime: requestedTime,
+		})
+		return
+	}
+
+	for _, channel := range msg.Params.Channels {
+		s := strings.Split(channel, ".")
+		switch s[1] {
+		case "orders":
+			svc.wsOSvc.Unsubscribe(c)
+		case "trades":
+			svc.wsTradeSvc.Unsubscribe(c)
 		}
 
 	}

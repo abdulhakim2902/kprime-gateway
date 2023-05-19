@@ -4,7 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
+	"sync"
+	"time"
 
+	_types "gateway/internal/orderbook/types"
 	"gateway/internal/repositories"
 	"gateway/pkg/redis"
 	"gateway/pkg/ws"
@@ -27,6 +31,9 @@ func NewWSTradeService(
 ) IwsTradeService {
 	return &wsTradeService{redis, repo}
 }
+
+var userTradesMutex sync.RWMutex
+var userTrades = make(map[string][]*_deribitModel.DeribitGetUserTradesByInstruments)
 
 func (svc wsTradeService) initialData() ([]*_engineType.Trade, error) {
 	trades, err := svc.repo.Find(nil, nil, 0, -1)
@@ -105,6 +112,105 @@ func (svc wsTradeService) HandleConsume(msg *sarama.ConsumerMessage) {
 
 }
 
+func (svc wsTradeService) HandleConsumeUserTrades(msg *sarama.ConsumerMessage) {
+	var data _engineType.EngineResponse
+	err := json.Unmarshal(msg.Value, &data)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	if len(data.Matches.Trades) > 0 {
+		_instrument := data.Matches.Trades[0].Underlying + "-" + data.Matches.Trades[0].ExpiryDate + "-" + fmt.Sprintf("%.0f", data.Matches.Trades[0].StrikePrice) + "-" + string(data.Matches.Trades[0].Contracts[0])
+
+		var tradeId []interface{}
+		var userId []interface{}
+		keys := make(map[interface{}]bool)
+		keysUser := make(map[interface{}]bool)
+		for _, trade := range data.Matches.Trades {
+			if _, ok := keys[trade.ID]; !ok {
+				keys[trade.ID] = true
+				tradeId = append(tradeId, trade.ID)
+				if _, ok := keysUser[trade.Taker.UserID]; !ok {
+					keysUser[trade.Taker.UserID] = true
+					userId = append(userId, trade.Taker.UserID)
+				}
+				if _, ok := keysUser[trade.Maker.UserID]; !ok {
+					keysUser[trade.Maker.UserID] = true
+					userId = append(userId, trade.Maker.UserID)
+				}
+			}
+		}
+		trades, err := svc.repo.FindUserTradesById(
+			_instrument,
+			userId,
+			tradeId,
+		)
+		if err != nil {
+			return
+		}
+		if len(trades.Trades) > 0 {
+			for _, id := range userId {
+				mapIndex := fmt.Sprintf("%s-%s", _instrument, id)
+				if _, ok := userTrades[mapIndex]; !ok {
+					userTradesMutex.Lock()
+					userTrades[mapIndex] = trades.Trades
+					userTradesMutex.Unlock()
+					go svc.HandleConsumeUserTrades100ms(_instrument, id.(string))
+				} else {
+					userTradesMutex.Lock()
+					userTrades[mapIndex] = append(userTrades[mapIndex], trades.Trades...)
+					userTradesMutex.Unlock()
+				}
+				// broadcast to user id
+				broadcastId := fmt.Sprintf("%s.%s.%s-%s", "user", "trades", _instrument, id)
+
+				params := _types.QuoteResponse{
+					Channel: fmt.Sprintf("user.trades.%s.raw", _instrument),
+					Data:    trades,
+				}
+				method := "subscription"
+				ws.GetTradeSocket().BroadcastMessageTrade(broadcastId, method, params)
+			}
+		}
+		return
+	} else {
+		return
+	}
+}
+
+func (svc wsTradeService) HandleConsumeUserTrades100ms(instrument string, userId string) {
+	mapIndex := fmt.Sprintf("%s-%s", instrument, userId)
+	ticker := time.NewTicker(100 * time.Millisecond)
+
+	// Creating channel
+	tickerChan := make(chan bool)
+	go func() {
+		for {
+			select {
+			case <-tickerChan:
+				return
+			case <-ticker.C:
+				// if there is no change no need to broadcast
+				userTradesMutex.RLock()
+				trades := userTrades[mapIndex]
+				userTradesMutex.RUnlock()
+				if len(trades) > 0 {
+					broadcastId := fmt.Sprintf("%s.%s.%s-%s-100ms", "user", "trades", instrument, userId)
+					params := _types.QuoteResponse{
+						Channel: fmt.Sprintf("user.trades.%s.100ms", instrument),
+						Data:    trades,
+					}
+					method := "subscription"
+					ws.GetTradeSocket().BroadcastMessageTrade(broadcastId, method, params)
+					userTradesMutex.Lock()
+					userTrades[mapIndex] = []*_deribitModel.DeribitGetUserTradesByInstruments{}
+					userTradesMutex.Unlock()
+				}
+			}
+		}
+	}()
+}
+
 func (svc wsTradeService) Subscribe(c *ws.Client, instrument string) {
 	socket := ws.GetTradeSocket()
 
@@ -153,6 +259,30 @@ func (svc wsTradeService) Subscribe(c *ws.Client, instrument string) {
 
 	// Send initial data from the redis
 	socket.SendInitMessage(c, initData)
+}
+
+func (svc wsTradeService) SubscribeUserTrades(c *ws.Client, channel string, userId string) {
+	socket := ws.GetTradeSocket()
+
+	key := strings.Split(channel, ".")
+
+	// Subscribe
+
+	var id string
+	if key[3] == "100ms" {
+		id = fmt.Sprintf("%s.%s.%s-%s-100ms", key[0], key[1], key[2], userId)
+	} else {
+		id = fmt.Sprintf("%s.%s.%s-%s", key[0], key[1], key[2], userId)
+	}
+	err := socket.Subscribe(id, c)
+	if err != nil {
+		msg := map[string]string{"Message": err.Error()}
+		socket.SendErrorMessage(c, msg)
+		return
+	}
+
+	// Prepare when user is doing unsubscribe
+	ws.RegisterConnectionUnsubscribeHandler(c, socket.UnsubscribeHandler(id))
 }
 
 func (svc wsTradeService) Unsubscribe(c *ws.Client) {
