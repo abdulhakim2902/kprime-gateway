@@ -3,6 +3,7 @@ package helpers
 import (
 	"gateway/pkg/ws"
 
+	"git.devucc.name/dependencies/utilities/commons/logs"
 	"git.devucc.name/dependencies/utilities/types/validation_reason"
 )
 
@@ -28,6 +29,9 @@ func SendValidationResponse(
 	if userId != nil {
 		params.UserID = *userId
 	}
+
+	// Catch the validation to log
+	logs.Log.Debug().Str("validation_reason", validationReason).Msg(msg)
 
 	c.SendErrorMessage(ws.WebsocketResponseErrMessage{
 		Params: params,

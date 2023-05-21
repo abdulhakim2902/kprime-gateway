@@ -17,8 +17,7 @@ import (
 	"gateway/pkg/kafka/consumer"
 	"gateway/pkg/mongo"
 	"gateway/pkg/redis"
-
-	// "gateway/pkg/kafka/consumer"
+	"gateway/pkg/utils"
 
 	_deribitCtrl "gateway/internal/deribit/controller"
 	_deribitSvc "gateway/internal/deribit/service"
@@ -32,16 +31,17 @@ import (
 
 	_wsCtrl "gateway/internal/ws/controller"
 
-	"github.com/casbin/casbin/v2"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 )
 
 var (
+	engine    *gin.Engine
 	mongoConn *mongo.Database
-	err       error
-	rootDir   string
-	mode      string
+	redisConn *redis.RedisConnectionPool
+
+	err     error
+	rootDir string
 )
 
 func init() {
@@ -51,16 +51,11 @@ func init() {
 	if err = godotenv.Load(path.Join(rootDir, ".env")); err != nil {
 		panic(err)
 	}
-	mode = os.Getenv("NODE_ENV")
 
-	mongoConn, err = mongo.InitConnection(os.Getenv("MONGO_URL"))
-	if err != nil {
-		panic(err)
-	}
-}
+	// Gin Engine
+	engine = gin.New()
 
-func main() {
-	r := gin.New()
+	mode := os.Getenv("NODE_ENV")
 	if mode == "development" {
 		gin.SetMode(gin.DebugMode)
 	} else if mode == "staging" {
@@ -69,17 +64,29 @@ func main() {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
-	// Initiate Redis Connection Here
-	redis := redis.NewRedisConnectionPool(os.Getenv("REDIS_URL"))
+	// Logger
+	utils.InitLogger()
+
+	// Init Mongo Connection
+	mongoConn, err = mongo.InitConnection(os.Getenv("MONGO_URL"))
+	if err != nil {
+		panic(err)
+	}
+
+	// Initiate Redis Connection
+	redisConn = redis.NewRedisConnectionPool(os.Getenv("REDIS_URL"))
+}
+
+func main() {
 
 	_deribitSvc := _deribitSvc.NewDeribitService()
-	_deribitCtrl.NewDeribitHandler(r, _deribitSvc)
+	_deribitCtrl.NewDeribitHandler(engine, _deribitSvc)
 
 	// qf
 	go ordermatch.Cmd.Execute()
 
 	// Websocket handlers
-	_wsEngineSvc := _wsEngineSvc.NewwsEngineService(redis)
+	_wsEngineSvc := _wsEngineSvc.NewwsEngineService(redisConn)
 
 	userRepo := repositories.NewUserRepository(mongoConn)
 	orderRepo := repositories.NewOrderRepository(mongoConn)
@@ -88,12 +95,12 @@ func main() {
 	settlementPriceRepo := repositories.NewSettlementPriceRepository(mongoConn)
 
 	_wsAuthSvc := _authSvc.NewAuthService(userRepo)
-	_wsOrderbookSvc := _wsOrderbookSvc.NewWSOrderbookService(redis, orderRepo, tradeRepo, rawPriceRepo, settlementPriceRepo)
-	_wsOrderSvc := _wsSvc.NewWSOrderService(redis, orderRepo)
-	_wsTradeSvc := _wsSvc.NewWSTradeService(redis, tradeRepo)
+	_wsOrderbookSvc := _wsOrderbookSvc.NewWSOrderbookService(redisConn, orderRepo, tradeRepo, rawPriceRepo, settlementPriceRepo)
+	_wsOrderSvc := _wsSvc.NewWSOrderService(redisConn, orderRepo)
+	_wsTradeSvc := _wsSvc.NewWSTradeService(redisConn, tradeRepo)
 
 	_wsCtrl.NewWebsocketHandler(
-		r,
+		engine,
 		_wsAuthSvc,
 		_deribitSvc,
 		_wsOrderbookSvc,
@@ -107,7 +114,7 @@ func main() {
 
 	srv := &http.Server{
 		Addr:    ":" + os.Getenv("PORT"),
-		Handler: r,
+		Handler: engine,
 	}
 
 	go func() {
@@ -117,8 +124,8 @@ func main() {
 		}
 	}()
 
-	_obSvc := _obSvc.NewOrderbookHandler(r, redis, _wsOrderbookSvc)
-	_engSvc := _engSvc.NewEngineHandler(r, redis, tradeRepo, _wsOrderbookSvc)
+	_obSvc := _obSvc.NewOrderbookHandler(engine, redisConn, _wsOrderbookSvc)
+	_engSvc := _engSvc.NewEngineHandler(engine, redisConn, tradeRepo, _wsOrderbookSvc)
 
 	// kafka listener
 	consumer.KafkaConsumer(orderRepo, _engSvc, _obSvc, _wsOrderSvc, _wsTradeSvc)
@@ -144,46 +151,4 @@ func main() {
 		log.Println("timeout of 5 seconds.")
 	}
 	log.Println("Server exiting")
-}
-
-func setupRBAC(enforcer *casbin.Enforcer) {
-	if hasPolicy := enforcer.HasPolicy("admin", "user", "read"); !hasPolicy {
-		enforcer.AddPolicy("admin", "user", "read")
-	}
-	if hasPolicy := enforcer.HasPolicy("admin", "user", "write"); !hasPolicy {
-		enforcer.AddPolicy("admin", "user", "write")
-	}
-	if hasPolicy := enforcer.HasPolicy("admin", "user", "delete"); !hasPolicy {
-		enforcer.AddPolicy("admin", "user", "delete")
-	}
-
-	// Role: admin
-	if hasPolicy := enforcer.HasPolicy("admin", "role", "read"); !hasPolicy {
-		enforcer.AddPolicy("admin", "role", "read")
-	}
-	if hasPolicy := enforcer.HasPolicy("admin", "role", "write"); !hasPolicy {
-		enforcer.AddPolicy("admin", "role", "write")
-	}
-	if hasPolicy := enforcer.HasPolicy("admin", "role", "delete"); !hasPolicy {
-		enforcer.AddPolicy("admin", "role", "delete")
-	}
-
-	// Role: market_maker
-	if hasPolicy := enforcer.HasPolicy("market_maker", "trading", "buy"); !hasPolicy {
-		enforcer.AddPolicy("market_maker", "trading", "buy")
-	}
-	if hasPolicy := enforcer.HasPolicy("market_maker", "trading", "sell"); !hasPolicy {
-		enforcer.AddPolicy("market_maker", "trading", "sell")
-	}
-	if hasPolicy := enforcer.HasPolicy("market_maker", "instrument", "write"); !hasPolicy {
-		enforcer.AddPolicy("market_maker", "instrument", "write")
-	}
-
-	// Role: client/user
-	if hasPolicy := enforcer.HasPolicy("user", "trading", "sell"); !hasPolicy {
-		enforcer.AddPolicy("user", "trading", "sell")
-	}
-	if hasPolicy := enforcer.HasPolicy("user", "trading", "buy"); !hasPolicy {
-		enforcer.AddPolicy("user", "trading", "buy")
-	}
 }

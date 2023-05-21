@@ -19,6 +19,7 @@ import (
 	"gateway/internal/ws/helpers"
 	wsService "gateway/internal/ws/service"
 
+	"git.devucc.name/dependencies/utilities/commons/logs"
 	"git.devucc.name/dependencies/utilities/models/order"
 	"git.devucc.name/dependencies/utilities/types"
 	"git.devucc.name/dependencies/utilities/types/validation_reason"
@@ -247,6 +248,13 @@ func (svc wsHandler) PrivateBuy(input interface{}, c *ws.Client) {
 		OrderExclusions: orderExclusions,
 		TypeInclusions:  typeInclusions,
 	})
+	if err != nil {
+		logs.Log.Error().Err(err).Msg("")
+
+		helpers.SendValidationResponse(c,
+			validation_reason.OTHER, msg.Id, requestedTime, &claim.UserID, nil)
+		return
+	}
 
 	// register order connection
 	ws.RegisterOrderConnection(ID, c)
@@ -336,6 +344,13 @@ func (svc wsHandler) PrivateSell(input interface{}, c *ws.Client) {
 		OrderExclusions: orderExclusions,
 		TypeInclusions:  typeInclusions,
 	})
+	if err != nil {
+		logs.Log.Error().Err(err).Msg("")
+
+		helpers.SendValidationResponse(c,
+			validation_reason.OTHER, msg.Id, requestedTime, &claim.UserID, nil)
+		return
+	}
 
 	// register order connection
 	ws.RegisterOrderConnection(ID, c)
@@ -393,6 +408,13 @@ func (svc wsHandler) PrivateEdit(input interface{}, c *ws.Client) {
 		Amount:  msg.Params.Amount,
 		ClOrdID: strconv.FormatUint(msg.Id, 10),
 	})
+	if err != nil {
+		logs.Log.Error().Err(err).Msg("")
+
+		helpers.SendValidationResponse(c,
+			validation_reason.OTHER, msg.Id, requestedTime, &claim.UserID, nil)
+		return
+	}
 
 	// register order connection
 	ws.RegisterOrderConnection(ID, c)
@@ -444,6 +466,13 @@ func (svc wsHandler) PrivateCancel(input interface{}, c *ws.Client) {
 		Id:      msg.Params.Id,
 		ClOrdID: strconv.FormatUint(msg.Id, 10),
 	})
+	if err != nil {
+		logs.Log.Error().Err(err).Msg("")
+
+		helpers.SendValidationResponse(c,
+			validation_reason.OTHER, msg.Id, requestedTime, &claim.UserID, nil)
+		return
+	}
 
 	// register order connection
 	ws.RegisterOrderConnection(ID, c)
@@ -496,7 +525,10 @@ func (svc wsHandler) PrivateCancelByInstrument(input interface{}, c *ws.Client) 
 		ClOrdID:        strconv.FormatUint(msg.Id, 10),
 	})
 	if err != nil {
-		fmt.Println(err)
+		logs.Log.Error().Err(err).Msg("")
+
+		helpers.SendValidationResponse(c,
+			validation_reason.OTHER, msg.Id, requestedTime, &claim.UserID, nil)
 		return
 	}
 
@@ -556,7 +588,10 @@ func (svc wsHandler) PrivateCancelAll(input interface{}, c *ws.Client) {
 		ClOrdID: strconv.FormatUint(msg.Id, 10),
 	})
 	if err != nil {
-		fmt.Println(err)
+		logs.Log.Error().Err(err).Msg("")
+
+		helpers.SendValidationResponse(c,
+			validation_reason.OTHER, msg.Id, requestedTime, &claim.UserID, nil)
 		return
 	}
 

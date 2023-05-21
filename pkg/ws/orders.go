@@ -3,6 +3,8 @@ package ws
 import (
 	"fmt"
 	"sync"
+
+	"git.devucc.name/dependencies/utilities/commons/logs"
 )
 
 // OrderConn is websocket order connection struct
@@ -105,6 +107,9 @@ func SendOrderErrorMessage(key string, err WebsocketResponseErrMessage) {
 	if conn == nil {
 		return
 	}
+
+	// Catch the validation to log
+	logs.Log.Debug().Str("validation_reason", err.Data.Reason).Msg(err.Message)
 
 	for _, c := range conn {
 		c.SendErrorMessage(err)

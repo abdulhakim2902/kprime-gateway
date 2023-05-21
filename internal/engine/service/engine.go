@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"time"
 
+	"git.devucc.name/dependencies/utilities/commons/logs"
 	"git.devucc.name/dependencies/utilities/types"
 	"git.devucc.name/dependencies/utilities/types/validation_reason"
 	"github.com/Shopify/sarama"
@@ -74,7 +75,7 @@ func (svc engineHandler) HandleConsume(msg *sarama.ConsumerMessage) {
 	//get redis
 	redisData, err := svc.redis.GetValue("ENGINE-" + _instrument)
 	if err != nil {
-		fmt.Println("ENGINE: error get redis or redis is empty")
+		logs.Log.Error().Err(err).Msg("")
 	}
 
 	//create new variable with array of object and append to redisDataArray
@@ -118,7 +119,7 @@ func (svc engineHandler) HandleConsumeQuote(msg *sarama.ConsumerMessage) {
 	var data _engineType.EngineResponse
 	err := json.Unmarshal(msg.Value, &data)
 	if err != nil {
-		fmt.Println(err)
+		logs.Log.Error().Err(err).Msg("")
 		return
 	}
 
@@ -137,7 +138,7 @@ func (svc engineHandler) HandleConsumeQuote(msg *sarama.ConsumerMessage) {
 	//convert redisDataArray to json
 	jsonBytes, err := json.Marshal(initData)
 	if err != nil {
-		fmt.Println(err)
+		logs.Log.Error().Err(err).Msg("")
 		return
 	}
 
@@ -159,7 +160,7 @@ func checkDateToRemoveRedis(_expiryDate string, _instrument string, svc engineHa
 	dateString := _expiryDate
 	date, err := time.Parse(layout, dateString)
 	if err != nil {
-		fmt.Println("Error:", err)
+		logs.Log.Error().Err(err).Msg("")
 		return
 	}
 	formattedDate := date.Format("2006-01-02")
@@ -168,7 +169,7 @@ func checkDateToRemoveRedis(_expiryDate string, _instrument string, svc engineHa
 	dateStr := formattedDate
 	_date, err := time.Parse("2006-01-02", dateStr)
 	if err != nil {
-		fmt.Println("Error parsing date:", err)
+		logs.Log.Error().Err(err).Msg("")
 		return
 	}
 
@@ -197,7 +198,7 @@ func (svc engineHandler) PublishOrder(data _engineType.EngineResponse) {
 		data.Matches.TakerOrder.StrikePrice,
 	)
 	if err != nil {
-		fmt.Println("tradeRepo.GetPriceAvg:", err)
+		logs.Log.Error().Err(err).Msg("")
 		return
 	}
 
@@ -276,6 +277,9 @@ func (svc engineHandler) PublishValidation(data _engineType.EngineResponse) {
 
 	connectionKey := utils.GetKeyFromIdUserID(ID, userIDStr)
 	code, codeStr := data.Validation.Code()
+
+	// Catch the validation to log
+	logs.Log.Debug().Str("validation", codeStr).Msg(data.Validation.String())
 
 	ws.SendOrderErrorMessage(connectionKey, ws.WebsocketResponseErrMessage{
 		Params: ws.SendMessageParams{
