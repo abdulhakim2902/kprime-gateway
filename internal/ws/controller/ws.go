@@ -2,8 +2,9 @@ package controller
 
 import (
 	"context"
-	"encoding/json"
+	"errors"
 	"fmt"
+	"gateway/pkg/protocol"
 	"gateway/pkg/utils"
 	"strconv"
 	"strings"
@@ -19,11 +20,8 @@ import (
 	"gateway/internal/ws/helpers"
 	wsService "gateway/internal/ws/service"
 
-	"git.devucc.name/dependencies/utilities/commons/logs"
-	"git.devucc.name/dependencies/utilities/models/order"
 	"git.devucc.name/dependencies/utilities/types"
 	"git.devucc.name/dependencies/utilities/types/validation_reason"
-	"github.com/go-playground/validator/v10"
 	cors "github.com/rs/cors/wrapper/gin"
 
 	"gateway/pkg/ws"
@@ -88,6 +86,12 @@ func NewWebsocketHandler(
 
 func (svc wsHandler) PublicAuth(input interface{}, c *ws.Client) {
 	requestedTime := uint64(time.Now().UnixMicro())
+
+	if ok := protocol.RegisterProtocolRequest(requestedTime, protocol.Websocket, c, nil); !ok {
+		protocol.SendValidationMsg(requestedTime, validation_reason.DUPLICATED_REQUEST_ID, nil)
+		return
+	}
+
 	type Params struct {
 		GrantType    string `json:"grant_type"`
 		ClientID     string `json:"client_id"`
@@ -95,16 +99,9 @@ func (svc wsHandler) PublicAuth(input interface{}, c *ws.Client) {
 		RefreshToken string `json:"refresh_token"`
 	}
 
-	type WebsocketAuth struct {
-		Params Params `json:"params"`
-		Id     uint64 `json:"id"`
-	}
-
-	msg := &WebsocketAuth{}
-	bytes, _ := json.Marshal(input)
-	if err := json.Unmarshal(bytes, &msg); err != nil {
-		helpers.SendValidationResponse(c,
-			validation_reason.PARSE_ERROR, msg.Id, requestedTime, nil, nil)
+	msg := &deribitModel.RequestDto[Params]{}
+	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
+		protocol.SendValidationMsg(requestedTime, validation_reason.PARSE_ERROR, err)
 		return
 	}
 
@@ -119,123 +116,70 @@ func (svc wsHandler) PublicAuth(input interface{}, c *ws.Client) {
 		}
 
 		if payload.APIKey == "" || payload.APISecret == "" {
-			helpers.SendValidationResponse(c,
-				validation_reason.UNAUTHORIZED, msg.Id, requestedTime, nil, nil)
+			protocol.SendValidationMsg(requestedTime,
+				validation_reason.INVALID_PARAMS, errors.New("required client_id and client_secret"))
 			return
 		}
 
-		res, err = svc.authSvc.Login(context.TODO(), payload, c)
+		res, err = svc.authSvc.Login(context.TODO(), payload)
 		if err != nil {
 			if strings.Contains(err.Error(), "invalid credential") {
-				helpers.SendValidationResponse(c,
-					validation_reason.UNAUTHORIZED, msg.Id, requestedTime, nil, nil)
+				protocol.SendValidationMsg(requestedTime, validation_reason.UNAUTHORIZED, err)
 				return
 			}
 
-			fmt.Println(err)
-			helpers.SendValidationResponse(c,
-				validation_reason.OTHER, msg.Id, requestedTime, nil, nil)
+			protocol.SendErrMsg(requestedTime, err)
 			return
 		}
 	case "refresh_token":
 		if msg.Params.RefreshToken == "" {
-			reason := "refresh_token is required"
-			helpers.SendValidationResponse(c,
-				validation_reason.INVALID_PARAMS, msg.Id, requestedTime, nil, &reason)
+			protocol.SendValidationMsg(requestedTime,
+				validation_reason.INVALID_PARAMS, errors.New("required refresh_token"))
 			return
 		}
 
-		claim, err := svc.authSvc.ClaimJWT(msg.Params.RefreshToken, c)
+		claim, err := authService.ClaimJWT(msg.Params.RefreshToken)
 		if err != nil {
-			reason := err.Error()
-			helpers.SendValidationResponse(c,
-				validation_reason.UNAUTHORIZED, msg.Id, requestedTime, nil, &reason)
+			protocol.SendValidationMsg(requestedTime, validation_reason.UNAUTHORIZED, err)
 			return
 		}
 
-		res, err = svc.authSvc.RefreshToken(context.TODO(), claim, c)
+		res, err = svc.authSvc.RefreshToken(context.TODO(), claim)
 		if err != nil {
-			fmt.Println(err)
-			helpers.SendValidationResponse(c,
-				validation_reason.OTHER, msg.Id, requestedTime, nil, nil)
+			protocol.SendErrMsg(requestedTime, err)
 			return
 		}
 	}
 
-	c.SendMessage(res, ws.SendMessageParams{
-		ID:            msg.Id,
-		RequestedTime: requestedTime,
-	})
+	protocol.SendSuccessMsg(requestedTime, res)
 }
 
 func (svc wsHandler) PrivateBuy(input interface{}, c *ws.Client) {
 	requestedTime := uint64(time.Now().UnixMicro())
 
-	type Req struct {
-		Params deribitModel.RequestParams `json:"params"`
-		Id     uint64                     `json:"id"`
-	}
-
-	msg := &Req{}
-	bytes, _ := json.Marshal(input)
-	if err := json.Unmarshal(bytes, &msg); err != nil {
-		helpers.SendValidationResponse(c,
-			validation_reason.PARSE_ERROR, msg.Id, requestedTime, nil, nil)
+	if ok := protocol.RegisterProtocolRequest(requestedTime, protocol.Websocket, c, nil); !ok {
+		protocol.SendValidationMsg(requestedTime, validation_reason.DUPLICATED_REQUEST_ID, nil)
 		return
 	}
+
+	msg := &deribitModel.RequestDto[deribitModel.RequestParams]{}
+	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
+		protocol.SendValidationMsg(requestedTime, validation_reason.PARSE_ERROR, err)
+		return
+	}
+
 	// Check the Access Token
-	claim, err := svc.authSvc.ClaimJWT(msg.Params.AccessToken, c)
+	claim, err := authService.ClaimJWT(msg.Params.AccessToken)
 	if err != nil {
-		reason := err.Error()
-		helpers.SendValidationResponse(c,
-			validation_reason.UNAUTHORIZED, msg.Id, requestedTime, nil, &reason)
+		protocol.SendValidationMsg(requestedTime, validation_reason.UNAUTHORIZED, err)
 		return
 	}
 
 	ID := utils.GetKeyFromIdUserID(msg.Id, claim.UserID)
-	duplicateRpcID, errorMessage := c.RegisterRequestRpcIDS(ID, requestedTime)
-	if !duplicateRpcID {
-		helpers.SendValidationResponse(c,
-			validation_reason.DUPLICATED_REQUEST_ID, msg.Id, requestedTime, &claim.UserID, &errorMessage)
-		return
-	}
-
-	user, err := svc.userRepo.FindById(context.TODO(), claim.UserID)
-	if err != nil {
-		fmt.Println("userRepo.FindById:", err)
-
-		helpers.SendValidationResponse(c,
-			validation_reason.OTHER, msg.Id, requestedTime, &claim.UserID, nil)
-		return
-	}
-
-	var typeInclusions []order.TypeInclusions
-	userHasOrderType := false
-	for _, orderType := range user.OrderTypes {
-		if strings.ToLower(orderType.Name) == strings.ToLower(string(msg.Params.Type)) {
-			userHasOrderType = true
-		}
-
-		typeInclusions = append(typeInclusions, order.TypeInclusions{
-			Name: orderType.Name,
-		})
-	}
-
-	if !userHasOrderType {
-		helpers.SendValidationResponse(c,
-			validation_reason.ORDER_TYPE_NO_MATCH, msg.Id, requestedTime, &claim.UserID, nil)
-		return
-	}
-
-	var orderExclusions []order.OrderExclusion
-	for _, item := range user.OrderExclusions {
-		orderExclusions = append(orderExclusions, order.OrderExclusion{
-			UserID: item.UserID,
-		})
-	}
+	protocol.UpgradeProtocol(requestedTime, ID)
 
 	// Parse the Deribit BUY
-	_, err = svc.deribitSvc.DeribitRequest(context.TODO(), claim.UserID, deribitModel.DeribitRequest{
+	_, validation, err := svc.deribitSvc.DeribitRequest(context.TODO(), claim.UserID, deribitModel.DeribitRequest{
 		InstrumentName: msg.Params.InstrumentName,
 		Amount:         msg.Params.Amount,
 		Type:           msg.Params.Type,
@@ -244,94 +188,47 @@ func (svc wsHandler) PrivateBuy(input interface{}, c *ws.Client) {
 		TimeInForce:    msg.Params.TimeInForce,
 		Label:          msg.Params.Label,
 		Side:           types.BUY,
-
-		OrderExclusions: orderExclusions,
-		TypeInclusions:  typeInclusions,
 	})
 	if err != nil {
-		logs.Log.Error().Err(err).Msg("")
+		if validation != nil {
+			protocol.SendValidationMsg(ID, *validation, err)
+			return
+		}
 
-		helpers.SendValidationResponse(c,
-			validation_reason.OTHER, msg.Id, requestedTime, &claim.UserID, nil)
+		protocol.SendErrMsg(ID, err)
 		return
 	}
 
 	// register order connection
 	ws.RegisterOrderConnection(ID, c)
-
-	// c.SendMessage(res)
-	return
 }
 
 func (svc wsHandler) PrivateSell(input interface{}, c *ws.Client) {
 	requestedTime := uint64(time.Now().UnixMicro())
 
-	type Req struct {
-		Params deribitModel.RequestParams `json:"params"`
-		Id     uint64                     `json:"id"`
+	if ok := protocol.RegisterProtocolRequest(requestedTime, protocol.Websocket, c, nil); !ok {
+		protocol.SendValidationMsg(requestedTime, validation_reason.DUPLICATED_REQUEST_ID, nil)
+		return
 	}
 
-	msg := &Req{}
-	bytes, _ := json.Marshal(input)
-	if err := json.Unmarshal(bytes, &msg); err != nil {
-		helpers.SendValidationResponse(c,
-			validation_reason.PARSE_ERROR, msg.Id, requestedTime, nil, nil)
+	msg := &deribitModel.RequestDto[deribitModel.RequestParams]{}
+	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
+		protocol.SendValidationMsg(requestedTime, validation_reason.PARSE_ERROR, err)
 		return
 	}
 
 	// Check the Access Token
-	claim, err := svc.authSvc.ClaimJWT(msg.Params.AccessToken, c)
+	claim, err := authService.ClaimJWT(msg.Params.AccessToken)
 	if err != nil {
-		reason := err.Error()
-		helpers.SendValidationResponse(c,
-			validation_reason.UNAUTHORIZED, msg.Id, requestedTime, nil, &reason)
+		protocol.SendValidationMsg(requestedTime, validation_reason.UNAUTHORIZED, err)
 		return
 	}
 
 	ID := utils.GetKeyFromIdUserID(msg.Id, claim.UserID)
-	duplicateRpcID, errorMessage := c.RegisterRequestRpcIDS(ID, requestedTime)
-	if !duplicateRpcID {
-		helpers.SendValidationResponse(c,
-			validation_reason.DUPLICATED_REQUEST_ID, msg.Id, requestedTime, &claim.UserID, &errorMessage)
-		return
-	}
-
-	user, err := svc.userRepo.FindById(context.TODO(), claim.UserID)
-	if err != nil {
-		fmt.Println("userRepo.FindById:", err)
-
-		helpers.SendValidationResponse(c,
-			validation_reason.OTHER, msg.Id, requestedTime, &claim.UserID, nil)
-		return
-	}
-
-	var typeInclusions []order.TypeInclusions
-	userHasOrderType := false
-	for _, orderType := range user.OrderTypes {
-		if strings.ToLower(orderType.Name) == strings.ToLower(string(msg.Params.Type)) {
-			userHasOrderType = true
-		}
-
-		typeInclusions = append(typeInclusions, order.TypeInclusions{
-			Name: orderType.Name,
-		})
-	}
-
-	if !userHasOrderType {
-		helpers.SendValidationResponse(c,
-			validation_reason.ORDER_TYPE_NO_MATCH, msg.Id, requestedTime, &claim.UserID, nil)
-		return
-	}
-
-	var orderExclusions []order.OrderExclusion
-	for _, item := range user.OrderExclusions {
-		orderExclusions = append(orderExclusions, order.OrderExclusion{
-			UserID: item.UserID,
-		})
-	}
+	protocol.UpgradeProtocol(requestedTime, ID)
 
 	// Parse the Deribit Sell
-	_, err = svc.deribitSvc.DeribitRequest(context.TODO(), claim.UserID, deribitModel.DeribitRequest{
+	_, validation, err := svc.deribitSvc.DeribitRequest(context.TODO(), claim.UserID, deribitModel.DeribitRequest{
 		InstrumentName: msg.Params.InstrumentName,
 		Amount:         msg.Params.Amount,
 		Type:           msg.Params.Type,
@@ -340,64 +237,44 @@ func (svc wsHandler) PrivateSell(input interface{}, c *ws.Client) {
 		TimeInForce:    msg.Params.TimeInForce,
 		Label:          msg.Params.Label,
 		Side:           types.SELL,
-
-		OrderExclusions: orderExclusions,
-		TypeInclusions:  typeInclusions,
 	})
 	if err != nil {
-		logs.Log.Error().Err(err).Msg("")
+		if validation != nil {
+			protocol.SendValidationMsg(ID, *validation, err)
+			return
+		}
 
-		helpers.SendValidationResponse(c,
-			validation_reason.OTHER, msg.Id, requestedTime, &claim.UserID, nil)
+		protocol.SendErrMsg(ID, err)
 		return
 	}
 
 	// register order connection
 	ws.RegisterOrderConnection(ID, c)
-
-	// c.SendMessage(res)
-	return
 }
 
 func (svc wsHandler) PrivateEdit(input interface{}, c *ws.Client) {
 	requestedTime := uint64(time.Now().UnixMicro())
 
-	type Params struct {
-		AccessToken string  `json:"access_token"`
-		Id          string  `json:"id"`
-		Amount      float64 `json:"amount"`
-		Price       float64 `json:"price"`
+	if ok := protocol.RegisterProtocolRequest(requestedTime, protocol.Websocket, c, nil); !ok {
+		protocol.SendValidationMsg(requestedTime, validation_reason.DUPLICATED_REQUEST_ID, nil)
+		return
 	}
 
-	type Req struct {
-		Params Params `json:"params"`
-		Id     uint64 `json:"id"`
-	}
-
-	msg := &Req{}
-	bytes, _ := json.Marshal(input)
-	if err := json.Unmarshal(bytes, &msg); err != nil {
-		helpers.SendValidationResponse(c,
-			validation_reason.PARSE_ERROR, msg.Id, requestedTime, nil, nil)
+	msg := &deribitModel.RequestDto[deribitModel.RequestParams]{}
+	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
+		protocol.SendValidationMsg(requestedTime, validation_reason.PARSE_ERROR, err)
 		return
 	}
 
 	// Check the Access Token
-	claim, err := svc.authSvc.ClaimJWT(msg.Params.AccessToken, c)
+	claim, err := authService.ClaimJWT(msg.Params.AccessToken)
 	if err != nil {
-		reason := err.Error()
-		helpers.SendValidationResponse(c,
-			validation_reason.UNAUTHORIZED, msg.Id, requestedTime, nil, &reason)
+		protocol.SendValidationMsg(requestedTime, validation_reason.UNAUTHORIZED, err)
 		return
 	}
 
 	ID := utils.GetKeyFromIdUserID(msg.Id, claim.UserID)
-	duplicateRpcID, errorMessage := c.RegisterRequestRpcIDS(ID, requestedTime)
-	if !duplicateRpcID {
-		helpers.SendValidationResponse(c,
-			validation_reason.DUPLICATED_REQUEST_ID, msg.Id, requestedTime, &claim.UserID, &errorMessage)
-		return
-	}
+	protocol.UpgradeProtocol(requestedTime, ID)
 
 	// TODO: Validation
 
@@ -409,55 +286,37 @@ func (svc wsHandler) PrivateEdit(input interface{}, c *ws.Client) {
 		ClOrdID: strconv.FormatUint(msg.Id, 10),
 	})
 	if err != nil {
-		logs.Log.Error().Err(err).Msg("")
-
-		helpers.SendValidationResponse(c,
-			validation_reason.OTHER, msg.Id, requestedTime, &claim.UserID, nil)
+		protocol.SendErrMsg(ID, err)
 		return
 	}
 
 	// register order connection
 	ws.RegisterOrderConnection(ID, c)
-	return
 }
 
 func (svc wsHandler) PrivateCancel(input interface{}, c *ws.Client) {
 	requestedTime := uint64(time.Now().UnixMicro())
 
-	type Params struct {
-		AccessToken string `json:"access_token"`
-		Id          string `json:"id"`
+	if ok := protocol.RegisterProtocolRequest(requestedTime, protocol.Websocket, c, nil); !ok {
+		protocol.SendValidationMsg(requestedTime, validation_reason.DUPLICATED_REQUEST_ID, nil)
+		return
 	}
 
-	type Req struct {
-		Params Params `json:"params"`
-		Id     uint64 `json:"id"`
-	}
-
-	msg := &Req{}
-	bytes, _ := json.Marshal(input)
-	if err := json.Unmarshal(bytes, &msg); err != nil {
-		helpers.SendValidationResponse(c,
-			validation_reason.PARSE_ERROR, msg.Id, requestedTime, nil, nil)
+	msg := &deribitModel.RequestDto[deribitModel.RequestParams]{}
+	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
+		protocol.SendValidationMsg(requestedTime, validation_reason.PARSE_ERROR, err)
 		return
 	}
 
 	// Check the Access Token
-	claim, err := svc.authSvc.ClaimJWT(msg.Params.AccessToken, c)
+	claim, err := authService.ClaimJWT(msg.Params.AccessToken)
 	if err != nil {
-		reason := err.Error()
-		helpers.SendValidationResponse(c,
-			validation_reason.UNAUTHORIZED, msg.Id, requestedTime, nil, &reason)
+		protocol.SendValidationMsg(requestedTime, validation_reason.UNAUTHORIZED, err)
 		return
 	}
 
 	ID := utils.GetKeyFromIdUserID(msg.Id, claim.UserID)
-	duplicateRpcID, errorMessage := c.RegisterRequestRpcIDS(ID, requestedTime)
-	if !duplicateRpcID {
-		helpers.SendValidationResponse(c,
-			validation_reason.DUPLICATED_REQUEST_ID, msg.Id, requestedTime, &claim.UserID, &errorMessage)
-		return
-	}
+	protocol.UpgradeProtocol(requestedTime, ID)
 
 	// TODO: Validation
 
@@ -467,10 +326,7 @@ func (svc wsHandler) PrivateCancel(input interface{}, c *ws.Client) {
 		ClOrdID: strconv.FormatUint(msg.Id, 10),
 	})
 	if err != nil {
-		logs.Log.Error().Err(err).Msg("")
-
-		helpers.SendValidationResponse(c,
-			validation_reason.OTHER, msg.Id, requestedTime, &claim.UserID, nil)
+		protocol.SendErrMsg(ID, err)
 		return
 	}
 
@@ -482,40 +338,26 @@ func (svc wsHandler) PrivateCancel(input interface{}, c *ws.Client) {
 func (svc wsHandler) PrivateCancelByInstrument(input interface{}, c *ws.Client) {
 	requestedTime := uint64(time.Now().UnixMicro())
 
-	type Params struct {
-		AccessToken    string `json:"access_token"`
-		InstrumentName string `json:"instrument_name"`
+	if ok := protocol.RegisterProtocolRequest(requestedTime, protocol.Websocket, c, nil); !ok {
+		protocol.SendValidationMsg(requestedTime, validation_reason.DUPLICATED_REQUEST_ID, nil)
+		return
 	}
 
-	type Req struct {
-		Params Params `json:"params"`
-		Id     uint64 `json:"id"`
-	}
-
-	msg := &Req{}
-	bytes, _ := json.Marshal(input)
-	if err := json.Unmarshal(bytes, &msg); err != nil {
-		helpers.SendValidationResponse(c,
-			validation_reason.PARSE_ERROR, msg.Id, requestedTime, nil, nil)
+	msg := &deribitModel.RequestDto[deribitModel.RequestParams]{}
+	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
+		protocol.SendValidationMsg(requestedTime, validation_reason.PARSE_ERROR, err)
 		return
 	}
 
 	// Check the Access Token
-	claim, err := svc.authSvc.ClaimJWT(msg.Params.AccessToken, c)
+	claim, err := authService.ClaimJWT(msg.Params.AccessToken)
 	if err != nil {
-		reason := err.Error()
-		helpers.SendValidationResponse(c,
-			validation_reason.UNAUTHORIZED, msg.Id, requestedTime, nil, &reason)
+		protocol.SendValidationMsg(requestedTime, validation_reason.UNAUTHORIZED, err)
 		return
 	}
 
 	ID := utils.GetKeyFromIdUserID(msg.Id, claim.UserID)
-	duplicateRpcID, errorMessage := c.RegisterRequestRpcIDS(ID, requestedTime)
-	if !duplicateRpcID {
-		helpers.SendValidationResponse(c,
-			validation_reason.DUPLICATED_REQUEST_ID, msg.Id, requestedTime, &claim.UserID, &errorMessage)
-		return
-	}
+	protocol.UpgradeProtocol(requestedTime, ID)
 
 	// TODO: Validation
 
@@ -525,61 +367,37 @@ func (svc wsHandler) PrivateCancelByInstrument(input interface{}, c *ws.Client) 
 		ClOrdID:        strconv.FormatUint(msg.Id, 10),
 	})
 	if err != nil {
-		logs.Log.Error().Err(err).Msg("")
-
-		helpers.SendValidationResponse(c,
-			validation_reason.OTHER, msg.Id, requestedTime, &claim.UserID, nil)
+		protocol.SendErrMsg(ID, err)
 		return
 	}
 
 	//register order connection
 	ws.RegisterOrderConnection(ID, c)
-	// c.SendMessage(map[string]interface{}{
-	// 	"userId":   res.UserId,
-	// 	"clientId": res.ClientId,
-	// 	"side":     res.Side,
-	// }, ws.SendMessageParams{
-	// 	ID:            msg.Id,
-	// 	RequestedTime: requestedTime,
-	// })
 }
 
 func (svc wsHandler) PrivateCancelAll(input interface{}, c *ws.Client) {
 	requestedTime := uint64(time.Now().UnixMicro())
 
-	type Params struct {
-		AccessToken string `json:"access_token"`
+	if ok := protocol.RegisterProtocolRequest(requestedTime, protocol.Websocket, c, nil); !ok {
+		protocol.SendValidationMsg(requestedTime, validation_reason.DUPLICATED_REQUEST_ID, nil)
+		return
 	}
 
-	type Req struct {
-		Params Params `json:"params"`
-		Id     uint64 `json:"id"`
-	}
-
-	msg := &Req{}
-	bytes, _ := json.Marshal(input)
-	if err := json.Unmarshal(bytes, &msg); err != nil {
-		helpers.SendValidationResponse(c,
-			validation_reason.PARSE_ERROR, msg.Id, requestedTime, nil, nil)
+	msg := &deribitModel.RequestDto[deribitModel.RequestParams]{}
+	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
+		protocol.SendValidationMsg(requestedTime, validation_reason.PARSE_ERROR, err)
 		return
 	}
 
 	// Check the Access Token
-	claim, err := svc.authSvc.ClaimJWT(msg.Params.AccessToken, c)
+	claim, err := authService.ClaimJWT(msg.Params.AccessToken)
 	if err != nil {
-		reason := err.Error()
-		helpers.SendValidationResponse(c,
-			validation_reason.UNAUTHORIZED, msg.Id, requestedTime, nil, &reason)
+		protocol.SendValidationMsg(requestedTime, validation_reason.UNAUTHORIZED, err)
 		return
 	}
 
 	ID := utils.GetKeyFromIdUserID(msg.Id, claim.UserID)
-	duplicateRpcID, errorMessage := c.RegisterRequestRpcIDS(ID, requestedTime)
-	if !duplicateRpcID {
-		helpers.SendValidationResponse(c,
-			validation_reason.DUPLICATED_REQUEST_ID, msg.Id, requestedTime, &claim.UserID, &errorMessage)
-		return
-	}
+	protocol.UpgradeProtocol(requestedTime, ID)
 
 	// TODO: Validation
 
@@ -588,7 +406,6 @@ func (svc wsHandler) PrivateCancelAll(input interface{}, c *ws.Client) {
 		ClOrdID: strconv.FormatUint(msg.Id, 10),
 	})
 	if err != nil {
-		logs.Log.Error().Err(err).Msg("")
 
 		helpers.SendValidationResponse(c,
 			validation_reason.OTHER, msg.Id, requestedTime, &claim.UserID, nil)
@@ -597,40 +414,21 @@ func (svc wsHandler) PrivateCancelAll(input interface{}, c *ws.Client) {
 
 	// register order connection
 	ws.RegisterOrderConnection(ID, c)
-	// c.SendMessage(map[string]interface{}{
-	// 	"userId":   res.UserId,
-	// 	"clientId": res.ClientId,
-	// 	"side":     res.Side,
-	// }, ws.SendMessageParams{
-	// 	ID:            msg.Id,
-	// 	RequestedTime: requestedTime,
-	// })
 }
 
 func (svc wsHandler) SubscribeHandler(input interface{}, c *ws.Client) {
 	requestedTime := uint64(time.Now().UnixMicro())
 
-	type Params struct {
-		Channels []string `json:"channels"`
-	}
-
-	type Req struct {
-		Params Params `json:"params"`
-		Id     uint64 `json:"id"`
-	}
-
-	msg := &Req{}
-	bytes, _ := json.Marshal(input)
-	if err := json.Unmarshal(bytes, &msg); err != nil {
-		helpers.SendValidationResponse(c,
-			validation_reason.PARSE_ERROR, msg.Id, requestedTime, nil, nil)
+	if ok := protocol.RegisterProtocolRequest(requestedTime, protocol.Websocket, c, nil); !ok {
+		protocol.SendValidationMsg(requestedTime, validation_reason.DUPLICATED_REQUEST_ID, nil)
 		return
 	}
 
-	c.SendMessage(msg.Params.Channels, ws.SendMessageParams{
-		ID:            msg.Id,
-		RequestedTime: requestedTime,
-	})
+	msg := &deribitModel.RequestDto[deribitModel.ChannelParams]{}
+	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
+		protocol.SendValidationMsg(requestedTime, validation_reason.PARSE_ERROR, err)
+		return
+	}
 
 	for _, channel := range msg.Params.Channels {
 		fmt.Println(channel)
@@ -649,27 +447,22 @@ func (svc wsHandler) SubscribeHandler(input interface{}, c *ws.Client) {
 		case "book":
 			svc.wsOBSvc.SubscribeBook(c, channel)
 		}
-
 	}
+
+	protocol.SendSuccessMsg(requestedTime, msg.Params.Channels)
 }
 
 func (svc wsHandler) UnsubscribeHandler(input interface{}, c *ws.Client) {
 	requestedTime := uint64(time.Now().UnixMicro())
 
-	type Params struct {
-		Channels []string `json:"channels"`
+	if ok := protocol.RegisterProtocolRequest(requestedTime, protocol.Websocket, c, nil); !ok {
+		protocol.SendValidationMsg(requestedTime, validation_reason.DUPLICATED_REQUEST_ID, nil)
+		return
 	}
 
-	type Req struct {
-		Params Params `json:"params"`
-		Id     uint64 `json:"id"`
-	}
-
-	msg := &Req{}
-	bytes, _ := json.Marshal(input)
-	if err := json.Unmarshal(bytes, &msg); err != nil {
-		helpers.SendValidationResponse(c,
-			validation_reason.PARSE_ERROR, msg.Id, requestedTime, nil, nil)
+	msg := &deribitModel.RequestDto[deribitModel.ChannelParams]{}
+	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
+		protocol.SendValidationMsg(requestedTime, validation_reason.PARSE_ERROR, err)
 		return
 	}
 
@@ -690,50 +483,32 @@ func (svc wsHandler) UnsubscribeHandler(input interface{}, c *ws.Client) {
 
 	}
 
-	c.SendMessage(msg.Params.Channels, ws.SendMessageParams{
-		ID:            msg.Id,
-		RequestedTime: requestedTime,
-	})
+	protocol.SendSuccessMsg(requestedTime, msg.Params.Channels)
 }
 
 func (svc wsHandler) SubscribeHandlerPrivate(input interface{}, c *ws.Client) {
 	requestedTime := uint64(time.Now().UnixMicro())
 
-	type Params struct {
-		AccessToken string   `json:"access_token"`
-		Channels    []string `json:"channels"`
-	}
-
-	type Req struct {
-		Params Params `json:"params"`
-		Id     uint64 `json:"id"`
-	}
-
-	msg := &Req{}
-	bytes, _ := json.Marshal(input)
-	if err := json.Unmarshal(bytes, &msg); err != nil {
-		c.SendMessage(gin.H{"err": err}, ws.SendMessageParams{
-			ID:            msg.Id,
-			RequestedTime: requestedTime,
-		})
+	if ok := protocol.RegisterProtocolRequest(requestedTime, protocol.Websocket, c, nil); !ok {
+		protocol.SendValidationMsg(requestedTime, validation_reason.DUPLICATED_REQUEST_ID, nil)
 		return
 	}
-	fmt.Println(msg.Params.AccessToken)
+
+	msg := &deribitModel.RequestDto[deribitModel.ChannelParams]{}
+	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
+		protocol.SendValidationMsg(requestedTime, validation_reason.PARSE_ERROR, err)
+		return
+	}
 
 	// Check the Access Token
-	claim, err := svc.authSvc.ClaimJWT(msg.Params.AccessToken, c)
+	claim, err := authService.ClaimJWT(msg.Params.AccessToken)
 	if err != nil {
-		c.SendMessage(gin.H{"err": err.Error()}, ws.SendMessageParams{
-			ID:     msg.Id,
-			UserID: "",
-		})
+		protocol.SendValidationMsg(requestedTime, validation_reason.UNAUTHORIZED, err)
 		return
 	}
 
-	c.SendMessage(msg.Params.Channels, ws.SendMessageParams{
-		ID:            msg.Id,
-		RequestedTime: requestedTime,
-	})
+	ID := utils.GetKeyFromIdUserID(msg.Id, claim.UserID)
+	protocol.UpgradeProtocol(requestedTime, ID)
 
 	for _, channel := range msg.Params.Channels {
 		s := strings.Split(channel, ".")
@@ -744,27 +519,21 @@ func (svc wsHandler) SubscribeHandlerPrivate(input interface{}, c *ws.Client) {
 			svc.wsTradeSvc.SubscribeUserTrades(c, channel, claim.UserID)
 		}
 	}
+
+	protocol.SendSuccessMsg(requestedTime, msg.Params.Channels)
 }
 
 func (svc wsHandler) UnsubscribeHandlerPrivate(input interface{}, c *ws.Client) {
 	requestedTime := uint64(time.Now().UnixMicro())
 
-	type Params struct {
-		Channels []string `json:"channels"`
+	if ok := protocol.RegisterProtocolRequest(requestedTime, protocol.Websocket, c, nil); !ok {
+		protocol.SendValidationMsg(requestedTime, validation_reason.DUPLICATED_REQUEST_ID, nil)
+		return
 	}
 
-	type Req struct {
-		Params Params `json:"params"`
-		Id     uint64 `json:"id"`
-	}
-
-	msg := &Req{}
-	bytes, _ := json.Marshal(input)
-	if err := json.Unmarshal(bytes, &msg); err != nil {
-		c.SendMessage(gin.H{"err": err}, ws.SendMessageParams{
-			ID:            msg.Id,
-			RequestedTime: requestedTime,
-		})
+	msg := &deribitModel.RequestDto[deribitModel.ChannelParams]{}
+	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
+		protocol.SendValidationMsg(requestedTime, validation_reason.PARSE_ERROR, err)
 		return
 	}
 
@@ -779,39 +548,20 @@ func (svc wsHandler) UnsubscribeHandlerPrivate(input interface{}, c *ws.Client) 
 
 	}
 
-	c.SendMessage(msg.Params.Channels, ws.SendMessageParams{
-		ID:            msg.Id,
-		RequestedTime: requestedTime,
-	})
+	protocol.SendSuccessMsg(requestedTime, msg.Params.Channels)
 }
 
 func (svc wsHandler) GetInstruments(input interface{}, c *ws.Client) {
 	requestedTime := uint64(time.Now().UnixMicro())
 
-	type Params struct {
-		AccessToken string `json:"accessToken"`
-		Currency    string `json:"currency"`
-		Expired     bool   `json:"expired"`
-	}
-
-	type Req struct {
-		Params Params `json:"params"`
-		Id     uint64 `json:"id"`
-	}
-
-	msg := &Req{}
-	bytes, _ := json.Marshal(input)
-	if err := json.Unmarshal(bytes, &msg); err != nil {
-		helpers.SendValidationResponse(c,
-			validation_reason.PARSE_ERROR, msg.Id, requestedTime, nil, nil)
+	if ok := protocol.RegisterProtocolRequest(requestedTime, protocol.Websocket, c, nil); !ok {
+		protocol.SendValidationMsg(requestedTime, validation_reason.DUPLICATED_REQUEST_ID, nil)
 		return
 	}
 
-	if msg.Params.Currency == "" {
-		c.SendMessage(gin.H{"err": "Please provide currency"}, ws.SendMessageParams{
-			ID:            msg.Id,
-			RequestedTime: requestedTime,
-		})
+	msg := &deribitModel.RequestDto[deribitModel.GetInstrumentsParams]{}
+	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
+		protocol.SendValidationMsg(requestedTime, validation_reason.PARSE_ERROR, err)
 		return
 	}
 
@@ -820,38 +570,20 @@ func (svc wsHandler) GetInstruments(input interface{}, c *ws.Client) {
 		Expired:  msg.Params.Expired,
 	})
 
-	c.SendMessage(result, ws.SendMessageParams{
-		ID:            msg.Id,
-		RequestedTime: requestedTime,
-	})
-	return
+	protocol.SendSuccessMsg(requestedTime, result)
 }
 
 func (svc wsHandler) GetOrderBook(input interface{}, c *ws.Client) {
 	requestedTime := uint64(time.Now().UnixMicro())
 
-	type Params struct {
-		InstrumentName string `json:"instrument_name"`
-		Depth          int64  `json:"depth"`
-	}
-
-	type Req struct {
-		Params Params `json:"params"`
-		Id     uint64 `json:"id"`
-	}
-
-	msg := &Req{}
-	bytes, _ := json.Marshal(input)
-	if err := json.Unmarshal(bytes, &msg); err != nil {
-		helpers.SendValidationResponse(c,
-			validation_reason.PARSE_ERROR, msg.Id, requestedTime, nil, nil)
+	if ok := protocol.RegisterProtocolRequest(requestedTime, protocol.Websocket, c, nil); !ok {
+		protocol.SendValidationMsg(requestedTime, validation_reason.DUPLICATED_REQUEST_ID, nil)
 		return
 	}
 
-	if msg.Params.InstrumentName == "" {
-		reason := "Please provide instrument_name"
-		helpers.SendValidationResponse(c,
-			validation_reason.INVALID_PARAMS, msg.Id, requestedTime, nil, &reason)
+	msg := &deribitModel.RequestDto[deribitModel.GetOrderBookParams]{}
+	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
+		protocol.SendValidationMsg(requestedTime, validation_reason.PARSE_ERROR, err)
 		return
 	}
 
@@ -860,43 +592,20 @@ func (svc wsHandler) GetOrderBook(input interface{}, c *ws.Client) {
 		Depth:          msg.Params.Depth,
 	})
 
-	c.SendMessage(result, ws.SendMessageParams{
-		ID:            msg.Id,
-		RequestedTime: requestedTime,
-	})
+	protocol.SendSuccessMsg(requestedTime, result)
 }
 
 func (svc wsHandler) PrivateGetUserTradesByInstrument(input interface{}, c *ws.Client) {
 	requestedTime := uint64(time.Now().UnixMicro())
 
-	type Params struct {
-		AccessToken string `json:"access_token" validate:"required"`
-
-		InstrumentName string `json:"instrument_name" validate:"required"`
-		Count          int    `json:"count"`
-		StartTimestamp int64  `json:"start_timestamp"`
-		EndTimestamp   int64  `json:"end_timestamp"`
-		Sorting        string `json:"sorting"`
-	}
-
-	type Req struct {
-		Params Params `json:"params"`
-		Id     uint64 `json:"id"`
-	}
-
-	msg := &Req{}
-	bytes, _ := json.Marshal(input)
-	if err := json.Unmarshal(bytes, &msg); err != nil {
-		helpers.SendValidationResponse(c,
-			validation_reason.PARSE_ERROR, msg.Id, requestedTime, nil, nil)
+	if ok := protocol.RegisterProtocolRequest(requestedTime, protocol.Websocket, c, nil); !ok {
+		protocol.SendValidationMsg(requestedTime, validation_reason.DUPLICATED_REQUEST_ID, nil)
 		return
 	}
 
-	validate := validator.New()
-	if err := validate.Struct(msg); err != nil {
-		reason := err.Error()
-		helpers.SendValidationResponse(c,
-			validation_reason.INVALID_PARAMS, msg.Id, requestedTime, nil, &reason)
+	msg := &deribitModel.RequestDto[deribitModel.GetUserTradesByInstrumentParams]{}
+	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
+		protocol.SendValidationMsg(requestedTime, validation_reason.PARSE_ERROR, err)
 		return
 	}
 
@@ -905,13 +614,14 @@ func (svc wsHandler) PrivateGetUserTradesByInstrument(input interface{}, c *ws.C
 		msg.Params.Count = 10
 	}
 
-	claim, err := svc.authSvc.ClaimJWT(msg.Params.AccessToken, c)
+	claim, err := authService.ClaimJWT(msg.Params.AccessToken)
 	if err != nil {
-		reason := err.Error()
-		helpers.SendValidationResponse(c,
-			validation_reason.UNAUTHORIZED, msg.Id, requestedTime, nil, &reason)
+		protocol.SendValidationMsg(requestedTime, validation_reason.UNAUTHORIZED, err)
 		return
 	}
+
+	ID := utils.GetKeyFromIdUserID(msg.Id, claim.UserID)
+	protocol.UpgradeProtocol(requestedTime, ID)
 
 	res := svc.wsTradeSvc.GetUserTradesByInstrument(
 		context.TODO(),
@@ -925,39 +635,20 @@ func (svc wsHandler) PrivateGetUserTradesByInstrument(input interface{}, c *ws.C
 		},
 	)
 
-	c.SendMessage(res, ws.SendMessageParams{
-		ID:            msg.Id,
-		RequestedTime: requestedTime,
-	})
+	protocol.SendSuccessMsg(ID, res)
 }
 
 func (svc wsHandler) PrivateGetOpenOrdersByInstrument(input interface{}, c *ws.Client) {
 	requestedTime := uint64(time.Now().UnixMicro())
 
-	type Params struct {
-		AccessToken    string `json:"access_token" validate:"required"`
-		InstrumentName string `json:"instrument_name" validate:"required"`
-		Type           string `json:"type"`
-	}
-
-	type Req struct {
-		Params Params `json:"params"`
-		Id     uint64 `json:"id"`
-	}
-
-	msg := &Req{}
-	bytes, _ := json.Marshal(input)
-	if err := json.Unmarshal(bytes, &msg); err != nil {
-		helpers.SendValidationResponse(c,
-			validation_reason.PARSE_ERROR, msg.Id, requestedTime, nil, nil)
+	if ok := protocol.RegisterProtocolRequest(requestedTime, protocol.Websocket, c, nil); !ok {
+		protocol.SendValidationMsg(requestedTime, validation_reason.DUPLICATED_REQUEST_ID, nil)
 		return
 	}
 
-	validate := validator.New()
-	if err := validate.Struct(msg); err != nil {
-		reason := err.Error()
-		helpers.SendValidationResponse(c,
-			validation_reason.INVALID_PARAMS, msg.Id, requestedTime, nil, &reason)
+	msg := &deribitModel.RequestDto[deribitModel.GetOpenOrdersByInstrumentParams]{}
+	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
+		protocol.SendValidationMsg(requestedTime, validation_reason.PARSE_ERROR, err)
 		return
 	}
 
@@ -966,13 +657,14 @@ func (svc wsHandler) PrivateGetOpenOrdersByInstrument(input interface{}, c *ws.C
 		msg.Params.Type = "all"
 	}
 
-	claim, err := svc.authSvc.ClaimJWT(msg.Params.AccessToken, c)
+	claim, err := authService.ClaimJWT(msg.Params.AccessToken)
 	if err != nil {
-		reason := err.Error()
-		helpers.SendValidationResponse(c,
-			validation_reason.UNAUTHORIZED, msg.Id, requestedTime, nil, &reason)
+		protocol.SendValidationMsg(requestedTime, validation_reason.UNAUTHORIZED, err)
 		return
 	}
+
+	ID := utils.GetKeyFromIdUserID(msg.Id, claim.UserID)
+	protocol.UpgradeProtocol(requestedTime, ID)
 
 	res := svc.wsOSvc.GetOpenOrdersByInstrument(
 		context.TODO(),
@@ -983,43 +675,20 @@ func (svc wsHandler) PrivateGetOpenOrdersByInstrument(input interface{}, c *ws.C
 		},
 	)
 
-	c.SendMessage(res, ws.SendMessageParams{
-		ID:            msg.Id,
-		RequestedTime: requestedTime,
-	})
+	protocol.SendSuccessMsg(ID, res)
 }
 
 func (svc wsHandler) PrivateGetOrderHistoryByInstrument(input interface{}, c *ws.Client) {
 	requestedTime := uint64(time.Now().UnixMicro())
 
-	type Params struct {
-		AccessToken     string `json:"access_token" validate:"required"`
-		InstrumentName  string `json:"instrument_name" validate:"required"`
-		Count           int    `json:"count"`
-		Offset          int    `json:"offset"`
-		IncludeOld      bool   `json:"include_old"`
-		IncludeUnfilled bool   `json:"include_unfilled"`
-	}
-
-	type Req struct {
-		Params Params `json:"params"`
-		Id     uint64 `json:"id"`
-	}
-
-	msg := &Req{}
-	bytes, _ := json.Marshal(input)
-	if err := json.Unmarshal(bytes, &msg); err != nil {
-		fmt.Println(err)
-		helpers.SendValidationResponse(c,
-			validation_reason.PARSE_ERROR, msg.Id, requestedTime, nil, nil)
+	if ok := protocol.RegisterProtocolRequest(requestedTime, protocol.Websocket, c, nil); !ok {
+		protocol.SendValidationMsg(requestedTime, validation_reason.DUPLICATED_REQUEST_ID, nil)
 		return
 	}
 
-	validate := validator.New()
-	if err := validate.Struct(msg); err != nil {
-		reason := err.Error()
-		helpers.SendValidationResponse(c,
-			validation_reason.INVALID_PARAMS, msg.Id, requestedTime, nil, &reason)
+	msg := &deribitModel.RequestDto[deribitModel.GetOrderHistoryByInstrumentParams]{}
+	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
+		protocol.SendValidationMsg(requestedTime, validation_reason.PARSE_ERROR, err)
 		return
 	}
 
@@ -1028,13 +697,14 @@ func (svc wsHandler) PrivateGetOrderHistoryByInstrument(input interface{}, c *ws
 		msg.Params.Count = 20
 	}
 
-	claim, err := svc.authSvc.ClaimJWT(msg.Params.AccessToken, c)
+	claim, err := authService.ClaimJWT(msg.Params.AccessToken)
 	if err != nil {
-		reason := err.Error()
-		helpers.SendValidationResponse(c,
-			validation_reason.UNAUTHORIZED, msg.Id, requestedTime, nil, &reason)
+		protocol.SendValidationMsg(requestedTime, validation_reason.UNAUTHORIZED, err)
 		return
 	}
+
+	ID := utils.GetKeyFromIdUserID(msg.Id, claim.UserID)
+	protocol.UpgradeProtocol(requestedTime, ID)
 
 	res := svc.wsOSvc.GetGetOrderHistoryByInstrument(
 		context.TODO(),
@@ -1048,8 +718,5 @@ func (svc wsHandler) PrivateGetOrderHistoryByInstrument(input interface{}, c *ws
 		},
 	)
 
-	c.SendMessage(res, ws.SendMessageParams{
-		ID:            msg.Id,
-		RequestedTime: requestedTime,
-	})
+	protocol.SendSuccessMsg(ID, res)
 }

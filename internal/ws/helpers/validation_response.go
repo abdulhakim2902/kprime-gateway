@@ -14,7 +14,7 @@ func SendValidationResponse(
 	userId, reason *string,
 ) {
 
-	code, msg := validation.Code()
+	code, _, msg := validation.Code()
 
 	validationReason := validation.String()
 	if reason != nil {

@@ -3,48 +3,96 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"gateway/internal/deribit/model"
+	"gateway/internal/repositories"
 	"gateway/pkg/kafka/producer"
-	"strconv"
+	"gateway/pkg/redis"
+	"gateway/pkg/utils"
 	"strings"
 
+	"git.devucc.name/dependencies/utilities/commons/logs"
+	"git.devucc.name/dependencies/utilities/models/order"
 	"git.devucc.name/dependencies/utilities/types"
+	"git.devucc.name/dependencies/utilities/types/validation_reason"
 )
 
 type deribitService struct {
-	//
+	userRepo            *repositories.UserRepository
+	tradeRepo           *repositories.TradeRepository
+	orderRepo           *repositories.OrderRepository
+	rawPriceRepo        *repositories.RawPriceRepository
+	settlementPriceRepo *repositories.SettlementPriceRepository
+
+	redis *redis.RedisConnectionPool
 }
 
-func NewDeribitService() IDeribitService {
-	return &deribitService{}
+func NewDeribitService(
+	redis *redis.RedisConnectionPool,
+
+	userRepo *repositories.UserRepository,
+	tradeRepo *repositories.TradeRepository,
+	orderRepo *repositories.OrderRepository,
+	rawPriceRepo *repositories.RawPriceRepository,
+	settlementPriceRepo *repositories.SettlementPriceRepository,
+) IDeribitService {
+	return &deribitService{
+		userRepo,
+		tradeRepo,
+		orderRepo,
+		rawPriceRepo,
+		settlementPriceRepo,
+		redis,
+	}
 }
 
 func (svc deribitService) DeribitRequest(
 	ctx context.Context,
 	userId string,
 	data model.DeribitRequest,
-) (model.DeribitResponse, error) {
-	substring := strings.Split(data.InstrumentName, "-")
+) (*model.DeribitResponse, *validation_reason.ValidationReason, error) {
 
-	var _underlying, _expDate string
-	var _contracts types.Contracts
+	instruments, err := utils.ParseInstruments(data.InstrumentName)
+	if err != nil {
+		reason := validation_reason.INVALID_PARAMS
+		return nil, &reason, err
+	}
 
-	strikePrice := new(float64)
-	if len(substring) == 4 {
-		_underlying = substring[0]
-		_expDate = strings.ToUpper(substring[1])
+	upperType := strings.ToUpper(string(data.Type))
+	userHasOrderType := false
 
-		strike, err := strconv.ParseFloat(substring[2], 64)
-		if err != nil {
-			panic(err)
+	user, err := svc.userRepo.FindById(context.TODO(), userId)
+	if err != nil {
+		if strings.Contains(err.Error(), "no documents in result") {
+			reason := validation_reason.UNAUTHORIZED
+			return nil, &reason, errors.New(reason.String())
 		}
-		*strikePrice = strike
+		logs.Log.Error().Err(err).Msg("")
 
-		if substring[3] == "P" {
-			_contracts = types.PUT
-		} else {
-			_contracts = types.CALL
+		return nil, nil, err
+	}
+
+	var typeInclusions []order.TypeInclusions
+	for _, orderType := range user.OrderTypes {
+		if strings.ToLower(orderType.Name) == strings.ToLower(upperType) {
+			userHasOrderType = true
 		}
+
+		typeInclusions = append(typeInclusions, order.TypeInclusions{
+			Name: orderType.Name,
+		})
+	}
+
+	if !userHasOrderType {
+		reason := validation_reason.ORDER_TYPE_NO_MATCH
+		return nil, &reason, errors.New(reason.String())
+	}
+
+	var orderExclusions []order.OrderExclusion
+	for _, item := range user.OrderExclusions {
+		orderExclusions = append(orderExclusions, order.OrderExclusion{
+			UserID: item.UserID,
+		})
 	}
 
 	var _timeInForce types.TimeInForce
@@ -54,37 +102,38 @@ func (svc deribitService) DeribitRequest(
 		_timeInForce = data.TimeInForce
 	}
 
-	upperType := strings.ToUpper(string(data.Type))
 	payload := model.DeribitResponse{
 		UserId:         userId,
 		ClientId:       data.ClientId,
-		Underlying:     _underlying,
-		ExpirationDate: _expDate,
-		StrikePrice:    *strikePrice,
+		Underlying:     instruments.Underlying,
+		ExpirationDate: instruments.ExpDate,
+		StrikePrice:    instruments.Strike,
 		Type:           types.Type(upperType),
 		Side:           data.Side,
 		ClOrdID:        data.ClOrdID,
 		Price:          data.Price,
 		Amount:         data.Amount,
-		Contracts:      _contracts,
+		Contracts:      instruments.Contracts,
 		TimeInForce:    _timeInForce,
 		Label:          data.Label,
 
-		OrderExclusions: data.OrderExclusions,
-		TypeInclusions:  data.TypeInclusions,
+		OrderExclusions: orderExclusions,
+		TypeInclusions:  typeInclusions,
 	}
 
 	out, err := json.Marshal(payload)
 	if err != nil {
-		panic(err)
+		logs.Log.Error().Err(err).Msg("")
+
+		return nil, nil, err
 	}
 	//send to kafka
 	producer.KafkaProducer(string(out), "NEW_ORDER")
 
-	return payload, nil
+	return &payload, nil, nil
 }
 
-func (svc deribitService) DeribitParseEdit(ctx context.Context, userId string, data model.DeribitEditRequest) (model.DeribitEditResponse, error) {
+func (svc deribitService) DeribitParseEdit(ctx context.Context, userId string, data model.DeribitEditRequest) (*model.DeribitEditResponse, error) {
 
 	edit := model.DeribitEditResponse{
 		Id:       data.Id,
@@ -98,15 +147,17 @@ func (svc deribitService) DeribitParseEdit(ctx context.Context, userId string, d
 
 	_edit, err := json.Marshal(edit)
 	if err != nil {
-		panic(err)
+		logs.Log.Error().Err(err).Msg("")
+
+		return nil, err
 	}
 	//send to kafka
 	producer.KafkaProducer(string(_edit), "NEW_ORDER")
 
-	return edit, nil
+	return &edit, nil
 }
 
-func (svc deribitService) DeribitParseCancel(ctx context.Context, userId string, data model.DeribitCancelRequest) (model.DeribitCancelResponse, error) {
+func (svc deribitService) DeribitParseCancel(ctx context.Context, userId string, data model.DeribitCancelRequest) (*model.DeribitCancelResponse, error) {
 	cancel := model.DeribitCancelResponse{
 		Id:       data.Id,
 		UserId:   userId,
@@ -117,51 +168,46 @@ func (svc deribitService) DeribitParseCancel(ctx context.Context, userId string,
 
 	_cancel, err := json.Marshal(cancel)
 	if err != nil {
-		panic(err)
+		logs.Log.Error().Err(err).Msg("")
+
+		return nil, err
 	}
 	//send to kafka
 	producer.KafkaProducer(string(_cancel), "NEW_ORDER")
 
-	return cancel, nil
+	return &cancel, nil
 }
 
-func (svc deribitService) DeribitCancelByInstrument(ctx context.Context, userId string, data model.DeribitCancelByInstrumentRequest) (model.DeribitCancelByInstrumentResponse, error) {
-	_string := data.InstrumentName
-	substring := strings.Split(_string, "-")
-	_contracts := ""
-	if substring[3] == "P" {
-		_contracts = "PUT"
-	} else {
-		_contracts = "CALL"
-	}
-
-	strikePrice, err := strconv.ParseFloat(substring[2], 64)
+func (svc deribitService) DeribitCancelByInstrument(ctx context.Context, userId string, data model.DeribitCancelByInstrumentRequest) (*model.DeribitCancelByInstrumentResponse, error) {
+	instruments, err := utils.ParseInstruments(data.InstrumentName)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	cancel := model.DeribitCancelByInstrumentResponse{
 		UserId:         userId,
 		ClientId:       "",
-		Underlying:     substring[0],
-		ExpirationDate: strings.ToUpper(substring[1]),
-		StrikePrice:    strikePrice,
-		Contracts:      _contracts,
+		Underlying:     instruments.Underlying,
+		ExpirationDate: instruments.ExpDate,
+		StrikePrice:    instruments.Strike,
+		Contracts:      instruments.Contracts,
 		Side:           "CANCEL_ALL_BY_INSTRUMENT",
 		ClOrdID:        data.ClOrdID,
 	}
 
 	_cancel, err := json.Marshal(cancel)
 	if err != nil {
-		panic(err)
+		logs.Log.Error().Err(err).Msg("")
+
+		return nil, err
 	}
 	//send to kafka
 	producer.KafkaProducer(string(_cancel), "NEW_ORDER")
 
-	return cancel, nil
+	return &cancel, nil
 }
 
-func (svc deribitService) DeribitParseCancelAll(ctx context.Context, userId string, data model.DeribitCancelAllRequest) (model.DeribitCancelAllResponse, error) {
+func (svc deribitService) DeribitParseCancelAll(ctx context.Context, userId string, data model.DeribitCancelAllRequest) (*model.DeribitCancelAllResponse, error) {
 	cancel := model.DeribitCancelAllResponse{
 		UserId:   userId,
 		ClientId: "",
@@ -171,10 +217,12 @@ func (svc deribitService) DeribitParseCancelAll(ctx context.Context, userId stri
 
 	_cancel, err := json.Marshal(cancel)
 	if err != nil {
-		panic(err)
+		logs.Log.Error().Err(err).Msg("")
+
+		return nil, err
 	}
 	//send to kafka
 	producer.KafkaProducer(string(_cancel), "NEW_ORDER")
 
-	return cancel, nil
+	return &cancel, nil
 }

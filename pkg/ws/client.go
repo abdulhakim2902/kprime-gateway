@@ -137,6 +137,12 @@ func NewClient(c *websocket.Conn) *Client {
 	return conn
 }
 
+func (c *Client) Send(message WebsocketResponseMessage) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.send <- message
+}
+
 // SendMessage constructs the message with proper structure to be sent over websocket
 func (c *Client) SendMessage(payload interface{}, params SendMessageParams) {
 	var m WebsocketResponseMessage

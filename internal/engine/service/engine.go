@@ -3,6 +3,7 @@ package service
 import (
 	"encoding/json"
 	"fmt"
+	"gateway/pkg/protocol"
 	"gateway/pkg/utils"
 	"strconv"
 	"time"
@@ -222,19 +223,15 @@ func (svc engineHandler) PublishOrder(data _engineType.EngineResponse) {
 		AveragePrice:        tradePriceAvg,
 	}
 
-	userIDStr := fmt.Sprintf("%v", data.Matches.TakerOrder.UserID)
-	ClOrdID := fmt.Sprintf("%v", data.Matches.TakerOrder.ClOrdID)
-	ID, _ := strconv.ParseUint(ClOrdID, 0, 64)
-	connectionKey := utils.GetKeyFromIdUserID(ID, userIDStr)
+	ID, _ := strconv.ParseUint(data.Matches.TakerOrder.ClOrdID, 0, 64)
+	connKey := utils.GetKeyFromIdUserID(ID, data.Matches.TakerOrder.UserID)
 
 	switch data.Status {
 	case types.ORDER_CANCELLED:
-		ws.SendOrderMessage(connectionKey, _engineType.CancelResponse{
+		protocol.SendSuccessMsg(connKey, _engineType.CancelResponse{
 			Order: order,
-		}, ws.SendMessageParams{
-			ID:     ID,
-			UserID: userIDStr,
 		})
+		break
 	default:
 		trades := []_engineType.BuySellEditTrade{}
 		if data.Matches != nil && data.Matches.Trades != nil && len(data.Matches.Trades) > 0 {
@@ -258,12 +255,10 @@ func (svc engineHandler) PublishOrder(data _engineType.EngineResponse) {
 				})
 			}
 		}
-		ws.SendOrderMessage(connectionKey, _engineType.BuySellEditResponse{
+
+		protocol.SendSuccessMsg(connKey, _engineType.BuySellEditResponse{
 			Order:  order,
 			Trades: trades,
-		}, ws.SendMessageParams{
-			ID:     ID,
-			UserID: userIDStr,
 		})
 
 	}
@@ -271,19 +266,19 @@ func (svc engineHandler) PublishOrder(data _engineType.EngineResponse) {
 }
 
 func (svc engineHandler) PublishValidation(data _engineType.EngineResponse) {
-	userIDStr := fmt.Sprintf("%v", data.Matches.TakerOrder.UserID)
+	userID := fmt.Sprintf("%v", data.Matches.TakerOrder.UserID)
 	ClOrdID := fmt.Sprintf("%v", data.Matches.TakerOrder.ClOrdID)
 	ID, _ := strconv.ParseUint(ClOrdID, 0, 64)
 
-	connectionKey := utils.GetKeyFromIdUserID(ID, userIDStr)
-	code, codeStr := data.Validation.Code()
+	connKey := utils.GetKeyFromIdUserID(ID, userID)
+	code, _, codeStr := data.Validation.Code()
 
 	// Catch the validation to log
 	logs.Log.Debug().Str("validation", codeStr).Msg(data.Validation.String())
 
-	ws.SendOrderErrorMessage(connectionKey, ws.WebsocketResponseErrMessage{
+	ws.SendOrderErrorMessage(connKey, ws.WebsocketResponseErrMessage{
 		Params: ws.SendMessageParams{
-			UserID: userIDStr,
+			UserID: userID,
 		},
 
 		Message: data.Validation.String(),

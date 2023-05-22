@@ -10,7 +10,13 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
+type RequestDto[T any] struct {
+	Id     uint64 `json:"id"`
+	Params T      `json:"params"`
+}
+
 type RequestParams struct {
+	Id             string            `json:"id"`
 	AccessToken    string            `json:"access_token"`
 	InstrumentName string            `json:"instrument_name"`
 	Amount         float64           `json:"amount"`
@@ -18,6 +24,48 @@ type RequestParams struct {
 	Price          float64           `json:"price"`
 	TimeInForce    types.TimeInForce `json:"time_in_force"`
 	Label          string            `json:"label"`
+}
+
+type ChannelParams struct {
+	AccessToken string   `json:"access_token"`
+	Channels    []string `json:"channels"`
+}
+
+type GetInstrumentsParams struct {
+	AccessToken string `json:"accessToken"`
+	Currency    string `json:"currency" validate:"required"`
+	Expired     bool   `json:"expired"`
+}
+
+type GetOrderBookParams struct {
+	InstrumentName string `json:"instrument_name" validate:"required"`
+	Depth          int64  `json:"depth"`
+}
+
+type BaseParams struct {
+	AccessToken    string `json:"access_token" validate:"required"`
+	InstrumentName string `json:"instrument_name" validate:"required"`
+}
+
+type GetUserTradesByInstrumentParams struct {
+	BaseParams
+	Count          int    `json:"count"`
+	StartTimestamp int64  `json:"start_timestamp"`
+	EndTimestamp   int64  `json:"end_timestamp"`
+	Sorting        string `json:"sorting"`
+}
+
+type GetOpenOrdersByInstrumentParams struct {
+	BaseParams
+	Type string `json:"type"`
+}
+
+type GetOrderHistoryByInstrumentParams struct {
+	BaseParams
+	Count           int  `json:"count"`
+	Offset          int  `json:"offset"`
+	IncludeOld      bool `json:"include_old"`
+	IncludeUnfilled bool `json:"include_unfilled"`
 }
 
 type DeribitRequest struct {
@@ -31,9 +79,6 @@ type DeribitRequest struct {
 	TimeInForce    types.TimeInForce `json:"time_in_force"`
 	Label          string            `json:"label"`
 	Side           types.Side        `json:"side"`
-
-	OrderExclusions []order.OrderExclusion `json:"order_exclusions"`
-	TypeInclusions  []order.TypeInclusions `json:"type_inclusions"`
 }
 
 type DeribitCancelRequest struct {
@@ -62,14 +107,14 @@ type DeribitCancelAllResponse struct {
 }
 
 type DeribitCancelByInstrumentResponse struct {
-	UserId         string  `json:"userId"`
-	ClientId       string  `json:"clientId"`
-	Underlying     string  `json:"underlying"`
-	ExpirationDate string  `json:"expiryDate"`
-	StrikePrice    float64 `json:"strikePrice"`
-	Side           string  `json:"side"`
-	Contracts      string  `json:"contracts"`
-	ClOrdID        string  `json:"clOrdID"`
+	UserId         string          `json:"userId"`
+	ClientId       string          `json:"clientId"`
+	Underlying     string          `json:"underlying"`
+	ExpirationDate string          `json:"expiryDate"`
+	StrikePrice    float64         `json:"strikePrice"`
+	Side           string          `json:"side"`
+	Contracts      types.Contracts `json:"contracts"`
+	ClOrdID        string          `json:"clOrdID"`
 }
 
 type DeribitCancelByInstrumentRequest struct {

@@ -139,11 +139,12 @@ type Application struct {
 func newApplication() *Application {
 
 	mongoDb, _ := _mongo.InitConnection(os.Getenv("MONGO_URL"))
+	redis := redis.NewRedisConnectionPool(os.Getenv("REDIS_URL"))
+
 	orderRepo := repositories.NewOrderRepository(mongoDb)
 	tradeRepo := repositories.NewTradeRepository(mongoDb)
 	userRepo := repositories.NewUserRepository(mongoDb)
-	deribitSvc := _deribitSvc.NewDeribitService()
-	redis := redis.NewRedisConnectionPool(os.Getenv("REDIS_URL"))
+	deribitSvc := _deribitSvc.NewDeribitService(redis, userRepo, nil, nil, nil, nil)
 
 	app := &Application{
 		MessageRouter:   quickfix.NewMessageRouter(),
@@ -1006,7 +1007,6 @@ func execute(cmd *cobra.Command, args []string) error {
 
 	logger := log.NewFancyLog()
 	app := newApplication()
-	utils.PrintConfig("acceptor", bytes.NewReader(stringData))
 	acceptor, err := quickfix.NewAcceptor(app, quickfix.NewMemoryStoreFactory(), appSettings, logger)
 	if err != nil {
 		return fmt.Errorf("unable to create acceptor: %s", err)

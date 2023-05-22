@@ -1,21 +1,65 @@
 package utils
 
 import (
-	"fmt"
+	"errors"
 	"strconv"
+	"strings"
+
+	"git.devucc.name/dependencies/utilities/types"
 )
 
 func GetKeyFromIdUserID(id uint64, userID string) string {
 	return strconv.FormatUint(id, 10) + "-" + userID
 }
 
+func ParseKey(ID string) (rpcID uint64, userID string) {
+	splitted := strings.Split(ID, "-")
+
+	id, err := strconv.ParseUint(splitted[0], 10, 0)
+	if err != nil {
+		rpcID = 0
+	}
+
+	rpcID = id
+	userID = splitted[1]
+	return
+}
+
 func ArrContains(arr []string, value string) bool {
-	fmt.Println("arrContains")
 	for _, v := range arr {
-		fmt.Println(v, value)
 		if v == value {
 			return true
 		}
 	}
 	return false
+}
+
+type Instruments struct {
+	Underlying, ExpDate string
+	Contracts           types.Contracts
+	Strike              float64
+}
+
+func ParseInstruments(str string) (*Instruments, error) {
+	substring := strings.Split(str, "-")
+	if len(substring) != 4 {
+		return nil, errors.New("invalid instruments")
+	}
+
+	_underlying := substring[0]
+	_expDate := strings.ToUpper(substring[1])
+
+	strike, err := strconv.ParseFloat(substring[2], 64)
+	if err != nil {
+		return nil, errors.New("invalid instruments")
+	}
+
+	var _contracts types.Contracts
+	if substring[3] == "P" {
+		_contracts = types.PUT
+	} else {
+		_contracts = types.CALL
+	}
+
+	return &Instruments{_underlying, _expDate, _contracts, strike}, nil
 }

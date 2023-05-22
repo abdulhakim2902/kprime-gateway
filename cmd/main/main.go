@@ -78,10 +78,6 @@ func init() {
 }
 
 func main() {
-
-	_deribitSvc := _deribitSvc.NewDeribitService()
-	_deribitCtrl.NewDeribitHandler(engine, _deribitSvc)
-
 	// qf
 	go ordermatch.Cmd.Execute()
 
@@ -94,14 +90,29 @@ func main() {
 	rawPriceRepo := repositories.NewRawPriceRepository(mongoConn)
 	settlementPriceRepo := repositories.NewSettlementPriceRepository(mongoConn)
 
-	_wsAuthSvc := _authSvc.NewAuthService(userRepo)
-	_wsOrderbookSvc := _wsOrderbookSvc.NewWSOrderbookService(redisConn, orderRepo, tradeRepo, rawPriceRepo, settlementPriceRepo)
+	_authSvc := _authSvc.NewAuthService(userRepo)
+	_wsOrderbookSvc := _wsOrderbookSvc.NewWSOrderbookService(
+		redisConn,
+		orderRepo,
+		tradeRepo,
+		rawPriceRepo,
+		settlementPriceRepo,
+	)
 	_wsOrderSvc := _wsSvc.NewWSOrderService(redisConn, orderRepo)
 	_wsTradeSvc := _wsSvc.NewWSTradeService(redisConn, tradeRepo)
+	_deribitSvc := _deribitSvc.NewDeribitService(
+		redisConn,
+		userRepo,
+		tradeRepo,
+		orderRepo,
+		rawPriceRepo,
+		settlementPriceRepo,
+	)
+	_deribitCtrl.NewDeribitHandler(engine, _deribitSvc, _authSvc)
 
 	_wsCtrl.NewWebsocketHandler(
 		engine,
-		_wsAuthSvc,
+		_authSvc,
 		_deribitSvc,
 		_wsOrderbookSvc,
 		_wsEngineSvc,
