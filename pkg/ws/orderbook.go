@@ -109,6 +109,25 @@ func (s *OrderBookSocket) BroadcastMessage(channelID string, p interface{}) erro
 	return nil
 }
 
+// BroadcastMessage streams message to all the subscribtions subscribed to the pair
+func (s *OrderBookSocket) BroadcastMessageSubcription(channelID string, method string, p interface{}) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	for c, status := range s.subscriptions[channelID] {
+		if status {
+			s.SendUpdateMessageSubcription(c, method, p)
+		}
+	}
+
+	return nil
+}
+
+// SendUpdateMessage sends UPDATE message on orderbookchannel as new data is created
+func (s *OrderBookSocket) SendUpdateMessageSubcription(c *Client, method string, data interface{}) {
+	c.SendMessageSubcription(data, method, SendMessageParams{})
+}
+
 // SendErrorMessage sends error message on orderbookchannel
 func (s *OrderBookSocket) SendErrorMessage(c *Client, data interface{}) {
 	c.SendMessage(data, SendMessageParams{})

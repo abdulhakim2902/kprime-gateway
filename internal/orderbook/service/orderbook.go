@@ -61,6 +61,10 @@ func (svc orderbookHandler) HandleConsume(msg *sarama.ConsumerMessage) {
 	ws.GetOrderBookSocket().BroadcastMessage(instrument, data)
 }
 
+func (svc orderbookHandler) HandleConsumeUserChange(msg *sarama.ConsumerMessage) {
+	svc.wsOBSvc.HandleConsumeUserChange(msg)
+}
+
 func (svc orderbookHandler) HandleConsumeBook(msg *sarama.ConsumerMessage) {
 	var order types.Order
 	var data _engineType.EngineResponse

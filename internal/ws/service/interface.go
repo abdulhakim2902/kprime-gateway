@@ -14,6 +14,8 @@ type IwsOrderbookService interface {
 	Subscribe(c *ws.Client, instrument string)
 	SubscribeQuote(c *ws.Client, instrument string)
 	SubscribeBook(c *ws.Client, instrument string)
+	SubscribeUserChange(c *ws.Client, instrument string, userId string)
+	HandleConsumeUserChange(msg *sarama.ConsumerMessage)
 	Unsubscribe(c *ws.Client)
 	UnsubscribeQuote(c *ws.Client)
 	GetOrderBook(ctx context.Context, request deribitModel.DeribitGetOrderBookRequest) deribitModel.DeribitGetOrderBookResponse
