@@ -47,6 +47,7 @@ type Order struct {
 	InstrumentName       string `json:"instrumentName" bson:"instrumentName"`
 	Symbol               string `json:"symbol" bson:"symbol"`
 	SenderCompID         string `json:"sender_comp_id" bson:"sender_comp_id"`
+	UserID               string `json:"userId" bson:"userId"`
 	InsertTime           time.Time
 	LastExecutedQuantity decimal.Decimal
 	LastExecutedPrice    decimal.Decimal

@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	engInt "gateway/internal/engine/service"
+	_engineType "gateway/internal/engine/types"
 	ordermatch "gateway/internal/fix-acceptor"
 	obInt "gateway/internal/orderbook/service"
 	"gateway/internal/repositories"
@@ -56,6 +57,7 @@ func KafkaConsumer(
 				case "ORDERBOOK":
 					obSvc.HandleConsume(message)
 				case "ENGINE":
+					handleTopicOrder(oSvc, message)
 					engSvc.HandleConsume(message)
 
 					go oSvc.HandleConsumeUserOrder(message)
@@ -78,7 +80,7 @@ func handleTopicOrder(oSvc oInt.IwsOrderService, message *sarama.ConsumerMessage
 	fmt.Printf("Received message from ORDER: %s\n", string(message.Value))
 
 	str := string(message.Value)
-	var data map[string]interface{}
+	var data _engineType.EngineResponse
 	err := json.Unmarshal([]byte(str), &data)
 	if err != nil {
 		fmt.Println("Error parsing JSON:", err)
@@ -86,8 +88,8 @@ func handleTopicOrder(oSvc oInt.IwsOrderService, message *sarama.ConsumerMessage
 	}
 
 	// Send message to websocket
-	userIDStr := fmt.Sprintf("%v", data["userId"])
-
+	userIDStr := fmt.Sprintf("%v", data.Matches.TakerOrder.UserID)
+	fmt.Println("userIDStr", userIDStr)
 	// symbol := strings.Split(data["underlying"].(string), "-")[0]
 	var order ordermatch.Order
 	err = json.Unmarshal([]byte(str), &order)
@@ -99,12 +101,7 @@ func handleTopicOrder(oSvc oInt.IwsOrderService, message *sarama.ConsumerMessage
 	symbol := strings.Split(order.InstrumentName, "-")[0]
 	ordermatch.OrderConfirmation(userIDStr, order, symbol)
 
-	userId, ok := data["userId"].(string)
-	if !ok {
-		fmt.Println("Failed to convert interface{} to string")
-		return
-	}
-
+	userId := data.Matches.TakerOrder.UserID
 	oSvc.HandleConsume(message, userId)
 }
 
