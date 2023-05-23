@@ -41,7 +41,8 @@ func NewWSOrderbookService(redis *redis.RedisConnectionPool,
 }
 
 var userChangesMutex sync.RWMutex
-var userChanges = make(map[string][]_deribitModel.DeribitGetOpenOrdersByInstrumentResponse)
+var userChanges = make(map[string][]interface{})
+var userChangesTrades = make(map[string][]interface{})
 
 func (svc wsOrderbookService) Subscribe(c *ws.Client, instrument string) {
 	socket := ws.GetOrderBookSocket()
@@ -533,12 +534,14 @@ func (svc wsOrderbookService) HandleConsumeUserChange(msg *sarama.ConsumerMessag
 			mapIndex := fmt.Sprintf("%s-%s", _instrument, id)
 			if _, ok := userChanges[mapIndex]; !ok {
 				userChangesMutex.Lock()
-				userChanges[mapIndex] = orders
+				userChanges[mapIndex] = ordersInterface
+				userChangesTrades[mapIndex] = tradesInterface
 				userChangesMutex.Unlock()
 				go svc.HandleConsumeUserChange100ms(_instrument, id.(string))
 			} else {
 				userChangesMutex.Lock()
-				userChanges[mapIndex] = append(userChanges[mapIndex], orders...)
+				userChanges[mapIndex] = append(userChanges[mapIndex], ordersInterface...)
+				userChangesTrades[mapIndex] = append(userChangesTrades[mapIndex], tradesInterface...)
 				userChangesMutex.Unlock()
 			}
 			// broadcast to user id
@@ -572,15 +575,22 @@ func (svc wsOrderbookService) HandleConsumeUserChange100ms(instrument string, us
 				changes := userChanges[mapIndex]
 				userChangesMutex.RUnlock()
 				if len(changes) > 0 {
+					trades := userChangesTrades[mapIndex]
+					response := _orderbookTypes.ChangeResponse{
+						InstrumentName: instrument,
+						Trades:         trades,
+						Orders:         changes,
+					}
 					broadcastId := fmt.Sprintf("%s.%s.%s-%s-100ms", "user", "changes", instrument, userId)
 					params := _orderbookTypes.QuoteResponse{
 						Channel: fmt.Sprintf("user.changes.%s.100ms", instrument),
-						Data:    changes,
+						Data:    response,
 					}
 					method := "subscription"
 					ws.GetOrderBookSocket().BroadcastMessageSubcription(broadcastId, method, params)
 					userChangesMutex.Lock()
-					userChanges[mapIndex] = []_deribitModel.DeribitGetOpenOrdersByInstrumentResponse{}
+					userChanges[mapIndex] = make([]interface{}, 0)
+					userChangesTrades[mapIndex] = make([]interface{}, 0)
 					userChangesMutex.Unlock()
 				}
 			}
