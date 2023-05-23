@@ -2,10 +2,10 @@ package ws
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"time"
 
+	"git.devucc.name/dependencies/utilities/commons/logs"
 	"github.com/gin-gonic/gin"
 
 	"github.com/gorilla/websocket"
@@ -35,9 +35,7 @@ var upgrader = websocket.Upgrader{
 func ConnectionEndpoint(c *gin.Context) {
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
-		fmt.Println("err")
-		fmt.Println(err)
-		// logger.Error(err)
+		logs.Log.Error().Err(err).Msg("")
 		return
 	}
 
@@ -50,8 +48,8 @@ func ConnectionEndpoint(c *gin.Context) {
 
 func readHandler(c *Client) {
 	defer func() {
-		fmt.Println("Closing connection")
-		// logger.Info("Closing connection")
+		logs.Log.Warn().Msg("closing connection")
+
 		c.closeConnection()
 	}()
 
@@ -65,10 +63,7 @@ func readHandler(c *Client) {
 		msgType, payload, err := c.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				fmt.Println("err")
-				fmt.Println(err)
-
-				// logger.Error(err)
+				logs.Log.Error().Err(err).Msg("")
 			}
 
 			return
@@ -80,23 +75,17 @@ func readHandler(c *Client) {
 
 		msg := WebsocketMessage{}
 		if err := json.Unmarshal(payload, &msg); err != nil {
-			fmt.Println("err")
-			fmt.Println(err)
-			// logger.Error(err)
+			logs.Log.Error().Err(err).Msg("")
+
 			c.SendMessage(err.Error(), SendMessageParams{})
 			return
 		}
-
-		// logger.LogMessageIn(&msg)
-		// logger.Infof("%v", msg.String())
 
 		if socketChannels[msg.Method] == nil {
 			c.SendMessage("INVALID_CHANNEL", SendMessageParams{})
 			return
 		}
 
-		fmt.Println("connection")
-		fmt.Println(msg.Params)
 		go socketChannels[msg.Method](msg, c)
 	}
 }
@@ -115,7 +104,7 @@ func writeHandler(c *Client) {
 			c.SetWriteDeadline(time.Now().Add(writeWait))
 			err := c.WriteMessage(websocket.PingMessage, nil)
 			if err != nil {
-				// logger.Error(err)
+				logs.Log.Error().Err(err).Msg("")
 				return
 			}
 
@@ -125,12 +114,9 @@ func writeHandler(c *Client) {
 				c.WriteMessage(websocket.CloseMessage, []byte{})
 			}
 
-			// logger.LogMessageOut(&m)
-			// logger.Infof("%v", m.String())
-
 			err := c.WriteJSON(m)
 			if err != nil {
-				// logger.Error(err)
+				logs.Log.Error().Err(err).Msg("")
 				return
 			}
 		}

@@ -393,8 +393,7 @@ func (h *DeribitHandler) getUserTradeByInstrument(r *gin.Context) {
 	}
 
 	msg := &deribitModel.RequestDto[deribitModel.GetUserTradesByInstrumentParams]{}
-
-	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
+	if err := utils.UnmarshalAndValidate(r, msg); err != nil {
 		protocol.SendValidationMsg(userID, validation_reason.PARSE_ERROR, err)
 		return
 	}
@@ -435,7 +434,7 @@ func (h *DeribitHandler) getOpenOrdersByInstrument(r *gin.Context) {
 	}
 
 	msg := &deribitModel.RequestDto[deribitModel.GetOpenOrdersByInstrumentParams]{}
-	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
+	if err := utils.UnmarshalAndValidate(r, msg); err != nil {
 		protocol.SendValidationMsg(userID, validation_reason.PARSE_ERROR, err)
 		return
 	}
@@ -475,7 +474,7 @@ func (h *DeribitHandler) getOrderHistoryByInstrument(r *gin.Context) {
 	}
 
 	msg := &deribitModel.RequestDto[deribitModel.GetOrderHistoryByInstrumentParams]{}
-	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
+	if err := utils.UnmarshalAndValidate(r, msg); err != nil {
 		protocol.SendValidationMsg(userID, validation_reason.PARSE_ERROR, err)
 		return
 	}
@@ -517,7 +516,7 @@ func (h *DeribitHandler) getInstruments(r *gin.Context) {
 	}
 
 	msg := &deribitModel.RequestDto[deribitModel.GetInstrumentsParams]{}
-	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
+	if err := utils.UnmarshalAndValidate(r, msg); err != nil {
 		protocol.SendValidationMsg(requestedTime, validation_reason.PARSE_ERROR, err)
 		return
 	}
@@ -539,7 +538,7 @@ func (h *DeribitHandler) getOrderBook(r *gin.Context) {
 	}
 
 	msg := &deribitModel.RequestDto[deribitModel.GetOrderBookParams]{}
-	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
+	if err := utils.UnmarshalAndValidate(r, msg); err != nil {
 		protocol.SendValidationMsg(requestedTime, validation_reason.PARSE_ERROR, err)
 		return
 	}

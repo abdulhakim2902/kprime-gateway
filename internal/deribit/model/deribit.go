@@ -11,63 +11,63 @@ import (
 )
 
 type RequestDto[T any] struct {
-	Method  string `json:"method"`
-	Jsonrpc string `json:"jsonrpc"`
-	Id      uint64 `json:"id"`
-	Params  T      `json:"params"`
+	Method  string `json:"method" form:"method"`
+	Jsonrpc string `json:"jsonrpc" form:"jsonrpc"`
+	Id      uint64 `json:"id" form:"id"`
+	Params  T      `json:"params" form:"params"`
 }
 
 type RequestParams struct {
-	Id             string            `json:"id"`
-	AccessToken    string            `json:"access_token"`
-	InstrumentName string            `json:"instrument_name"`
-	Amount         float64           `json:"amount"`
-	Type           types.Type        `json:"type"`
-	Price          float64           `json:"price"`
-	TimeInForce    types.TimeInForce `json:"time_in_force"`
-	Label          string            `json:"label"`
+	Id             string            `json:"id" form:"id"`
+	AccessToken    string            `json:"access_token" form:"access_token"`
+	InstrumentName string            `json:"instrument_name" form:"instrument_name"`
+	Amount         float64           `json:"amount" form:"amount"`
+	Type           types.Type        `json:"type" form:"type"`
+	Price          float64           `json:"price" form:"price"`
+	TimeInForce    types.TimeInForce `json:"time_in_force" form:"time_in_force"`
+	Label          string            `json:"label" form:"label"`
 }
 
 type ChannelParams struct {
-	AccessToken string   `json:"access_token"`
-	Channels    []string `json:"channels"`
+	AccessToken string   `json:"access_token" form:"access_token"`
+	Channels    []string `json:"channels" form:"channels"`
 }
 
 type GetInstrumentsParams struct {
-	AccessToken string `json:"accessToken"`
-	Currency    string `json:"currency" validate:"required"`
-	Expired     bool   `json:"expired"`
+	AccessToken string `json:"access_token" form:"access_token"`
+	Currency    string `json:"currency" validate:"required" form:"currency"`
+	Expired     bool   `json:"expired" form:"expired"`
 }
 
 type GetOrderBookParams struct {
-	InstrumentName string `json:"instrument_name" validate:"required"`
-	Depth          int64  `json:"depth"`
+	InstrumentName string `json:"instrument_name" validate:"required" form:"instrument_name"`
+	Depth          int64  `json:"depth" form:"depth"`
 }
 
 type BaseParams struct {
-	AccessToken    string `json:"access_token" validate:"required"`
-	InstrumentName string `json:"instrument_name" validate:"required"`
+	AccessToken    string `json:"access_token" validate:"required" form:"access_token"`
+	InstrumentName string `json:"instrument_name" validate:"required" form:"instrument_name"`
 }
 
 type GetUserTradesByInstrumentParams struct {
 	BaseParams
-	Count          int    `json:"count"`
-	StartTimestamp int64  `json:"start_timestamp"`
-	EndTimestamp   int64  `json:"end_timestamp"`
-	Sorting        string `json:"sorting"`
+	Count          int    `json:"count" form:"count"`
+	StartTimestamp int64  `json:"start_timestamp" form:"start_timestamp"`
+	EndTimestamp   int64  `json:"end_timestamp" form:"end_timestamp"`
+	Sorting        string `json:"sorting" form:"sorting"`
 }
 
 type GetOpenOrdersByInstrumentParams struct {
 	BaseParams
-	Type string `json:"type"`
+	Type string `json:"type" form:"type"`
 }
 
 type GetOrderHistoryByInstrumentParams struct {
 	BaseParams
-	Count           int  `json:"count"`
-	Offset          int  `json:"offset"`
-	IncludeOld      bool `json:"include_old"`
-	IncludeUnfilled bool `json:"include_unfilled"`
+	Count           int  `json:"count" form:"count"`
+	Offset          int  `json:"offset" form:"offset"`
+	IncludeOld      bool `json:"include_old" form:"include_old"`
+	IncludeUnfilled bool `json:"include_unfilled" form:"include_unfilled"`
 }
 
 type DeribitRequest struct {
