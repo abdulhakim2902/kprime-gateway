@@ -505,6 +505,173 @@ func (r TradeRepository) FindUserTradesById(
 	return result, nil
 }
 
+func (r TradeRepository) FindTradesByInstrument(
+	instrument string,
+	orderId []interface{},
+) (result _tradeType.UserTradesByInstrumentResult, err error) {
+	options := options.AggregateOptions{
+		MaxTime: &defaultTimeout,
+	}
+
+	_string := instrument
+	substring := strings.Split(_string, "-")
+
+	_strikePrice, err := strconv.ParseFloat(substring[2], 64)
+	if err != nil {
+		fmt.Println(err)
+	}
+	_underlying := substring[0]
+	_expiryDate := strings.ToUpper(substring[1])
+
+	query := bson.A{
+		bson.D{
+			{"$lookup",
+				bson.D{
+					{"from", "orders"},
+					{"localField", "taker.orderId"},
+					{"foreignField", "_id"},
+					{"as", "takerOrder"},
+				},
+			},
+		},
+		bson.D{
+			{"$lookup",
+				bson.D{
+					{"from", "orders"},
+					{"localField", "maker.orderId"},
+					{"foreignField", "_id"},
+					{"as", "makerOrder"},
+				},
+			},
+		},
+		bson.D{
+			{"$match",
+				bson.D{
+					{"_id", bson.M{"$in": orderId}},
+					{"underlying", _underlying},
+					{"strikePrice", _strikePrice},
+					{"expiryDate", _expiryDate},
+				},
+			},
+		},
+		bson.D{
+			{"$project",
+				bson.D{
+					{"InstrumentName", bson.M{"$concat": bson.A{
+						bson.D{
+							{"$convert", bson.D{
+								{"input", "$underlying"},
+								{"to", "string"},
+							}}},
+						"-",
+						bson.D{
+							{"$convert", bson.D{
+								{"input", "$expiryDate"},
+								{"to", "string"},
+							}}},
+						"-",
+						bson.D{
+							{"$convert", bson.D{
+								{"input", "$strikePrice"},
+								{"to", "string"},
+							}}},
+						"-",
+						bson.M{"$substr": bson.A{"$contracts", 0, 1}},
+					}}},
+					{"amount", "$amount"},
+					{"direction", "$side"},
+					{"label",
+						bson.D{
+							{"$arrayElemAt",
+								bson.A{
+									"$takerOrder.label",
+									0,
+								},
+							},
+						},
+					},
+					{"order_id",
+						bson.D{
+							{"$ifNull",
+								bson.A{
+									"$taker.orderId",
+									"$taker.orderId",
+									"$maker.orderId",
+								},
+							},
+						},
+					},
+					{"order_type",
+						bson.D{
+							{"$arrayElemAt",
+								bson.A{
+									"$takerOrder.type",
+									0,
+								},
+							},
+						},
+					},
+					{"price", "$price"},
+					{"state",
+						bson.D{
+							{"$arrayElemAt",
+								bson.A{
+									"$takerOrderId.status",
+									0,
+								},
+							},
+						},
+					},
+					{"timestamp", bson.M{"$toLong": "$createdAt"}},
+					{"strikePrice", "$strikePrice"},
+					{"tickDirection", "$tickDirection"},
+					{"tradeSequence", "$tradeSequence"},
+					{"indexPrice", "$indexPrice"},
+				},
+			},
+		},
+		bson.D{
+			{"$facet",
+				bson.D{
+					{"trades",
+						bson.A{
+							bson.D{{"$skip", 0}},
+						},
+					},
+					{"total",
+						bson.A{
+							bson.D{{"$count", "count"}},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	var cursor *mongo.Cursor
+	cursor, err = r.collection.Aggregate(context.Background(), query, &options)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	defer cursor.Close(context.Background())
+
+	var res _tradeType.UserTradesByInstrumentResult
+	for cursor.Next(context.TODO()) {
+		if err = cursor.Decode(&res); err != nil {
+			fmt.Println(err)
+			return
+		}
+		for _, trade := range res.Trades {
+			trade.Api = true
+		}
+	}
+
+	result.Trades = res.Trades
+
+	return result, nil
+}
+
 func (r TradeRepository) GetPriceAvg(underlying, expiryDate, contracts string, strikePrice float64) (price float64, err error) {
 	options := options.AggregateOptions{
 		MaxTime: &defaultTimeout,

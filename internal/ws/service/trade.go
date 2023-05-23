@@ -166,7 +166,7 @@ func (svc wsTradeService) HandleConsumeUserTrades(msg *sarama.ConsumerMessage) {
 
 				params := _types.QuoteResponse{
 					Channel: fmt.Sprintf("user.trades.%s.raw", _instrument),
-					Data:    trades,
+					Data:    trades.Trades,
 				}
 				method := "subscription"
 				ws.GetTradeSocket().BroadcastMessageTrade(broadcastId, method, params)
@@ -198,6 +198,94 @@ func (svc wsTradeService) HandleConsumeUserTrades100ms(instrument string, userId
 					broadcastId := fmt.Sprintf("%s.%s.%s-%s-100ms", "user", "trades", instrument, userId)
 					params := _types.QuoteResponse{
 						Channel: fmt.Sprintf("user.trades.%s.100ms", instrument),
+						Data:    trades,
+					}
+					method := "subscription"
+					ws.GetTradeSocket().BroadcastMessageTrade(broadcastId, method, params)
+					userTradesMutex.Lock()
+					userTrades[mapIndex] = []*_deribitModel.DeribitGetUserTradesByInstruments{}
+					userTradesMutex.Unlock()
+				}
+			}
+		}
+	}()
+}
+
+func (svc wsTradeService) HandleConsumeInstrumentTrades(msg *sarama.ConsumerMessage) {
+	var data _engineType.EngineResponse
+	err := json.Unmarshal(msg.Value, &data)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	if len(data.Matches.Trades) > 0 {
+		_instrument := data.Matches.Trades[0].Underlying + "-" + data.Matches.Trades[0].ExpiryDate + "-" + fmt.Sprintf("%.0f", data.Matches.Trades[0].StrikePrice) + "-" + string(data.Matches.Trades[0].Contracts[0])
+
+		var tradeId []interface{}
+		keys := make(map[interface{}]bool)
+		for _, trade := range data.Matches.Trades {
+			if _, ok := keys[trade.ID]; !ok {
+				keys[trade.ID] = true
+				tradeId = append(tradeId, trade.ID)
+			}
+		}
+
+		trades, err := svc.repo.FindTradesByInstrument(
+			_instrument,
+			tradeId,
+		)
+		if err != nil {
+			return
+		}
+
+		if len(trades.Trades) > 0 {
+			mapIndex := _instrument
+			if _, ok := userTrades[mapIndex]; !ok {
+				userTradesMutex.Lock()
+				userTrades[mapIndex] = trades.Trades
+				userTradesMutex.Unlock()
+				go svc.HandleConsumeInstrumentTrades100ms(_instrument)
+			} else {
+				userTradesMutex.Lock()
+				userTrades[mapIndex] = append(userTrades[mapIndex], trades.Trades...)
+				userTradesMutex.Unlock()
+			}
+			// broadcast to user id
+			broadcastId := fmt.Sprintf("%s.%s", "trades", _instrument)
+
+			params := _types.QuoteResponse{
+				Channel: fmt.Sprintf("trades.%s.raw", _instrument),
+				Data:    trades.Trades,
+			}
+			method := "subscription"
+			ws.GetTradeSocket().BroadcastMessageTrade(broadcastId, method, params)
+		}
+		return
+	} else {
+		return
+	}
+}
+
+func (svc wsTradeService) HandleConsumeInstrumentTrades100ms(instrument string) {
+	mapIndex := instrument
+	ticker := time.NewTicker(100 * time.Millisecond)
+
+	// Creating channel
+	tickerChan := make(chan bool)
+	go func() {
+		for {
+			select {
+			case <-tickerChan:
+				return
+			case <-ticker.C:
+				// if there is no change no need to broadcast
+				userTradesMutex.RLock()
+				trades := userTrades[mapIndex]
+				userTradesMutex.RUnlock()
+				if len(trades) > 0 {
+					broadcastId := fmt.Sprintf("%s.%s-100ms", "trades", instrument)
+					params := _types.QuoteResponse{
+						Channel: fmt.Sprintf("trades.%s.100ms", instrument),
 						Data:    trades,
 					}
 					method := "subscription"
@@ -274,6 +362,31 @@ func (svc wsTradeService) SubscribeUserTrades(c *ws.Client, channel string, user
 	} else {
 		id = fmt.Sprintf("%s.%s.%s-%s", key[0], key[1], key[2], userId)
 	}
+	err := socket.Subscribe(id, c)
+	if err != nil {
+		msg := map[string]string{"Message": err.Error()}
+		socket.SendErrorMessage(c, msg)
+		return
+	}
+
+	// Prepare when user is doing unsubscribe
+	ws.RegisterConnectionUnsubscribeHandler(c, socket.UnsubscribeHandler(id))
+}
+
+func (svc wsTradeService) SubscribeTrades(c *ws.Client, channel string) {
+	socket := ws.GetTradeSocket()
+
+	key := strings.Split(channel, ".")
+
+	// Subscribe
+
+	var id string
+	if key[2] == "100ms" {
+		id = fmt.Sprintf("%s.%s-100ms", key[0], key[1])
+	} else {
+		id = fmt.Sprintf("%s.%s", key[0], key[1])
+	}
+
 	err := socket.Subscribe(id, c)
 	if err != nil {
 		msg := map[string]string{"Message": err.Error()}
