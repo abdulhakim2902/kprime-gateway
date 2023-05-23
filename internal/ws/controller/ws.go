@@ -17,7 +17,6 @@ import (
 	deribitService "gateway/internal/deribit/service"
 	authService "gateway/internal/user/service"
 	engService "gateway/internal/ws/engine/service"
-	"gateway/internal/ws/helpers"
 	wsService "gateway/internal/ws/service"
 
 	"git.devucc.name/dependencies/utilities/types"
@@ -412,9 +411,7 @@ func (svc wsHandler) PrivateCancelAll(input interface{}, c *ws.Client) {
 		ClOrdID: strconv.FormatUint(msg.Id, 10),
 	})
 	if err != nil {
-
-		helpers.SendValidationResponse(c,
-			validation_reason.OTHER, msg.Id, requestedTime, &claim.UserID, nil)
+		protocol.SendErrMsg(ID, err)
 		return
 	}
 
