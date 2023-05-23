@@ -3,7 +3,7 @@ module gateway
 go 1.20
 
 require (
-	git.devucc.name/dependencies/utilities v1.0.19
+	git.devucc.name/dependencies/utilities v1.0.20
 	github.com/Shopify/sarama v1.38.1
 	github.com/fatih/color v1.15.0
 	github.com/gin-gonic/gin v1.9.0
