@@ -523,6 +523,8 @@ func (svc wsHandler) SubscribeHandlerPrivate(input interface{}, c *ws.Client) {
 			svc.wsOSvc.SubscribeUserOrder(c, channel, claim.UserID)
 		case "trades":
 			svc.wsTradeSvc.SubscribeUserTrades(c, channel, claim.UserID)
+		case "changes":
+			svc.wsOBSvc.SubscribeUserChange(c, channel, claim.UserID)
 		}
 	}
 
@@ -550,6 +552,8 @@ func (svc wsHandler) UnsubscribeHandlerPrivate(input interface{}, c *ws.Client) 
 			svc.wsOSvc.Unsubscribe(c)
 		case "trades":
 			svc.wsTradeSvc.Unsubscribe(c)
+		case "changes":
+			svc.wsOBSvc.Unsubscribe(c)
 		}
 
 	}
