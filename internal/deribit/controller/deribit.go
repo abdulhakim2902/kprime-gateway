@@ -45,7 +45,7 @@ func NewDeribitHandler(
 
 	handler.RegisterHandler("public/auth", handler.auth)
 	handler.RegisterHandler("public/get_instruments", handler.getInstruments)
-	handler.RegisterHandler("public/get_order_book", handler.getOrderBook)
+	handler.RegisterHandler("public/test", handler.test)
 
 	handler.RegisterHandler("private/buy", handler.buy)
 	handler.RegisterHandler("private/sell", handler.sell)
@@ -550,4 +550,17 @@ func (h *DeribitHandler) getOrderBook(r *gin.Context) {
 	})
 
 	protocol.SendSuccessMsg(requestedTime, result)
+}
+
+func (h *DeribitHandler) test(r *gin.Context) {
+	requestedTime := uint64(time.Now().UnixMicro())
+
+	if ok := protocol.RegisterProtocolRequest(requestedTime, protocol.HTTP, nil, r); !ok {
+		protocol.SendValidationMsg(requestedTime, validation_reason.DUPLICATED_REQUEST_ID, nil)
+		return
+	}
+
+	protocol.SendSuccessMsg(requestedTime, gin.H{
+		"version": "1.2.26",
+	})
 }
