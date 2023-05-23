@@ -37,7 +37,7 @@ func (svc deribitService) DeribitGetOpenOrdersByInstrument(ctx context.Context, 
 
 	return openOrderData
 }
-func (svc deribitService) DeribitGetGetOrderHistoryByInstrument(ctx context.Context, userID string, data model.DeribitGetOrderHistoryByInstrumentRequest) []*model.DeribitGetOrderHistoryByInstrumentResponse {
+func (svc deribitService) DeribitGetOrderHistoryByInstrument(ctx context.Context, userID string, data model.DeribitGetOrderHistoryByInstrumentRequest) []*model.DeribitGetOrderHistoryByInstrumentResponse {
 	trades, err := svc.orderRepo.GetOrderHistoryByInstrument(
 		data.InstrumentName,
 		data.Count,

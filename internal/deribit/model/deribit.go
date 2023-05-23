@@ -11,8 +11,10 @@ import (
 )
 
 type RequestDto[T any] struct {
-	Id     uint64 `json:"id"`
-	Params T      `json:"params"`
+	Method  string `json:"method"`
+	Jsonrpc string `json:"jsonrpc"`
+	Id      uint64 `json:"id"`
+	Params  T      `json:"params"`
 }
 
 type RequestParams struct {

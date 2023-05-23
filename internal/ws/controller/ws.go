@@ -106,6 +106,7 @@ func (svc wsHandler) PublicAuth(input interface{}, c *ws.Client) {
 	}
 
 	var res any
+	var user *userType.User
 	var err error
 
 	switch msg.Params.GrantType {
@@ -121,7 +122,7 @@ func (svc wsHandler) PublicAuth(input interface{}, c *ws.Client) {
 			return
 		}
 
-		res, err = svc.authSvc.Login(context.TODO(), payload)
+		res, user, err = svc.authSvc.Login(context.TODO(), payload)
 		if err != nil {
 			if strings.Contains(err.Error(), "invalid credential") {
 				protocol.SendValidationMsg(requestedTime, validation_reason.UNAUTHORIZED, err)
@@ -138,18 +139,20 @@ func (svc wsHandler) PublicAuth(input interface{}, c *ws.Client) {
 			return
 		}
 
-		claim, err := authService.ClaimJWT(msg.Params.RefreshToken)
+		claim, err := authService.ClaimJWT(c, msg.Params.RefreshToken)
 		if err != nil {
 			protocol.SendValidationMsg(requestedTime, validation_reason.UNAUTHORIZED, err)
 			return
 		}
 
-		res, err = svc.authSvc.RefreshToken(context.TODO(), claim)
+		res, user, err = svc.authSvc.RefreshToken(context.TODO(), claim)
 		if err != nil {
 			protocol.SendErrMsg(requestedTime, err)
 			return
 		}
 	}
+
+	c.RegisterAuthedConnection(user.ID.Hex())
 
 	protocol.SendSuccessMsg(requestedTime, res)
 }
@@ -168,8 +171,11 @@ func (svc wsHandler) PrivateBuy(input interface{}, c *ws.Client) {
 		return
 	}
 
+	isAuthed, userId := c.IsAuthed()
+	fmt.Println(isAuthed, userId)
+
 	// Check the Access Token
-	claim, err := authService.ClaimJWT(msg.Params.AccessToken)
+	claim, err := authService.ClaimJWT(c, msg.Params.AccessToken)
 	if err != nil {
 		protocol.SendValidationMsg(requestedTime, validation_reason.UNAUTHORIZED, err)
 		return
@@ -218,7 +224,7 @@ func (svc wsHandler) PrivateSell(input interface{}, c *ws.Client) {
 	}
 
 	// Check the Access Token
-	claim, err := authService.ClaimJWT(msg.Params.AccessToken)
+	claim, err := authService.ClaimJWT(c, msg.Params.AccessToken)
 	if err != nil {
 		protocol.SendValidationMsg(requestedTime, validation_reason.UNAUTHORIZED, err)
 		return
@@ -267,7 +273,7 @@ func (svc wsHandler) PrivateEdit(input interface{}, c *ws.Client) {
 	}
 
 	// Check the Access Token
-	claim, err := authService.ClaimJWT(msg.Params.AccessToken)
+	claim, err := authService.ClaimJWT(c, msg.Params.AccessToken)
 	if err != nil {
 		protocol.SendValidationMsg(requestedTime, validation_reason.UNAUTHORIZED, err)
 		return
@@ -309,7 +315,7 @@ func (svc wsHandler) PrivateCancel(input interface{}, c *ws.Client) {
 	}
 
 	// Check the Access Token
-	claim, err := authService.ClaimJWT(msg.Params.AccessToken)
+	claim, err := authService.ClaimJWT(c, msg.Params.AccessToken)
 	if err != nil {
 		protocol.SendValidationMsg(requestedTime, validation_reason.UNAUTHORIZED, err)
 		return
@@ -350,7 +356,7 @@ func (svc wsHandler) PrivateCancelByInstrument(input interface{}, c *ws.Client) 
 	}
 
 	// Check the Access Token
-	claim, err := authService.ClaimJWT(msg.Params.AccessToken)
+	claim, err := authService.ClaimJWT(c, msg.Params.AccessToken)
 	if err != nil {
 		protocol.SendValidationMsg(requestedTime, validation_reason.UNAUTHORIZED, err)
 		return
@@ -390,7 +396,7 @@ func (svc wsHandler) PrivateCancelAll(input interface{}, c *ws.Client) {
 	}
 
 	// Check the Access Token
-	claim, err := authService.ClaimJWT(msg.Params.AccessToken)
+	claim, err := authService.ClaimJWT(c, msg.Params.AccessToken)
 	if err != nil {
 		protocol.SendValidationMsg(requestedTime, validation_reason.UNAUTHORIZED, err)
 		return
@@ -501,7 +507,7 @@ func (svc wsHandler) SubscribeHandlerPrivate(input interface{}, c *ws.Client) {
 	}
 
 	// Check the Access Token
-	claim, err := authService.ClaimJWT(msg.Params.AccessToken)
+	claim, err := authService.ClaimJWT(c, msg.Params.AccessToken)
 	if err != nil {
 		protocol.SendValidationMsg(requestedTime, validation_reason.UNAUTHORIZED, err)
 		return
@@ -614,7 +620,7 @@ func (svc wsHandler) PrivateGetUserTradesByInstrument(input interface{}, c *ws.C
 		msg.Params.Count = 10
 	}
 
-	claim, err := authService.ClaimJWT(msg.Params.AccessToken)
+	claim, err := authService.ClaimJWT(c, msg.Params.AccessToken)
 	if err != nil {
 		protocol.SendValidationMsg(requestedTime, validation_reason.UNAUTHORIZED, err)
 		return
@@ -657,7 +663,7 @@ func (svc wsHandler) PrivateGetOpenOrdersByInstrument(input interface{}, c *ws.C
 		msg.Params.Type = "all"
 	}
 
-	claim, err := authService.ClaimJWT(msg.Params.AccessToken)
+	claim, err := authService.ClaimJWT(c, msg.Params.AccessToken)
 	if err != nil {
 		protocol.SendValidationMsg(requestedTime, validation_reason.UNAUTHORIZED, err)
 		return
@@ -697,7 +703,7 @@ func (svc wsHandler) PrivateGetOrderHistoryByInstrument(input interface{}, c *ws
 		msg.Params.Count = 20
 	}
 
-	claim, err := authService.ClaimJWT(msg.Params.AccessToken)
+	claim, err := authService.ClaimJWT(c, msg.Params.AccessToken)
 	if err != nil {
 		protocol.SendValidationMsg(requestedTime, validation_reason.UNAUTHORIZED, err)
 		return

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"gateway/internal/repositories"
 	"gateway/internal/user/types"
+	"gateway/pkg/ws"
 	"os"
 	"strconv"
 	"strings"
@@ -22,8 +23,7 @@ func NewAuthService(repo *repositories.UserRepository) IAuthService {
 	return &AuthService{repo}
 }
 
-func (s AuthService) Login(ctx context.Context, req types.AuthRequest) (res *types.AuthResponse, err error) {
-	var user *types.User
+func (s AuthService) Login(ctx context.Context, req types.AuthRequest) (res *types.AuthResponse, user *types.User, err error) {
 	user, err = s.repo.FindByAPIKeyAndSecret(ctx, req.APIKey, req.APISecret)
 	if err != nil && !strings.Contains(err.Error(), "no documents in result") {
 		logs.Log.Error().Err(err).Msg("")
@@ -31,25 +31,28 @@ func (s AuthService) Login(ctx context.Context, req types.AuthRequest) (res *typ
 	}
 
 	if user == nil {
-		return nil, errors.New("invalid credential")
+		err = errors.New("invalid credential")
+		return
 	}
 
 	accessToken, refreshToken, accessTokenExp, err := GenerateToken(user.ID.Hex())
 	if err != nil {
-		return nil, errors.New("failed to generate token")
+		err = errors.New("failed to generate token")
+		return
 	}
 
-	return &types.AuthResponse{
+	res = &types.AuthResponse{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 		ExpiresIn:    int64(accessTokenExp),
 		Scope:        "connection mainaccount",
 		TokenType:    "bearer",
-	}, nil
+	}
+
+	return
 }
 
-func (s AuthService) RefreshToken(ctx context.Context, claim types.JwtClaim) (res *types.AuthResponse, err error) {
-	var user *types.User
+func (s AuthService) RefreshToken(ctx context.Context, claim types.JwtClaim) (res *types.AuthResponse, user *types.User, err error) {
 	user, err = s.repo.FindById(ctx, claim.UserID)
 	if err != nil && !strings.Contains(err.Error(), "no documents in result") {
 		logs.Log.Error().Err(err).Msg("")
@@ -57,24 +60,37 @@ func (s AuthService) RefreshToken(ctx context.Context, claim types.JwtClaim) (re
 	}
 
 	if user == nil {
-		return nil, errors.New("invalid refresh token")
+		err = errors.New("invalid refresh token")
+		return
 	}
 
 	accessToken, refreshToken, accessTokenExp, err := GenerateToken(user.ID.Hex())
 	if err != nil {
-		return nil, errors.New("failed to generate token")
+		err = errors.New("failed to generate token")
+		return
 	}
 
-	return &types.AuthResponse{
+	res = &types.AuthResponse{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 		ExpiresIn:    int64(accessTokenExp),
 		Scope:        "connection mainaccount",
 		TokenType:    "bearer",
-	}, nil
+	}
+
+	return
 }
 
-func ClaimJWT(jwtToken string) (types.JwtClaim, error) {
+func ClaimJWT(c *ws.Client, jwtToken string) (types.JwtClaim, error) {
+	// If c not nil, check is client is authed connection
+	if c != nil {
+		if isAuthed, userId := c.IsAuthed(); isAuthed {
+			return types.JwtClaim{
+				UserID: userId,
+			}, nil
+		}
+	}
+
 	jwtKey := os.Getenv("JWT_KEY")
 
 	// Second if user is not authenticated using WS client, then check JWT Token

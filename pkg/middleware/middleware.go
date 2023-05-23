@@ -17,7 +17,7 @@ func Authenticate() gin.HandlerFunc {
 			return
 		}
 
-		claim, err := authSvc.ClaimJWT(token[1])
+		claim, err := authSvc.ClaimJWT(nil, token[1])
 		if err != nil {
 			logs.Log.Error().Err(err).Msg("")
 

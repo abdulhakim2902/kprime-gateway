@@ -3,15 +3,17 @@ package controller
 import (
 	"context"
 	"errors"
+	"fmt"
 	"gateway/internal/deribit/service"
+	"net/http"
 
+	"git.devucc.name/dependencies/utilities/commons/logs"
 	"git.devucc.name/dependencies/utilities/types"
 
 	deribitModel "gateway/internal/deribit/model"
 	authService "gateway/internal/user/service"
 	userType "gateway/internal/user/types"
 
-	"gateway/pkg/middleware"
 	"gateway/pkg/protocol"
 	"gateway/pkg/utils"
 	"strconv"
@@ -27,6 +29,8 @@ import (
 type DeribitHandler struct {
 	svc     service.IDeribitService
 	authSvc authService.IAuthService
+
+	handlers map[string]gin.HandlerFunc
 }
 
 func NewDeribitHandler(
@@ -34,29 +38,75 @@ func NewDeribitHandler(
 	svc service.IDeribitService,
 	authSvc authService.IAuthService,
 ) {
-	handler := &DeribitHandler{svc, authSvc}
+	handler := DeribitHandler{
+		svc:     svc,
+		authSvc: authSvc,
+	}
+
+	handler.RegisterHandler("public/auth", handler.auth)
+	handler.RegisterHandler("public/get_instruments", handler.getInstruments)
+	handler.RegisterHandler("public/get_order_book", handler.getOrderBook)
+
+	handler.RegisterHandler("private/buy", handler.buy)
+	handler.RegisterHandler("private/sell", handler.sell)
+	handler.RegisterHandler("private/edit", handler.edit)
+	handler.RegisterHandler("private/cancel", handler.cancel)
+	handler.RegisterHandler("private/cancel_all_by_instrument", handler.cancelByInstrument)
+	handler.RegisterHandler("private/cancel_all", handler.cancelAll)
+	handler.RegisterHandler("private/get_user_trades_by_instrument", handler.getUserTradeByInstrument)
+	handler.RegisterHandler("private/get_open_orders_by_instrument", handler.getOpenOrdersByInstrument)
+	handler.RegisterHandler("private/get_order_history_by_instrument", handler.getOrderHistoryByInstrument)
+
 	r.Use(cors.AllowAll())
+	api := r.Group("/api/v2")
 
-	// Private
-	private := r.Group("/private").Use(middleware.Authenticate())
-
-	private.POST("buy", handler.DeribitParseBuy)
-	private.POST("sell", handler.DeribitParseSell)
-	private.POST("edit", handler.DeribitParseEdit)
-	private.POST("cancel", handler.DeribitParseCancel)
-	private.POST("cancel_all_by_instrument", handler.DeribitCancelByInstrument)
-	private.POST("cancel_all", handler.DeribitCancelAll)
-
-	private.GET(":method", handler.PrivateGetHandler)
-
-	// Public
-	public := r.Group("/api/v2/public")
-
-	public.POST("auth", handler.Auth)
-	public.GET(":method", handler.PublicGetHandler)
+	api.POST("", handler.ApiPostHandler)
+	api.GET(":type/*action", handler.ApiGetHandler)
 }
 
-func (h DeribitHandler) Auth(r *gin.Context) {
+func (h *DeribitHandler) RegisterHandler(method string, handler gin.HandlerFunc) {
+	if h.handlers == nil {
+		h.handlers = make(map[string]gin.HandlerFunc)
+	}
+
+	h.handlers[method] = handler
+}
+
+func (h *DeribitHandler) ApiPostHandler(r *gin.Context) {
+	type Params struct{}
+
+	var dto deribitModel.RequestDto[Params]
+	if err := utils.UnmarshalAndValidate(r, &dto); err != nil {
+		r.AbortWithStatusJSON(http.StatusBadRequest, err.Error())
+		return
+	}
+
+	handler, ok := h.handlers[dto.Method]
+	if !ok {
+		r.AbortWithStatus(http.StatusNotFound)
+		return
+	}
+
+	logs.Log.Info().Str("called_method", dto.Method).Msg("")
+
+	handler(r)
+}
+
+func (h *DeribitHandler) ApiGetHandler(r *gin.Context) {
+	method := fmt.Sprintf("%s%s", r.Param("type"), r.Param("action"))
+
+	handler, ok := h.handlers[method]
+	if !ok {
+		r.AbortWithStatus(http.StatusNotFound)
+		return
+	}
+
+	logs.Log.Info().Str("called_method", method).Msg("")
+
+	handler(r)
+}
+
+func (h *DeribitHandler) auth(r *gin.Context) {
 	requestedTime := uint64(time.Now().UnixMicro())
 
 	if ok := protocol.RegisterProtocolRequest(requestedTime, protocol.HTTP, nil, r); !ok {
@@ -65,10 +115,10 @@ func (h DeribitHandler) Auth(r *gin.Context) {
 	}
 
 	type Params struct {
-		GrantType    string `json:"grant_type"`
-		ClientID     string `json:"client_id"`
-		ClientSecret string `json:"client_secret"`
-		RefreshToken string `json:"refresh_token"`
+		GrantType    string `json:"grant_type" form:"grant_type"`
+		ClientID     string `json:"client_id" form:"client_id"`
+		ClientSecret string `json:"client_secret" form:"client_secret"`
+		RefreshToken string `json:"refresh_token" form:"refresh_token"`
 	}
 
 	var msg deribitModel.RequestDto[Params]
@@ -76,9 +126,6 @@ func (h DeribitHandler) Auth(r *gin.Context) {
 		protocol.SendValidationMsg(requestedTime, validation_reason.PARSE_ERROR, err)
 		return
 	}
-
-	var res any
-	var err error
 
 	switch msg.Params.GrantType {
 	case "client_credentials":
@@ -93,7 +140,7 @@ func (h DeribitHandler) Auth(r *gin.Context) {
 			return
 		}
 
-		res, err = h.authSvc.Login(context.TODO(), payload)
+		res, _, err := h.authSvc.Login(context.TODO(), payload)
 		if err != nil {
 			if strings.Contains(err.Error(), "invalid credential") {
 				protocol.SendValidationMsg(requestedTime, validation_reason.UNAUTHORIZED, err)
@@ -103,6 +150,9 @@ func (h DeribitHandler) Auth(r *gin.Context) {
 			protocol.SendErrMsg(requestedTime, err)
 			return
 		}
+
+		protocol.SendSuccessMsg(requestedTime, res)
+		return
 	case "refresh_token":
 		if msg.Params.RefreshToken == "" {
 			protocol.SendValidationMsg(requestedTime,
@@ -110,23 +160,28 @@ func (h DeribitHandler) Auth(r *gin.Context) {
 			return
 		}
 
-		claim, err := authService.ClaimJWT(msg.Params.RefreshToken)
+		claim, err := authService.ClaimJWT(nil, msg.Params.RefreshToken)
 		if err != nil {
 			protocol.SendValidationMsg(requestedTime, validation_reason.UNAUTHORIZED, err)
 			return
 		}
 
-		res, err = h.authSvc.RefreshToken(context.TODO(), claim)
+		res, _, err := h.authSvc.RefreshToken(context.TODO(), claim)
 		if err != nil {
 			protocol.SendErrMsg(requestedTime, err)
 			return
 		}
+
+		protocol.SendSuccessMsg(requestedTime, res)
+		return
+	default:
+		protocol.SendValidationMsg(requestedTime, validation_reason.INVALID_PARAMS, nil)
+		return
 	}
 
-	protocol.SendSuccessMsg(requestedTime, res)
 }
 
-func (h DeribitHandler) DeribitParseBuy(r *gin.Context) {
+func (h *DeribitHandler) buy(r *gin.Context) {
 	userID := r.GetString("userID")
 
 	if ok := protocol.RegisterProtocolRequest(userID, protocol.HTTP, nil, r); !ok {
@@ -167,7 +222,7 @@ func (h DeribitHandler) DeribitParseBuy(r *gin.Context) {
 	protocol.SendSuccessMsg(userID, order)
 }
 
-func (h DeribitHandler) DeribitParseSell(r *gin.Context) {
+func (h *DeribitHandler) sell(r *gin.Context) {
 	userID := r.GetString("userID")
 
 	if ok := protocol.RegisterProtocolRequest(userID, protocol.HTTP, nil, r); !ok {
@@ -208,7 +263,7 @@ func (h DeribitHandler) DeribitParseSell(r *gin.Context) {
 	protocol.SendSuccessMsg(userID, order)
 }
 
-func (h DeribitHandler) DeribitParseEdit(r *gin.Context) {
+func (h *DeribitHandler) edit(r *gin.Context) {
 	userID := r.GetString("userID")
 
 	if ok := protocol.RegisterProtocolRequest(userID, protocol.HTTP, nil, r); !ok {
@@ -240,7 +295,7 @@ func (h DeribitHandler) DeribitParseEdit(r *gin.Context) {
 	protocol.SendSuccessMsg(userID, order)
 }
 
-func (h DeribitHandler) DeribitParseCancel(r *gin.Context) {
+func (h *DeribitHandler) cancel(r *gin.Context) {
 	userID := r.GetString("userID")
 
 	if ok := protocol.RegisterProtocolRequest(userID, protocol.HTTP, nil, r); !ok {
@@ -270,7 +325,7 @@ func (h DeribitHandler) DeribitParseCancel(r *gin.Context) {
 	protocol.SendSuccessMsg(userID, order)
 }
 
-func (h DeribitHandler) DeribitCancelByInstrument(r *gin.Context) {
+func (h *DeribitHandler) cancelByInstrument(r *gin.Context) {
 	userID := r.GetString("userID")
 
 	if ok := protocol.RegisterProtocolRequest(userID, protocol.HTTP, nil, r); !ok {
@@ -300,7 +355,7 @@ func (h DeribitHandler) DeribitCancelByInstrument(r *gin.Context) {
 	protocol.SendSuccessMsg(userID, order)
 }
 
-func (h DeribitHandler) DeribitCancelAll(r *gin.Context) {
+func (h *DeribitHandler) cancelAll(r *gin.Context) {
 	userID := r.GetString("userID")
 
 	if ok := protocol.RegisterProtocolRequest(userID, protocol.HTTP, nil, r); !ok {
@@ -329,7 +384,7 @@ func (h DeribitHandler) DeribitCancelAll(r *gin.Context) {
 	protocol.SendSuccessMsg(userID, order)
 }
 
-func (h DeribitHandler) PrivateGetHandler(r *gin.Context) {
+func (h *DeribitHandler) getUserTradeByInstrument(r *gin.Context) {
 	userID := r.GetString("userID")
 
 	if ok := protocol.RegisterProtocolRequest(userID, protocol.HTTP, nil, r); !ok {
@@ -337,116 +392,123 @@ func (h DeribitHandler) PrivateGetHandler(r *gin.Context) {
 		return
 	}
 
-	switch r.Param("method") {
-	case "get_user_trades_by_instrument":
-		msg := &deribitModel.RequestDto[deribitModel.GetUserTradesByInstrumentParams]{}
+	msg := &deribitModel.RequestDto[deribitModel.GetUserTradesByInstrumentParams]{}
 
-		if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
-			protocol.SendValidationMsg(userID, validation_reason.PARSE_ERROR, err)
-			return
-		}
-
-		// Number of requested items, default - 10
-		if msg.Params.Count <= 0 {
-			msg.Params.Count = 10
-		}
-
-		claim, err := authService.ClaimJWT(msg.Params.AccessToken)
-		if err != nil {
-			protocol.SendValidationMsg(userID, validation_reason.UNAUTHORIZED, err)
-			return
-		}
-
-		ID := utils.GetKeyFromIdUserID(msg.Id, claim.UserID)
-		protocol.UpgradeProtocol(userID, ID)
-
-		res := h.svc.DeribitGetUserTradesByInstrument(
-			r.Request.Context(),
-			claim.UserID,
-			deribitModel.DeribitGetUserTradesByInstrumentsRequest{
-				InstrumentName: msg.Params.InstrumentName,
-				Count:          msg.Params.Count,
-				StartTimestamp: msg.Params.StartTimestamp,
-				EndTimestamp:   msg.Params.EndTimestamp,
-				Sorting:        msg.Params.Sorting,
-			},
-		)
-		protocol.SendSuccessMsg(userID, res)
-		break
-	case "get_open_orders_by_instrument":
-		msg := &deribitModel.RequestDto[deribitModel.GetOpenOrdersByInstrumentParams]{}
-		if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
-			protocol.SendValidationMsg(userID, validation_reason.PARSE_ERROR, err)
-			return
-		}
-
-		// type parameter
-		if msg.Params.Type == "" {
-			msg.Params.Type = "all"
-		}
-
-		claim, err := authService.ClaimJWT(msg.Params.AccessToken)
-		if err != nil {
-			protocol.SendValidationMsg(userID, validation_reason.UNAUTHORIZED, err)
-			return
-		}
-
-		ID := utils.GetKeyFromIdUserID(msg.Id, claim.UserID)
-		protocol.UpgradeProtocol(userID, ID)
-
-		res := h.svc.DeribitGetOpenOrdersByInstrument(
-			context.TODO(),
-			claim.UserID,
-			deribitModel.DeribitGetOpenOrdersByInstrumentRequest{
-				InstrumentName: msg.Params.InstrumentName,
-				Type:           msg.Params.Type,
-			},
-		)
-
-		protocol.SendSuccessMsg(ID, res)
-		break
-	case "get_order_history_by_instrument":
-		msg := &deribitModel.RequestDto[deribitModel.GetOrderHistoryByInstrumentParams]{}
-		if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
-			protocol.SendValidationMsg(userID, validation_reason.PARSE_ERROR, err)
-			return
-		}
-
-		// parameter default value
-		if msg.Params.Count <= 0 {
-			msg.Params.Count = 20
-		}
-
-		claim, err := authService.ClaimJWT(msg.Params.AccessToken)
-		if err != nil {
-			protocol.SendValidationMsg(userID, validation_reason.UNAUTHORIZED, err)
-			return
-		}
-
-		ID := utils.GetKeyFromIdUserID(msg.Id, claim.UserID)
-		protocol.UpgradeProtocol(userID, ID)
-
-		res := h.svc.DeribitGetGetOrderHistoryByInstrument(
-			context.TODO(),
-			claim.UserID,
-			deribitModel.DeribitGetOrderHistoryByInstrumentRequest{
-				InstrumentName:  msg.Params.InstrumentName,
-				Count:           msg.Params.Count,
-				Offset:          msg.Params.Offset,
-				IncludeOld:      msg.Params.IncludeOld,
-				IncludeUnfilled: msg.Params.IncludeUnfilled,
-			},
-		)
-
-		protocol.SendSuccessMsg(ID, res)
-		break
-	default:
-		protocol.SendValidationMsg(userID, validation_reason.NONE, errors.New("invalid method"))
-		break
+	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
+		protocol.SendValidationMsg(userID, validation_reason.PARSE_ERROR, err)
+		return
 	}
+
+	// Number of requested items, default - 10
+	if msg.Params.Count <= 0 {
+		msg.Params.Count = 10
+	}
+
+	claim, err := authService.ClaimJWT(nil, msg.Params.AccessToken)
+	if err != nil {
+		protocol.SendValidationMsg(userID, validation_reason.UNAUTHORIZED, err)
+		return
+	}
+
+	ID := utils.GetKeyFromIdUserID(msg.Id, claim.UserID)
+	protocol.UpgradeProtocol(userID, ID)
+
+	res := h.svc.DeribitGetUserTradesByInstrument(
+		r.Request.Context(),
+		claim.UserID,
+		deribitModel.DeribitGetUserTradesByInstrumentsRequest{
+			InstrumentName: msg.Params.InstrumentName,
+			Count:          msg.Params.Count,
+			StartTimestamp: msg.Params.StartTimestamp,
+			EndTimestamp:   msg.Params.EndTimestamp,
+			Sorting:        msg.Params.Sorting,
+		},
+	)
+	protocol.SendSuccessMsg(userID, res)
+}
+func (h *DeribitHandler) getOpenOrdersByInstrument(r *gin.Context) {
+	userID := r.GetString("userID")
+
+	if ok := protocol.RegisterProtocolRequest(userID, protocol.HTTP, nil, r); !ok {
+		protocol.SendValidationMsg(userID, validation_reason.DUPLICATED_REQUEST_ID, nil)
+		return
+	}
+
+	msg := &deribitModel.RequestDto[deribitModel.GetOpenOrdersByInstrumentParams]{}
+	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
+		protocol.SendValidationMsg(userID, validation_reason.PARSE_ERROR, err)
+		return
+	}
+
+	// type parameter
+	if msg.Params.Type == "" {
+		msg.Params.Type = "all"
+	}
+
+	claim, err := authService.ClaimJWT(nil, msg.Params.AccessToken)
+	if err != nil {
+		protocol.SendValidationMsg(userID, validation_reason.UNAUTHORIZED, err)
+		return
+	}
+
+	ID := utils.GetKeyFromIdUserID(msg.Id, claim.UserID)
+	protocol.UpgradeProtocol(userID, ID)
+
+	res := h.svc.DeribitGetOpenOrdersByInstrument(
+		context.TODO(),
+		claim.UserID,
+		deribitModel.DeribitGetOpenOrdersByInstrumentRequest{
+			InstrumentName: msg.Params.InstrumentName,
+			Type:           msg.Params.Type,
+		},
+	)
+
+	protocol.SendSuccessMsg(ID, res)
 }
 
-func (h DeribitHandler) PublicGetHandler(r *gin.Context) {
+func (h *DeribitHandler) getOrderHistoryByInstrument(r *gin.Context) {
+	userID := r.GetString("userID")
+
+	if ok := protocol.RegisterProtocolRequest(userID, protocol.HTTP, nil, r); !ok {
+		protocol.SendValidationMsg(userID, validation_reason.DUPLICATED_REQUEST_ID, nil)
+		return
+	}
+
+	msg := &deribitModel.RequestDto[deribitModel.GetOrderHistoryByInstrumentParams]{}
+	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
+		protocol.SendValidationMsg(userID, validation_reason.PARSE_ERROR, err)
+		return
+	}
+
+	// parameter default value
+	if msg.Params.Count <= 0 {
+		msg.Params.Count = 20
+	}
+
+	claim, err := authService.ClaimJWT(nil, msg.Params.AccessToken)
+	if err != nil {
+		protocol.SendValidationMsg(userID, validation_reason.UNAUTHORIZED, err)
+		return
+	}
+
+	ID := utils.GetKeyFromIdUserID(msg.Id, claim.UserID)
+	protocol.UpgradeProtocol(userID, ID)
+
+	res := h.svc.DeribitGetOrderHistoryByInstrument(
+		context.TODO(),
+		claim.UserID,
+		deribitModel.DeribitGetOrderHistoryByInstrumentRequest{
+			InstrumentName:  msg.Params.InstrumentName,
+			Count:           msg.Params.Count,
+			Offset:          msg.Params.Offset,
+			IncludeOld:      msg.Params.IncludeOld,
+			IncludeUnfilled: msg.Params.IncludeUnfilled,
+		},
+	)
+
+	protocol.SendSuccessMsg(ID, res)
+}
+func (h *DeribitHandler) getInstruments(r *gin.Context) {
 	requestedTime := uint64(time.Now().UnixMicro())
 
 	if ok := protocol.RegisterProtocolRequest(requestedTime, protocol.HTTP, nil, r); !ok {
@@ -454,43 +516,38 @@ func (h DeribitHandler) PublicGetHandler(r *gin.Context) {
 		return
 	}
 
-	switch r.Param("method") {
-	case "get_instruments":
-		msg := &deribitModel.RequestDto[deribitModel.GetInstrumentsParams]{}
-		if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
-			protocol.SendValidationMsg(requestedTime, validation_reason.PARSE_ERROR, err)
-			return
-		}
-
-		result := h.svc.DeribitGetInstruments(context.TODO(), deribitModel.DeribitGetInstrumentsRequest{
-			Currency: msg.Params.Currency,
-			Expired:  msg.Params.Expired,
-		})
-
-		protocol.SendSuccessMsg(requestedTime, result)
-		break
-	case "get_order_book":
-
-		msg := &deribitModel.RequestDto[deribitModel.GetOrderBookParams]{}
-		if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
-			protocol.SendValidationMsg(requestedTime, validation_reason.PARSE_ERROR, err)
-			return
-		}
-
-		result := h.svc.GetOrderBook(context.TODO(), deribitModel.DeribitGetOrderBookRequest{
-			InstrumentName: msg.Params.InstrumentName,
-			Depth:          msg.Params.Depth,
-		})
-
-		protocol.SendSuccessMsg(requestedTime, result)
-		break
-	case "test":
-		protocol.SendSuccessMsg(requestedTime, gin.H{
-			"version": "1.2.26",
-		})
-		break
-	default:
-		protocol.SendValidationMsg(requestedTime, validation_reason.NONE, errors.New("invalid method"))
-		break
+	msg := &deribitModel.RequestDto[deribitModel.GetInstrumentsParams]{}
+	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
+		protocol.SendValidationMsg(requestedTime, validation_reason.PARSE_ERROR, err)
+		return
 	}
+
+	result := h.svc.DeribitGetInstruments(context.TODO(), deribitModel.DeribitGetInstrumentsRequest{
+		Currency: msg.Params.Currency,
+		Expired:  msg.Params.Expired,
+	})
+
+	protocol.SendSuccessMsg(requestedTime, result)
+}
+
+func (h *DeribitHandler) getOrderBook(r *gin.Context) {
+	requestedTime := uint64(time.Now().UnixMicro())
+
+	if ok := protocol.RegisterProtocolRequest(requestedTime, protocol.HTTP, nil, r); !ok {
+		protocol.SendValidationMsg(requestedTime, validation_reason.DUPLICATED_REQUEST_ID, nil)
+		return
+	}
+
+	msg := &deribitModel.RequestDto[deribitModel.GetOrderBookParams]{}
+	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
+		protocol.SendValidationMsg(requestedTime, validation_reason.PARSE_ERROR, err)
+		return
+	}
+
+	result := h.svc.GetOrderBook(context.TODO(), deribitModel.DeribitGetOrderBookRequest{
+		InstrumentName: msg.Params.InstrumentName,
+		Depth:          msg.Params.Depth,
+	})
+
+	protocol.SendSuccessMsg(requestedTime, result)
 }
