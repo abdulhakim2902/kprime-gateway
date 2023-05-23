@@ -528,7 +528,7 @@ func (svc wsHandler) SubscribeHandlerPrivate(input interface{}, c *ws.Client) {
 		}
 	}
 
-	protocol.SendSuccessMsg(requestedTime, msg.Params.Channels)
+	protocol.SendSuccessMsg(ID, msg.Params.Channels)
 }
 
 func (svc wsHandler) UnsubscribeHandlerPrivate(input interface{}, c *ws.Client) {
