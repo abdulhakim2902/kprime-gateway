@@ -6,17 +6,20 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	_deribitModel "gateway/internal/deribit/model"
 	_engineTypes "gateway/internal/engine/types"
 	_orderbookTypes "gateway/internal/orderbook/types"
+	_tradeType "gateway/internal/repositories/types"
 
 	"gateway/internal/repositories"
 	"gateway/pkg/redis"
 	"gateway/pkg/ws"
 
 	"git.devucc.name/dependencies/utilities/types"
+	"github.com/Shopify/sarama"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
@@ -36,6 +39,10 @@ func NewWSOrderbookService(redis *redis.RedisConnectionPool,
 ) IwsOrderbookService {
 	return &wsOrderbookService{redis, orderRepository, tradeRepository, rawPriceRepository, settlementPriceRepository}
 }
+
+var userChangesMutex sync.RWMutex
+var userChanges = make(map[string][]interface{})
+var userChangesTrades = make(map[string][]interface{})
 
 func (svc wsOrderbookService) Subscribe(c *ws.Client, instrument string) {
 	socket := ws.GetOrderBookSocket()
@@ -412,6 +419,183 @@ func (svc wsOrderbookService) Unsubscribe(c *ws.Client) {
 func (svc wsOrderbookService) UnsubscribeQuote(c *ws.Client) {
 	socket := ws.GetQuoteSocket()
 	socket.Unsubscribe(c)
+}
+
+func (svc wsOrderbookService) SubscribeUserChange(c *ws.Client, channel string, userId string) {
+	socket := ws.GetOrderBookSocket()
+	key := strings.Split(channel, ".")
+
+	// Subscribe
+
+	var id string
+	if key[3] == "100ms" {
+		id = fmt.Sprintf("%s.%s.%s-%s-100ms", key[0], key[1], key[2], userId)
+	} else {
+		id = fmt.Sprintf("%s.%s.%s-%s", key[0], key[1], key[2], userId)
+	}
+	err := socket.Subscribe(id, c)
+	if err != nil {
+		msg := map[string]string{"Message": err.Error()}
+		socket.SendErrorMessage(c, msg)
+		return
+	}
+
+	// Prepare when user is doing unsubscribe
+	ws.RegisterConnectionUnsubscribeHandler(c, socket.UnsubscribeHandler(id))
+	return
+}
+
+func (svc wsOrderbookService) HandleConsumeUserChange(msg *sarama.ConsumerMessage) {
+	var data _engineTypes.EngineResponse
+	err := json.Unmarshal(msg.Value, &data)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	_instrument := data.Matches.TakerOrder.Underlying + "-" + data.Matches.TakerOrder.ExpiryDate + "-" + fmt.Sprintf("%.0f", data.Matches.TakerOrder.StrikePrice) + "-" + string(data.Matches.TakerOrder.Contracts[0])
+
+	var orderId []interface{}
+	var userId []interface{}
+	keys := make(map[interface{}]bool)
+	if len(data.Matches.MakerOrders) > 0 {
+		for _, order := range data.Matches.MakerOrders {
+			if _, ok := keys[order.ID]; !ok {
+				keys[order.ID] = true
+				orderId = append(orderId, order.ID)
+				userId = append(userId, order.UserID)
+			}
+		}
+	}
+	if data.Matches.TakerOrder != nil {
+		order := data.Matches.TakerOrder
+		if _, ok := keys[order.ID]; !ok {
+			keys[order.ID] = true
+			orderId = append(orderId, order.ID)
+			userId = append(userId, order.UserID)
+		}
+	}
+
+	var trades _tradeType.UserTradesByInstrumentResult
+	if len(data.Matches.Trades) > 0 {
+		var tradeId []interface{}
+		var userId []interface{}
+		keys := make(map[interface{}]bool)
+		keysUser := make(map[interface{}]bool)
+		for _, trade := range data.Matches.Trades {
+			if _, ok := keys[trade.ID]; !ok {
+				keys[trade.ID] = true
+				tradeId = append(tradeId, trade.ID)
+				if _, ok := keysUser[trade.Taker.UserID]; !ok {
+					keysUser[trade.Taker.UserID] = true
+					userId = append(userId, trade.Taker.UserID)
+				}
+				if _, ok := keysUser[trade.Maker.UserID]; !ok {
+					keysUser[trade.Maker.UserID] = true
+					userId = append(userId, trade.Maker.UserID)
+				}
+			}
+		}
+		trades, err = svc.tradeRepository.FindUserTradesById(
+			_instrument,
+			userId,
+			tradeId,
+		)
+		if err != nil {
+			return
+		}
+	}
+
+	orders, err := svc.orderRepository.GetChangeOrdersByInstrument(
+		_instrument,
+		userId,
+		orderId,
+	)
+	if err != nil {
+		return
+	}
+	tradesInterface := make([]interface{}, 0)
+	for _, trade := range trades.Trades {
+		tradesInterface = append(tradesInterface, trade)
+	}
+	ordersInterface := make([]interface{}, 0)
+	for _, order := range orders {
+		ordersInterface = append(ordersInterface, order)
+	}
+	response := _orderbookTypes.ChangeResponse{
+		InstrumentName: _instrument,
+		Trades:         tradesInterface,
+		Orders:         ordersInterface,
+	}
+
+	keys = make(map[interface{}]bool)
+	for _, id := range userId {
+		if _, ok := keys[id]; !ok {
+			keys[id] = true
+			mapIndex := fmt.Sprintf("%s-%s", _instrument, id)
+			if _, ok := userChanges[mapIndex]; !ok {
+				userChangesMutex.Lock()
+				userChanges[mapIndex] = ordersInterface
+				userChangesTrades[mapIndex] = tradesInterface
+				userChangesMutex.Unlock()
+				go svc.HandleConsumeUserChange100ms(_instrument, id.(string))
+			} else {
+				userChangesMutex.Lock()
+				userChanges[mapIndex] = append(userChanges[mapIndex], ordersInterface...)
+				userChangesTrades[mapIndex] = append(userChangesTrades[mapIndex], tradesInterface...)
+				userChangesMutex.Unlock()
+			}
+			// broadcast to user id
+			broadcastId := fmt.Sprintf("%s.%s.%s-%s", "user", "changes", _instrument, id)
+
+			params := _orderbookTypes.QuoteResponse{
+				Channel: fmt.Sprintf("user.changes.%s.raw", _instrument),
+				Data:    response,
+			}
+			method := "subscription"
+			ws.GetOrderBookSocket().BroadcastMessageSubcription(broadcastId, method, params)
+		}
+	}
+	return
+}
+
+func (svc wsOrderbookService) HandleConsumeUserChange100ms(instrument string, userId string) {
+	mapIndex := fmt.Sprintf("%s-%s", instrument, userId)
+	ticker := time.NewTicker(100 * time.Millisecond)
+
+	// Creating channel
+	tickerChan := make(chan bool)
+	go func() {
+		for {
+			select {
+			case <-tickerChan:
+				return
+			case <-ticker.C:
+				// if there is no change no need to broadcast
+				userChangesMutex.RLock()
+				changes := userChanges[mapIndex]
+				userChangesMutex.RUnlock()
+				if len(changes) > 0 {
+					trades := userChangesTrades[mapIndex]
+					response := _orderbookTypes.ChangeResponse{
+						InstrumentName: instrument,
+						Trades:         trades,
+						Orders:         changes,
+					}
+					broadcastId := fmt.Sprintf("%s.%s.%s-%s-100ms", "user", "changes", instrument, userId)
+					params := _orderbookTypes.QuoteResponse{
+						Channel: fmt.Sprintf("user.changes.%s.100ms", instrument),
+						Data:    response,
+					}
+					method := "subscription"
+					ws.GetOrderBookSocket().BroadcastMessageSubcription(broadcastId, method, params)
+					userChangesMutex.Lock()
+					userChanges[mapIndex] = make([]interface{}, 0)
+					userChangesTrades[mapIndex] = make([]interface{}, 0)
+					userChangesMutex.Unlock()
+				}
+			}
+		}
+	}()
 }
 
 func (svc wsOrderbookService) GetOrderBook(ctx context.Context, data _deribitModel.DeribitGetOrderBookRequest) _deribitModel.DeribitGetOrderBookResponse {

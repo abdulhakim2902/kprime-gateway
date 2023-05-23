@@ -105,3 +105,9 @@ type ChangeStruct struct {
 	Amount     float64           `json:"amount"`
 	Amendments []order.Amendment `json:"amendments"`
 }
+
+type ChangeResponse struct {
+	InstrumentName string        `json:"instrument_name"`
+	Trades         []interface{} `json:"trades"`
+	Orders         []interface{} `json:"orders"`
+}
