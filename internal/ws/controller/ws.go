@@ -93,7 +93,7 @@ func (svc wsHandler) PublicAuth(input interface{}, c *ws.Client) {
 	}
 
 	type Params struct {
-		GrantType    string `json:"grant_type"`
+		GrantType    string `json:"grant_type" validate:"required"`
 		ClientID     string `json:"client_id"`
 		ClientSecret string `json:"client_secret"`
 		RefreshToken string `json:"refresh_token"`

@@ -50,7 +50,7 @@ func NewDeribitHandler(
 	private.GET(":method", handler.PrivateGetHandler)
 
 	// Public
-	public := r.Group("/api/v2")
+	public := r.Group("/api/v2/public")
 
 	public.POST("auth", handler.Auth)
 	public.GET(":method", handler.PublicGetHandler)
@@ -71,12 +71,7 @@ func (h DeribitHandler) Auth(r *gin.Context) {
 		RefreshToken string `json:"refresh_token"`
 	}
 
-	type WebsocketAuth struct {
-		Params Params `json:"params"`
-		Id     uint64 `json:"id"`
-	}
-
-	var msg WebsocketAuth
+	var msg deribitModel.RequestDto[Params]
 	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
 		protocol.SendValidationMsg(requestedTime, validation_reason.PARSE_ERROR, err)
 		return
@@ -490,15 +485,8 @@ func (h DeribitHandler) PublicGetHandler(r *gin.Context) {
 		protocol.SendSuccessMsg(requestedTime, result)
 		break
 	case "test":
-		protocol.SendSuccessMsg(requestedTime, map[string]any{
-			"jsonrpc": "2.0",
-			"result": gin.H{
-				"version": "1.2.26",
-			},
-			"testnet": true,
-			"usIn":    0,
-			"usOut":   0,
-			"usDiff":  0,
+		protocol.SendSuccessMsg(requestedTime, gin.H{
+			"version": "1.2.26",
 		})
 		break
 	default:
