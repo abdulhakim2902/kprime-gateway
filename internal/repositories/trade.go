@@ -12,6 +12,8 @@ import (
 	_orderbookType "gateway/internal/orderbook/types"
 	_tradeType "gateway/internal/repositories/types"
 
+	IV "git.devucc.name/dependencies/utilities/helper/implied_volatility"
+
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -20,6 +22,11 @@ import (
 
 type TradeRepository struct {
 	collection *mongo.Collection
+}
+
+type ImpliedData struct {
+	Bid float64
+	Ask float64
 }
 
 func NewTradeRepository(db Database) *TradeRepository {
@@ -794,4 +801,24 @@ func (r TradeRepository) Get24HoursTrades(o _orderbookType.GetOrderBook) []*_eng
 	}
 
 	return trades
+}
+
+func (r TradeRepository) GetImpliedVolatility() ImpliedData {
+	expectedCost := 10.0 // The market price of the option
+	s := 100.0           // Current price of the underlying
+	k := 105.0           // Strike price
+	t := 0.5             // Time to expiration in years
+	ar := 0.05           // Annual risk-free interest rate as a decimal
+	callPut := "call"    // Type of option priced - "call" or "put"
+	estimate := 0.1      // An initial estimate of implied volatility
+
+	bestAskVolatility := IV.ImpliedVolatility(expectedCost, s, k, t, ar, callPut, estimate)
+	bestBidVolatility := IV.ImpliedVolatility(expectedCost, s, k, t, ar, callPut, estimate)
+
+	impliedData := ImpliedData{
+		Bid: bestBidVolatility,
+		Ask: bestAskVolatility,
+	}
+
+	return impliedData
 }

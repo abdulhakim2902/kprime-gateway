@@ -658,6 +658,8 @@ func (svc wsOrderbookService) GetOrderBook(ctx context.Context, data _deribitMod
 		_priceChange = (_lastTrade - _firstTrade) / _firstTrade * 100
 	}
 
+	_getImplieds := svc.tradeRepository.GetImpliedVolatility()
+
 	results := _deribitModel.DeribitGetOrderBookResponse{
 		InstrumentName: orderBook.InstrumentName,
 		Bids:           orderBook.Bids,
@@ -669,6 +671,8 @@ func (svc wsOrderbookService) GetOrderBook(ctx context.Context, data _deribitMod
 		Timestamp:      time.Now().UnixNano() / int64(time.Millisecond),
 		State:          _state,
 		LastPrice:      _lastPrice,
+		Bids_iv:        _getImplieds.Bid,
+		Asks_iv:        _getImplieds.Ask,
 		Stats: _deribitModel.OrderBookStats{
 			High:        _hightPrice,
 			Low:         _lowestPrice,
