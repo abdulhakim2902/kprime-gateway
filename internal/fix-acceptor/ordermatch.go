@@ -56,7 +56,6 @@ import (
 	"github.com/quickfixgo/fix44/securitylistrequest"
 	"github.com/quickfixgo/tag"
 	"github.com/shopspring/decimal"
-	"github.com/spf13/cobra"
 	"go.mongodb.org/mongo-driver/bson"
 
 	"github.com/quickfixgo/quickfix"
@@ -997,19 +996,7 @@ const (
 	long  = "Start an order matching (FIX acceptor) service."
 )
 
-var (
-	// Cmd is the quote command.
-	Cmd = &cobra.Command{
-		Use:     usage,
-		Short:   short,
-		Long:    long,
-		Aliases: []string{"oms"},
-		Example: "qf ordermatch [YOUR_FIX_CONFIG_FILE_HERE.cfg] (default is ./config/cfg)",
-		RunE:    execute,
-	}
-)
-
-func execute(cmd *cobra.Command, args []string) error {
+func Execute() error {
 	cfgFileName := "ordermatch.cfg"
 	templateCfg := "ordermatch_template.cfg"
 	_, b, _, _ := runtime.Caller(0)
