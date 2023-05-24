@@ -28,6 +28,8 @@ func GetOrderConnections(a string) OrderConnection {
 }
 
 func OrderSocketUnsubscribeHandler(a string) func(client *Client) {
+	registerOrderConnMutex.Lock()
+	defer registerOrderConnMutex.Unlock()
 	return func(client *Client) {
 		// logger.Info("In unsubscription handler")
 		orderConnection := orderConnections[a]
