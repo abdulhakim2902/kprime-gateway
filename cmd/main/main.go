@@ -15,22 +15,24 @@ import (
 	ordermatch "gateway/internal/fix-acceptor"
 	"gateway/internal/repositories"
 	"gateway/pkg/kafka/consumer"
+	"gateway/pkg/memdb"
 	"gateway/pkg/mongo"
 	"gateway/pkg/redis"
 	"gateway/pkg/utils"
 
 	_deribitCtrl "gateway/internal/deribit/controller"
 	_deribitSvc "gateway/internal/deribit/service"
+	_userSvc "gateway/internal/user/service"
 	_wsEngineSvc "gateway/internal/ws/engine/service"
 	_wsOrderbookSvc "gateway/internal/ws/service"
 	_wsSvc "gateway/internal/ws/service"
 
 	_engSvc "gateway/internal/engine/service"
 	_obSvc "gateway/internal/orderbook/service"
-	_authSvc "gateway/internal/user/service"
 
 	_wsCtrl "gateway/internal/ws/controller"
 
+	"git.devucc.name/dependencies/utilities/commons/logs"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 )
@@ -39,6 +41,7 @@ var (
 	engine    *gin.Engine
 	mongoConn *mongo.Database
 	redisConn *redis.RedisConnectionPool
+	memDb     *memdb.Schemas
 
 	err     error
 	rootDir string
@@ -70,11 +73,17 @@ func init() {
 	// Init Mongo Connection
 	mongoConn, err = mongo.InitConnection(os.Getenv("MONGO_URL"))
 	if err != nil {
-		panic(err)
+		logs.Log.Fatal().Err(err).Msg("failed to connect with mongo")
 	}
 
 	// Initiate Redis Connection
 	redisConn = redis.NewRedisConnectionPool(os.Getenv("REDIS_URL"))
+
+	// Initialize MemoryDB schemas
+	memDb, err = memdb.InitSchemas()
+	if err != nil {
+		logs.Log.Fatal().Err(err).Msg("failed to init memdb")
+	}
 }
 
 func main() {
@@ -90,7 +99,7 @@ func main() {
 	rawPriceRepo := repositories.NewRawPriceRepository(mongoConn)
 	settlementPriceRepo := repositories.NewSettlementPriceRepository(mongoConn)
 
-	_authSvc := _authSvc.NewAuthService(userRepo)
+	_authSvc := _userSvc.NewAuthService(userRepo)
 	_wsOrderbookSvc := _wsOrderbookSvc.NewWSOrderbookService(
 		redisConn,
 		orderRepo,
@@ -102,14 +111,17 @@ func main() {
 	_wsTradeSvc := _wsSvc.NewWSTradeService(redisConn, tradeRepo)
 	_deribitSvc := _deribitSvc.NewDeribitService(
 		redisConn,
-		userRepo,
+		memDb,
 		tradeRepo,
 		orderRepo,
 		rawPriceRepo,
 		settlementPriceRepo,
 	)
-	_deribitCtrl.NewDeribitHandler(engine, _deribitSvc, _authSvc)
 
+	_userSvc := _userSvc.NewUserService(engine, userRepo, memDb)
+	go _userSvc.SyncMemDB(context.TODO(), nil)
+
+	_deribitCtrl.NewDeribitHandler(engine, _deribitSvc, _authSvc)
 	_wsCtrl.NewWebsocketHandler(
 		engine,
 		_authSvc,
