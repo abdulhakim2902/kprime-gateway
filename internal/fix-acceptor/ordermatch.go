@@ -185,15 +185,18 @@ func (a Application) FromAdmin(msg *quickfix.Message, sessionID quickfix.Session
 		var uname field.UsernameField
 		var pwd field.PasswordField
 		if err := msg.Body.Get(&pwd); err != nil {
+			logs.Log.Err(err).Msg("Error getting password")
 			return err
 		}
 
 		if err := msg.Body.Get(&uname); err != nil {
+			logs.Log.Err(err).Msg("Error getting username")
 			return err
 		}
 
 		user, err := a.UserRepository.FindByAPIKeyAndSecret(context.TODO(), uname.String(), pwd.String())
 		if err != nil {
+			logs.Log.Err(err).Msg("Error getting user")
 			return quickfix.NewMessageRejectError("Failed getting user", 1, nil)
 		}
 
@@ -213,6 +216,7 @@ func (a *Application) FromApp(msg *quickfix.Message, sessionID quickfix.SessionI
 func (a *Application) onNewOrderSingle(msg newordersingle.NewOrderSingle, sessionID quickfix.SessionID) quickfix.MessageRejectError {
 	logs.Log.Info().Str("ordermatch", "onNewOrderSingle").Msg("")
 	if userSession == nil {
+		logs.Log.Err(fmt.Errorf("User not logged in")).Msg("User not logged in")
 		return quickfix.NewMessageRejectError("User not logged in", 1, nil)
 	}
 
@@ -225,42 +229,50 @@ func (a *Application) onNewOrderSingle(msg newordersingle.NewOrderSingle, sessio
 
 	user, e := a.UserRepository.FindById(context.TODO(), userId)
 	if e != nil {
+		logs.Log.Err(e).Msg("Failed getting user")
 		return quickfix.NewMessageRejectError("Failed getting user", 1, nil)
 	}
 
 	clOrId, err := msg.GetClOrdID()
 	if err != nil {
+		logs.Log.Err(err).Msg("Error getting clOrdId")
 		return err
 	}
 
 	symbol, err := msg.GetSymbol()
 	if err != nil {
+		logs.Log.Err(err).Msg("Error getting symbol")
 		return err
 	}
 
 	side, err := msg.GetSide()
 	if err != nil {
+		logs.Log.Err(err).Msg("Error getting side")
 		return err
 	}
 
 	ordType, err := msg.GetOrdType()
 	if err != nil {
+		logs.Log.Err(err).Msg("Error getting ordType")
 		return err
 	}
 
 	price, err := msg.GetPrice()
 	if err != nil {
+		logs.Log.Err(err).Msg("Error getting price")
 		return err
 	}
 
 	orderQty, err := msg.GetOrderQty()
 	if err != nil {
+		logs.Log.Err(err).Msg("Error getting orderQty")
 		return err
 	}
 
 	var partyId quickfix.FIXString
 	err = msg.GetField(tag.PartyID, &partyId)
 	if err != nil {
+		logs.Log.Err(err).Msg("Error getting partyId")
 		return err
 	}
 
