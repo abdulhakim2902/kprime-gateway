@@ -260,7 +260,7 @@ func (svc engineHandler) PublishOrder(data _engineType.EngineResponse) {
 			Order:  order,
 			Trades: trades,
 		})
-
+		break
 	}
 
 }

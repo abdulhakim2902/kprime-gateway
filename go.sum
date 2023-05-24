@@ -1,15 +1,3 @@
-git.devucc.name/dependencies/utilities v1.0.14 h1:Mvge92xJMr056mHJqG7mh2eGe7uM1eoTIKANxiFkrbc=
-git.devucc.name/dependencies/utilities v1.0.14/go.mod h1:7Tizv1p4HNFoX9tHkkH2ImnnTeE/weQlSqfEKzd6B5w=
-git.devucc.name/dependencies/utilities v1.0.15 h1:20LPyFNCDcZ3hX3DcmsiyA7pD9pJ4l5JQGM7xtpzdk8=
-git.devucc.name/dependencies/utilities v1.0.15/go.mod h1:clizU+i3nrWgDcNhXqBdpYErpim6pCbwn1Rmpt6N5AI=
-git.devucc.name/dependencies/utilities v1.0.16 h1:KNK7Pv+lO4VwUFdS5z0BFTo4i4rsneFyVgLy1r7Opfo=
-git.devucc.name/dependencies/utilities v1.0.16/go.mod h1:clizU+i3nrWgDcNhXqBdpYErpim6pCbwn1Rmpt6N5AI=
-git.devucc.name/dependencies/utilities v1.0.17 h1:aOisW1mzZrLRW/z58BBI7IcoUx9R0ZSXlqMvYD5iq5Q=
-git.devucc.name/dependencies/utilities v1.0.17/go.mod h1:clizU+i3nrWgDcNhXqBdpYErpim6pCbwn1Rmpt6N5AI=
-git.devucc.name/dependencies/utilities v1.0.18 h1:nDatTeQJ3EiNpQpnrhDtE3DMJ5m/HWyOHR5FdZ2wd74=
-git.devucc.name/dependencies/utilities v1.0.18/go.mod h1:clizU+i3nrWgDcNhXqBdpYErpim6pCbwn1Rmpt6N5AI=
-git.devucc.name/dependencies/utilities v1.0.19 h1:chDoFECwoC1J1qD0cY3OeqsCmK10rnVemNw0PDajTos=
-git.devucc.name/dependencies/utilities v1.0.19/go.mod h1:clizU+i3nrWgDcNhXqBdpYErpim6pCbwn1Rmpt6N5AI=
 git.devucc.name/dependencies/utilities v1.0.20 h1:0eXb9MxvpiAKGZTfBN71DK5z+1X7C4U+ypQzju75LBw=
 git.devucc.name/dependencies/utilities v1.0.20/go.mod h1:clizU+i3nrWgDcNhXqBdpYErpim6pCbwn1Rmpt6N5AI=
 github.com/Shopify/sarama v1.38.1 h1:lqqPUPQZ7zPqYlWpTh+LQ9bhYNu2xJL6k1SJN4WVe2A=
@@ -24,7 +12,6 @@ github.com/chenzhuoyu/base64x v0.0.0-20211019084208-fb5309c8db06/go.mod h1:DH46F
 github.com/chenzhuoyu/base64x v0.0.0-20221115062448-fe3a3abad311 h1:qSGYFH7+jGhDF8vLC+iwCD4WpbV1EBDSzWkJODFLams=
 github.com/chenzhuoyu/base64x v0.0.0-20221115062448-fe3a3abad311/go.mod h1:b583jCggY9gE99b6G5LEC39OIiVsWj+R97kbl5odCEk=
 github.com/coreos/go-systemd/v22 v22.5.0/go.mod h1:Y58oyj3AT4RCenI/lSvhwexgC+NSVTIJ3seZv2GcEnc=
-github.com/cpuguy83/go-md2man/v2 v2.0.2/go.mod h1:tgQtvFlXSQOSOSIRvRPT7W67SCa46tRHOmNcaadrF8o=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
@@ -84,8 +71,6 @@ github.com/hashicorp/go-uuid v1.0.3/go.mod h1:6SBZvOh/SIDV7/2o3Jml5SYk/TvGqwFJ/b
 github.com/hashicorp/golang-lru v0.5.0/go.mod h1:/m3WP610KZHVQ1SGc6re/UDhFvYD7pJ4Ao+sR/qLZy8=
 github.com/hashicorp/golang-lru v0.5.4 h1:YDjusn29QI/Das2iO9M0BHnIbxPeyuCHsjMW+lJfyTc=
 github.com/hashicorp/golang-lru v0.5.4/go.mod h1:iADmTwqILo4mZ8BN3D2Q6+9jd8WM5uGBxy+E8yxSoD4=
-github.com/inconshreveable/mousetrap v1.0.1 h1:U3uMjPSQEBMNp1lFxmllqCPM6P5u/Xq7Pgzkat/bFNc=
-github.com/inconshreveable/mousetrap v1.0.1/go.mod h1:vpF70FUmC8bwa3OWnCshd2FqLfsEA9PFc4w1p2J65bw=
 github.com/jcmturner/aescts/v2 v2.0.0 h1:9YKLH6ey7H4eDBXW8khjYslgyqG2xZikXP0EQFKrle8=
 github.com/jcmturner/aescts/v2 v2.0.0/go.mod h1:AiaICIRyfYg35RUkr8yESTqvSy7csK90qZ5xfvvsoNs=
 github.com/jcmturner/dnsutils/v2 v2.0.0 h1:lltnkeZGL0wILNvrNiVCR6Ro5PGU/SeBvVO/8c/iPbo=
@@ -166,14 +151,9 @@ github.com/rs/cors/wrapper/gin v0.0.0-20230301160956-5c2b877d2a03/go.mod h1:gmu4
 github.com/rs/xid v1.4.0/go.mod h1:trrq9SKmegXys3aeAKXMUTdJsYXVwGY3RLcfgqegfbg=
 github.com/rs/zerolog v1.29.1 h1:cO+d60CHkknCbvzEWxP0S9K6KqyTjrCNUy1LdQLCGPc=
 github.com/rs/zerolog v1.29.1/go.mod h1:Le6ESbR7hc+DP6Lt1THiV8CQSdkkNrd3R0XbEgp3ZBU=
-github.com/russross/blackfriday/v2 v2.1.0/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
 github.com/rwtodd/Go.Sed v0.0.0-20210816025313-55464686f9ef/go.mod h1:8AEUvGVi2uQ5b24BIhcr0GCcpd/RNAFWaN2CJFrWIIQ=
 github.com/shopspring/decimal v1.3.1 h1:2Usl1nmF/WZucqkFZhnfFYxxxu8LG21F6nPQBE5gKV8=
 github.com/shopspring/decimal v1.3.1/go.mod h1:DKyhrW/HYNuLGql+MJL6WCR6knT2jwCFRcu2hWCYk4o=
-github.com/spf13/cobra v1.6.1 h1:o94oiPyS4KD1mPy2fmcYYHHfCxLqYjJOhGsCHFZtEzA=
-github.com/spf13/cobra v1.6.1/go.mod h1:IOw/AERYS7UzyrGinqmz6HLUo219MORXGxhbaJUqzrY=
-github.com/spf13/pflag v1.0.5 h1:iy+VFUOCP1a+8yFto/drg2CJ5u0yRoB7fZw3DKv/JXA=
-github.com/spf13/pflag v1.0.5/go.mod h1:McXfInJRrz4CZXVZOBLb0bTZqETkiAhM9Iw0y3An2Bg=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/objx v0.4.0/go.mod h1:YvHI0jy2hoMjB+UWwv71VJQ9isScKT/TqJzVSSt89Yw=
 github.com/stretchr/objx v0.5.0 h1:1zr/of2m5FGMsad5YfcqgdqdWrIhu+EBEJRhR1U7z/c=

@@ -201,9 +201,6 @@ func (svc wsHandler) PrivateBuy(input interface{}, c *ws.Client) {
 		return
 	}
 
-	// unregister protocol
-	protocol.UnregisterProtocol(ID)
-
 	// register order connection
 	ws.RegisterOrderConnection(ID, c)
 }
@@ -253,9 +250,6 @@ func (svc wsHandler) PrivateSell(input interface{}, c *ws.Client) {
 		return
 	}
 
-	// unregister protocol
-	protocol.UnregisterProtocol(ID)
-
 	// register order connection
 	ws.RegisterOrderConnection(ID, c)
 }
@@ -298,9 +292,6 @@ func (svc wsHandler) PrivateEdit(input interface{}, c *ws.Client) {
 		return
 	}
 
-	// unregister protocol
-	protocol.UnregisterProtocol(ID)
-
 	// register order connection
 	ws.RegisterOrderConnection(ID, c)
 }
@@ -340,9 +331,6 @@ func (svc wsHandler) PrivateCancel(input interface{}, c *ws.Client) {
 		protocol.SendErrMsg(ID, err)
 		return
 	}
-
-	// unregister protocol
-	protocol.UnregisterProtocol(ID)
 
 	// register order connection
 	ws.RegisterOrderConnection(ID, c)
@@ -384,9 +372,6 @@ func (svc wsHandler) PrivateCancelByInstrument(input interface{}, c *ws.Client) 
 		return
 	}
 
-	// unregister protocol
-	protocol.UnregisterProtocol(ID)
-
 	//register order connection
 	ws.RegisterOrderConnection(ID, c)
 }
@@ -425,9 +410,6 @@ func (svc wsHandler) PrivateCancelAll(input interface{}, c *ws.Client) {
 		protocol.SendErrMsg(ID, err)
 		return
 	}
-
-	// unregister protocol
-	protocol.UnregisterProtocol(ID)
 
 	// register order connection
 	ws.RegisterOrderConnection(ID, c)

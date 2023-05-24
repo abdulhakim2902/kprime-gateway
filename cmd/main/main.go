@@ -88,7 +88,7 @@ func init() {
 
 func main() {
 	// qf
-	go ordermatch.Cmd.Execute()
+	go ordermatch.Execute()
 
 	// Websocket handlers
 	_wsEngineSvc := _wsEngineSvc.NewwsEngineService(redisConn)

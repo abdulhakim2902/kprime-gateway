@@ -20,31 +20,31 @@ import (
 )
 
 type deribitService struct {
-	memDb               *memdb.Schemas
 	tradeRepo           *repositories.TradeRepository
 	orderRepo           *repositories.OrderRepository
 	rawPriceRepo        *repositories.RawPriceRepository
 	settlementPriceRepo *repositories.SettlementPriceRepository
 
 	redis *redis.RedisConnectionPool
+	memDb *memdb.Schemas
 }
 
 func NewDeribitService(
 	redis *redis.RedisConnectionPool,
-
 	memDb *memdb.Schemas,
+
 	tradeRepo *repositories.TradeRepository,
 	orderRepo *repositories.OrderRepository,
 	rawPriceRepo *repositories.RawPriceRepository,
 	settlementPriceRepo *repositories.SettlementPriceRepository,
 ) IDeribitService {
 	return &deribitService{
-		memDb,
 		tradeRepo,
 		orderRepo,
 		rawPriceRepo,
 		settlementPriceRepo,
 		redis,
+		memDb,
 	}
 }
 
