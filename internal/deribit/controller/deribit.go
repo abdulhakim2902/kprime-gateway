@@ -14,6 +14,7 @@ import (
 	authService "gateway/internal/user/service"
 	userType "gateway/internal/user/types"
 
+	"gateway/pkg/middleware"
 	"gateway/pkg/protocol"
 	"gateway/pkg/utils"
 	"strconv"
@@ -58,8 +59,9 @@ func NewDeribitHandler(
 	handler.RegisterHandler("private/get_order_history_by_instrument", handler.getOrderHistoryByInstrument)
 
 	r.Use(cors.AllowAll())
-	api := r.Group("/api/v2")
+	r.Use(middleware.Authenticate())
 
+	api := r.Group("/api/v2")
 	api.POST("", handler.ApiPostHandler)
 	api.GET(":type/*action", handler.ApiGetHandler)
 }

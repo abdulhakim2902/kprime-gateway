@@ -10,6 +10,8 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
+type EmptyParams struct{}
+
 type RequestDto[T any] struct {
 	Method  string `json:"method" form:"method"`
 	Jsonrpc string `json:"jsonrpc" form:"jsonrpc"`
