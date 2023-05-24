@@ -5,8 +5,9 @@ go 1.20
 require (
 	git.devucc.name/dependencies/utilities v1.0.20
 	github.com/Shopify/sarama v1.38.1
-	github.com/fatih/color v1.15.0
 	github.com/gin-gonic/gin v1.9.0
+	github.com/go-playground/locales v0.14.1
+	github.com/go-playground/universal-translator v0.18.1
 	github.com/go-playground/validator/v10 v10.12.0
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/gomodule/redigo v1.8.9
@@ -19,7 +20,6 @@ require (
 	github.com/quickfixgo/tag v0.1.0
 	github.com/rs/cors/wrapper/gin v0.0.0-20230301160956-5c2b877d2a03
 	github.com/shopspring/decimal v1.3.1
-	github.com/spf13/cobra v1.6.1
 	go.mongodb.org/mongo-driver v1.11.6
 )
 
@@ -31,9 +31,8 @@ require (
 	github.com/eapache/go-resiliency v1.3.0 // indirect
 	github.com/eapache/go-xerial-snappy v0.0.0-20230111030713-bf00bc1b83b6 // indirect
 	github.com/eapache/queue v1.1.0 // indirect
+	github.com/fatih/color v1.15.0 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
-	github.com/go-playground/locales v0.14.1 // indirect
-	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/goccy/go-json v0.10.2 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/gosuri/uitable v0.0.4 // indirect
@@ -68,7 +67,6 @@ require (
 	github.com/rogpeppe/go-internal v1.10.0 // indirect
 	github.com/rs/cors v1.8.3 // indirect
 	github.com/rs/zerolog v1.29.1 // indirect
-	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.2.11 // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect

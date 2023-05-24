@@ -12,6 +12,7 @@ import (
 	"strings"
 	"text/template"
 
+	"git.devucc.name/dependencies/utilities/commons/logs"
 	"github.com/gorilla/mux"
 	"github.com/quickfixgo/enum"
 	"github.com/quickfixgo/field"
@@ -56,7 +57,7 @@ func newTradeClient(factory fixFactory, idGen oms.ClOrdIDGenerator, app fixApp) 
 }
 
 func (c tradeClient) SessionsAsJSON() (string, error) {
-	fmt.Println("sessionsasjson")
+	logs.Log.Info().Str("tradeui.go", "SessionsAsJSON").Msg("")
 	sessionIDs := make([]string, 0, len(c.SessionIDs))
 
 	for s := range c.SessionIDs {
@@ -84,7 +85,7 @@ func (c tradeClient) ExecutionsAsJSON() (string, error) {
 }
 
 func (c tradeClient) SecurityListAsJSON() (string, error) {
-	fmt.Println("seclist as json")
+	logs.Log.Info().Str("tradeui.go", "SecurityListAsJSON").Msg("")
 
 	c.RLock()
 	defer c.RUnlock()
@@ -94,7 +95,7 @@ func (c tradeClient) SecurityListAsJSON() (string, error) {
 }
 
 func (c tradeClient) MarketDataAsJSON() (string, error) {
-	fmt.Println("marketdata as json")
+	logs.Log.Info().Str("tradeui.go", "MarketDataAsJSON").Msg("")
 
 	c.RLock()
 	defer c.RUnlock()
@@ -189,7 +190,6 @@ func (c tradeClient) getInstruments(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Println(string(b))
 	if string(b) == "null" {
 		b = []byte("[no instruments]")
 	}
@@ -198,7 +198,7 @@ func (c tradeClient) getInstruments(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c tradeClient) getMarketData(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("get market data")
+	logs.Log.Info().Str("tradeui.go", "getMarketData").Msg("")
 	c.RLock()
 	defer c.RUnlock()
 
@@ -208,7 +208,6 @@ func (c tradeClient) getMarketData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Println(string(b))
 	if string(b) == "null" {
 		b = []byte("[no market data]")
 	}
@@ -234,7 +233,6 @@ func (c tradeClient) updateOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Println("updateOrder", order.OrderID)
 	qty, _ := strconv.ParseInt(order.Quantity, 10, 16)
 	msg.ToMessage().Body.SetField(quickfix.Tag(44), quickfix.FIXDecimal{order.PriceDecimal, 2})
 	msg.ToMessage().Body.SetInt(quickfix.Tag(38), int(qty))
@@ -259,7 +257,6 @@ func (c tradeClient) deleteOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Println("deletingggg", order.OrderID)
 	clOrdID := c.AssignNextClOrdID(order)
 	msg, err := c.OrderCancelRequest(*order, clOrdID)
 	if err != nil {
@@ -313,7 +310,7 @@ func (c tradeClient) newSecurityDefintionRequest(w http.ResponseWriter, r *http.
 		return
 	}
 
-	log.Printf("secDefRequest = %+v\n", secDefRequest)
+	logs.Log.Info().Str("tradeui.go", "newSecurityDefintionRequest").Msgf("secDefRequest = %+v\n", secDefRequest)
 
 	if sessionID, ok := c.SessionIDs[secDefRequest.Session]; ok {
 		secDefRequest.SessionID = sessionID
@@ -365,7 +362,6 @@ func (c tradeClient) newOrder(w http.ResponseWriter, r *http.Request) {
 	_ = c.OrderManager.Save(&order)
 	c.Unlock()
 
-	fmt.Println(order.Session)
 	msg, err := c.NewOrderSingle(order)
 	if err != nil {
 		log.Printf("[ERROR] %v\n", err)
@@ -393,7 +389,7 @@ func (c tradeClient) onSecurityListRequest(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	log.Printf("secDefRequest = %+v\n", secDefRequest)
+	logs.Log.Info().Str("tradeui.go", "onSecurityListRequest").Msgf("secDefRequest = %+v\n", secDefRequest)
 
 	if sessionID, ok := c.SessionIDs[secDefRequest.Session]; ok {
 		secDefRequest.SessionID = sessionID
@@ -406,25 +402,22 @@ func (c tradeClient) onSecurityListRequest(w http.ResponseWriter, r *http.Reques
 		field.NewSecurityReqID("1"),
 		field.NewSecurityListRequestType(enum.SecurityListRequestType_SYMBOL),
 	)
-	fmt.Println("request subs type", secDefRequest.SubscriptionRequestType)
 	subsType, _ := strconv.Atoi(secDefRequest.SubscriptionRequestType)
 	newMsg.SetInt(tag.SubscriptionRequestType, subsType)
 	newMsg.SetString(tag.Currency, secDefRequest.Symbol) // btc / all
-	fmt.Println("requesting security list")
 	err = quickfix.SendToTarget(newMsg, secDefRequest.SessionID)
 	if err != nil {
-		fmt.Println("Error sending security list request,", err)
+		logs.Log.Err(err)
 	}
 }
 
 func (c tradeClient) onMarketDataRequest(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("onMarketDataRequest")
+	logs.Log.Info().Str("tradeui.go", "onMarketDataRequest").Msg("")
 	var mktDataRequest secmaster.MarketDataRequest
 	decoder := json.NewDecoder(r.Body)
 	err := decoder.Decode(&mktDataRequest)
-	fmt.Println("mktDataRequest", mktDataRequest)
 	if err != nil {
-		log.Printf("[ERROR] %v\n", err)
+		logs.Log.Err(err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -445,25 +438,18 @@ func (c tradeClient) onMarketDataRequest(w http.ResponseWriter, r *http.Request)
 
 	mdEntryGrp := marketdatarequest.NewNoMDEntryTypesRepeatingGroup()
 
-	fmt.Println("mktDataRequest.Bid", mktDataRequest.Bid)
 	if mktDataRequest.Bid {
-		fmt.Println("adding bid")
 		mdEntryGrp.Add().SetMDEntryType(enum.MDEntryType_BID)
 	}
 
-	fmt.Println("mktDataRequest.Ask", mktDataRequest.Ask)
 	if mktDataRequest.Ask {
-		fmt.Println("adding ask")
 		mdEntryGrp.Add().SetMDEntryType(enum.MDEntryType_OFFER)
 	}
 
-	fmt.Println("mktDataRequest.Trade", mktDataRequest.Trade)
 	if mktDataRequest.Trade {
-		fmt.Println("adding trade")
 		mdEntryGrp.Add().SetMDEntryType(enum.MDEntryType_TRADE)
 	}
 
-	fmt.Println("mdEntryGrp", mdEntryGrp, mdEntryGrp.Len())
 	msg.SetNoMDEntryTypes(mdEntryGrp)
 
 	mdReqGrp := marketdatarequest.NewNoRelatedSymRepeatingGroup()
@@ -471,12 +457,10 @@ func (c tradeClient) onMarketDataRequest(w http.ResponseWriter, r *http.Request)
 	symbols := strings.Split(mktDataRequest.Symbol, ",")
 
 	for _, symbol := range symbols {
-		fmt.Println("adding symbol", symbol)
 		mdReqGrp.Add().SetString(tag.Symbol, symbol)
 	}
 
 	msg.SetNoRelatedSym(mdReqGrp)
-	fmt.Println(msg.Message.String())
 	err = quickfix.SendToTarget(msg, mktDataRequest.SessionID)
 
 	if err != nil {
@@ -494,13 +478,13 @@ func main() {
 
 	cfg, err := os.Open(cfgFileName)
 	if err != nil {
-		fmt.Printf("Error opening %v, %v\n", cfgFileName, err)
+		logs.Log.Err(err)
 		return
 	}
 
 	appSettings, err := quickfix.ParseSettings(cfg)
 	if err != nil {
-		fmt.Println("Error reading cfg,", err)
+		logs.Log.Err(err)
 		return
 	}
 

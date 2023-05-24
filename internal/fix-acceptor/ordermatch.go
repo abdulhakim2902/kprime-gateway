@@ -43,6 +43,7 @@ import (
 	_orderbookType "gateway/internal/orderbook/types"
 
 	"git.devucc.name/dependencies/utilities/commons/log"
+	"git.devucc.name/dependencies/utilities/commons/logs"
 	_utilitiesType "git.devucc.name/dependencies/utilities/types"
 	"github.com/quickfixgo/enum"
 	"github.com/quickfixgo/field"
@@ -57,7 +58,6 @@ import (
 	"github.com/quickfixgo/fix44/securitylistrequest"
 	"github.com/quickfixgo/tag"
 	"github.com/shopspring/decimal"
-	"github.com/spf13/cobra"
 	"go.mongodb.org/mongo-driver/bson"
 
 	"github.com/quickfixgo/quickfix"
@@ -188,15 +188,18 @@ func (a Application) FromAdmin(msg *quickfix.Message, sessionID quickfix.Session
 		var uname field.UsernameField
 		var pwd field.PasswordField
 		if err := msg.Body.Get(&pwd); err != nil {
+			logs.Log.Err(err).Msg("Error getting password")
 			return err
 		}
 
 		if err := msg.Body.Get(&uname); err != nil {
+			logs.Log.Err(err).Msg("Error getting username")
 			return err
 		}
 
 		user, err := a.UserRepository.FindByAPIKeyAndSecret(context.TODO(), uname.String(), pwd.String())
 		if err != nil {
+			logs.Log.Err(err).Msg("Error getting user")
 			return quickfix.NewMessageRejectError("Failed getting user", 1, nil)
 		}
 
@@ -214,8 +217,9 @@ func (a *Application) FromApp(msg *quickfix.Message, sessionID quickfix.SessionI
 }
 
 func (a *Application) onNewOrderSingle(msg newordersingle.NewOrderSingle, sessionID quickfix.SessionID) quickfix.MessageRejectError {
-	fmt.Println("incoming new order")
+	logs.Log.Info().Str("ordermatch", "onNewOrderSingle").Msg("")
 	if userSession == nil {
+		logs.Log.Err(fmt.Errorf("User not logged in")).Msg("User not logged in")
 		return quickfix.NewMessageRejectError("User not logged in", 1, nil)
 	}
 
@@ -228,42 +232,50 @@ func (a *Application) onNewOrderSingle(msg newordersingle.NewOrderSingle, sessio
 
 	user, e := a.UserRepository.FindById(context.TODO(), userId)
 	if e != nil {
+		logs.Log.Err(e).Msg("Failed getting user")
 		return quickfix.NewMessageRejectError("Failed getting user", 1, nil)
 	}
 
 	clOrId, err := msg.GetClOrdID()
 	if err != nil {
+		logs.Log.Err(err).Msg("Error getting clOrdId")
 		return err
 	}
 
 	symbol, err := msg.GetSymbol()
 	if err != nil {
+		logs.Log.Err(err).Msg("Error getting symbol")
 		return err
 	}
 
 	side, err := msg.GetSide()
 	if err != nil {
+		logs.Log.Err(err).Msg("Error getting side")
 		return err
 	}
 
 	ordType, err := msg.GetOrdType()
 	if err != nil {
+		logs.Log.Err(err).Msg("Error getting ordType")
 		return err
 	}
 
 	price, err := msg.GetPrice()
 	if err != nil {
+		logs.Log.Err(err).Msg("Error getting price")
 		return err
 	}
 
 	orderQty, err := msg.GetOrderQty()
 	if err != nil {
+		logs.Log.Err(err).Msg("Error getting orderQty")
 		return err
 	}
 
 	var partyId quickfix.FIXString
 	err = msg.GetField(tag.PartyID, &partyId)
 	if err != nil {
+		logs.Log.Err(err).Msg("Error getting partyId")
 		return err
 	}
 
@@ -293,14 +305,12 @@ func (a *Application) onNewOrderSingle(msg newordersingle.NewOrderSingle, sessio
 }
 
 func (a Application) broadcastInstrumentList(currency string) {
-	fmt.Println("broadcastInstrumentList", currency)
 	for _, subs := range xMessagesSubs {
 		a.SecurityListResponse(currency, subs.secReq, subs.sessiondID)
 	}
 }
 
 func (a *Application) onOrderUpdateRequest(msg ordercancelreplacerequest.OrderCancelReplaceRequest, sessionID quickfix.SessionID) quickfix.MessageRejectError {
-	fmt.Println("onOrderUpdateRequest")
 	userId := ""
 	for i, v := range userSession {
 		if v.String() == sessionID.String() {
@@ -310,40 +320,43 @@ func (a *Application) onOrderUpdateRequest(msg ordercancelreplacerequest.OrderCa
 
 	user, e := a.UserRepository.FindById(context.TODO(), userId)
 	if e != nil {
+		logs.Log.Err(e).Msg("Failed getting user")
 		return quickfix.NewMessageRejectError("Failed getting user", 1, nil)
 	}
 
 	price, err := msg.GetPrice()
 	if err != nil {
-		fmt.Println("Error getting price")
+		logs.Log.Err(err).Msg("Error getting price")
 		return err
 	}
 
 	ordType, err := msg.GetOrdType()
 	if err != nil {
+		logs.Log.Err(err).Msg("Error getting ordType")
 		return err
 	}
 
 	amount, err := msg.GetOrderQty()
 	if err != nil {
-		fmt.Println("Error getting amount")
+		logs.Log.Err(err).Msg("Error getting amount")
 		return err
 	}
 	orderId, err := msg.GetOrderID()
 	if err != nil {
-		fmt.Println("Error getting orderid")
+		logs.Log.Err(err).Msg("Error getting orderId")
 		return err
 	}
 
 	var partyId quickfix.FIXString
 	err = msg.GetField(tag.PartyID, &partyId)
 	if err != nil {
+		logs.Log.Err(err).Msg("Error getting partyId")
 		return err
 	}
 
 	symbol, err := msg.GetSymbol()
 	if err != nil {
-		fmt.Println("Error getting symbol")
+		logs.Log.Err(err).Msg("Error getting symbol")
 		return err
 	}
 
@@ -409,13 +422,12 @@ func (a *Application) onOrderCancelRequest(msg ordercancelrequest.OrderCancelReq
 }
 
 func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataRequest, sessionID quickfix.SessionID) (err quickfix.MessageRejectError) {
-	fmt.Println("onMarketDataRequest")
 	subs, _ := msg.GetSubscriptionRequestType()
 
 	mdEntryTypes := marketdatarequest.NewNoMDEntryTypesRepeatingGroup()
 	err = msg.GetGroup(mdEntryTypes)
 	if err != nil {
-		fmt.Println("Error getting mdEntryTypes", err)
+		logs.Log.Err(err).Msg("Error getting group")
 	}
 
 	//entries contain the type of market data requested (bid, ask, trade)
@@ -515,7 +527,6 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 
 		bytes, _ := json.Marshal(response)
 		a.redis.Set("MARKETDATA-"+response[0].InstrumentName, string(bytes))
-		fmt.Println("response", response)
 		for _, res := range response {
 			row := grp.Add()
 			row.SetMDEntryType(enum.MDEntryType(res.Side))
@@ -527,9 +538,8 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 		}
 		snap.SetNoMDEntries(grp)
 		error := quickfix.SendToTarget(snap, sessionID)
-		fmt.Println("replying to market data request")
 		if error != nil {
-			fmt.Println(error.Error())
+			logs.Log.Err(error).Msg("Error sending market data")
 		}
 	}
 
@@ -542,7 +552,6 @@ func (a *Application) GetTrade(filter bson.M) (trades []*types.Trade) {
 }
 
 func OnMarketDataUpdate(instrument string, book _orderbookType.BookData) {
-	fmt.Println("OnMarketDataUpdate", book.Bids, book.Asks)
 	for _, subs := range vMessageSubs {
 		response := []MarketDataResponse{}
 		if subs.InstrumentName != instrument {
@@ -551,7 +560,6 @@ func OnMarketDataUpdate(instrument string, book _orderbookType.BookData) {
 
 		if subs.Bid {
 			for _, bid := range book.Bids {
-				fmt.Println(bid)
 				response = append(response, MarketDataResponse{
 					Price:          bid[1].(float64),
 					Amount:         bid[2].(float64),
@@ -564,7 +572,6 @@ func OnMarketDataUpdate(instrument string, book _orderbookType.BookData) {
 		}
 		if subs.Ask {
 			for _, ask := range book.Asks {
-				fmt.Println(ask)
 				response = append(response, MarketDataResponse{
 					Price:          ask[1].(float64),
 					Amount:         ask[2].(float64),
@@ -576,7 +583,6 @@ func OnMarketDataUpdate(instrument string, book _orderbookType.BookData) {
 			}
 		}
 		if subs.Trade {
-			fmt.Println("subs trade")
 			splits := strings.Split(instrument, "-")
 			price, _ := strconv.ParseFloat(splits[2], 64)
 			trades := newApplication().GetTrade(bson.M{
@@ -586,7 +592,6 @@ func OnMarketDataUpdate(instrument string, book _orderbookType.BookData) {
 				"status":      "SUCCESS",
 			})
 
-			fmt.Println("trades", trades)
 			for _, trade := range trades {
 				response = append(response, MarketDataResponse{
 					Price:          trade.Price,
@@ -617,9 +622,8 @@ func OnMarketDataUpdate(instrument string, book _orderbookType.BookData) {
 			row.SetMDEntryDate(res.Date)
 		}
 		msg.SetNoMDEntries(grp)
-		fmt.Println("Sending market data update")
 		if err := quickfix.SendToTarget(msg, subs.sessiondID); err != nil {
-			fmt.Println("Error sending market data update")
+			logs.Log.Err(err).Msg("Error sending market data")
 		}
 	}
 }
@@ -627,7 +631,6 @@ func OnMarketDataUpdate(instrument string, book _orderbookType.BookData) {
 func mapMarketDataResponse(res []MarketDataResponse) []MarketDataResponse {
 	result := []MarketDataResponse{}
 
-	fmt.Println("total data", len(res))
 	for i, r := range res {
 		if len(result) == 0 {
 			result = append(result, r)
@@ -641,13 +644,11 @@ func mapMarketDataResponse(res []MarketDataResponse) []MarketDataResponse {
 			}
 		}
 	}
-	fmt.Println("total data after transfrom", len(result))
 	after := sumAmount(result, res)
 	return after
 }
 
 func isInstrumentExists(data []MarketDataResponse, marketData MarketDataResponse) bool {
-	fmt.Println("checkingg...", len(data))
 	for _, d := range data {
 		if d.InstrumentName == marketData.InstrumentName && d.Price == marketData.Price && d.Side == marketData.Side {
 			return true
@@ -671,7 +672,6 @@ func sumAmount(data []MarketDataResponse, og []MarketDataResponse) (res []Market
 }
 
 func OnMatchingOrder(data types.EngineResponse) {
-	fmt.Println("OnMatchingOrder")
 	if data.Matches == nil {
 		return
 	}
@@ -712,9 +712,8 @@ func OnMatchingOrder(data types.EngineResponse) {
 		msg.SetLastPx(decimal.NewFromFloat(trd.Price), 2)
 		msg.SetLastQty(decimal.NewFromFloat(trd.Amount), 2)
 
-		fmt.Println("Sending execution report for matching order")
 		if err := quickfix.SendToTarget(msg, *sessionID); err != nil {
-			fmt.Println("Error sending execution report")
+			logs.Log.Err(err).Msg("Error sending matchingoerder msg")
 		}
 	}
 
@@ -776,7 +775,10 @@ func OnOrderboookUpdate(symbol string, data map[string]interface{}) {
 	}
 
 	for _, sess := range vMessageSubs {
-		quickfix.SendToTarget(msg, sess.sessiondID)
+		err := quickfix.SendToTarget(msg, sess.sessiondID)
+		if err != nil {
+			logs.Log.Err(err).Msg("Error sending orderbook update")
+		}
 	}
 }
 
@@ -829,7 +831,7 @@ func (a *Application) updateOrder(order Order, status enum.OrdStatus) {
 
 	sendErr := quickfix.Send(execReport)
 	if sendErr != nil {
-		fmt.Println(sendErr)
+		logs.Log.Err(sendErr).Msg("Error sending execution report")
 	}
 
 }
@@ -873,12 +875,10 @@ func OrderConfirmation(userId string, order Order, symbol string) {
 	if err != nil {
 		fmt.Print(err.Error())
 	}
-	fmt.Println("new order, send instruments")
 	newApplication().broadcastInstrumentList(order.Underlying)
 }
 
 func (a Application) onSecurityListRequest(msg securitylistrequest.SecurityListRequest, sessionID quickfix.SessionID) quickfix.MessageRejectError {
-	fmt.Println("receiving security list request")
 	secReq, err := msg.GetSecurityReqID()
 	if err != nil {
 		return err
@@ -907,11 +907,9 @@ func (a Application) onSecurityListRequest(msg securitylistrequest.SecurityListR
 		}
 	}
 
-	fmt.Println("requesting", subs)
-	fmt.Println("requesting", xMessagesSubs)
-	fmt.Println("currency", currency)
 	err = a.SecurityListResponse(currency, secReq, sessionID)
 	if err != nil {
+		logs.Log.Err(err).Msg("Error sending security list response")
 		return err
 	}
 	return nil
@@ -958,7 +956,6 @@ func removeVMessageSubscriber(array []VMessageSubscriber, element VMessageSubscr
 }
 
 func (a Application) SecurityListResponse(currency string, secReq string, sessionID quickfix.SessionID) quickfix.MessageRejectError {
-	fmt.Println("sending security list response")
 	secRes := time.Now().UnixMicro()
 	res := securitylist.New(
 		field.NewSecurityReqID(secReq),
@@ -972,7 +969,6 @@ func (a Application) SecurityListResponse(currency string, secReq string, sessio
 		return quickfix.NewMessageRejectError(e.Error(), 0, nil)
 	}
 
-	fmt.Println("instrumentsz", instruments)
 	secListGroup := securitylist.NewNoRelatedSymRepeatingGroup()
 	for _, instrument := range instruments {
 		row := secListGroup.Add()
@@ -988,8 +984,6 @@ func (a Application) SecurityListResponse(currency string, secReq string, sessio
 	}
 
 	res.SetNoRelatedSym(secListGroup)
-	fmt.Println(res.ToMessage().String())
-	fmt.Println("giving back security list msg")
 	quickfix.SendToTarget(res, sessionID)
 	return nil
 }
@@ -1000,19 +994,7 @@ const (
 	long  = "Start an order matching (FIX acceptor) service."
 )
 
-var (
-	// Cmd is the quote command.
-	Cmd = &cobra.Command{
-		Use:     usage,
-		Short:   short,
-		Long:    long,
-		Aliases: []string{"oms"},
-		Example: "qf ordermatch [YOUR_FIX_CONFIG_FILE_HERE.cfg] (default is ./config/cfg)",
-		RunE:    execute,
-	}
-)
-
-func execute(cmd *cobra.Command, args []string) error {
+func Execute() error {
 	cfgFileName := "ordermatch.cfg"
 	templateCfg := "ordermatch_template.cfg"
 	_, b, _, _ := runtime.Caller(0)
