@@ -2,8 +2,11 @@ package repositories
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
 	_engineType "gateway/internal/engine/types"
+	_orderbookType "gateway/internal/orderbook/types"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -55,4 +58,24 @@ func (r SettlementPriceRepository) Find(filter interface{}, sort interface{}, of
 	}
 
 	return SettlementPrices, nil
+}
+
+func (r SettlementPriceRepository) GetLatestSettlementPrice(o _orderbookType.GetOrderBook) []*_engineType.SettlementPrice {
+	metadataType := "index"
+	metadataPair := fmt.Sprintf("%s_usd", strings.ToLower(o.Underlying))
+
+	tradesQuery := bson.M{
+		"metadata.pair": metadataPair,
+		"metadata.type": metadataType,
+	}
+	tradesSort := bson.M{
+		"ts": -1,
+	}
+
+	trades, err := r.Find(tradesQuery, tradesSort, 0, 1)
+	if err != nil {
+		panic(err)
+	}
+
+	return trades
 }

@@ -10,14 +10,66 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
+type EmptyParams struct{}
+
+type RequestDto[T any] struct {
+	Method  string `json:"method" form:"method"`
+	Jsonrpc string `json:"jsonrpc" form:"jsonrpc"`
+	Id      uint64 `json:"id" form:"id"`
+	Params  T      `json:"params" form:"params"`
+}
+
 type RequestParams struct {
-	AccessToken    string            `json:"access_token"`
-	InstrumentName string            `json:"instrument_name"`
-	Amount         float64           `json:"amount"`
-	Type           types.Type        `json:"type"`
-	Price          float64           `json:"price"`
-	TimeInForce    types.TimeInForce `json:"time_in_force"`
-	Label          string            `json:"label"`
+	Id             string            `json:"id" form:"id"`
+	AccessToken    string            `json:"access_token" form:"access_token"`
+	InstrumentName string            `json:"instrument_name" form:"instrument_name"`
+	Amount         float64           `json:"amount" form:"amount"`
+	Type           types.Type        `json:"type" form:"type"`
+	Price          float64           `json:"price" form:"price"`
+	TimeInForce    types.TimeInForce `json:"time_in_force" form:"time_in_force"`
+	Label          string            `json:"label" form:"label"`
+}
+
+type ChannelParams struct {
+	AccessToken string   `json:"access_token" form:"access_token"`
+	Channels    []string `json:"channels" form:"channels"`
+}
+
+type GetInstrumentsParams struct {
+	AccessToken string `json:"access_token" form:"access_token"`
+	Currency    string `json:"currency" validate:"required" form:"currency"`
+	Expired     bool   `json:"expired" form:"expired"`
+}
+
+type GetOrderBookParams struct {
+	InstrumentName string `json:"instrument_name" validate:"required" form:"instrument_name"`
+	Depth          int64  `json:"depth" form:"depth"`
+}
+
+type BaseParams struct {
+	AccessToken    string `json:"access_token" validate:"required" form:"access_token"`
+	InstrumentName string `json:"instrument_name" validate:"required" form:"instrument_name"`
+}
+
+type GetUserTradesByInstrumentParams struct {
+	BaseParams
+	Count          int    `json:"count" form:"count"`
+	StartTimestamp int64  `json:"start_timestamp" form:"start_timestamp"`
+	EndTimestamp   int64  `json:"end_timestamp" form:"end_timestamp"`
+	Sorting        string `json:"sorting" form:"sorting"`
+}
+
+type GetOpenOrdersByInstrumentParams struct {
+	BaseParams
+	Type string `json:"type" form:"type"`
+}
+
+type GetOrderHistoryByInstrumentParams struct {
+	BaseParams
+	Count           int  `json:"count" form:"count"`
+	Offset          int  `json:"offset" form:"offset"`
+	IncludeOld      bool `json:"include_old" form:"include_old"`
+	IncludeUnfilled bool `json:"include_unfilled" form:"include_unfilled"`
 }
 
 type DeribitRequest struct {
@@ -31,9 +83,6 @@ type DeribitRequest struct {
 	TimeInForce    types.TimeInForce `json:"time_in_force"`
 	Label          string            `json:"label"`
 	Side           types.Side        `json:"side"`
-
-	OrderExclusions []order.OrderExclusion `json:"order_exclusions"`
-	TypeInclusions  []order.TypeInclusions `json:"type_inclusions"`
 }
 
 type DeribitCancelRequest struct {
@@ -62,14 +111,14 @@ type DeribitCancelAllResponse struct {
 }
 
 type DeribitCancelByInstrumentResponse struct {
-	UserId         string  `json:"userId"`
-	ClientId       string  `json:"clientId"`
-	Underlying     string  `json:"underlying"`
-	ExpirationDate string  `json:"expiryDate"`
-	StrikePrice    float64 `json:"strikePrice"`
-	Side           string  `json:"side"`
-	Contracts      string  `json:"contracts"`
-	ClOrdID        string  `json:"clOrdID"`
+	UserId         string          `json:"userId"`
+	ClientId       string          `json:"clientId"`
+	Underlying     string          `json:"underlying"`
+	ExpirationDate string          `json:"expiryDate"`
+	StrikePrice    float64         `json:"strikePrice"`
+	Side           string          `json:"side"`
+	Contracts      types.Contracts `json:"contracts"`
+	ClOrdID        string          `json:"clOrdID"`
 }
 
 type DeribitCancelByInstrumentRequest struct {

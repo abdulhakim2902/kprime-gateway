@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"errors"
-	"fmt"
 	"gateway/internal/repositories"
 	"gateway/internal/user/types"
 	"gateway/pkg/ws"
@@ -12,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"git.devucc.name/dependencies/utilities/commons/logs"
 	"github.com/golang-jwt/jwt"
 )
 
@@ -23,72 +23,75 @@ func NewAuthService(repo *repositories.UserRepository) IAuthService {
 	return &AuthService{repo}
 }
 
-func (s AuthService) Login(ctx context.Context, req types.AuthRequest, c *ws.Client) (res *types.AuthResponse, err error) {
-	var user *types.User
+func (s AuthService) Login(ctx context.Context, req types.AuthRequest) (res *types.AuthResponse, user *types.User, err error) {
 	user, err = s.repo.FindByAPIKeyAndSecret(ctx, req.APIKey, req.APISecret)
 	if err != nil && !strings.Contains(err.Error(), "no documents in result") {
-		fmt.Printf("err:%+v\n", err)
+		logs.Log.Error().Err(err).Msg("")
 		return
 	}
 
 	if user == nil {
-		return nil, errors.New("invalid credential")
+		err = errors.New("invalid credential")
+		return
 	}
 
-	accessToken, refreshToken, accessTokenExp, err := s.generateToken(user.ID.Hex())
+	accessToken, refreshToken, accessTokenExp, err := GenerateToken(user.ID.Hex())
 	if err != nil {
-		return nil, errors.New("failed to generate token")
+		err = errors.New("failed to generate token")
+		return
 	}
 
-	c.RegisterAuthedConnection(user.ID.Hex())
-
-	return &types.AuthResponse{
+	res = &types.AuthResponse{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 		ExpiresIn:    int64(accessTokenExp),
 		Scope:        "connection mainaccount",
 		TokenType:    "bearer",
-	}, nil
+	}
+
+	return
 }
 
-func (s AuthService) RefreshToken(ctx context.Context, claim types.JwtClaim, c *ws.Client) (res *types.AuthResponse, err error) {
-	var user *types.User
+func (s AuthService) RefreshToken(ctx context.Context, claim types.JwtClaim) (res *types.AuthResponse, user *types.User, err error) {
 	user, err = s.repo.FindById(ctx, claim.UserID)
 	if err != nil && !strings.Contains(err.Error(), "no documents in result") {
-		fmt.Printf("err:%+v\n", err)
+		logs.Log.Error().Err(err).Msg("")
 		return
 	}
 
 	if user == nil {
-		return nil, errors.New("invalid refresh token")
+		err = errors.New("invalid refresh token")
+		return
 	}
 
-	accessToken, refreshToken, accessTokenExp, err := s.generateToken(user.ID.Hex())
+	accessToken, refreshToken, accessTokenExp, err := GenerateToken(user.ID.Hex())
 	if err != nil {
-		return nil, errors.New("failed to generate token")
+		err = errors.New("failed to generate token")
+		return
 	}
 
-	c.RegisterAuthedConnection(user.ID.Hex())
-
-	return &types.AuthResponse{
+	res = &types.AuthResponse{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 		ExpiresIn:    int64(accessTokenExp),
 		Scope:        "connection mainaccount",
 		TokenType:    "bearer",
-	}, nil
+	}
+
+	return
 }
 
-func (s AuthService) ClaimJWT(jwtToken string, c *ws.Client) (types.JwtClaim, error) {
-	jwtKey := os.Getenv("JWT_KEY")
-
-	// First check the websocket authed connection
-	isAuthed, userID := c.IsAuthed()
-	if isAuthed {
-		return types.JwtClaim{
-			UserID: userID,
-		}, nil
+func ClaimJWT(c *ws.Client, jwtToken string) (types.JwtClaim, error) {
+	// If c not nil, check is client is authed connection
+	if c != nil {
+		if isAuthed, userId := c.IsAuthed(); isAuthed {
+			return types.JwtClaim{
+				UserID: userId,
+			}, nil
+		}
 	}
+
+	jwtKey := os.Getenv("JWT_KEY")
 
 	// Second if user is not authenticated using WS client, then check JWT Token
 	token, err := jwt.Parse(jwtToken, func(token *jwt.Token) (interface{}, error) {
@@ -117,7 +120,7 @@ func (s AuthService) ClaimJWT(jwtToken string, c *ws.Client) (types.JwtClaim, er
 	}, nil
 }
 
-func (s AuthService) generateToken(userId string) (accessToken, refreshToken string, accessTokenExp int, err error) {
+func GenerateToken(userId string) (accessToken, refreshToken string, accessTokenExp int, err error) {
 	// JWT Secret
 	jwtKey := os.Getenv("JWT_KEY")
 
@@ -131,7 +134,7 @@ func (s AuthService) generateToken(userId string) (accessToken, refreshToken str
 
 	accessToken, err = accessTokenClaim.SignedString([]byte(jwtKey))
 	if err != nil {
-		fmt.Printf("err:%+v\n", err)
+		logs.Log.Error().Err(err).Msg("")
 		return
 	}
 
@@ -146,7 +149,7 @@ func (s AuthService) generateToken(userId string) (accessToken, refreshToken str
 
 	refreshToken, err = refreshTokenClaim.SignedString([]byte(jwtKey))
 	if err != nil {
-		fmt.Printf("err:%+v\n", err)
+		logs.Log.Error().Err(err).Msg("")
 		return
 	}
 

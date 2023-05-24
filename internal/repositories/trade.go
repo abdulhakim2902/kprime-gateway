@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	_deribitModel "gateway/internal/deribit/model"
 	_engineType "gateway/internal/engine/types"
+	_orderbookType "gateway/internal/orderbook/types"
 	_tradeType "gateway/internal/repositories/types"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -726,4 +728,70 @@ func (r TradeRepository) GetPriceAvg(underlying, expiryDate, contracts string, s
 	}
 
 	return
+}
+
+func (r TradeRepository) GetLastTrades(o _orderbookType.GetOrderBook) []*_engineType.Trade {
+	tradesQuery := bson.M{
+		"underlying":  o.Underlying,
+		"strikePrice": o.StrikePrice,
+		"expiryDate":  o.ExpiryDate,
+	}
+	tradesSort := bson.M{
+		"createdAt": 1,
+	}
+
+	trades, err := r.Find(tradesQuery, tradesSort, 0, -1)
+	if err != nil {
+		panic(err)
+	}
+
+	return trades
+}
+
+func (r TradeRepository) GetHighLowTrades(o _orderbookType.GetOrderBook, t int) []*_engineType.Trade {
+	currentTime := time.Now()
+	oneDayAgo := currentTime.AddDate(0, 0, -1)
+
+	tradesQuery := bson.M{
+		"underlying":  o.Underlying,
+		"strikePrice": o.StrikePrice,
+		"expiryDate":  o.ExpiryDate,
+		"createdAt": bson.M{
+			"$gte": oneDayAgo,
+		},
+	}
+	tradesSort := bson.M{
+		"price": t,
+	}
+
+	trades, err := r.Find(tradesQuery, tradesSort, 0, -1)
+	if err != nil {
+		panic(err)
+	}
+
+	return trades
+}
+
+func (r TradeRepository) Get24HoursTrades(o _orderbookType.GetOrderBook) []*_engineType.Trade {
+	currentTime := time.Now()
+	oneDayAgo := currentTime.AddDate(0, 0, -1)
+
+	tradesQuery := bson.M{
+		"underlying":  o.Underlying,
+		"strikePrice": o.StrikePrice,
+		"expiryDate":  o.ExpiryDate,
+		"createdAt": bson.M{
+			"$gte": oneDayAgo,
+		},
+	}
+	tradesSort := bson.M{
+		"createdAt": 1,
+	}
+
+	trades, err := r.Find(tradesQuery, tradesSort, 0, -1)
+	if err != nil {
+		panic(err)
+	}
+
+	return trades
 }

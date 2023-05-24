@@ -3,9 +3,8 @@ module gateway
 go 1.20
 
 require (
-	git.devucc.name/dependencies/utilities v1.0.14
+	git.devucc.name/dependencies/utilities v1.0.20
 	github.com/Shopify/sarama v1.38.1
-	github.com/casbin/casbin/v2 v2.66.0
 	github.com/fatih/color v1.15.0
 	github.com/gin-gonic/gin v1.9.0
 	github.com/go-playground/validator/v10 v10.12.0
@@ -25,7 +24,6 @@ require (
 )
 
 require (
-	github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible // indirect
 	github.com/armon/go-proxyproto v0.0.0-20210323213023-7e956b284f0a // indirect
 	github.com/bytedance/sonic v1.8.6 // indirect
 	github.com/chenzhuoyu/base64x v0.0.0-20221115062448-fe3a3abad311 // indirect
@@ -37,7 +35,6 @@ require (
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/goccy/go-json v0.10.2 // indirect
-	github.com/golang/mock v1.6.0 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/gosuri/uitable v0.0.4 // indirect
 	github.com/hashicorp/errwrap v1.0.0 // indirect
@@ -81,6 +78,7 @@ require (
 	golang.org/x/sync v0.1.0 // indirect
 	golang.org/x/sys v0.6.0 // indirect
 	golang.org/x/text v0.8.0 // indirect
+	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	google.golang.org/protobuf v1.30.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
