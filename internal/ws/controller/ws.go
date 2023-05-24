@@ -170,9 +170,6 @@ func (svc wsHandler) PrivateBuy(input interface{}, c *ws.Client) {
 		return
 	}
 
-	isAuthed, userId := c.IsAuthed()
-	fmt.Println(isAuthed, userId)
-
 	// Check the Access Token
 	claim, err := authService.ClaimJWT(c, msg.Params.AccessToken)
 	if err != nil {
@@ -203,6 +200,9 @@ func (svc wsHandler) PrivateBuy(input interface{}, c *ws.Client) {
 		protocol.SendErrMsg(ID, err)
 		return
 	}
+
+	// unregister protocol
+	protocol.UnregisterProtocol(ID)
 
 	// register order connection
 	ws.RegisterOrderConnection(ID, c)
@@ -253,6 +253,9 @@ func (svc wsHandler) PrivateSell(input interface{}, c *ws.Client) {
 		return
 	}
 
+	// unregister protocol
+	protocol.UnregisterProtocol(ID)
+
 	// register order connection
 	ws.RegisterOrderConnection(ID, c)
 }
@@ -295,6 +298,9 @@ func (svc wsHandler) PrivateEdit(input interface{}, c *ws.Client) {
 		return
 	}
 
+	// unregister protocol
+	protocol.UnregisterProtocol(ID)
+
 	// register order connection
 	ws.RegisterOrderConnection(ID, c)
 }
@@ -335,9 +341,11 @@ func (svc wsHandler) PrivateCancel(input interface{}, c *ws.Client) {
 		return
 	}
 
+	// unregister protocol
+	protocol.UnregisterProtocol(ID)
+
 	// register order connection
 	ws.RegisterOrderConnection(ID, c)
-	return
 }
 
 func (svc wsHandler) PrivateCancelByInstrument(input interface{}, c *ws.Client) {
@@ -375,6 +383,9 @@ func (svc wsHandler) PrivateCancelByInstrument(input interface{}, c *ws.Client) 
 		protocol.SendErrMsg(ID, err)
 		return
 	}
+
+	// unregister protocol
+	protocol.UnregisterProtocol(ID)
 
 	//register order connection
 	ws.RegisterOrderConnection(ID, c)
@@ -414,6 +425,9 @@ func (svc wsHandler) PrivateCancelAll(input interface{}, c *ws.Client) {
 		protocol.SendErrMsg(ID, err)
 		return
 	}
+
+	// unregister protocol
+	protocol.UnregisterProtocol(ID)
 
 	// register order connection
 	ws.RegisterOrderConnection(ID, c)
