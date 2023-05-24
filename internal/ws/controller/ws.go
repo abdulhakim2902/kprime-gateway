@@ -170,9 +170,6 @@ func (svc wsHandler) PrivateBuy(input interface{}, c *ws.Client) {
 		return
 	}
 
-	isAuthed, userId := c.IsAuthed()
-	fmt.Println(isAuthed, userId)
-
 	// Check the Access Token
 	claim, err := authService.ClaimJWT(c, msg.Params.AccessToken)
 	if err != nil {
@@ -337,7 +334,6 @@ func (svc wsHandler) PrivateCancel(input interface{}, c *ws.Client) {
 
 	// register order connection
 	ws.RegisterOrderConnection(ID, c)
-	return
 }
 
 func (svc wsHandler) PrivateCancelByInstrument(input interface{}, c *ws.Client) {

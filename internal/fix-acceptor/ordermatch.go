@@ -24,6 +24,7 @@ import (
 	_deribitSvc "gateway/internal/deribit/service"
 	"gateway/internal/engine/types"
 	"gateway/internal/repositories"
+	"gateway/pkg/memdb"
 	"gateway/pkg/redis"
 	"gateway/pkg/utils"
 	"io"
@@ -140,11 +141,13 @@ func newApplication() *Application {
 
 	mongoDb, _ := _mongo.InitConnection(os.Getenv("MONGO_URL"))
 	redis := redis.NewRedisConnectionPool(os.Getenv("REDIS_URL"))
+	memDb, _ := memdb.InitSchemas()
 
 	orderRepo := repositories.NewOrderRepository(mongoDb)
 	tradeRepo := repositories.NewTradeRepository(mongoDb)
 	userRepo := repositories.NewUserRepository(mongoDb)
-	deribitSvc := _deribitSvc.NewDeribitService(redis, userRepo, nil, nil, nil, nil)
+
+	deribitSvc := _deribitSvc.NewDeribitService(redis, memDb, nil, nil, nil, nil)
 
 	app := &Application{
 		MessageRouter:   quickfix.NewMessageRouter(),
