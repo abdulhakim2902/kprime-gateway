@@ -105,8 +105,8 @@ func (svc engineHandler) HandleConsume(msg *sarama.ConsumerMessage) {
 		svc.PublishValidation(data)
 		return
 	}
-
 	_ordermatch.OnMatchingOrder(data)
+
 	//pass to fix gateway
 
 	//save to redis
