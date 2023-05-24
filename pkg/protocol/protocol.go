@@ -5,6 +5,7 @@ import (
 	"gateway/pkg/utils"
 	"gateway/pkg/ws"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -162,11 +163,15 @@ func doSend(ID any, result any, err *ErrorMessage) bool {
 		return false
 	}
 
+	s := fmt.Sprintf("%d", ID)
+	msgId, _ := strconv.ParseInt(s, 10, 64)
+
 	m := RPCResponseMessage{
 		JSONRPC: "2.0",
 		Result:  result,
 		Error:   err,
 		Testnet: true,
+		ID:      uint64(msgId),
 	}
 
 	id := fmt.Sprintf("%v", ID)

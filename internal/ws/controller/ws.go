@@ -433,6 +433,8 @@ func (svc wsHandler) SubscribeHandler(input interface{}, c *ws.Client) {
 		return
 	}
 
+	protocol.SendSuccessMsg(requestedTime, msg.Params.Channels)
+
 	for _, channel := range msg.Params.Channels {
 		fmt.Println(channel)
 		s := strings.Split(channel, ".")
@@ -453,8 +455,6 @@ func (svc wsHandler) SubscribeHandler(input interface{}, c *ws.Client) {
 			svc.wsOBSvc.SubscribeBook(c, channel)
 		}
 	}
-
-	protocol.SendSuccessMsg(requestedTime, msg.Params.Channels)
 }
 
 func (svc wsHandler) UnsubscribeHandler(input interface{}, c *ws.Client) {
