@@ -221,7 +221,7 @@ func (h *DeribitHandler) buy(r *gin.Context) {
 		return
 	}
 
-	protocol.SendSuccessMsg(userID, order)
+	protocol.SendSuccessMsg(ID, order)
 }
 
 func (h *DeribitHandler) sell(r *gin.Context) {
@@ -262,7 +262,7 @@ func (h *DeribitHandler) sell(r *gin.Context) {
 		return
 	}
 
-	protocol.SendSuccessMsg(userID, order)
+	protocol.SendSuccessMsg(ID, order)
 }
 
 func (h *DeribitHandler) edit(r *gin.Context) {
@@ -294,7 +294,7 @@ func (h *DeribitHandler) edit(r *gin.Context) {
 		return
 	}
 
-	protocol.SendSuccessMsg(userID, order)
+	protocol.SendSuccessMsg(ID, order)
 }
 
 func (h *DeribitHandler) cancel(r *gin.Context) {
@@ -324,7 +324,7 @@ func (h *DeribitHandler) cancel(r *gin.Context) {
 		return
 	}
 
-	protocol.SendSuccessMsg(userID, order)
+	protocol.SendSuccessMsg(ID, order)
 }
 
 func (h *DeribitHandler) cancelByInstrument(r *gin.Context) {
@@ -354,7 +354,7 @@ func (h *DeribitHandler) cancelByInstrument(r *gin.Context) {
 		return
 	}
 
-	protocol.SendSuccessMsg(userID, order)
+	protocol.SendSuccessMsg(ID, order)
 }
 
 func (h *DeribitHandler) cancelAll(r *gin.Context) {
@@ -383,7 +383,7 @@ func (h *DeribitHandler) cancelAll(r *gin.Context) {
 		return
 	}
 
-	protocol.SendSuccessMsg(userID, order)
+	protocol.SendSuccessMsg(ID, order)
 }
 
 func (h *DeribitHandler) getUserTradeByInstrument(r *gin.Context) {
@@ -425,7 +425,7 @@ func (h *DeribitHandler) getUserTradeByInstrument(r *gin.Context) {
 			Sorting:        msg.Params.Sorting,
 		},
 	)
-	protocol.SendSuccessMsg(userID, res)
+	protocol.SendSuccessMsg(ID, res)
 }
 func (h *DeribitHandler) getOpenOrdersByInstrument(r *gin.Context) {
 	userID := r.GetString("userID")
