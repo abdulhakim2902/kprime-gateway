@@ -598,6 +598,7 @@ func (svc wsOrderbookService) HandleConsumeUserChange100ms(instrument string, us
 }
 
 func (svc wsOrderbookService) GetOrderBook(ctx context.Context, data _deribitModel.DeribitGetOrderBookRequest) _deribitModel.DeribitGetOrderBookResponse {
+	var underlyingPrice float64
 	instruments, _ := utils.ParseInstruments(data.InstrumentName)
 
 	_order := _orderbookTypes.GetOrderBook{
@@ -616,6 +617,7 @@ func (svc wsOrderbookService) GetOrderBook(ctx context.Context, data _deribitMod
 	if err != nil {
 		fmt.Println("Error parsing date:", err)
 	}
+	dateValue := date.Unix()
 	currentTime := time.Now()
 	oneDayAgo := currentTime.AddDate(0, 0, -1)
 	_state := ""
@@ -658,7 +660,27 @@ func (svc wsOrderbookService) GetOrderBook(ctx context.Context, data _deribitMod
 		_priceChange = (_lastTrade - _firstTrade) / _firstTrade * 100
 	}
 
-	_getImplieds := svc.tradeRepository.GetImpliedVolatility()
+	//TODO query to get Underlying Price
+	_getIndexPrice := svc.rawPriceRepository.GetLatestIndexPrice(_order)
+	if len(_getIndexPrice) > 0 {
+		underlyingPrice = float64(_getIndexPrice[0].Price)
+	} else {
+		underlyingPrice = float64(0)
+	}
+
+	//TODO query to get Option Price
+	str := data.InstrumentName
+	parts := strings.Split(str, "-")
+	lastPart := parts[len(parts)-1]
+	optionPrice := ""
+	if string(lastPart[0]) == "C" {
+		optionPrice = "call"
+	} else {
+		optionPrice = "put"
+	}
+
+	_getImpliedsAsk := svc.tradeRepository.GetImpliedVolatility(float64(dataQuote.BestAskAmount), optionPrice, float64(underlyingPrice), float64(_order.StrikePrice), float64(dateValue))
+	_getImpliedsBid := svc.tradeRepository.GetImpliedVolatility(float64(dataQuote.BestBidAmount), optionPrice, float64(underlyingPrice), float64(_order.StrikePrice), float64(dateValue))
 
 	results := _deribitModel.DeribitGetOrderBookResponse{
 		InstrumentName: orderBook.InstrumentName,
@@ -671,8 +693,8 @@ func (svc wsOrderbookService) GetOrderBook(ctx context.Context, data _deribitMod
 		Timestamp:      time.Now().UnixNano() / int64(time.Millisecond),
 		State:          _state,
 		LastPrice:      _lastPrice,
-		Bids_iv:        _getImplieds.Bid,
-		Asks_iv:        _getImplieds.Ask,
+		Bids_iv:        _getImpliedsBid,
+		Asks_iv:        _getImpliedsAsk,
 		Stats: _deribitModel.OrderBookStats{
 			High:        _hightPrice,
 			Low:         _lowestPrice,
@@ -681,7 +703,6 @@ func (svc wsOrderbookService) GetOrderBook(ctx context.Context, data _deribitMod
 		},
 	}
 
-	_getIndexPrice := svc.rawPriceRepository.GetLatestIndexPrice(_order)
 	if len(_getIndexPrice) > 0 {
 		results.IndexPrice = &_getIndexPrice[0].Price
 		results.UnderlyingIndex = &_getIndexPrice[0].Price
