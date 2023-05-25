@@ -12,6 +12,8 @@ import (
 	_orderbookType "gateway/internal/orderbook/types"
 	_tradeType "gateway/internal/repositories/types"
 
+	IV "git.devucc.name/dependencies/utilities/helper/implied_volatility"
+
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -794,4 +796,18 @@ func (r TradeRepository) Get24HoursTrades(o _orderbookType.GetOrderBook) []*_eng
 	}
 
 	return trades
+}
+
+func (r TradeRepository) GetImpliedVolatility(marketPrice float64, optionPrice string, underlying float64, strikePrice float64, timeeXP float64) float64 {
+	expectedCost := marketPrice // The market price of the option
+	s := underlying             // Current price of the underlying
+	k := strikePrice            // Strike price
+	t := timeeXP                // Time to expiration in years
+	ar := 0.05                  // Annual risk-free interest rate as a decimal
+	callPut := optionPrice      // Type of option priced - "call" or "put"
+	estimate := 0.1             // An initial estimate of implied volatility
+
+	impliedData := IV.ImpliedVolatility(expectedCost, s, k, t, ar, callPut, estimate)
+
+	return impliedData
 }

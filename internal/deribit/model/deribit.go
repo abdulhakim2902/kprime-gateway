@@ -198,6 +198,8 @@ type DeribitGetOrderBookResponse struct {
 	Stats           OrderBookStats            `json:"stats"`
 	State           string                    `json:"state"`
 	LastPrice       float64                   `json:"last_price"`
+	Bids_iv         float64                   `json:"bid_iv"`
+	Asks_iv         float64                   `json:"ask_iv"`
 	InstrumentName  string                    `json:"instrument_name"`
 	Bids            []*_orderbookType.WsOrder `json:"bids"`
 	BestBidPrice    float64                   `json:"best_bid_price"`
