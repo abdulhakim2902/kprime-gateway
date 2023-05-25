@@ -52,6 +52,7 @@ import (
 	"github.com/quickfixgo/fix44/marketdatarequest"
 	"github.com/quickfixgo/fix44/marketdatasnapshotfullrefresh"
 	"github.com/quickfixgo/fix44/newordersingle"
+	"github.com/quickfixgo/fix44/ordercancelreject"
 	"github.com/quickfixgo/fix44/ordercancelreplacerequest"
 	"github.com/quickfixgo/fix44/ordercancelrequest"
 	"github.com/quickfixgo/fix44/securitylist"
@@ -407,18 +408,67 @@ func (a *Application) onOrderCancelRequest(msg ordercancelrequest.OrderCancelReq
 	var partyId quickfix.FIXString
 	msg.GetField(tag.PartyID, &partyId)
 
-	if err := quickfix.SendToTarget(msg, sessionID); err != nil {
-		return quickfix.NewMessageRejectError("Failed to send cancel request", 1, nil)
-	}
-
-	a.DeribitService.DeribitRequest(context.TODO(), user.ID.Hex(), _deribitModel.DeribitRequest{
+	response, reason, r := a.DeribitService.DeribitRequest(context.TODO(), user.ID.Hex(), _deribitModel.DeribitRequest{
 		ID:       orderId,
 		ClOrdID:  clOrdID,
 		ClientId: partyId.String(),
 		Side:     _utilitiesType.CANCEL,
 	})
 
+	if r != nil {
+		return quickfix.NewMessageRejectError("Failed to send cancel request", 1, nil)
+	}
+
+	if reason != nil {
+		a.sendOrderCancelReject(
+			field.NewOrderID(orderId),
+			field.NewClOrdID(clOrdID),
+			field.NewOrigClOrdID(clOrdID),
+			field.NewOrdStatus(enum.OrdStatus_REJECTED),
+			field.NewCxlRejResponseTo(enum.CxlRejResponseTo_ORDER_CANCEL_REQUEST),
+			field.NewText(reason.String()),
+			sessionID)
+		return nil
+	}
+
+	ex := executionreport.New(
+		field.NewOrderID(orderId),
+		field.NewExecID(response.ID),
+		field.NewExecType(enum.ExecType_CANCELED),
+		field.NewOrdStatus(enum.OrdStatus_CANCELED),
+		field.NewSide(enum.Side(response.Side)),
+		field.NewLeavesQty(decimal.NewFromFloat(response.Amount), 0),
+		field.NewCumQty(decimal.NewFromFloat(response.Amount), 0),
+		field.NewAvgPx(decimal.NewFromFloat(response.Price), 0),
+	)
+
+	rr := quickfix.SendToTarget(ex, sessionID)
+	if rr != nil {
+		logs.Log.Err(err).Msg("Failed sending execution report")
+	}
 	return nil
+}
+
+func (a *Application) sendOrderCancelReject(
+	orderId field.OrderIDField,
+	clordid field.ClOrdIDField,
+	origclordid field.OrigClOrdIDField,
+	ordstatus field.OrdStatusField,
+	cxlrejresponseTo field.CxlRejResponseToField,
+	reason field.TextField,
+	sessionID quickfix.SessionID) {
+	msg := ordercancelreject.New(
+		orderId,
+		clordid,
+		origclordid,
+		ordstatus,
+		cxlrejresponseTo,
+	)
+	msg.SetText(reason.String())
+	err := quickfix.SendToTarget(msg, sessionID)
+	if err != nil {
+		logs.Log.Err(err).Msg("Failed sending order cancel reject")
+	}
 }
 
 func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataRequest, sessionID quickfix.SessionID) (err quickfix.MessageRejectError) {

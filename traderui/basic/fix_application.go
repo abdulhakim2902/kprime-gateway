@@ -8,6 +8,7 @@ import (
 	"path"
 	"runtime"
 
+	"git.devucc.name/dependencies/utilities/commons/logs"
 	"github.com/joho/godotenv"
 	"github.com/quickfixgo/enum"
 	"github.com/quickfixgo/field"
@@ -111,9 +112,15 @@ func (a *FIXApplication) FromApp(msg *quickfix.Message, sessionID quickfix.Sessi
 	case enum.MsgType_MARKET_DATA_INCREMENTAL_REFRESH:
 		fmt.Println("Market Data Incremental Refresh")
 		return a.onMarketDataIncrementalRefresh(msg, sessionID)
+	case enum.MsgType_ORDER_CANCEL_REJECT:
 	}
 
 	return quickfix.UnsupportedMessageType()
+}
+
+func (a *FIXApplication) onOrderCancelReject(msg *quickfix.Message, sessionID quickfix.SessionID) quickfix.MessageRejectError {
+	logs.Log.Info().Str("msg", msg.String()).Msg("onOrderCancelReject")
+	return nil
 }
 
 func (a *FIXApplication) onSecurityList(msg *quickfix.Message, sessionID quickfix.SessionID) quickfix.MessageRejectError {
@@ -206,6 +213,16 @@ func (a *FIXApplication) onExecutionReport(msg *quickfix.Message, sessionID quic
 	var clOrdID field.ClOrdIDField
 	if err := msg.Body.Get(&clOrdID); err != nil {
 		return err
+	}
+
+	var execType field.ExecTypeField
+	if err := msg.Body.Get(&execType); err != nil {
+		return err
+	}
+
+	// Order Cancel Request success, 8 = Pending Cancel
+	if execType.String() == "8" {
+		logs.Log.Info().Str("msg", msg.String()).Msg("Order Cancel Request success")
 	}
 
 	order, err := a.GetByClOrdID(clOrdID.String())

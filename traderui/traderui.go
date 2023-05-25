@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"text/template"
+	"time"
 
 	"git.devucc.name/dependencies/utilities/commons/logs"
 	"github.com/gorilla/mux"
@@ -18,6 +19,7 @@ import (
 	"github.com/quickfixgo/field"
 	"github.com/quickfixgo/fix43/securitylistrequest"
 	"github.com/quickfixgo/fix44/marketdatarequest"
+	"github.com/quickfixgo/fix44/ordercancelrequest"
 	"github.com/quickfixgo/tag"
 	"github.com/quickfixgo/traderui/basic"
 	"github.com/quickfixgo/traderui/oms"
@@ -408,6 +410,40 @@ func (c tradeClient) onSecurityListRequest(w http.ResponseWriter, r *http.Reques
 	err = quickfix.SendToTarget(newMsg, secDefRequest.SessionID)
 	if err != nil {
 		logs.Log.Err(err)
+	}
+}
+
+func (c tradeClient) onOrderCancelRequest(w http.ResponseWriter, r *http.Request) {
+	logs.Log.Info().Str("tradeui.go", "onOrderCancelRequest").Msg("")
+	var orderCancelRequest oms.OrderCancelRequest
+	decoder := json.NewDecoder(r.Body)
+	err := decoder.Decode(&orderCancelRequest)
+	if err != nil {
+		logs.Log.Err(err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if sessionID, ok := c.SessionIDs[orderCancelRequest.Session]; ok {
+		orderCancelRequest.SessionID = sessionID
+	} else {
+		log.Println("[ERROR] Invalid SessionID")
+		http.Error(w, "Invalid SessionID", http.StatusBadRequest)
+		return
+	}
+
+	msg := ordercancelrequest.New(
+		field.NewOrigClOrdID(orderCancelRequest.OrigClOrdID),
+		field.NewClOrdID(orderCancelRequest.ClOrdID),
+		field.NewSide(enum.Side(orderCancelRequest.Side)),
+		field.NewTransactTime(time.Now()),
+	)
+
+	msg.ToMessage().Body.SetString(tag.PartyID, orderCancelRequest.PartyID)
+
+	err = quickfix.SendToTarget(msg, orderCancelRequest.SessionID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
 
