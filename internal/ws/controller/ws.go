@@ -8,7 +8,6 @@ import (
 	"gateway/pkg/utils"
 	"strconv"
 	"strings"
-	"time"
 
 	deribitModel "gateway/internal/deribit/model"
 	"gateway/internal/repositories"
@@ -83,14 +82,40 @@ func NewWebsocketHandler(
 	ws.RegisterChannel("public/get_order_book", handler.GetOrderBook)
 }
 
-func (svc wsHandler) PublicAuth(input interface{}, c *ws.Client) {
-	requestedTime := uint64(time.Now().UnixMicro())
+func requestHelper(
+	msgID uint64,
+	accessToken *string,
+	c *ws.Client,
+) (claim userType.JwtClaim, connKey string, reason *validation_reason.ValidationReason, err error) {
+	key := utils.GetKeyFromIdUserID(msgID, "")
+	if isDuplicateConnection := protocol.RegisterProtocolRequest(
+		key, protocol.ProtocolRequest{WS: c, Protocol: protocol.Websocket},
+	); isDuplicateConnection {
+		validation := validation_reason.DUPLICATED_REQUEST_ID
+		reason = &validation
 
-	if ok := protocol.RegisterProtocolRequest(requestedTime, protocol.Websocket, c, nil); !ok {
-		protocol.SendValidationMsg(requestedTime, validation_reason.DUPLICATED_REQUEST_ID, nil)
+		err = errors.New(validation.String())
 		return
 	}
 
+	if accessToken == nil {
+		connKey = key
+		return
+	}
+
+	claim, err = authService.ClaimJWT(c, *accessToken)
+	if err != nil {
+		*reason = validation_reason.UNAUTHORIZED
+		return
+	}
+
+	connKey = utils.GetKeyFromIdUserID(msgID, claim.UserID)
+	protocol.UpgradeProtocol(key, connKey)
+
+	return
+}
+
+func (svc wsHandler) PublicAuth(input interface{}, c *ws.Client) {
 	type Params struct {
 		GrantType    string `json:"grant_type" validate:"required"`
 		ClientID     string `json:"client_id"`
@@ -98,15 +123,20 @@ func (svc wsHandler) PublicAuth(input interface{}, c *ws.Client) {
 		RefreshToken string `json:"refresh_token"`
 	}
 
-	msg := &deribitModel.RequestDto[Params]{}
+	var msg deribitModel.RequestDto[Params]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
-		protocol.SendValidationMsg(requestedTime, validation_reason.PARSE_ERROR, err)
+		c.SendInvalidRequestMessage(err)
+		return
+	}
+
+	_, connKey, reason, err := requestHelper(msg.Id, nil, c)
+	if err != nil {
+		protocol.SendValidationMsg(connKey, *reason, err)
 		return
 	}
 
 	var res any
 	var user *userType.User
-	var err error
 
 	switch msg.Params.GrantType {
 	case "client_credentials":
@@ -116,7 +146,7 @@ func (svc wsHandler) PublicAuth(input interface{}, c *ws.Client) {
 		}
 
 		if payload.APIKey == "" || payload.APISecret == "" {
-			protocol.SendValidationMsg(requestedTime,
+			protocol.SendValidationMsg(connKey,
 				validation_reason.INVALID_PARAMS, errors.New("required client_id and client_secret"))
 			return
 		}
@@ -124,61 +154,50 @@ func (svc wsHandler) PublicAuth(input interface{}, c *ws.Client) {
 		res, user, err = svc.authSvc.Login(context.TODO(), payload)
 		if err != nil {
 			if strings.Contains(err.Error(), "invalid credential") {
-				protocol.SendValidationMsg(requestedTime, validation_reason.UNAUTHORIZED, err)
+				protocol.SendValidationMsg(connKey, validation_reason.UNAUTHORIZED, err)
 				return
 			}
 
-			protocol.SendErrMsg(requestedTime, err)
+			protocol.SendErrMsg(connKey, err)
 			return
 		}
 	case "refresh_token":
 		if msg.Params.RefreshToken == "" {
-			protocol.SendValidationMsg(requestedTime,
+			protocol.SendValidationMsg(connKey,
 				validation_reason.INVALID_PARAMS, errors.New("required refresh_token"))
 			return
 		}
 
 		claim, err := authService.ClaimJWT(c, msg.Params.RefreshToken)
 		if err != nil {
-			protocol.SendValidationMsg(requestedTime, validation_reason.UNAUTHORIZED, err)
+			protocol.SendValidationMsg(connKey, validation_reason.UNAUTHORIZED, err)
 			return
 		}
 
 		res, user, err = svc.authSvc.RefreshToken(context.TODO(), claim)
 		if err != nil {
-			protocol.SendErrMsg(requestedTime, err)
+			protocol.SendErrMsg(connKey, err)
 			return
 		}
 	}
 
 	c.RegisterAuthedConnection(user.ID.Hex())
 
-	protocol.SendSuccessMsg(requestedTime, res)
+	protocol.SendSuccessMsg(connKey, res)
 }
 
 func (svc wsHandler) PrivateBuy(input interface{}, c *ws.Client) {
-	requestedTime := uint64(time.Now().UnixMicro())
-
-	if ok := protocol.RegisterProtocolRequest(requestedTime, protocol.Websocket, c, nil); !ok {
-		protocol.SendValidationMsg(requestedTime, validation_reason.DUPLICATED_REQUEST_ID, nil)
-		return
-	}
-
-	msg := &deribitModel.RequestDto[deribitModel.RequestParams]{}
+	var msg deribitModel.RequestDto[deribitModel.RequestParams]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
-		protocol.SendValidationMsg(requestedTime, validation_reason.PARSE_ERROR, err)
+		c.SendInvalidRequestMessage(err)
 		return
 	}
 
-	// Check the Access Token
-	claim, err := authService.ClaimJWT(c, msg.Params.AccessToken)
+	claim, connKey, reason, err := requestHelper(msg.Id, &msg.Params.AccessToken, c)
 	if err != nil {
-		protocol.SendValidationMsg(requestedTime, validation_reason.UNAUTHORIZED, err)
+		protocol.SendValidationMsg(connKey, *reason, err)
 		return
 	}
-
-	ID := utils.GetKeyFromIdUserID(msg.Id, claim.UserID)
-	protocol.UpgradeProtocol(requestedTime, ID)
 
 	// Parse the Deribit BUY
 	_, validation, err := svc.deribitSvc.DeribitRequest(context.TODO(), claim.UserID, deribitModel.DeribitRequest{
@@ -193,41 +212,30 @@ func (svc wsHandler) PrivateBuy(input interface{}, c *ws.Client) {
 	})
 	if err != nil {
 		if validation != nil {
-			protocol.SendValidationMsg(ID, *validation, err)
+			protocol.SendValidationMsg(connKey, *validation, err)
 			return
 		}
 
-		protocol.SendErrMsg(ID, err)
+		protocol.SendErrMsg(connKey, err)
 		return
 	}
 
 	// register order connection
-	ws.RegisterOrderConnection(ID, c)
+	ws.RegisterOrderConnection(connKey, c)
 }
 
 func (svc wsHandler) PrivateSell(input interface{}, c *ws.Client) {
-	requestedTime := uint64(time.Now().UnixMicro())
-
-	if ok := protocol.RegisterProtocolRequest(requestedTime, protocol.Websocket, c, nil); !ok {
-		protocol.SendValidationMsg(requestedTime, validation_reason.DUPLICATED_REQUEST_ID, nil)
-		return
-	}
-
-	msg := &deribitModel.RequestDto[deribitModel.RequestParams]{}
+	var msg deribitModel.RequestDto[deribitModel.RequestParams]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
-		protocol.SendValidationMsg(requestedTime, validation_reason.PARSE_ERROR, err)
+		c.SendInvalidRequestMessage(err)
 		return
 	}
 
-	// Check the Access Token
-	claim, err := authService.ClaimJWT(c, msg.Params.AccessToken)
+	claim, connKey, reason, err := requestHelper(msg.Id, &msg.Params.AccessToken, c)
 	if err != nil {
-		protocol.SendValidationMsg(requestedTime, validation_reason.UNAUTHORIZED, err)
+		protocol.SendValidationMsg(connKey, *reason, err)
 		return
 	}
-
-	ID := utils.GetKeyFromIdUserID(msg.Id, claim.UserID)
-	protocol.UpgradeProtocol(requestedTime, ID)
 
 	// Parse the Deribit Sell
 	_, validation, err := svc.deribitSvc.DeribitRequest(context.TODO(), claim.UserID, deribitModel.DeribitRequest{
@@ -242,41 +250,30 @@ func (svc wsHandler) PrivateSell(input interface{}, c *ws.Client) {
 	})
 	if err != nil {
 		if validation != nil {
-			protocol.SendValidationMsg(ID, *validation, err)
+			protocol.SendValidationMsg(connKey, *validation, err)
 			return
 		}
 
-		protocol.SendErrMsg(ID, err)
+		protocol.SendErrMsg(connKey, err)
 		return
 	}
 
 	// register order connection
-	ws.RegisterOrderConnection(ID, c)
+	ws.RegisterOrderConnection(connKey, c)
 }
 
 func (svc wsHandler) PrivateEdit(input interface{}, c *ws.Client) {
-	requestedTime := uint64(time.Now().UnixMicro())
-
-	if ok := protocol.RegisterProtocolRequest(requestedTime, protocol.Websocket, c, nil); !ok {
-		protocol.SendValidationMsg(requestedTime, validation_reason.DUPLICATED_REQUEST_ID, nil)
-		return
-	}
-
-	msg := &deribitModel.RequestDto[deribitModel.RequestParams]{}
+	var msg deribitModel.RequestDto[deribitModel.RequestParams]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
-		protocol.SendValidationMsg(requestedTime, validation_reason.PARSE_ERROR, err)
+		c.SendInvalidRequestMessage(err)
 		return
 	}
 
-	// Check the Access Token
-	claim, err := authService.ClaimJWT(c, msg.Params.AccessToken)
+	claim, connKey, reason, err := requestHelper(msg.Id, &msg.Params.AccessToken, c)
 	if err != nil {
-		protocol.SendValidationMsg(requestedTime, validation_reason.UNAUTHORIZED, err)
+		protocol.SendValidationMsg(connKey, *reason, err)
 		return
 	}
-
-	ID := utils.GetKeyFromIdUserID(msg.Id, claim.UserID)
-	protocol.UpgradeProtocol(requestedTime, ID)
 
 	// TODO: Validation
 
@@ -288,37 +285,26 @@ func (svc wsHandler) PrivateEdit(input interface{}, c *ws.Client) {
 		ClOrdID: strconv.FormatUint(msg.Id, 10),
 	})
 	if err != nil {
-		protocol.SendErrMsg(ID, err)
+		protocol.SendErrMsg(connKey, err)
 		return
 	}
 
 	// register order connection
-	ws.RegisterOrderConnection(ID, c)
+	ws.RegisterOrderConnection(connKey, c)
 }
 
 func (svc wsHandler) PrivateCancel(input interface{}, c *ws.Client) {
-	requestedTime := uint64(time.Now().UnixMicro())
-
-	if ok := protocol.RegisterProtocolRequest(requestedTime, protocol.Websocket, c, nil); !ok {
-		protocol.SendValidationMsg(requestedTime, validation_reason.DUPLICATED_REQUEST_ID, nil)
-		return
-	}
-
-	msg := &deribitModel.RequestDto[deribitModel.RequestParams]{}
+	var msg deribitModel.RequestDto[deribitModel.RequestParams]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
-		protocol.SendValidationMsg(requestedTime, validation_reason.PARSE_ERROR, err)
+		c.SendInvalidRequestMessage(err)
 		return
 	}
 
-	// Check the Access Token
-	claim, err := authService.ClaimJWT(c, msg.Params.AccessToken)
+	claim, connKey, reason, err := requestHelper(msg.Id, &msg.Params.AccessToken, c)
 	if err != nil {
-		protocol.SendValidationMsg(requestedTime, validation_reason.UNAUTHORIZED, err)
+		protocol.SendValidationMsg(connKey, *reason, err)
 		return
 	}
-
-	ID := utils.GetKeyFromIdUserID(msg.Id, claim.UserID)
-	protocol.UpgradeProtocol(requestedTime, ID)
 
 	// TODO: Validation
 
@@ -328,37 +314,26 @@ func (svc wsHandler) PrivateCancel(input interface{}, c *ws.Client) {
 		ClOrdID: strconv.FormatUint(msg.Id, 10),
 	})
 	if err != nil {
-		protocol.SendErrMsg(ID, err)
+		protocol.SendErrMsg(connKey, err)
 		return
 	}
 
 	// register order connection
-	ws.RegisterOrderConnection(ID, c)
+	ws.RegisterOrderConnection(connKey, c)
 }
 
 func (svc wsHandler) PrivateCancelByInstrument(input interface{}, c *ws.Client) {
-	requestedTime := uint64(time.Now().UnixMicro())
-
-	if ok := protocol.RegisterProtocolRequest(requestedTime, protocol.Websocket, c, nil); !ok {
-		protocol.SendValidationMsg(requestedTime, validation_reason.DUPLICATED_REQUEST_ID, nil)
-		return
-	}
-
-	msg := &deribitModel.RequestDto[deribitModel.RequestParams]{}
+	var msg deribitModel.RequestDto[deribitModel.RequestParams]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
-		protocol.SendValidationMsg(requestedTime, validation_reason.PARSE_ERROR, err)
+		c.SendInvalidRequestMessage(err)
 		return
 	}
 
-	// Check the Access Token
-	claim, err := authService.ClaimJWT(c, msg.Params.AccessToken)
+	claim, connKey, reason, err := requestHelper(msg.Id, &msg.Params.AccessToken, c)
 	if err != nil {
-		protocol.SendValidationMsg(requestedTime, validation_reason.UNAUTHORIZED, err)
+		protocol.SendValidationMsg(connKey, *reason, nil)
 		return
 	}
-
-	ID := utils.GetKeyFromIdUserID(msg.Id, claim.UserID)
-	protocol.UpgradeProtocol(requestedTime, ID)
 
 	// TODO: Validation
 
@@ -368,37 +343,26 @@ func (svc wsHandler) PrivateCancelByInstrument(input interface{}, c *ws.Client) 
 		ClOrdID:        strconv.FormatUint(msg.Id, 10),
 	})
 	if err != nil {
-		protocol.SendErrMsg(ID, err)
+		protocol.SendErrMsg(connKey, err)
 		return
 	}
 
 	//register order connection
-	ws.RegisterOrderConnection(ID, c)
+	ws.RegisterOrderConnection(connKey, c)
 }
 
 func (svc wsHandler) PrivateCancelAll(input interface{}, c *ws.Client) {
-	requestedTime := uint64(time.Now().UnixMicro())
-
-	if ok := protocol.RegisterProtocolRequest(requestedTime, protocol.Websocket, c, nil); !ok {
-		protocol.SendValidationMsg(requestedTime, validation_reason.DUPLICATED_REQUEST_ID, nil)
-		return
-	}
-
-	msg := &deribitModel.RequestDto[deribitModel.RequestParams]{}
+	var msg deribitModel.RequestDto[deribitModel.RequestParams]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
-		protocol.SendValidationMsg(requestedTime, validation_reason.PARSE_ERROR, err)
+		c.SendInvalidRequestMessage(err)
 		return
 	}
 
-	// Check the Access Token
-	claim, err := authService.ClaimJWT(c, msg.Params.AccessToken)
+	claim, connKey, reason, err := requestHelper(msg.Id, &msg.Params.AccessToken, c)
 	if err != nil {
-		protocol.SendValidationMsg(requestedTime, validation_reason.UNAUTHORIZED, err)
+		protocol.SendValidationMsg(connKey, *reason, err)
 		return
 	}
-
-	ID := utils.GetKeyFromIdUserID(msg.Id, claim.UserID)
-	protocol.UpgradeProtocol(requestedTime, ID)
 
 	// TODO: Validation
 
@@ -407,29 +371,28 @@ func (svc wsHandler) PrivateCancelAll(input interface{}, c *ws.Client) {
 		ClOrdID: strconv.FormatUint(msg.Id, 10),
 	})
 	if err != nil {
-		protocol.SendErrMsg(ID, err)
+		protocol.SendErrMsg(connKey, err)
 		return
 	}
 
 	// register order connection
-	ws.RegisterOrderConnection(ID, c)
+	ws.RegisterOrderConnection(connKey, c)
 }
 
 func (svc wsHandler) SubscribeHandler(input interface{}, c *ws.Client) {
-	requestedTime := uint64(time.Now().UnixMicro())
-
-	if ok := protocol.RegisterProtocolRequest(requestedTime, protocol.Websocket, c, nil); !ok {
-		protocol.SendValidationMsg(requestedTime, validation_reason.DUPLICATED_REQUEST_ID, nil)
-		return
-	}
-
-	msg := &deribitModel.RequestDto[deribitModel.ChannelParams]{}
+	var msg deribitModel.RequestDto[deribitModel.ChannelParams]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
-		protocol.SendValidationMsg(requestedTime, validation_reason.PARSE_ERROR, err)
+		c.SendInvalidRequestMessage(err)
 		return
 	}
 
-	protocol.SendSuccessMsg(requestedTime, msg.Params.Channels)
+	_, connKey, reason, err := requestHelper(msg.Id, nil, c)
+	if err != nil {
+		protocol.SendValidationMsg(connKey, *reason, err)
+		return
+	}
+
+	protocol.SendSuccessMsg(connKey, msg.Params.Channels)
 
 	for _, channel := range msg.Params.Channels {
 		fmt.Println(channel)
@@ -454,18 +417,19 @@ func (svc wsHandler) SubscribeHandler(input interface{}, c *ws.Client) {
 }
 
 func (svc wsHandler) UnsubscribeHandler(input interface{}, c *ws.Client) {
-	requestedTime := uint64(time.Now().UnixMicro())
-
-	if ok := protocol.RegisterProtocolRequest(requestedTime, protocol.Websocket, c, nil); !ok {
-		protocol.SendValidationMsg(requestedTime, validation_reason.DUPLICATED_REQUEST_ID, nil)
-		return
-	}
-
-	msg := &deribitModel.RequestDto[deribitModel.ChannelParams]{}
+	var msg deribitModel.RequestDto[deribitModel.ChannelParams]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
-		protocol.SendValidationMsg(requestedTime, validation_reason.PARSE_ERROR, err)
+		c.SendInvalidRequestMessage(err)
 		return
 	}
+
+	_, connKey, reason, err := requestHelper(msg.Id, nil, c)
+	if err != nil {
+		protocol.SendValidationMsg(connKey, *reason, err)
+		return
+	}
+
+	protocol.SendSuccessMsg(connKey, msg.Params.Channels)
 
 	for _, channel := range msg.Params.Channels {
 		s := strings.Split(channel, ".")
@@ -481,35 +445,23 @@ func (svc wsHandler) UnsubscribeHandler(input interface{}, c *ws.Client) {
 		case "quote":
 			svc.wsOBSvc.UnsubscribeQuote(c)
 		}
-
 	}
-
-	protocol.SendSuccessMsg(requestedTime, msg.Params.Channels)
 }
 
 func (svc wsHandler) SubscribeHandlerPrivate(input interface{}, c *ws.Client) {
-	requestedTime := uint64(time.Now().UnixMicro())
-
-	if ok := protocol.RegisterProtocolRequest(requestedTime, protocol.Websocket, c, nil); !ok {
-		protocol.SendValidationMsg(requestedTime, validation_reason.DUPLICATED_REQUEST_ID, nil)
-		return
-	}
-
-	msg := &deribitModel.RequestDto[deribitModel.ChannelParams]{}
+	var msg deribitModel.RequestDto[deribitModel.ChannelParams]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
-		protocol.SendValidationMsg(requestedTime, validation_reason.PARSE_ERROR, err)
+		c.SendInvalidRequestMessage(err)
 		return
 	}
 
-	// Check the Access Token
-	claim, err := authService.ClaimJWT(c, msg.Params.AccessToken)
+	claim, connKey, reason, err := requestHelper(msg.Id, nil, c)
 	if err != nil {
-		protocol.SendValidationMsg(requestedTime, validation_reason.UNAUTHORIZED, err)
+		protocol.SendValidationMsg(connKey, *reason, err)
 		return
 	}
 
-	ID := utils.GetKeyFromIdUserID(msg.Id, claim.UserID)
-	protocol.UpgradeProtocol(requestedTime, ID)
+	protocol.SendSuccessMsg(connKey, msg.Params.Channels)
 
 	for _, channel := range msg.Params.Channels {
 		s := strings.Split(channel, ".")
@@ -523,22 +475,22 @@ func (svc wsHandler) SubscribeHandlerPrivate(input interface{}, c *ws.Client) {
 		}
 	}
 
-	protocol.SendSuccessMsg(ID, msg.Params.Channels)
 }
 
 func (svc wsHandler) UnsubscribeHandlerPrivate(input interface{}, c *ws.Client) {
-	requestedTime := uint64(time.Now().UnixMicro())
-
-	if ok := protocol.RegisterProtocolRequest(requestedTime, protocol.Websocket, c, nil); !ok {
-		protocol.SendValidationMsg(requestedTime, validation_reason.DUPLICATED_REQUEST_ID, nil)
-		return
-	}
-
-	msg := &deribitModel.RequestDto[deribitModel.ChannelParams]{}
+	var msg deribitModel.RequestDto[deribitModel.ChannelParams]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
-		protocol.SendValidationMsg(requestedTime, validation_reason.PARSE_ERROR, err)
+		c.SendInvalidRequestMessage(err)
 		return
 	}
+
+	_, connKey, reason, err := requestHelper(msg.Id, nil, c)
+	if err != nil {
+		protocol.SendValidationMsg(connKey, *reason, err)
+		return
+	}
+
+	protocol.SendSuccessMsg(connKey, msg.Params.Channels)
 
 	for _, channel := range msg.Params.Channels {
 		s := strings.Split(channel, ".")
@@ -553,21 +505,18 @@ func (svc wsHandler) UnsubscribeHandlerPrivate(input interface{}, c *ws.Client) 
 
 	}
 
-	protocol.SendSuccessMsg(requestedTime, msg.Params.Channels)
 }
 
 func (svc wsHandler) GetInstruments(input interface{}, c *ws.Client) {
-	requestedTime := uint64(time.Now().UnixMicro())
-
-	if ok := protocol.RegisterProtocolRequest(requestedTime, protocol.Websocket, c, nil); !ok {
-		protocol.SendValidationMsg(requestedTime, validation_reason.DUPLICATED_REQUEST_ID, nil)
+	var msg deribitModel.RequestDto[deribitModel.GetInstrumentsParams]
+	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
+		c.SendInvalidRequestMessage(err)
 		return
 	}
 
-	msg := &deribitModel.RequestDto[deribitModel.GetInstrumentsParams]{}
-	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
-		protocol.SendValidationMsg(requestedTime, validation_reason.PARSE_ERROR, err)
-		return
+	_, connKey, reason, err := requestHelper(msg.Id, nil, c)
+	if err != nil {
+		protocol.SendValidationMsg(connKey, *reason, err)
 	}
 
 	result := svc.wsOSvc.GetInstruments(context.TODO(), deribitModel.DeribitGetInstrumentsRequest{
@@ -575,20 +524,19 @@ func (svc wsHandler) GetInstruments(input interface{}, c *ws.Client) {
 		Expired:  msg.Params.Expired,
 	})
 
-	protocol.SendSuccessMsg(requestedTime, result)
+	protocol.SendSuccessMsg(connKey, result)
 }
 
 func (svc wsHandler) GetOrderBook(input interface{}, c *ws.Client) {
-	requestedTime := uint64(time.Now().UnixMicro())
-
-	if ok := protocol.RegisterProtocolRequest(requestedTime, protocol.Websocket, c, nil); !ok {
-		protocol.SendValidationMsg(requestedTime, validation_reason.DUPLICATED_REQUEST_ID, nil)
+	var msg deribitModel.RequestDto[deribitModel.GetOrderBookParams]
+	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
+		c.SendInvalidRequestMessage(err)
 		return
 	}
 
-	msg := &deribitModel.RequestDto[deribitModel.GetOrderBookParams]{}
-	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
-		protocol.SendValidationMsg(requestedTime, validation_reason.PARSE_ERROR, err)
+	_, connKey, reason, err := requestHelper(msg.Id, nil, c)
+	if err != nil {
+		protocol.SendValidationMsg(connKey, *reason, err)
 		return
 	}
 
@@ -597,20 +545,19 @@ func (svc wsHandler) GetOrderBook(input interface{}, c *ws.Client) {
 		Depth:          msg.Params.Depth,
 	})
 
-	protocol.SendSuccessMsg(requestedTime, result)
+	protocol.SendSuccessMsg(connKey, result)
 }
 
 func (svc wsHandler) PrivateGetUserTradesByInstrument(input interface{}, c *ws.Client) {
-	requestedTime := uint64(time.Now().UnixMicro())
-
-	if ok := protocol.RegisterProtocolRequest(requestedTime, protocol.Websocket, c, nil); !ok {
-		protocol.SendValidationMsg(requestedTime, validation_reason.DUPLICATED_REQUEST_ID, nil)
+	var msg deribitModel.RequestDto[deribitModel.GetUserTradesByInstrumentParams]
+	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
+		c.SendInvalidRequestMessage(err)
 		return
 	}
 
-	msg := &deribitModel.RequestDto[deribitModel.GetUserTradesByInstrumentParams]{}
-	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
-		protocol.SendValidationMsg(requestedTime, validation_reason.PARSE_ERROR, err)
+	claim, connKey, reason, err := requestHelper(msg.Id, &msg.Params.AccessToken, c)
+	if err != nil {
+		protocol.SendValidationMsg(connKey, *reason, err)
 		return
 	}
 
@@ -618,15 +565,6 @@ func (svc wsHandler) PrivateGetUserTradesByInstrument(input interface{}, c *ws.C
 	if msg.Params.Count <= 0 {
 		msg.Params.Count = 10
 	}
-
-	claim, err := authService.ClaimJWT(c, msg.Params.AccessToken)
-	if err != nil {
-		protocol.SendValidationMsg(requestedTime, validation_reason.UNAUTHORIZED, err)
-		return
-	}
-
-	ID := utils.GetKeyFromIdUserID(msg.Id, claim.UserID)
-	protocol.UpgradeProtocol(requestedTime, ID)
 
 	res := svc.wsTradeSvc.GetUserTradesByInstrument(
 		context.TODO(),
@@ -640,20 +578,19 @@ func (svc wsHandler) PrivateGetUserTradesByInstrument(input interface{}, c *ws.C
 		},
 	)
 
-	protocol.SendSuccessMsg(ID, res)
+	protocol.SendSuccessMsg(connKey, res)
 }
 
 func (svc wsHandler) PrivateGetOpenOrdersByInstrument(input interface{}, c *ws.Client) {
-	requestedTime := uint64(time.Now().UnixMicro())
-
-	if ok := protocol.RegisterProtocolRequest(requestedTime, protocol.Websocket, c, nil); !ok {
-		protocol.SendValidationMsg(requestedTime, validation_reason.DUPLICATED_REQUEST_ID, nil)
+	var msg deribitModel.RequestDto[deribitModel.GetOpenOrdersByInstrumentParams]
+	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
+		c.SendInvalidRequestMessage(err)
 		return
 	}
 
-	msg := &deribitModel.RequestDto[deribitModel.GetOpenOrdersByInstrumentParams]{}
-	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
-		protocol.SendValidationMsg(requestedTime, validation_reason.PARSE_ERROR, err)
+	claim, connKey, reason, err := requestHelper(msg.Id, &msg.Params.AccessToken, c)
+	if err != nil {
+		protocol.SendValidationMsg(connKey, *reason, err)
 		return
 	}
 
@@ -661,15 +598,6 @@ func (svc wsHandler) PrivateGetOpenOrdersByInstrument(input interface{}, c *ws.C
 	if msg.Params.Type == "" {
 		msg.Params.Type = "all"
 	}
-
-	claim, err := authService.ClaimJWT(c, msg.Params.AccessToken)
-	if err != nil {
-		protocol.SendValidationMsg(requestedTime, validation_reason.UNAUTHORIZED, err)
-		return
-	}
-
-	ID := utils.GetKeyFromIdUserID(msg.Id, claim.UserID)
-	protocol.UpgradeProtocol(requestedTime, ID)
 
 	res := svc.wsOSvc.GetOpenOrdersByInstrument(
 		context.TODO(),
@@ -680,20 +608,19 @@ func (svc wsHandler) PrivateGetOpenOrdersByInstrument(input interface{}, c *ws.C
 		},
 	)
 
-	protocol.SendSuccessMsg(ID, res)
+	protocol.SendSuccessMsg(connKey, res)
 }
 
 func (svc wsHandler) PrivateGetOrderHistoryByInstrument(input interface{}, c *ws.Client) {
-	requestedTime := uint64(time.Now().UnixMicro())
-
-	if ok := protocol.RegisterProtocolRequest(requestedTime, protocol.Websocket, c, nil); !ok {
-		protocol.SendValidationMsg(requestedTime, validation_reason.DUPLICATED_REQUEST_ID, nil)
+	var msg deribitModel.RequestDto[deribitModel.GetOrderHistoryByInstrumentParams]
+	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
+		c.SendInvalidRequestMessage(err)
 		return
 	}
 
-	msg := &deribitModel.RequestDto[deribitModel.GetOrderHistoryByInstrumentParams]{}
-	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
-		protocol.SendValidationMsg(requestedTime, validation_reason.PARSE_ERROR, err)
+	claim, connKey, reason, err := requestHelper(msg.Id, &msg.Params.AccessToken, c)
+	if err != nil {
+		protocol.SendValidationMsg(connKey, *reason, err)
 		return
 	}
 
@@ -701,15 +628,6 @@ func (svc wsHandler) PrivateGetOrderHistoryByInstrument(input interface{}, c *ws
 	if msg.Params.Count <= 0 {
 		msg.Params.Count = 20
 	}
-
-	claim, err := authService.ClaimJWT(c, msg.Params.AccessToken)
-	if err != nil {
-		protocol.SendValidationMsg(requestedTime, validation_reason.UNAUTHORIZED, err)
-		return
-	}
-
-	ID := utils.GetKeyFromIdUserID(msg.Id, claim.UserID)
-	protocol.UpgradeProtocol(requestedTime, ID)
 
 	res := svc.wsOSvc.GetGetOrderHistoryByInstrument(
 		context.TODO(),
@@ -723,5 +641,5 @@ func (svc wsHandler) PrivateGetOrderHistoryByInstrument(input interface{}, c *ws
 		},
 	)
 
-	protocol.SendSuccessMsg(ID, res)
+	protocol.SendSuccessMsg(connKey, res)
 }

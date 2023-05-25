@@ -5,8 +5,6 @@ import (
 	"gateway/pkg/utils"
 	"gateway/pkg/ws"
 	"net/http"
-	"strconv"
-	"strings"
 	"time"
 
 	"git.devucc.name/dependencies/utilities/commons/logs"
@@ -43,7 +41,7 @@ type ErrorMessage struct {
 	Code    int64         `json:"code"`
 
 	// Helper to pass the http status code
-	HttpStatusCode int
+	HttpStatusCode int `json:"-"`
 }
 
 type ReasonMessage struct {
@@ -52,58 +50,46 @@ type ReasonMessage struct {
 
 type ProtocolRequest struct {
 	Protocol      ProtocolType
-	ID            string
 	RequestedTime uint64
-	ws            *ws.Client
-	gin           *gin.Context
+	WS            *ws.Client
+	Http          *gin.Context
 }
 
 var protocolConnections map[any]ProtocolRequest
 
-func RegisterProtocolRequest(
-	ID any,
-	protocol ProtocolType,
-	ws *ws.Client,
-	gin *gin.Context,
-) bool {
+func RegisterProtocolRequest(key string, conn ProtocolRequest) (duplicateConnection bool) {
 	if protocolConnections == nil {
 		protocolConnections = make(map[any]ProtocolRequest)
 	}
 
-	if checkKeyExists(ID) {
-		return false
-	}
+	duplicateConnection = isConnExist(key)
 
-	protocolConnections[ID] = ProtocolRequest{
-		Protocol:      protocol,
-		RequestedTime: uint64(time.Now().UnixMicro()),
-		ws:            ws,
-		gin:           gin,
-	}
+	conn.RequestedTime = uint64(time.Now().UnixMicro())
+	protocolConnections[key] = conn
 
-	return true
+	return
 }
 
-func UpgradeProtocol(OldID, NewID any) bool {
-	conn := protocolConnections[OldID]
+func UpgradeProtocol(oldKey, newKey string) bool {
+	conn := protocolConnections[oldKey]
 
 	// Set the new ID
-	protocolConnections[NewID] = conn
+	protocolConnections[newKey] = conn
 
 	// Remove old connection
-	delete(protocolConnections, OldID)
+	delete(protocolConnections, oldKey)
 
 	return true
 }
 
-func UnregisterProtocol(ID any) {
+func UnregisterProtocol(key string) {
 	if protocolConnections != nil {
-		delete(protocolConnections, ID)
+		delete(protocolConnections, key)
 	}
 }
 
-func GetProtocol(ID any) (bool, ProtocolRequest) {
-	val, ok := protocolConnections[ID]
+func GetProtocol(key string) (bool, ProtocolRequest) {
+	val, ok := protocolConnections[key]
 	if ok {
 		return true, val
 	}
@@ -112,13 +98,12 @@ func GetProtocol(ID any) (bool, ProtocolRequest) {
 }
 
 // Responsible for constructing the message
-func SendSuccessMsg(ID any, result any) bool {
-	return doSend(ID, result, nil)
+func SendSuccessMsg(key string, result any) bool {
+	return doSend(key, result, nil)
 }
 
 // Responsible for constructing the validation message
-func SendValidationMsg(ID any, reason validation_reason.ValidationReason, err error) bool {
-
+func SendValidationMsg(key string, reason validation_reason.ValidationReason, err error) bool {
 	reasongMsg := reason.String()
 	if err != nil {
 		reasongMsg = err.Error()
@@ -136,11 +121,11 @@ func SendValidationMsg(ID any, reason validation_reason.ValidationReason, err er
 
 	logs.Log.Debug().Str("validation_reason", codeStr).Msg(reasongMsg)
 
-	return doSend(ID, nil, &errMsg)
+	return doSend(key, nil, &errMsg)
 }
 
 // Responsible for constructing the error message
-func SendErrMsg(ID any, err error) bool {
+func SendErrMsg(key string, err error) bool {
 	reason := validation_reason.OTHER
 
 	code, httpCode, codeStr := reason.Code()
@@ -153,36 +138,29 @@ func SendErrMsg(ID any, err error) bool {
 		HttpStatusCode: httpCode,
 	}
 
-	return doSend(ID, nil, &errMsg)
+	return doSend(key, nil, &errMsg)
 }
 
 // Responsible for handling to send for different protocol
-func doSend(ID any, result any, err *ErrorMessage) bool {
-	ok, val := GetProtocol(ID)
+func doSend(key string, result any, err *ErrorMessage) bool {
+	ok, val := GetProtocol(key)
 	if !ok {
-		logs.Log.Error().Any("ID", ID).Msg("no connection found")
+		logs.Log.Error().Str("connection_key", key).Msg("no connection found")
 
 		return false
 	}
 
-	logs.Log.Info().Any("ID", ID).Msg("protocol send message")
-
-	s := fmt.Sprintf("%d", ID)
-	msgId, _ := strconv.ParseInt(s, 10, 64)
+	logs.Log.Info().Str("connection_key", key).Msg("protocol send message")
 
 	m := RPCResponseMessage{
 		JSONRPC: "2.0",
 		Result:  result,
 		Error:   err,
 		Testnet: true,
-		ID:      uint64(msgId),
 	}
 
-	id := fmt.Sprintf("%v", ID)
-	if strings.Contains(id, "-") {
-		rpcID, _ := utils.ParseKey(id)
-		m.ID = rpcID
-	}
+	ID, _ := utils.GetIdUserIDFromKey(fmt.Sprintf("%v", key))
+	m.ID = ID
 
 	m.UsIn = val.RequestedTime
 	m.UsOut = uint64(time.Now().UnixMicro())
@@ -205,7 +183,7 @@ func doSend(ID any, result any, err *ErrorMessage) bool {
 			msg.Error = m.Error
 		}
 
-		val.ws.Send(msg)
+		val.WS.Send(msg)
 
 		break
 	case HTTP:
@@ -213,7 +191,7 @@ func doSend(ID any, result any, err *ErrorMessage) bool {
 		if m.Error != nil {
 			statusCode = m.Error.HttpStatusCode
 		}
-		val.gin.JSON(statusCode, m)
+		val.Http.JSON(statusCode, m)
 
 		break
 	case GRPC:
@@ -221,12 +199,12 @@ func doSend(ID any, result any, err *ErrorMessage) bool {
 		break
 	}
 
-	UnregisterProtocol(ID)
+	UnregisterProtocol(key)
 
 	return true
 }
 
-func checkKeyExists(key any) bool {
+func isConnExist(key string) bool {
 	_, ok := protocolConnections[key]
 	return ok
 }
