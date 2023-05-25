@@ -260,31 +260,14 @@ func (svc engineHandler) PublishOrder(data _engineType.EngineResponse) {
 			Order:  order,
 			Trades: trades,
 		})
-
+		break
 	}
 
 }
 
 func (svc engineHandler) PublishValidation(data _engineType.EngineResponse) {
-	userID := fmt.Sprintf("%v", data.Matches.TakerOrder.UserID)
-	ClOrdID := fmt.Sprintf("%v", data.Matches.TakerOrder.ClOrdID)
-	ID, _ := strconv.ParseUint(ClOrdID, 0, 64)
+	ID, _ := strconv.ParseUint(data.Matches.TakerOrder.ClOrdID, 0, 64)
+	connKey := utils.GetKeyFromIdUserID(ID, data.Matches.TakerOrder.UserID)
 
-	connKey := utils.GetKeyFromIdUserID(ID, userID)
-	code, _, codeStr := data.Validation.Code()
-
-	// Catch the validation to log
-	logs.Log.Debug().Str("validation", codeStr).Msg(data.Validation.String())
-
-	ws.SendOrderErrorMessage(connKey, ws.WebsocketResponseErrMessage{
-		Params: ws.SendMessageParams{
-			UserID: userID,
-		},
-
-		Message: data.Validation.String(),
-		Code:    code,
-		Data: ws.ReasonMessage{
-			Reason: codeStr,
-		},
-	})
+	protocol.SendValidationMsg(connKey, data.Validation, nil)
 }

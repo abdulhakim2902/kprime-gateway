@@ -12,6 +12,7 @@ require (
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/gomodule/redigo v1.8.9
 	github.com/gorilla/websocket v1.5.0
+	github.com/hashicorp/go-memdb v1.3.4
 	github.com/joho/godotenv v1.5.1
 	github.com/quickfixgo/enum v0.1.0
 	github.com/quickfixgo/field v0.1.0
@@ -20,7 +21,6 @@ require (
 	github.com/quickfixgo/tag v0.1.0
 	github.com/rs/cors/wrapper/gin v0.0.0-20230301160956-5c2b877d2a03
 	github.com/shopspring/decimal v1.3.1
-	github.com/spf13/cobra v1.6.1
 	go.mongodb.org/mongo-driver v1.11.6
 )
 
@@ -38,9 +38,10 @@ require (
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/gosuri/uitable v0.0.4 // indirect
 	github.com/hashicorp/errwrap v1.0.0 // indirect
+	github.com/hashicorp/go-immutable-radix v1.3.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/go-uuid v1.0.3 // indirect
-	github.com/inconshreveable/mousetrap v1.0.1 // indirect
+	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/jcmturner/aescts/v2 v2.0.0 // indirect
 	github.com/jcmturner/dnsutils/v2 v2.0.0 // indirect
 	github.com/jcmturner/gofork v1.7.6 // indirect
@@ -65,7 +66,6 @@ require (
 	github.com/rogpeppe/go-internal v1.10.0 // indirect
 	github.com/rs/cors v1.8.3 // indirect
 	github.com/rs/zerolog v1.29.1 // indirect
-	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.2.11 // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect

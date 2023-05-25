@@ -7,42 +7,44 @@ import (
 	"gateway/internal/deribit/model"
 	"gateway/internal/repositories"
 	"gateway/pkg/kafka/producer"
+	"gateway/pkg/memdb"
 	"gateway/pkg/redis"
 	"gateway/pkg/utils"
 	"strings"
 
+	userSchema "gateway/schema"
+
 	"git.devucc.name/dependencies/utilities/commons/logs"
-	"git.devucc.name/dependencies/utilities/models/order"
 	"git.devucc.name/dependencies/utilities/types"
 	"git.devucc.name/dependencies/utilities/types/validation_reason"
 )
 
 type deribitService struct {
-	userRepo            *repositories.UserRepository
 	tradeRepo           *repositories.TradeRepository
 	orderRepo           *repositories.OrderRepository
 	rawPriceRepo        *repositories.RawPriceRepository
 	settlementPriceRepo *repositories.SettlementPriceRepository
 
 	redis *redis.RedisConnectionPool
+	memDb *memdb.Schemas
 }
 
 func NewDeribitService(
 	redis *redis.RedisConnectionPool,
+	memDb *memdb.Schemas,
 
-	userRepo *repositories.UserRepository,
 	tradeRepo *repositories.TradeRepository,
 	orderRepo *repositories.OrderRepository,
 	rawPriceRepo *repositories.RawPriceRepository,
 	settlementPriceRepo *repositories.SettlementPriceRepository,
 ) IDeribitService {
 	return &deribitService{
-		userRepo,
 		tradeRepo,
 		orderRepo,
 		rawPriceRepo,
 		settlementPriceRepo,
 		redis,
+		memDb,
 	}
 }
 
@@ -58,41 +60,31 @@ func (svc deribitService) DeribitRequest(
 		return nil, &reason, err
 	}
 
-	upperType := strings.ToUpper(string(data.Type))
-	userHasOrderType := false
-
-	user, err := svc.userRepo.FindById(context.TODO(), userId)
+	user, err := svc.memDb.User.FindOne("id", userId)
 	if err != nil {
-		if strings.Contains(err.Error(), "no documents in result") {
-			reason := validation_reason.UNAUTHORIZED
-			return nil, &reason, errors.New(reason.String())
-		}
 		logs.Log.Error().Err(err).Msg("")
 
 		return nil, nil, err
 	}
 
-	var typeInclusions []order.TypeInclusions
-	for _, orderType := range user.OrderTypes {
+	if user == nil {
+		reason := validation_reason.UNAUTHORIZED
+		return nil, &reason, errors.New(reason.String())
+	}
+
+	userCast := user.(userSchema.User)
+	upperType := strings.ToUpper(string(data.Type))
+	userHasOrderType := false
+
+	for _, orderType := range userCast.TypeInclusions {
 		if strings.ToLower(orderType.Name) == strings.ToLower(upperType) {
 			userHasOrderType = true
 		}
-
-		typeInclusions = append(typeInclusions, order.TypeInclusions{
-			Name: orderType.Name,
-		})
 	}
 
 	if !userHasOrderType {
 		reason := validation_reason.ORDER_TYPE_NO_MATCH
 		return nil, &reason, errors.New(reason.String())
-	}
-
-	var orderExclusions []order.OrderExclusion
-	for _, item := range user.OrderExclusions {
-		orderExclusions = append(orderExclusions, order.OrderExclusion{
-			UserID: item.UserID,
-		})
 	}
 
 	var _timeInForce types.TimeInForce
@@ -117,8 +109,8 @@ func (svc deribitService) DeribitRequest(
 		TimeInForce:    _timeInForce,
 		Label:          data.Label,
 
-		OrderExclusions: orderExclusions,
-		TypeInclusions:  typeInclusions,
+		OrderExclusions: userCast.OrderExclusions,
+		TypeInclusions:  userCast.TypeInclusions,
 	}
 
 	out, err := json.Marshal(payload)

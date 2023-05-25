@@ -170,9 +170,6 @@ func (svc wsHandler) PrivateBuy(input interface{}, c *ws.Client) {
 		return
 	}
 
-	isAuthed, userId := c.IsAuthed()
-	fmt.Println(isAuthed, userId)
-
 	// Check the Access Token
 	claim, err := authService.ClaimJWT(c, msg.Params.AccessToken)
 	if err != nil {
@@ -337,7 +334,6 @@ func (svc wsHandler) PrivateCancel(input interface{}, c *ws.Client) {
 
 	// register order connection
 	ws.RegisterOrderConnection(ID, c)
-	return
 }
 
 func (svc wsHandler) PrivateCancelByInstrument(input interface{}, c *ws.Client) {
@@ -433,6 +429,8 @@ func (svc wsHandler) SubscribeHandler(input interface{}, c *ws.Client) {
 		return
 	}
 
+	protocol.SendSuccessMsg(requestedTime, msg.Params.Channels)
+
 	for _, channel := range msg.Params.Channels {
 		fmt.Println(channel)
 		s := strings.Split(channel, ".")
@@ -453,8 +451,6 @@ func (svc wsHandler) SubscribeHandler(input interface{}, c *ws.Client) {
 			svc.wsOBSvc.SubscribeBook(c, channel)
 		}
 	}
-
-	protocol.SendSuccessMsg(requestedTime, msg.Params.Channels)
 }
 
 func (svc wsHandler) UnsubscribeHandler(input interface{}, c *ws.Client) {

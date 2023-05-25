@@ -5,6 +5,7 @@ import (
 	"gateway/pkg/utils"
 	"gateway/pkg/ws"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -159,14 +160,22 @@ func SendErrMsg(ID any, err error) bool {
 func doSend(ID any, result any, err *ErrorMessage) bool {
 	ok, val := GetProtocol(ID)
 	if !ok {
+		logs.Log.Error().Any("ID", ID).Msg("no connection found")
+
 		return false
 	}
+
+	logs.Log.Info().Any("ID", ID).Msg("protocol send message")
+
+	s := fmt.Sprintf("%d", ID)
+	msgId, _ := strconv.ParseInt(s, 10, 64)
 
 	m := RPCResponseMessage{
 		JSONRPC: "2.0",
 		Result:  result,
 		Error:   err,
 		Testnet: true,
+		ID:      uint64(msgId),
 	}
 
 	id := fmt.Sprintf("%v", ID)

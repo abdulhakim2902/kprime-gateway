@@ -9,3 +9,7 @@ type IAuthService interface {
 	Login(context.Context, types.AuthRequest) (*types.AuthResponse, *types.User, error)
 	RefreshToken(context.Context, types.JwtClaim) (*types.AuthResponse, *types.User, error)
 }
+
+type IUserService interface {
+	SyncMemDB(context.Context, interface{}) error
+}
