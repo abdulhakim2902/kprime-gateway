@@ -292,7 +292,7 @@ func (a *Application) onNewOrderSingle(msg newordersingle.NewOrderSingle, sessio
 	priceFloat, _ := strconv.ParseFloat(price.String(), 64)
 	amountFloat, _ := strconv.ParseFloat(orderQty.String(), 64)
 
-	a.DeribitService.DeribitRequest(context.TODO(), user.ID.Hex(), _deribitModel.DeribitRequest{
+	response, reason, r := a.DeribitService.DeribitRequest(context.TODO(), user.ID.Hex(), _deribitModel.DeribitRequest{
 		ClientId:       partyId.String(),
 		InstrumentName: symbol,
 		ClOrdID:        clOrId,
@@ -302,6 +302,16 @@ func (a *Application) onNewOrderSingle(msg newordersingle.NewOrderSingle, sessio
 		Amount:         amountFloat,
 	})
 
+	if r != nil {
+		if reason != nil {
+			logs.Log.Err(r).Msg(fmt.Sprintf("Error placing order, %v", reason.String()))
+			return quickfix.NewMessageRejectError(fmt.Sprintf("Error placing order, %v", reason.String()), 1, nil)
+		}
+		logs.Log.Err(r).Msg(fmt.Sprintf("Error placing order, %v", r.Error()))
+		return quickfix.NewMessageRejectError(fmt.Sprintf("Error placing order, %v", r.Error()), 1, nil)
+	}
+
+	fmt.Println(response, reason, r)
 	return nil
 }
 
@@ -416,6 +426,7 @@ func (a *Application) onOrderCancelRequest(msg ordercancelrequest.OrderCancelReq
 	})
 
 	if r != nil {
+		logs.Log.Err(r).Msg("Failed to send cancel request")
 		return quickfix.NewMessageRejectError("Failed to send cancel request", 1, nil)
 	}
 
@@ -428,6 +439,7 @@ func (a *Application) onOrderCancelRequest(msg ordercancelrequest.OrderCancelReq
 			field.NewCxlRejResponseTo(enum.CxlRejResponseTo_ORDER_CANCEL_REQUEST),
 			field.NewText(reason.String()),
 			sessionID)
+		logs.Log.Err(r).Msg(fmt.Sprintf("Failed to send cancel request, %v", reason.String()))
 		return nil
 	}
 
