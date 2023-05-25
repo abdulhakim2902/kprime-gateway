@@ -617,7 +617,6 @@ func (svc wsOrderbookService) GetOrderBook(ctx context.Context, data _deribitMod
 	if err != nil {
 		fmt.Println("Error parsing date:", err)
 	}
-	dateValue := date.Unix()
 	currentTime := time.Now()
 	oneDayAgo := currentTime.AddDate(0, 0, -1)
 	_state := ""
@@ -626,6 +625,18 @@ func (svc wsOrderbookService) GetOrderBook(ctx context.Context, data _deribitMod
 	} else {
 		_state = "open"
 	}
+
+	//TODO query to get expires time
+	expiredDate := dateString
+	currentDate := time.Now().Format("2006-01-02 15:04:05")
+	layoutExpired := "02Jan06"
+	layoutCurrent := "2006-01-02 15:04:05"
+
+	expired, _ := time.Parse(layoutExpired, expiredDate)
+	current, _ := time.Parse(layoutCurrent, currentDate)
+	calculate := float64(expired.Day()) - float64(current.Day())
+
+	dateValue := float64(calculate / 365)
 
 	//TODO query to trades collections
 	_getLastTrades := svc.tradeRepository.GetLastTrades(_order)
