@@ -136,26 +136,24 @@ type Application struct {
 	*repositories.TradeRepository
 	DeribitService _deribitSvc.IDeribitService
 	redis          *redis.RedisConnectionPool
+	memDb          *memdb.Schemas
 }
 
-func newApplication() *Application {
+func newApplication(deribit _deribitSvc.IDeribitService) *Application {
 
 	mongoDb, _ := _mongo.InitConnection(os.Getenv("MONGO_URL"))
 	redis := redis.NewRedisConnectionPool(os.Getenv("REDIS_URL"))
-	memDb, _ := memdb.InitSchemas()
 
 	orderRepo := repositories.NewOrderRepository(mongoDb)
 	tradeRepo := repositories.NewTradeRepository(mongoDb)
 	userRepo := repositories.NewUserRepository(mongoDb)
-
-	deribitSvc := _deribitSvc.NewDeribitService(redis, memDb, nil, nil, nil, nil)
 
 	app := &Application{
 		MessageRouter:   quickfix.NewMessageRouter(),
 		UserRepository:  userRepo,
 		OrderRepository: orderRepo,
 		TradeRepository: tradeRepo,
-		DeribitService:  deribitSvc,
+		DeribitService:  deribit,
 		redis:           redis,
 	}
 	app.AddRoute(newordersingle.Route(app.onNewOrderSingle))
@@ -207,6 +205,7 @@ func (a Application) FromAdmin(msg *quickfix.Message, sessionID quickfix.Session
 		if userSession == nil {
 			userSession = make(map[string]*quickfix.SessionID)
 		}
+
 		userSession[user.ID.Hex()] = &sessionID
 	}
 	return nil
@@ -647,7 +646,7 @@ func OnMarketDataUpdate(instrument string, book _orderbookType.BookData) {
 		if subs.Trade {
 			splits := strings.Split(instrument, "-")
 			price, _ := strconv.ParseFloat(splits[2], 64)
-			trades := newApplication().GetTrade(bson.M{
+			trades := newApplication(nil).GetTrade(bson.M{
 				"underlying":  splits[0],
 				"expiryDate":  splits[1],
 				"strikePrice": price,
@@ -937,7 +936,7 @@ func OrderConfirmation(userId string, order Order, symbol string) {
 	if err != nil {
 		fmt.Print(err.Error())
 	}
-	newApplication().broadcastInstrumentList(order.Underlying)
+	newApplication(nil).broadcastInstrumentList(order.Underlying)
 }
 
 func (a Application) onSecurityListRequest(msg securitylistrequest.SecurityListRequest, sessionID quickfix.SessionID) quickfix.MessageRejectError {
@@ -1056,7 +1055,7 @@ const (
 	long  = "Start an order matching (FIX acceptor) service."
 )
 
-func Execute() error {
+func Execute(deribit _deribitSvc.IDeribitService) error {
 	cfgFileName := "ordermatch.cfg"
 	templateCfg := "ordermatch_template.cfg"
 	_, b, _, _ := runtime.Caller(0)
@@ -1083,7 +1082,7 @@ func Execute() error {
 	}
 
 	logger := log.NewFancyLog()
-	app := newApplication()
+	app := newApplication(deribit)
 	acceptor, err := quickfix.NewAcceptor(app, quickfix.NewMemoryStoreFactory(), appSettings, logger)
 	if err != nil {
 		return fmt.Errorf("unable to create acceptor: %s", err)
