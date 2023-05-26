@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"git.devucc.name/dependencies/utilities/commons/logs"
@@ -59,6 +60,7 @@ type ProtocolRequest struct {
 }
 
 var protocolConnections map[any]ProtocolRequest
+var protocolMutex sync.RWMutex
 
 func RegisterProtocolRequest(
 	ID any,
@@ -66,25 +68,30 @@ func RegisterProtocolRequest(
 	ws *ws.Client,
 	gin *gin.Context,
 ) bool {
+	protocolMutex.Lock()
 	if protocolConnections == nil {
 		protocolConnections = make(map[any]ProtocolRequest)
 	}
+	protocolMutex.Unlock()
 
 	if checkKeyExists(ID) {
 		return false
 	}
-
+	protocolMutex.Lock()
 	protocolConnections[ID] = ProtocolRequest{
 		Protocol:      protocol,
 		RequestedTime: uint64(time.Now().UnixMicro()),
 		ws:            ws,
 		gin:           gin,
 	}
+	protocolMutex.Unlock()
 
 	return true
 }
 
 func UpgradeProtocol(OldID, NewID any) bool {
+	protocolMutex.Lock()
+	defer protocolMutex.Unlock()
 	conn := protocolConnections[OldID]
 
 	// Set the new ID
@@ -97,12 +104,16 @@ func UpgradeProtocol(OldID, NewID any) bool {
 }
 
 func UnregisterProtocol(ID any) {
+	protocolMutex.Lock()
 	if protocolConnections != nil {
 		delete(protocolConnections, ID)
 	}
+	protocolMutex.Unlock()
 }
 
 func GetProtocol(ID any) (bool, ProtocolRequest) {
+	protocolMutex.RLock()
+	defer protocolMutex.RUnlock()
 	val, ok := protocolConnections[ID]
 	if ok {
 		return true, val
@@ -227,6 +238,8 @@ func doSend(ID any, result any, err *ErrorMessage) bool {
 }
 
 func checkKeyExists(key any) bool {
+	protocolMutex.RLock()
+	defer protocolMutex.RUnlock()
 	_, ok := protocolConnections[key]
 	return ok
 }

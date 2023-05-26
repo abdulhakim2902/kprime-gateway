@@ -73,11 +73,13 @@ type ReasonMessage struct {
 var unsubscribeHandlers map[*Client][]func(*Client)
 var subscriptionMutex sync.Mutex
 var registerRequestRpcIdsMutex sync.Mutex
+var registerAuthMutex sync.RWMutex
 
 // To Validate rps id-s and return usIn,usOut,usDiff
 var orderRequestRpcIDS map[string]uint64
 
 func (c *Client) RegisterAuthedConnection(userID string) {
+	registerAuthMutex.Lock()
 	if authedConnections == nil {
 		authedConnections = make(map[Client]AuthedClient)
 	}
@@ -85,18 +87,23 @@ func (c *Client) RegisterAuthedConnection(userID string) {
 		IsAuthed: true,
 		UserID:   userID,
 	}
+	registerAuthMutex.Unlock()
 }
 
 func (c *Client) UnregisterAuthedConnection() {
+	registerAuthMutex.Lock()
 	if authedConnections != nil {
 		delete(authedConnections, *c)
 	}
+	registerAuthMutex.Unlock()
 }
 
 func (c *Client) IsAuthed() (bool, string) {
+	registerAuthMutex.RLock()
 	if authedClient, ok := authedConnections[*c]; ok {
 		return authedClient.IsAuthed, authedClient.UserID
 	}
+	registerAuthMutex.RUnlock()
 	return false, ""
 }
 
