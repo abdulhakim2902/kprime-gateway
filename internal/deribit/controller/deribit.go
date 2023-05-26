@@ -19,7 +19,6 @@ import (
 	"gateway/pkg/utils"
 	"strconv"
 	"strings"
-	"time"
 
 	"git.devucc.name/dependencies/utilities/types/validation_reason"
 	cors "github.com/rs/cors/wrapper/gin"
@@ -108,14 +107,35 @@ func (h *DeribitHandler) ApiGetHandler(r *gin.Context) {
 	handler(r)
 }
 
-func (h *DeribitHandler) auth(r *gin.Context) {
-	requestedTime := uint64(time.Now().UnixMicro())
+func requestHelper(
+	msgID uint64,
+	c *gin.Context,
+) (userId, connKey string, reason *validation_reason.ValidationReason, err error) {
+	key := utils.GetKeyFromIdUserID(msgID, "")
+	if isDuplicateConnection := protocol.RegisterProtocolRequest(
+		key, protocol.ProtocolRequest{Http: c, Protocol: protocol.HTTP},
+	); isDuplicateConnection {
+		validation := validation_reason.DUPLICATED_REQUEST_ID
+		reason = &validation
 
-	if ok := protocol.RegisterProtocolRequest(requestedTime, protocol.HTTP, nil, r); !ok {
-		protocol.SendValidationMsg(requestedTime, validation_reason.DUPLICATED_REQUEST_ID, nil)
+		err = errors.New(validation.String())
 		return
 	}
 
+	userId = c.Param("userId")
+
+	if len(userId) == 0 {
+		connKey = key
+		return
+	}
+
+	connKey = utils.GetKeyFromIdUserID(msgID, userId)
+	protocol.UpgradeProtocol(key, connKey)
+
+	return
+}
+
+func (h *DeribitHandler) auth(r *gin.Context) {
 	type Params struct {
 		GrantType    string `json:"grant_type" form:"grant_type"`
 		ClientID     string `json:"client_id" form:"client_id"`
@@ -125,7 +145,13 @@ func (h *DeribitHandler) auth(r *gin.Context) {
 
 	var msg deribitModel.RequestDto[Params]
 	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
-		protocol.SendValidationMsg(requestedTime, validation_reason.PARSE_ERROR, err)
+		r.AbortWithError(http.StatusBadRequest, err)
+		return
+	}
+
+	_, connKey, reason, err := requestHelper(msg.Id, r)
+	if err != nil {
+		protocol.SendValidationMsg(connKey, *reason, err)
 		return
 	}
 
@@ -137,7 +163,7 @@ func (h *DeribitHandler) auth(r *gin.Context) {
 		}
 
 		if payload.APIKey == "" || payload.APISecret == "" {
-			protocol.SendValidationMsg(requestedTime,
+			protocol.SendValidationMsg(connKey,
 				validation_reason.INVALID_PARAMS, errors.New("required client_id and client_secret"))
 			return
 		}
@@ -145,60 +171,56 @@ func (h *DeribitHandler) auth(r *gin.Context) {
 		res, _, err := h.authSvc.Login(context.TODO(), payload)
 		if err != nil {
 			if strings.Contains(err.Error(), "invalid credential") {
-				protocol.SendValidationMsg(requestedTime, validation_reason.UNAUTHORIZED, err)
+				protocol.SendValidationMsg(connKey, validation_reason.UNAUTHORIZED, err)
 				return
 			}
 
-			protocol.SendErrMsg(requestedTime, err)
+			protocol.SendErrMsg(connKey, err)
 			return
 		}
 
-		protocol.SendSuccessMsg(requestedTime, res)
+		protocol.SendSuccessMsg(connKey, res)
 		return
 	case "refresh_token":
 		if msg.Params.RefreshToken == "" {
-			protocol.SendValidationMsg(requestedTime,
+			protocol.SendValidationMsg(connKey,
 				validation_reason.INVALID_PARAMS, errors.New("required refresh_token"))
 			return
 		}
 
 		claim, err := authService.ClaimJWT(nil, msg.Params.RefreshToken)
 		if err != nil {
-			protocol.SendValidationMsg(requestedTime, validation_reason.UNAUTHORIZED, err)
+			protocol.SendValidationMsg(connKey, validation_reason.UNAUTHORIZED, err)
 			return
 		}
 
 		res, _, err := h.authSvc.RefreshToken(context.TODO(), claim)
 		if err != nil {
-			protocol.SendErrMsg(requestedTime, err)
+			protocol.SendErrMsg(connKey, err)
 			return
 		}
 
-		protocol.SendSuccessMsg(requestedTime, res)
+		protocol.SendSuccessMsg(connKey, res)
 		return
 	default:
-		protocol.SendValidationMsg(requestedTime, validation_reason.INVALID_PARAMS, nil)
+		protocol.SendValidationMsg(connKey, validation_reason.INVALID_PARAMS, nil)
 		return
 	}
 
 }
 
 func (h *DeribitHandler) buy(r *gin.Context) {
-	userID := r.GetString("userID")
-
-	if ok := protocol.RegisterProtocolRequest(userID, protocol.HTTP, nil, r); !ok {
-		protocol.SendValidationMsg(userID, validation_reason.DUPLICATED_REQUEST_ID, nil)
-		return
-	}
-
 	var msg deribitModel.RequestDto[deribitModel.RequestParams]
 	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
-		protocol.SendValidationMsg(userID, validation_reason.PARSE_ERROR, err)
+		r.AbortWithError(http.StatusBadRequest, err)
 		return
 	}
 
-	ID := utils.GetKeyFromIdUserID(msg.Id, userID)
-	protocol.UpgradeProtocol(userID, ID)
+	userID, connKey, reason, err := requestHelper(msg.Id, r)
+	if err != nil {
+		protocol.SendValidationMsg(connKey, *reason, err)
+		return
+	}
 
 	// Call service
 	order, validation, err := h.svc.DeribitRequest(r.Request.Context(), userID, deribitModel.DeribitRequest{
@@ -213,33 +235,29 @@ func (h *DeribitHandler) buy(r *gin.Context) {
 	})
 	if err != nil {
 		if validation != nil {
-			protocol.SendValidationMsg(ID, *validation, err)
+			protocol.SendValidationMsg(connKey, *validation, err)
 			return
 		}
 
-		protocol.SendErrMsg(ID, err)
+		protocol.SendErrMsg(connKey, err)
 		return
 	}
 
-	protocol.SendSuccessMsg(ID, order)
+	protocol.SendSuccessMsg(connKey, order)
 }
 
 func (h *DeribitHandler) sell(r *gin.Context) {
-	userID := r.GetString("userID")
-
-	if ok := protocol.RegisterProtocolRequest(userID, protocol.HTTP, nil, r); !ok {
-		protocol.SendValidationMsg(userID, validation_reason.DUPLICATED_REQUEST_ID, nil)
-		return
-	}
-
 	var msg deribitModel.RequestDto[deribitModel.RequestParams]
 	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
-		protocol.SendValidationMsg(userID, validation_reason.PARSE_ERROR, err)
+		r.AbortWithError(http.StatusBadRequest, err)
 		return
 	}
 
-	ID := utils.GetKeyFromIdUserID(msg.Id, userID)
-	protocol.UpgradeProtocol(userID, ID)
+	userID, connKey, reason, err := requestHelper(msg.Id, r)
+	if err != nil {
+		protocol.SendValidationMsg(connKey, *reason, err)
+		return
+	}
 
 	// Call service
 	order, validation, err := h.svc.DeribitRequest(r.Request.Context(), userID, deribitModel.DeribitRequest{
@@ -254,34 +272,30 @@ func (h *DeribitHandler) sell(r *gin.Context) {
 	})
 	if err != nil {
 		if validation != nil {
-			protocol.SendValidationMsg(ID, *validation, err)
+			protocol.SendValidationMsg(connKey, *validation, err)
 			return
 		}
 
-		protocol.SendErrMsg(ID, err)
+		protocol.SendErrMsg(connKey, err)
 		return
 	}
 
-	protocol.SendSuccessMsg(ID, order)
+	protocol.SendSuccessMsg(connKey, order)
 }
 
 func (h *DeribitHandler) edit(r *gin.Context) {
-	userID := r.GetString("userID")
-
-	if ok := protocol.RegisterProtocolRequest(userID, protocol.HTTP, nil, r); !ok {
-		protocol.SendValidationMsg(userID, validation_reason.DUPLICATED_REQUEST_ID, nil)
-		return
-	}
 
 	var msg deribitModel.RequestDto[deribitModel.RequestParams]
 	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
-		protocol.SendValidationMsg(userID, validation_reason.PARSE_ERROR, err)
+		r.AbortWithError(http.StatusBadRequest, err)
 		return
 	}
 
-	ID := utils.GetKeyFromIdUserID(msg.Id, userID)
-	protocol.UpgradeProtocol(userID, ID)
-
+	userID, connKey, reason, err := requestHelper(msg.Id, r)
+	if err != nil {
+		protocol.SendValidationMsg(connKey, *reason, err)
+		return
+	}
 	// Call service
 	order, err := h.svc.DeribitParseEdit(r.Request.Context(), userID, deribitModel.DeribitEditRequest{
 		Id:      msg.Params.Id,
@@ -290,29 +304,26 @@ func (h *DeribitHandler) edit(r *gin.Context) {
 		ClOrdID: strconv.FormatUint(msg.Id, 10),
 	})
 	if err != nil {
-		protocol.SendErrMsg(ID, err)
+		protocol.SendErrMsg(connKey, err)
 		return
 	}
 
-	protocol.SendSuccessMsg(ID, order)
+	protocol.SendSuccessMsg(connKey, order)
 }
 
 func (h *DeribitHandler) cancel(r *gin.Context) {
-	userID := r.GetString("userID")
-
-	if ok := protocol.RegisterProtocolRequest(userID, protocol.HTTP, nil, r); !ok {
-		protocol.SendValidationMsg(userID, validation_reason.DUPLICATED_REQUEST_ID, nil)
-		return
-	}
 
 	var msg deribitModel.RequestDto[deribitModel.RequestParams]
 	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
-		protocol.SendValidationMsg(userID, validation_reason.PARSE_ERROR, err)
+		r.AbortWithError(http.StatusBadRequest, err)
 		return
 	}
 
-	ID := utils.GetKeyFromIdUserID(msg.Id, userID)
-	protocol.UpgradeProtocol(userID, ID)
+	userID, connKey, reason, err := requestHelper(msg.Id, r)
+	if err != nil {
+		protocol.SendValidationMsg(connKey, *reason, err)
+		return
+	}
 
 	// Call service
 	order, err := h.svc.DeribitParseCancel(r.Request.Context(), userID, deribitModel.DeribitCancelRequest{
@@ -320,29 +331,25 @@ func (h *DeribitHandler) cancel(r *gin.Context) {
 		ClOrdID: strconv.FormatUint(msg.Id, 10),
 	})
 	if err != nil {
-		protocol.SendErrMsg(ID, err)
+		protocol.SendErrMsg(connKey, err)
 		return
 	}
 
-	protocol.SendSuccessMsg(ID, order)
+	protocol.SendSuccessMsg(connKey, order)
 }
 
 func (h *DeribitHandler) cancelByInstrument(r *gin.Context) {
-	userID := r.GetString("userID")
-
-	if ok := protocol.RegisterProtocolRequest(userID, protocol.HTTP, nil, r); !ok {
-		protocol.SendValidationMsg(userID, validation_reason.DUPLICATED_REQUEST_ID, nil)
-		return
-	}
-
 	var msg deribitModel.RequestDto[deribitModel.RequestParams]
 	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
-		protocol.SendValidationMsg(userID, validation_reason.PARSE_ERROR, err)
+		r.AbortWithError(http.StatusBadRequest, err)
 		return
 	}
 
-	ID := utils.GetKeyFromIdUserID(msg.Id, userID)
-	protocol.UpgradeProtocol(userID, ID)
+	userID, connKey, reason, err := requestHelper(msg.Id, r)
+	if err != nil {
+		protocol.SendValidationMsg(connKey, *reason, err)
+		return
+	}
 
 	// Call service
 	order, err := h.svc.DeribitCancelByInstrument(r.Request.Context(), userID, deribitModel.DeribitCancelByInstrumentRequest{
@@ -350,53 +357,49 @@ func (h *DeribitHandler) cancelByInstrument(r *gin.Context) {
 		ClOrdID:        strconv.FormatUint(msg.Id, 10),
 	})
 	if err != nil {
-		protocol.SendErrMsg(ID, err)
+		protocol.SendErrMsg(connKey, err)
 		return
 	}
 
-	protocol.SendSuccessMsg(ID, order)
+	protocol.SendSuccessMsg(connKey, order)
 }
 
 func (h *DeribitHandler) cancelAll(r *gin.Context) {
-	userID := r.GetString("userID")
-
-	if ok := protocol.RegisterProtocolRequest(userID, protocol.HTTP, nil, r); !ok {
-		protocol.SendValidationMsg(userID, validation_reason.DUPLICATED_REQUEST_ID, nil)
-		return
-	}
 
 	var msg deribitModel.RequestDto[deribitModel.RequestParams]
 	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
-		protocol.SendValidationMsg(userID, validation_reason.PARSE_ERROR, err)
+		r.AbortWithError(http.StatusBadRequest, err)
 		return
 	}
 
-	ID := utils.GetKeyFromIdUserID(msg.Id, userID)
-	protocol.UpgradeProtocol(userID, ID)
+	userID, connKey, reason, err := requestHelper(msg.Id, r)
+	if err != nil {
+		protocol.SendValidationMsg(connKey, *reason, err)
+		return
+	}
 
 	// Call service
 	order, err := h.svc.DeribitParseCancelAll(r.Request.Context(), userID, deribitModel.DeribitCancelAllRequest{
 		ClOrdID: strconv.FormatUint(msg.Id, 10),
 	})
 	if err != nil {
-		protocol.SendErrMsg(ID, err)
+		protocol.SendErrMsg(connKey, err)
 		return
 	}
 
-	protocol.SendSuccessMsg(ID, order)
+	protocol.SendSuccessMsg(connKey, order)
 }
 
 func (h *DeribitHandler) getUserTradeByInstrument(r *gin.Context) {
-	userID := r.GetString("userID")
-
-	if ok := protocol.RegisterProtocolRequest(userID, protocol.HTTP, nil, r); !ok {
-		protocol.SendValidationMsg(userID, validation_reason.DUPLICATED_REQUEST_ID, nil)
+	var msg deribitModel.RequestDto[deribitModel.GetUserTradesByInstrumentParams]
+	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
+		r.AbortWithError(http.StatusBadRequest, err)
 		return
 	}
 
-	msg := &deribitModel.RequestDto[deribitModel.GetUserTradesByInstrumentParams]{}
-	if err := utils.UnmarshalAndValidate(r, msg); err != nil {
-		protocol.SendValidationMsg(userID, validation_reason.PARSE_ERROR, err)
+	userID, connKey, reason, err := requestHelper(msg.Id, r)
+	if err != nil {
+		protocol.SendValidationMsg(connKey, *reason, err)
 		return
 	}
 
@@ -405,18 +408,9 @@ func (h *DeribitHandler) getUserTradeByInstrument(r *gin.Context) {
 		msg.Params.Count = 10
 	}
 
-	claim, err := authService.ClaimJWT(nil, msg.Params.AccessToken)
-	if err != nil {
-		protocol.SendValidationMsg(userID, validation_reason.UNAUTHORIZED, err)
-		return
-	}
-
-	ID := utils.GetKeyFromIdUserID(msg.Id, claim.UserID)
-	protocol.UpgradeProtocol(userID, ID)
-
 	res := h.svc.DeribitGetUserTradesByInstrument(
 		r.Request.Context(),
-		claim.UserID,
+		userID,
 		deribitModel.DeribitGetUserTradesByInstrumentsRequest{
 			InstrumentName: msg.Params.InstrumentName,
 			Count:          msg.Params.Count,
@@ -425,19 +419,19 @@ func (h *DeribitHandler) getUserTradeByInstrument(r *gin.Context) {
 			Sorting:        msg.Params.Sorting,
 		},
 	)
-	protocol.SendSuccessMsg(ID, res)
+
+	protocol.SendSuccessMsg(connKey, res)
 }
 func (h *DeribitHandler) getOpenOrdersByInstrument(r *gin.Context) {
-	userID := r.GetString("userID")
-
-	if ok := protocol.RegisterProtocolRequest(userID, protocol.HTTP, nil, r); !ok {
-		protocol.SendValidationMsg(userID, validation_reason.DUPLICATED_REQUEST_ID, nil)
+	var msg deribitModel.RequestDto[deribitModel.GetOpenOrdersByInstrumentParams]
+	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
+		r.AbortWithError(http.StatusBadRequest, err)
 		return
 	}
 
-	msg := &deribitModel.RequestDto[deribitModel.GetOpenOrdersByInstrumentParams]{}
-	if err := utils.UnmarshalAndValidate(r, msg); err != nil {
-		protocol.SendValidationMsg(userID, validation_reason.PARSE_ERROR, err)
+	userId, connKey, reason, err := requestHelper(msg.Id, r)
+	if err != nil {
+		protocol.SendValidationMsg(connKey, *reason, err)
 		return
 	}
 
@@ -446,38 +440,28 @@ func (h *DeribitHandler) getOpenOrdersByInstrument(r *gin.Context) {
 		msg.Params.Type = "all"
 	}
 
-	claim, err := authService.ClaimJWT(nil, msg.Params.AccessToken)
-	if err != nil {
-		protocol.SendValidationMsg(userID, validation_reason.UNAUTHORIZED, err)
-		return
-	}
-
-	ID := utils.GetKeyFromIdUserID(msg.Id, claim.UserID)
-	protocol.UpgradeProtocol(userID, ID)
-
 	res := h.svc.DeribitGetOpenOrdersByInstrument(
 		context.TODO(),
-		claim.UserID,
+		userId,
 		deribitModel.DeribitGetOpenOrdersByInstrumentRequest{
 			InstrumentName: msg.Params.InstrumentName,
 			Type:           msg.Params.Type,
 		},
 	)
 
-	protocol.SendSuccessMsg(ID, res)
+	protocol.SendSuccessMsg(userId, res)
 }
 
 func (h *DeribitHandler) getOrderHistoryByInstrument(r *gin.Context) {
-	userID := r.GetString("userID")
-
-	if ok := protocol.RegisterProtocolRequest(userID, protocol.HTTP, nil, r); !ok {
-		protocol.SendValidationMsg(userID, validation_reason.DUPLICATED_REQUEST_ID, nil)
+	var msg deribitModel.RequestDto[deribitModel.GetOrderHistoryByInstrumentParams]
+	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
+		r.AbortWithError(http.StatusBadRequest, err)
 		return
 	}
 
-	msg := &deribitModel.RequestDto[deribitModel.GetOrderHistoryByInstrumentParams]{}
-	if err := utils.UnmarshalAndValidate(r, msg); err != nil {
-		protocol.SendValidationMsg(userID, validation_reason.PARSE_ERROR, err)
+	userId, connKey, reason, err := requestHelper(msg.Id, r)
+	if err != nil {
+		protocol.SendValidationMsg(connKey, *reason, err)
 		return
 	}
 
@@ -486,18 +470,9 @@ func (h *DeribitHandler) getOrderHistoryByInstrument(r *gin.Context) {
 		msg.Params.Count = 20
 	}
 
-	claim, err := authService.ClaimJWT(nil, msg.Params.AccessToken)
-	if err != nil {
-		protocol.SendValidationMsg(userID, validation_reason.UNAUTHORIZED, err)
-		return
-	}
-
-	ID := utils.GetKeyFromIdUserID(msg.Id, claim.UserID)
-	protocol.UpgradeProtocol(userID, ID)
-
 	res := h.svc.DeribitGetOrderHistoryByInstrument(
 		context.TODO(),
-		claim.UserID,
+		userId,
 		deribitModel.DeribitGetOrderHistoryByInstrumentRequest{
 			InstrumentName:  msg.Params.InstrumentName,
 			Count:           msg.Params.Count,
@@ -507,19 +482,19 @@ func (h *DeribitHandler) getOrderHistoryByInstrument(r *gin.Context) {
 		},
 	)
 
-	protocol.SendSuccessMsg(ID, res)
+	protocol.SendSuccessMsg(connKey, res)
 }
-func (h *DeribitHandler) getInstruments(r *gin.Context) {
-	requestedTime := uint64(time.Now().UnixMicro())
 
-	if ok := protocol.RegisterProtocolRequest(requestedTime, protocol.HTTP, nil, r); !ok {
-		protocol.SendValidationMsg(requestedTime, validation_reason.DUPLICATED_REQUEST_ID, nil)
+func (h *DeribitHandler) getInstruments(r *gin.Context) {
+	var msg deribitModel.RequestDto[deribitModel.GetInstrumentsParams]
+	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
+		r.AbortWithError(http.StatusBadRequest, err)
 		return
 	}
 
-	msg := &deribitModel.RequestDto[deribitModel.GetInstrumentsParams]{}
-	if err := utils.UnmarshalAndValidate(r, msg); err != nil {
-		protocol.SendValidationMsg(requestedTime, validation_reason.PARSE_ERROR, err)
+	_, connKey, reason, err := requestHelper(msg.Id, r)
+	if err != nil {
+		protocol.SendValidationMsg(connKey, *reason, err)
 		return
 	}
 
@@ -528,20 +503,19 @@ func (h *DeribitHandler) getInstruments(r *gin.Context) {
 		Expired:  msg.Params.Expired,
 	})
 
-	protocol.SendSuccessMsg(requestedTime, result)
+	protocol.SendSuccessMsg(connKey, result)
 }
 
 func (h *DeribitHandler) getOrderBook(r *gin.Context) {
-	requestedTime := uint64(time.Now().UnixMicro())
-
-	if ok := protocol.RegisterProtocolRequest(requestedTime, protocol.HTTP, nil, r); !ok {
-		protocol.SendValidationMsg(requestedTime, validation_reason.DUPLICATED_REQUEST_ID, nil)
+	var msg deribitModel.RequestDto[deribitModel.GetOrderBookParams]
+	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
+		r.AbortWithError(http.StatusBadRequest, err)
 		return
 	}
 
-	msg := &deribitModel.RequestDto[deribitModel.GetOrderBookParams]{}
-	if err := utils.UnmarshalAndValidate(r, msg); err != nil {
-		protocol.SendValidationMsg(requestedTime, validation_reason.PARSE_ERROR, err)
+	_, connKey, reason, err := requestHelper(msg.Id, r)
+	if err != nil {
+		protocol.SendValidationMsg(connKey, *reason, err)
 		return
 	}
 
@@ -550,18 +524,18 @@ func (h *DeribitHandler) getOrderBook(r *gin.Context) {
 		Depth:          msg.Params.Depth,
 	})
 
-	protocol.SendSuccessMsg(requestedTime, result)
+	protocol.SendSuccessMsg(connKey, result)
 }
 
 func (h *DeribitHandler) test(r *gin.Context) {
-	requestedTime := uint64(time.Now().UnixMicro())
-
-	if ok := protocol.RegisterProtocolRequest(requestedTime, protocol.HTTP, nil, r); !ok {
-		protocol.SendValidationMsg(requestedTime, validation_reason.DUPLICATED_REQUEST_ID, nil)
-		return
-	}
-
-	protocol.SendSuccessMsg(requestedTime, gin.H{
-		"version": "1.2.26",
+	r.JSON(http.StatusOK, gin.H{
+		"jsonrpc": "2.0",
+		"result": gin.H{
+			"version": "1.2.26",
+		},
+		"testnet": true,
+		"usIn":    0,
+		"usOut":   0,
+		"usDiff":  0,
 	})
 }
