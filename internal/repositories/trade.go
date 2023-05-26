@@ -621,7 +621,7 @@ func (r TradeRepository) FindTradesByInstrument(
 						bson.D{
 							{"$arrayElemAt",
 								bson.A{
-									"$takerOrder.status",
+									"$takerOrderId.status",
 									0,
 								},
 							},
