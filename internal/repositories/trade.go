@@ -824,8 +824,6 @@ func (r TradeRepository) GetGreeks(types string, impliedVolatily float64, option
 		ar := 0.0015           // risk-free interest rate
 		callPut := optionPrice // call or put
 
-		fmt.Println("types delta : ", types)
-
 		delta = Greeks.GetDelta(s, k, t, v, ar, callPut)
 	} else if types == "vega" {
 		s := underlying      // underlying price
@@ -834,8 +832,6 @@ func (r TradeRepository) GetGreeks(types string, impliedVolatily float64, option
 		v := impliedVolatily // volatility
 		r := 0.0015          // risk-free interest rate
 
-		fmt.Println("types vega : ", types)
-
 		delta = Greeks.GetVega(s, k, t, v, r)
 	} else if types == "gamma" {
 		s := underlying      // underlying price
@@ -843,8 +839,6 @@ func (r TradeRepository) GetGreeks(types string, impliedVolatily float64, option
 		t := timeeXP         // time to maturity
 		v := impliedVolatily // volatility
 		r := 0.0015          // risk-free interest rate
-
-		fmt.Println("types gamma : ", types)
 
 		delta = Greeks.GetGamma(s, k, t, v, r)
 	} else if types == "tetha" {
@@ -856,8 +850,6 @@ func (r TradeRepository) GetGreeks(types string, impliedVolatily float64, option
 		callPut := optionPrice // Type of option priced - "call" or "put"
 		scale := 365.0         // You can set the scale to a value like 252 (trading days per year), by default is 365
 
-		fmt.Println("types tetha : ", types)
-
 		delta = Greeks.GetTheta(s, k, t, v, r, callPut, scale)
 	} else {
 		s := underlying        // underlying price
@@ -867,8 +859,6 @@ func (r TradeRepository) GetGreeks(types string, impliedVolatily float64, option
 		r := 0.0015            // risk-free interest rate
 		callPut := optionPrice // Type of option priced - "call" or "put"
 		scale := 100.0         // You can set the scale to a value like 10000 (rho per 0.01%, or 1BP, change in the risk-free interest rate), by default is 100
-
-		fmt.Println("types rho : ", types)
 
 		delta = Greeks.GetRho(s, k, t, v, r, callPut, scale)
 	}
