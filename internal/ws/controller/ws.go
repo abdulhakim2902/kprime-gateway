@@ -455,7 +455,7 @@ func (svc wsHandler) SubscribeHandlerPrivate(input interface{}, c *ws.Client) {
 		return
 	}
 
-	claim, connKey, reason, err := requestHelper(msg.Id, nil, c)
+	claim, connKey, reason, err := requestHelper(msg.Id, &msg.Params.AccessToken, c)
 	if err != nil {
 		protocol.SendValidationMsg(connKey, *reason, err)
 		return

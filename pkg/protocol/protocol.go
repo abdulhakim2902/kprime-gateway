@@ -64,10 +64,12 @@ func RegisterProtocolRequest(key string, conn ProtocolRequest) (duplicateConnect
 	if protocolConnections == nil {
 		protocolConnections = make(map[any]ProtocolRequest)
 	}
+	protocolMutex.Unlock()
 
 	duplicateConnection = isConnExist(key)
 
 	conn.RequestedTime = uint64(time.Now().UnixMicro())
+	protocolMutex.Lock()
 	protocolConnections[key] = conn
 	protocolMutex.Unlock()
 
