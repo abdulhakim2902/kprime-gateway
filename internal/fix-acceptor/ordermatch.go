@@ -414,17 +414,24 @@ func (a *Application) onOrderCancelRequest(msg ordercancelrequest.OrderCancelReq
 		return err
 	}
 
+	symbol, err := msg.GetSymbol()
+	if err != nil {
+		return err
+	}
+
 	var partyId quickfix.FIXString
 	msg.GetField(tag.PartyID, &partyId)
 
 	_, reason, r := a.DeribitService.DeribitRequest(context.TODO(), user.ID.Hex(), _deribitModel.DeribitRequest{
-		ID:       orderId,
-		ClOrdID:  clOrdID,
-		ClientId: partyId.String(),
-		Side:     _utilitiesType.CANCEL,
+		ID:             orderId,
+		ClOrdID:        clOrdID,
+		ClientId:       partyId.String(),
+		Side:           _utilitiesType.CANCEL,
+		InstrumentName: symbol,
 	})
 
 	if r != nil {
+		fmt.Println(r)
 		logs.Log.Err(r).Msg("Failed to send cancel request")
 		return quickfix.NewMessageRejectError("Failed to send cancel request", 1, nil)
 	}
