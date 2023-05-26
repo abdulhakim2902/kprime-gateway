@@ -414,18 +414,17 @@ func (c tradeClient) onSecurityListRequest(w http.ResponseWriter, r *http.Reques
 }
 
 func (c tradeClient) onOrderCancelRequest(w http.ResponseWriter, r *http.Request) {
-	logs.Log.Info().Str("tradeui.go", "onOrderCancelRequest").Msg("")
-	var orderCancelRequest oms.OrderCancelRequest
-	decoder := json.NewDecoder(r.Body)
-	err := decoder.Decode(&orderCancelRequest)
+	fmt.Println("asdasdasd")
+
+	order, err := c.fetchRequestedOrder(r)
 	if err != nil {
-		logs.Log.Err(err)
+		log.Printf("[ERROR] %v\n", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	if sessionID, ok := c.SessionIDs[orderCancelRequest.Session]; ok {
-		orderCancelRequest.SessionID = sessionID
+	if sessionID, ok := c.SessionIDs[order.Session]; ok {
+		order.SessionID = sessionID
 	} else {
 		log.Println("[ERROR] Invalid SessionID")
 		http.Error(w, "Invalid SessionID", http.StatusBadRequest)
@@ -433,15 +432,16 @@ func (c tradeClient) onOrderCancelRequest(w http.ResponseWriter, r *http.Request
 	}
 
 	msg := ordercancelrequest.New(
-		field.NewOrigClOrdID(orderCancelRequest.OrigClOrdID),
-		field.NewClOrdID(orderCancelRequest.ClOrdID),
-		field.NewSide(enum.Side(orderCancelRequest.Side)),
+		field.NewOrigClOrdID(order.ClOrdID),
+		field.NewClOrdID(order.ClOrdID),
+		field.NewSide(enum.Side(order.Side)),
 		field.NewTransactTime(time.Now()),
 	)
 
-	msg.ToMessage().Body.SetString(tag.PartyID, orderCancelRequest.PartyID)
+	msg.SetOrderID("123123")
 
-	err = quickfix.SendToTarget(msg, orderCancelRequest.SessionID)
+	fmt.Println(msg.ToMessage().String())
+	err = quickfix.SendToTarget(msg, order.SessionID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}

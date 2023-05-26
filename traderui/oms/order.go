@@ -36,6 +36,7 @@ type Order struct {
 	PutOrCall          enum.PutOrCall     `json:"put_or_call"`
 	StrikePrice        string             `json:"strike_price"`
 	StrikePriceDecimal decimal.Decimal    `json:"-"`
+	Status             string             `json:"status"`
 	Username           string             `json:"username"`
 	Password           string             `json:"password"`
 }

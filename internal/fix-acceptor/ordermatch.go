@@ -83,7 +83,7 @@ var xMessagesSubs []XMessageSubscriber
 
 type Order struct {
 	ID                   string          `json:"id" bson:"_id"`
-	ClientOrderId        string          `json:"clOrdId" bson:"clOrdId"`
+	ClientOrderId        string          `json:"clOrdID" bson:"clOrdID"`
 	InstrumentName       string          `json:"instrumentName" bson:"instrumentName"`
 	Symbol               string          `json:"symbol" bson:"symbol"`
 	SenderCompID         string          `json:"sender_comp_id" bson:"sender_comp_id"`
@@ -417,7 +417,7 @@ func (a *Application) onOrderCancelRequest(msg ordercancelrequest.OrderCancelReq
 	var partyId quickfix.FIXString
 	msg.GetField(tag.PartyID, &partyId)
 
-	response, reason, r := a.DeribitService.DeribitRequest(context.TODO(), user.ID.Hex(), _deribitModel.DeribitRequest{
+	_, reason, r := a.DeribitService.DeribitRequest(context.TODO(), user.ID.Hex(), _deribitModel.DeribitRequest{
 		ID:       orderId,
 		ClOrdID:  clOrdID,
 		ClientId: partyId.String(),
@@ -442,21 +442,6 @@ func (a *Application) onOrderCancelRequest(msg ordercancelrequest.OrderCancelReq
 		return nil
 	}
 
-	ex := executionreport.New(
-		field.NewOrderID(orderId),
-		field.NewExecID(response.ID),
-		field.NewExecType(enum.ExecType_CANCELED),
-		field.NewOrdStatus(enum.OrdStatus_CANCELED),
-		field.NewSide(enum.Side(response.Side)),
-		field.NewLeavesQty(decimal.NewFromFloat(response.Amount), 0),
-		field.NewCumQty(decimal.NewFromFloat(response.Amount), 0),
-		field.NewAvgPx(decimal.NewFromFloat(response.Price), 0),
-	)
-
-	rr := quickfix.SendToTarget(ex, sessionID)
-	if rr != nil {
-		logs.Log.Err(err).Msg("Failed sending execution report")
-	}
 	return nil
 }
 
@@ -897,7 +882,8 @@ func (a *Application) updateOrder(order Order, status enum.OrdStatus) {
 
 }
 
-func OrderConfirmation(userId string, order Order, symbol string) {
+func OrderConfirmation(userId string, order _orderbookType.Order, symbol string) {
+	fmt.Println("OrderConfirmation", order.Status)
 	if userSession == nil {
 		if userSession[userId] == nil {
 			return
@@ -913,21 +899,23 @@ func OrderConfirmation(userId string, order Order, symbol string) {
 	case "PARTIALLY FILLED":
 		exec = 1
 		break
+	case "CANCELLED":
+		exec = 4
 	}
 
 	msg := executionreport.New(
-		field.NewOrderID(order.ClientOrderId),
+		field.NewOrderID(order.ID.Hex()),
 		field.NewExecID(strconv.Itoa(exec)),
 		field.NewExecType(enum.ExecType(order.Status)),
 		field.NewOrdStatus(enum.OrdStatus(order.Status)),
 		field.NewSide(enum.Side(order.Side)),
-		field.NewLeavesQty(order.Amount.Sub(order.FilledAmount), 2),
-		field.NewCumQty(order.FilledAmount, 2),
-		field.NewAvgPx(order.Price, 2),
+		field.NewLeavesQty(decimal.NewFromFloat(order.Amount).Sub(decimal.NewFromFloat(order.FilledAmount)), 2),
+		field.NewCumQty(decimal.NewFromFloat(order.FilledAmount), 2),
+		field.NewAvgPx(decimal.NewFromFloat(order.Price), 2),
 	)
+	fmt.Println("clientorderid", order.ClOrdID, order.ClOrdID, order.ClOrdID)
 	msg.SetOrdStatus(enum.OrdStatus_NEW)
-	msg.SetString(tag.OrderID, order.ID)
-	msg.SetString(tag.ClOrdID, order.ClientOrderId)
+	msg.SetClOrdID(order.ClOrdID)
 
 	if sessionId == nil {
 		return

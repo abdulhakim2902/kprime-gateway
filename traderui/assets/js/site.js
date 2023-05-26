@@ -399,6 +399,7 @@ App.Views.OrderDetails = Backbone.View.extend({
     'click .cancel': function (e) {
       this.model.destroy({
         success: function () {
+          console.log('canceling')
           Backbone.history.navigate("/orders", { trigger: true });
         },
         error: function (model, response) {
