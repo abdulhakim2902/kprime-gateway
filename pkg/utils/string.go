@@ -12,16 +12,18 @@ func GetKeyFromIdUserID(id uint64, userID string) string {
 	return strconv.FormatUint(id, 10) + "-" + userID
 }
 
-func ParseKey(ID string) (rpcID uint64, userID string) {
-	splitted := strings.Split(ID, "-")
+func GetIdUserIDFromKey(key string) (id uint64, userID string) {
+	splitted := strings.Split(key, "-")
 
-	id, err := strconv.ParseUint(splitted[0], 10, 0)
+	var err error
+	id, err = strconv.ParseUint(splitted[0], 10, 0)
 	if err != nil {
-		rpcID = 0
+		return
 	}
 
-	rpcID = id
-	userID = splitted[1]
+	if len(splitted) > 1 {
+		userID = splitted[1]
+	}
 	return
 }
 

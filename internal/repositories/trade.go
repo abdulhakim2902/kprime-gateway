@@ -12,6 +12,9 @@ import (
 	_orderbookType "gateway/internal/orderbook/types"
 	_tradeType "gateway/internal/repositories/types"
 
+	Greeks "git.devucc.name/dependencies/utilities/helper/greeks"
+	IV "git.devucc.name/dependencies/utilities/helper/implied_volatility"
+
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -794,4 +797,71 @@ func (r TradeRepository) Get24HoursTrades(o _orderbookType.GetOrderBook) []*_eng
 	}
 
 	return trades
+}
+
+func (r TradeRepository) GetImpliedVolatility(marketPrice float64, optionPrice string, underlying float64, strikePrice float64, timeeXP float64) float64 {
+	expectedCost := marketPrice // The market price of the option
+	s := underlying             // Current price of the underlying
+	k := strikePrice            // Strike price
+	t := timeeXP                // Time to expiration in years
+	ar := 0.05                  // Annual risk-free interest rate as a decimal
+	callPut := optionPrice      // Type of option priced - "call" or "put"
+	estimate := 0.1             // An initial estimate of implied volatility
+
+	impliedData := IV.ImpliedVolatility(expectedCost, s, k, t, ar, callPut, estimate)
+
+	return impliedData
+}
+
+func (r TradeRepository) GetGreeks(types string, impliedVolatily float64, optionPrice string, underlying float64, strikePrice float64, timeeXP float64) float64 {
+	var delta float64
+
+	if types == "delta" {
+		s := underlying        // underlying price
+		k := strikePrice       // strike price
+		t := timeeXP           // time to maturity
+		v := impliedVolatily   // volatility
+		ar := 0.0015           // risk-free interest rate
+		callPut := optionPrice // call or put
+
+		delta = Greeks.GetDelta(s, k, t, v, ar, callPut)
+	} else if types == "vega" {
+		s := underlying      // underlying price
+		k := strikePrice     // strike price
+		t := timeeXP         // time to maturity
+		v := impliedVolatily // volatility
+		r := 0.0015          // risk-free interest rate
+
+		delta = Greeks.GetVega(s, k, t, v, r)
+	} else if types == "gamma" {
+		s := underlying      // underlying price
+		k := strikePrice     // strike price
+		t := timeeXP         // time to maturity
+		v := impliedVolatily // volatility
+		r := 0.0015          // risk-free interest rate
+
+		delta = Greeks.GetGamma(s, k, t, v, r)
+	} else if types == "tetha" {
+		s := underlying        // underlying price
+		k := strikePrice       // strike price
+		t := timeeXP           // time to maturity
+		v := impliedVolatily   // volatility
+		r := 0.0015            // risk-free interest rate
+		callPut := optionPrice // Type of option priced - "call" or "put"
+		scale := 365.0         // You can set the scale to a value like 252 (trading days per year), by default is 365
+
+		delta = Greeks.GetTheta(s, k, t, v, r, callPut, scale)
+	} else {
+		s := underlying        // underlying price
+		k := strikePrice       // strike price
+		t := timeeXP           // time to maturity
+		v := impliedVolatily   // volatility
+		r := 0.0015            // risk-free interest rate
+		callPut := optionPrice // Type of option priced - "call" or "put"
+		scale := 100.0         // You can set the scale to a value like 10000 (rho per 0.01%, or 1BP, change in the risk-free interest rate), by default is 100
+
+		delta = Greeks.GetRho(s, k, t, v, r, callPut, scale)
+	}
+
+	return delta
 }

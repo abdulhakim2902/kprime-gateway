@@ -3,6 +3,7 @@ package consumer
 import (
 	"encoding/json"
 	"fmt"
+	"gateway/pkg/protocol"
 	"gateway/pkg/utils"
 	"log"
 	"os"
@@ -14,8 +15,6 @@ import (
 	ordermatch "gateway/internal/fix-acceptor"
 	obInt "gateway/internal/orderbook/service"
 	"gateway/internal/repositories"
-	"gateway/pkg/ws"
-
 	"github.com/Shopify/sarama"
 
 	oInt "gateway/internal/ws/service"
@@ -147,8 +146,5 @@ func handleTopicCancelledOrders(message *sarama.ConsumerMessage) {
 	count := data["total"]
 	_payload := count.(float64)
 
-	ws.SendOrderMessage(connectionKey, _payload, ws.SendMessageParams{
-		ID:     ID,
-		UserID: userIDStr,
-	})
+	protocol.SendSuccessMsg(connectionKey, _payload)
 }

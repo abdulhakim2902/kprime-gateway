@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 
+	"git.devucc.name/dependencies/utilities/types/validation_reason"
 	"github.com/gorilla/websocket"
 )
 
@@ -209,6 +210,31 @@ func (c *Client) SendErrorMessage(msg WebsocketResponseErrMessage) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.send <- m
+}
+
+// SendInvalidRequest constructs the error message with proper structure to be sent over websocket
+func (c *Client) SendInvalidRequestMessage(err error) {
+	reason := validation_reason.PARSE_ERROR
+
+	reasonMsg := validation_reason.CodeInvalidRequest
+	if err != nil {
+		reasonMsg = err.Error()
+	}
+
+	code, _, codeStr := reason.Code()
+	m := WebsocketResponseMessage{
+		Error: WebsocketResponseErrMessage{
+			Message: reasonMsg,
+			Data: ReasonMessage{
+				Reason: codeStr,
+			},
+			Code: code,
+		},
+		JSONRPC: "2.0",
+		Testnet: true,
+	}
+
+	c.Send(m)
 }
 
 // SendMessageSubcription constructs the message with proper structure to be sent over websocket for subcription
