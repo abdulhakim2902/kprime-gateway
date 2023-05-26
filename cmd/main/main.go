@@ -16,6 +16,7 @@ import (
 	"gateway/internal/repositories"
 	"gateway/pkg/kafka/consumer"
 	"gateway/pkg/memdb"
+	"gateway/pkg/metrics"
 	"gateway/pkg/mongo"
 	"gateway/pkg/redis"
 	"gateway/pkg/utils"
@@ -145,6 +146,14 @@ func main() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("listen: %s\n", err)
 		}
+	}()
+
+	go func() {
+		// metrics connections
+		if err := metrics.ListenAndServeMetrics(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("listen: %s\n", err)
+		}
+
 	}()
 
 	_obSvc := _obSvc.NewOrderbookHandler(engine, redisConn, _wsOrderbookSvc)
