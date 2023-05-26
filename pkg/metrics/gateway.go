@@ -8,42 +8,42 @@ import (
 var (
 	labels = []string{"protocol", "method"}
 
-	GatewayIncomingRequest = promauto.NewCounterVec(prometheus.CounterOpts{
+	GatewayIncomingCounter = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "incoming_counter",
 		Help: "The total number of incoming request",
 	}, labels)
 
-	GatewaySuccessResponse = promauto.NewCounterVec(prometheus.CounterOpts{
+	GatewaySuccessCounter = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "success_counter",
 		Help: "The total number of success response",
 	}, labels)
 
-	GatewayValidation = promauto.NewCounterVec(prometheus.CounterOpts{
+	GatewayValidationCounter = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "validation_counter",
-		Help: "The total number of validation",
+		Help: "The total number of validation response",
 	}, labels)
 
-	GatewayError = promauto.NewCounterVec(prometheus.CounterOpts{
+	GatewayErrorCounter = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "error_counter",
 		Help: "The total number of error",
 	}, labels)
 
-	GatewayOutgoingKafka = promauto.NewCounter(prometheus.CounterOpts{
+	GatewayOutgoingKafkaCounter = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "outgoing_kafka",
 		Help: "The total number of outgoing kafka",
 	})
 
-	GatewayIncomingKafka = promauto.NewCounter(prometheus.CounterOpts{
+	GatewayIncomingKafkaCounter = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "incoming_kafka",
 		Help: "The total number of incoming kafka",
 	})
 
-	GatewayRequestDuration = promauto.NewCounterVec(prometheus.CounterOpts{
+	GatewayRequestDurationHistogram = promauto.NewHistogramVec(prometheus.HistogramOpts{
 		Name: "request_duration",
 		Help: "The total number of request duration",
 	}, []string{"success"})
 
-	GatewayKafkaDuration = promauto.NewCounter(prometheus.CounterOpts{
+	GatewayKafkaDurationHistogram = promauto.NewHistogram(prometheus.HistogramOpts{
 		Name: "kafka_duration",
 		Help: "The total number of kafka duration",
 	})

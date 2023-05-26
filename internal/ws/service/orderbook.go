@@ -690,8 +690,17 @@ func (svc wsOrderbookService) GetOrderBook(ctx context.Context, data _deribitMod
 		optionPrice = "put"
 	}
 
+	//TODO query to get ask_iv and bid_iv
 	_getImpliedsAsk := svc.tradeRepository.GetImpliedVolatility(float64(dataQuote.BestAskAmount), optionPrice, float64(underlyingPrice), float64(_order.StrikePrice), float64(dateValue))
 	_getImpliedsBid := svc.tradeRepository.GetImpliedVolatility(float64(dataQuote.BestBidAmount), optionPrice, float64(underlyingPrice), float64(_order.StrikePrice), float64(dateValue))
+
+	//TODO query to get all greeks
+	_getImpliedsVolatility := svc.tradeRepository.GetImpliedVolatility(float64(_lastPrice), optionPrice, float64(underlyingPrice), float64(_order.StrikePrice), float64(dateValue))
+	_getGreeksDelta := svc.tradeRepository.GetGreeks("delta", float64(_getImpliedsVolatility), optionPrice, float64(underlyingPrice), float64(_order.StrikePrice), float64(dateValue))
+	_getGreeksVega := svc.tradeRepository.GetGreeks("vega", float64(_getImpliedsVolatility), optionPrice, float64(underlyingPrice), float64(_order.StrikePrice), float64(dateValue))
+	_getGreeksGamma := svc.tradeRepository.GetGreeks("gamma", float64(_getImpliedsVolatility), optionPrice, float64(underlyingPrice), float64(_order.StrikePrice), float64(dateValue))
+	_getGreeksTetha := svc.tradeRepository.GetGreeks("tetha", float64(_getImpliedsVolatility), optionPrice, float64(underlyingPrice), float64(_order.StrikePrice), float64(dateValue))
+	_getGreeksRho := svc.tradeRepository.GetGreeks("rho", float64(_getImpliedsVolatility), optionPrice, float64(underlyingPrice), float64(_order.StrikePrice), float64(dateValue))
 
 	results := _deribitModel.DeribitGetOrderBookResponse{
 		InstrumentName: orderBook.InstrumentName,
@@ -711,6 +720,13 @@ func (svc wsOrderbookService) GetOrderBook(ctx context.Context, data _deribitMod
 			Low:         _lowestPrice,
 			PriceChange: _priceChange,
 			Volume:      _volumeAmount,
+		},
+		Greeks: _deribitModel.OrderBookGreek{
+			Delta: _getGreeksDelta,
+			Vega:  _getGreeksVega,
+			Gamma: _getGreeksGamma,
+			Tetha: _getGreeksTetha,
+			Rho:   _getGreeksRho,
 		},
 	}
 

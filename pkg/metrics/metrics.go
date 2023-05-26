@@ -12,14 +12,14 @@ type metrics struct{}
 func ListenAndServeMetrics() error {
 	registry := prometheus.NewRegistry()
 	registry.MustRegister(
-		GatewayIncomingRequest,
-		GatewaySuccessResponse,
-		GatewayValidation,
-		GatewayError,
-		GatewayOutgoingKafka,
-		GatewayIncomingKafka,
-		GatewayRequestDuration,
-		GatewayKafkaDuration,
+		GatewayIncomingCounter,
+		GatewaySuccessCounter,
+		GatewayValidationCounter,
+		GatewayErrorCounter,
+		GatewayOutgoingKafkaCounter,
+		GatewayIncomingKafkaCounter,
+		GatewayRequestDurationHistogram,
+		GatewayKafkaDurationHistogram,
 	)
 
 	http.Handle("/metrics", promhttp.HandlerFor(registry, promhttp.HandlerOpts{}))

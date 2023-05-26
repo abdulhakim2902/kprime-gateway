@@ -3,6 +3,7 @@ package consumer
 import (
 	"encoding/json"
 	"fmt"
+	"gateway/pkg/metrics"
 	"gateway/pkg/utils"
 	"log"
 	"os"
@@ -28,6 +29,11 @@ func KafkaConsumer(
 	oSvc oInt.IwsOrderService,
 	tradeSvc oInt.IwsTradeService,
 ) {
+	// Metrics
+	go func() {
+		metrics.GatewayIncomingKafkaCounter.Inc()
+	}()
+
 	config := sarama.NewConfig()
 	config.Consumer.Return.Errors = true
 
