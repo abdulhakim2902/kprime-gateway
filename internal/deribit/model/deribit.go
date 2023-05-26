@@ -196,6 +196,7 @@ type DeribitGetOrderBookRequest struct {
 type DeribitGetOrderBookResponse struct {
 	Timestamp       int64                     `json:"timestamp"`
 	Stats           OrderBookStats            `json:"stats"`
+	Greeks          OrderBookGreek            `json:"greeks"`
 	State           string                    `json:"state"`
 	LastPrice       float64                   `json:"last_price"`
 	Bids_iv         float64                   `json:"bid_iv"`
@@ -217,6 +218,14 @@ type OrderBookStats struct {
 	PriceChange float64 `json:"price_change"`
 	Low         float64 `json:"low"`
 	High        float64 `json:"high"`
+}
+
+type OrderBookGreek struct {
+	Delta float64 `json:"delta"`
+	Vega  float64 `json:"vega"`
+	Gamma float64 `json:"gamma"`
+	Tetha float64 `json:"tetha"`
+	Rho   float64 `json:"rho"`
 }
 
 type DeribitGetUserTradesByInstrumentsRequest struct {
