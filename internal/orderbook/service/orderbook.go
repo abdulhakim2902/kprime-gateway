@@ -125,8 +125,6 @@ func (svc orderbookHandler) HandleConsumeBook(msg *sarama.ConsumerMessage) {
 					askData = append(askData, ask.Price)
 					askData = append(askData, ask.Amount)
 					asksData = append(asksData, askData)
-				} else {
-					changeAsksRaw[fmt.Sprintf("%f", ask.Price)] = ask.Amount
 				}
 			} else {
 				if ask.Amount != 0 {
@@ -157,8 +155,6 @@ func (svc orderbookHandler) HandleConsumeBook(msg *sarama.ConsumerMessage) {
 					bidData = append(bidData, bid.Price)
 					bidData = append(bidData, bid.Amount)
 					bidsData = append(bidsData, bidData)
-				} else {
-					changeBidsRaw[fmt.Sprintf("%f", bid.Price)] = bid.Amount
 				}
 			} else {
 				if bid.Amount != 0 {
@@ -204,9 +200,9 @@ func (svc orderbookHandler) HandleConsumeBook(msg *sarama.ConsumerMessage) {
 		switch order.Side {
 		case "BUY":
 			if val, ok := updated["price"]; ok {
-				if _, ok := changeId.Bids[fmt.Sprintf("%f", val.OldValue)]; ok {
+				if amount, ok := changeId.Bids[fmt.Sprintf("%f", val.OldValue)]; ok {
 					// check if old price point deleted
-					if val.OldValue != order.Price {
+					if amount-order.Amount == 0 {
 						var bidData []interface{}
 						bidData = append(bidData, "delete")
 						bidData = append(bidData, val.OldValue)
@@ -217,9 +213,9 @@ func (svc orderbookHandler) HandleConsumeBook(msg *sarama.ConsumerMessage) {
 			}
 		case "SELL":
 			if val, ok := updated["price"]; ok {
-				if _, ok := changeId.Asks[fmt.Sprintf("%f", val.OldValue)]; ok {
+				if amount, ok := changeId.Asks[fmt.Sprintf("%f", val.OldValue)]; ok {
 					// check if old price point deleted
-					if val.OldValue != order.Price {
+					if amount-order.Amount == 0 {
 						var askData []interface{}
 						askData = append(askData, "delete")
 						askData = append(askData, val.OldValue)
@@ -342,8 +338,6 @@ func (svc orderbookHandler) HandleConsumeBookAgg(_instrument string, order types
 					askData = append(askData, ask.Price)
 					askData = append(askData, ask.Amount)
 					asksData = append(asksData, askData)
-				} else {
-					changeAsksRaw[fmt.Sprintf("%f", ask.Price)] = ask.Amount
 				}
 			} else {
 				if ask.Amount != 0 {
@@ -374,8 +368,6 @@ func (svc orderbookHandler) HandleConsumeBookAgg(_instrument string, order types
 					bidData = append(bidData, bid.Price)
 					bidData = append(bidData, bid.Amount)
 					bidsData = append(bidsData, bidData)
-				} else {
-					changeBidsRaw[fmt.Sprintf("%f", bid.Price)] = bid.Amount
 				}
 			} else {
 				if bid.Amount != 0 {
@@ -423,9 +415,9 @@ func (svc orderbookHandler) HandleConsumeBookAgg(_instrument string, order types
 		switch order.Side {
 		case "BUY":
 			if val, ok := updated["price"]; ok {
-				if _, ok := changeId.BidsAgg[fmt.Sprintf("%f", val.OldValue)]; ok {
+				if amount, ok := changeId.BidsAgg[fmt.Sprintf("%f", val.OldValue)]; ok {
 					// check if old price point deleted
-					if val.OldValue != order.Price {
+					if amount-order.Amount == 0 {
 						var bidData []interface{}
 						bidData = append(bidData, "delete")
 						bidData = append(bidData, val.OldValue)
@@ -436,9 +428,9 @@ func (svc orderbookHandler) HandleConsumeBookAgg(_instrument string, order types
 			}
 		case "SELL":
 			if val, ok := updated["price"]; ok {
-				if _, ok := changeId.AsksAgg[fmt.Sprintf("%f", val.OldValue)]; ok {
+				if amount, ok := changeId.AsksAgg[fmt.Sprintf("%f", val.OldValue)]; ok {
 					// check if old price point deleted
-					if val.OldValue != order.Price {
+					if amount-order.Amount == 0 {
 						var askData []interface{}
 						askData = append(askData, "delete")
 						askData = append(askData, val.OldValue)
@@ -647,10 +639,9 @@ func (svc orderbookHandler) Handle100msInterval(instrument string) {
 						switch changeIdLocalVar.Side {
 						case "BUY":
 							if val, ok := updated["price"]; ok {
-								if _, ok := changeId.Bids100[fmt.Sprintf("%f", val.OldValue)]; ok {
+								if amount, ok := changeId.Bids100[fmt.Sprintf("%f", val.OldValue)]; ok {
 									// check if old price point deleted
-
-									if val.OldValue != changeIdLocalVar.Price {
+									if amount-changeIdLocalVar.Amount == 0 {
 										var bidData []interface{}
 										bidData = append(bidData, "delete")
 										bidData = append(bidData, val.OldValue)
@@ -661,9 +652,9 @@ func (svc orderbookHandler) Handle100msInterval(instrument string) {
 							}
 						case "SELL":
 							if val, ok := updated["price"]; ok {
-								if _, ok := changeId.Asks100[fmt.Sprintf("%f", val.OldValue)]; ok {
+								if amount, ok := changeId.Asks100[fmt.Sprintf("%f", val.OldValue)]; ok {
 									// check if old price point deleted
-									if val.OldValue != changeIdLocalVar.Price {
+									if amount-changeIdLocalVar.Amount == 0 {
 										var askData []interface{}
 										askData = append(askData, "delete")
 										askData = append(askData, val.OldValue)
