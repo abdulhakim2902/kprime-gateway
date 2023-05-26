@@ -598,6 +598,7 @@ func (svc wsOrderbookService) HandleConsumeUserChange100ms(instrument string, us
 }
 
 func (svc wsOrderbookService) GetOrderBook(ctx context.Context, data _deribitModel.DeribitGetOrderBookRequest) _deribitModel.DeribitGetOrderBookResponse {
+	var underlyingPrice float64
 	instruments, _ := utils.ParseInstruments(data.InstrumentName)
 
 	_order := _orderbookTypes.GetOrderBook{
@@ -624,6 +625,18 @@ func (svc wsOrderbookService) GetOrderBook(ctx context.Context, data _deribitMod
 	} else {
 		_state = "open"
 	}
+
+	//TODO query to get expires time
+	expiredDate := dateString
+	currentDate := time.Now().Format("2006-01-02 15:04:05")
+	layoutExpired := "02Jan06"
+	layoutCurrent := "2006-01-02 15:04:05"
+
+	expired, _ := time.Parse(layoutExpired, expiredDate)
+	current, _ := time.Parse(layoutCurrent, currentDate)
+	calculate := float64(expired.Day()) - float64(current.Day())
+
+	dateValue := float64(calculate / 365)
 
 	//TODO query to trades collections
 	_getLastTrades := svc.tradeRepository.GetLastTrades(_order)
@@ -658,6 +671,37 @@ func (svc wsOrderbookService) GetOrderBook(ctx context.Context, data _deribitMod
 		_priceChange = (_lastTrade - _firstTrade) / _firstTrade * 100
 	}
 
+	//TODO query to get Underlying Price
+	_getIndexPrice := svc.rawPriceRepository.GetLatestIndexPrice(_order)
+	if len(_getIndexPrice) > 0 {
+		underlyingPrice = float64(_getIndexPrice[0].Price)
+	} else {
+		underlyingPrice = float64(0)
+	}
+
+	//TODO query to get Option Price
+	str := data.InstrumentName
+	parts := strings.Split(str, "-")
+	lastPart := parts[len(parts)-1]
+	optionPrice := ""
+	if string(lastPart[0]) == "C" {
+		optionPrice = "call"
+	} else {
+		optionPrice = "put"
+	}
+
+	//TODO query to get ask_iv and bid_iv
+	_getImpliedsAsk := svc.tradeRepository.GetImpliedVolatility(float64(dataQuote.BestAskAmount), optionPrice, float64(underlyingPrice), float64(_order.StrikePrice), float64(dateValue))
+	_getImpliedsBid := svc.tradeRepository.GetImpliedVolatility(float64(dataQuote.BestBidAmount), optionPrice, float64(underlyingPrice), float64(_order.StrikePrice), float64(dateValue))
+
+	//TODO query to get all greeks
+	_getImpliedsVolatility := svc.tradeRepository.GetImpliedVolatility(float64(_lastPrice), optionPrice, float64(underlyingPrice), float64(_order.StrikePrice), float64(dateValue))
+	_getGreeksDelta := svc.tradeRepository.GetGreeks("delta", float64(_getImpliedsVolatility), optionPrice, float64(underlyingPrice), float64(_order.StrikePrice), float64(dateValue))
+	_getGreeksVega := svc.tradeRepository.GetGreeks("vega", float64(_getImpliedsVolatility), optionPrice, float64(underlyingPrice), float64(_order.StrikePrice), float64(dateValue))
+	_getGreeksGamma := svc.tradeRepository.GetGreeks("gamma", float64(_getImpliedsVolatility), optionPrice, float64(underlyingPrice), float64(_order.StrikePrice), float64(dateValue))
+	_getGreeksTetha := svc.tradeRepository.GetGreeks("tetha", float64(_getImpliedsVolatility), optionPrice, float64(underlyingPrice), float64(_order.StrikePrice), float64(dateValue))
+	_getGreeksRho := svc.tradeRepository.GetGreeks("rho", float64(_getImpliedsVolatility), optionPrice, float64(underlyingPrice), float64(_order.StrikePrice), float64(dateValue))
+
 	results := _deribitModel.DeribitGetOrderBookResponse{
 		InstrumentName: orderBook.InstrumentName,
 		Bids:           orderBook.Bids,
@@ -669,15 +713,23 @@ func (svc wsOrderbookService) GetOrderBook(ctx context.Context, data _deribitMod
 		Timestamp:      time.Now().UnixNano() / int64(time.Millisecond),
 		State:          _state,
 		LastPrice:      _lastPrice,
+		Bids_iv:        _getImpliedsBid,
+		Asks_iv:        _getImpliedsAsk,
 		Stats: _deribitModel.OrderBookStats{
 			High:        _hightPrice,
 			Low:         _lowestPrice,
 			PriceChange: _priceChange,
 			Volume:      _volumeAmount,
 		},
+		Greeks: _deribitModel.OrderBookGreek{
+			Delta: _getGreeksDelta,
+			Vega:  _getGreeksVega,
+			Gamma: _getGreeksGamma,
+			Tetha: _getGreeksTetha,
+			Rho:   _getGreeksRho,
+		},
 	}
 
-	_getIndexPrice := svc.rawPriceRepository.GetLatestIndexPrice(_order)
 	if len(_getIndexPrice) > 0 {
 		results.IndexPrice = &_getIndexPrice[0].Price
 		results.UnderlyingIndex = &_getIndexPrice[0].Price
