@@ -5,6 +5,7 @@ import (
 	"gateway/pkg/utils"
 	"gateway/pkg/ws"
 	"net/http"
+	"sync"
 	"time"
 
 	"git.devucc.name/dependencies/utilities/commons/logs"
@@ -56,8 +57,10 @@ type ProtocolRequest struct {
 }
 
 var protocolConnections map[any]ProtocolRequest
+var protocolMutex sync.RWMutex
 
 func RegisterProtocolRequest(key string, conn ProtocolRequest) (duplicateConnection bool) {
+	protocolMutex.Lock()
 	if protocolConnections == nil {
 		protocolConnections = make(map[any]ProtocolRequest)
 	}
@@ -66,11 +69,14 @@ func RegisterProtocolRequest(key string, conn ProtocolRequest) (duplicateConnect
 
 	conn.RequestedTime = uint64(time.Now().UnixMicro())
 	protocolConnections[key] = conn
+	protocolMutex.Unlock()
 
 	return
 }
 
 func UpgradeProtocol(oldKey, newKey string) bool {
+	protocolMutex.Lock()
+	defer protocolMutex.Unlock()
 	conn := protocolConnections[oldKey]
 
 	// Set the new ID
@@ -83,12 +89,16 @@ func UpgradeProtocol(oldKey, newKey string) bool {
 }
 
 func UnregisterProtocol(key string) {
+	protocolMutex.Lock()
 	if protocolConnections != nil {
 		delete(protocolConnections, key)
 	}
+	protocolMutex.Unlock()
 }
 
 func GetProtocol(key string) (bool, ProtocolRequest) {
+	protocolMutex.RLock()
+	defer protocolMutex.RUnlock()
 	val, ok := protocolConnections[key]
 	if ok {
 		return true, val
@@ -205,6 +215,8 @@ func doSend(key string, result any, err *ErrorMessage) bool {
 }
 
 func isConnExist(key string) bool {
+	protocolMutex.RLock()
+	defer protocolMutex.RUnlock()
 	_, ok := protocolConnections[key]
 	return ok
 }
