@@ -3,6 +3,7 @@ package consumer
 import (
 	"encoding/json"
 	"fmt"
+	"gateway/pkg/metrics"
 	"gateway/pkg/protocol"
 	"gateway/pkg/utils"
 	"log"
@@ -15,6 +16,7 @@ import (
 	ordermatch "gateway/internal/fix-acceptor"
 	obInt "gateway/internal/orderbook/service"
 	"gateway/internal/repositories"
+
 	"github.com/Shopify/sarama"
 
 	oInt "gateway/internal/ws/service"
@@ -27,6 +29,11 @@ func KafkaConsumer(
 	oSvc oInt.IwsOrderService,
 	tradeSvc oInt.IwsTradeService,
 ) {
+	// Metrics
+	go func() {
+		metrics.GatewayIncomingKafkaCounter.Inc()
+	}()
+
 	config := sarama.NewConfig()
 	config.Consumer.Return.Errors = true
 

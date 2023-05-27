@@ -2,6 +2,7 @@ package producer
 
 import (
 	"fmt"
+	"gateway/pkg/metrics"
 	"os"
 
 	"github.com/Shopify/sarama"
@@ -28,6 +29,11 @@ func KafkaProducer(obj string, topic string) {
 	if err != nil {
 		panic(err)
 	}
+
+	// Metrics
+	go func() {
+		metrics.GatewayOutgoingKafkaCounter.Inc()
+	}()
 
 	fmt.Println("Kafka message sent to topic", topic, "partition", partition, "offset", offset)
 }

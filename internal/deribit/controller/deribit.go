@@ -107,13 +107,15 @@ func (h *DeribitHandler) ApiGetHandler(r *gin.Context) {
 	handler(r)
 }
 
-func requestHelper(
-	msgID uint64,
-	c *gin.Context,
-) (userId, connKey string, reason *validation_reason.ValidationReason, err error) {
+func requestHelper(msgID uint64, method string, c *gin.Context) (
+	userId,
+	connKey string,
+	reason *validation_reason.ValidationReason,
+	err error,
+) {
 	key := utils.GetKeyFromIdUserID(msgID, "")
 	if isDuplicateConnection := protocol.RegisterProtocolRequest(
-		key, protocol.ProtocolRequest{Http: c, Protocol: protocol.HTTP},
+		key, protocol.ProtocolRequest{Http: c, Protocol: protocol.HTTP, Method: method},
 	); isDuplicateConnection {
 		validation := validation_reason.DUPLICATED_REQUEST_ID
 		reason = &validation
@@ -149,7 +151,7 @@ func (h *DeribitHandler) auth(r *gin.Context) {
 		return
 	}
 
-	_, connKey, reason, err := requestHelper(msg.Id, r)
+	_, connKey, reason, err := requestHelper(msg.Id, msg.Method, r)
 	if err != nil {
 		protocol.SendValidationMsg(connKey, *reason, err)
 		return
@@ -216,7 +218,7 @@ func (h *DeribitHandler) buy(r *gin.Context) {
 		return
 	}
 
-	userID, connKey, reason, err := requestHelper(msg.Id, r)
+	userID, connKey, reason, err := requestHelper(msg.Id, msg.Method, r)
 	if err != nil {
 		protocol.SendValidationMsg(connKey, *reason, err)
 		return
@@ -253,7 +255,7 @@ func (h *DeribitHandler) sell(r *gin.Context) {
 		return
 	}
 
-	userID, connKey, reason, err := requestHelper(msg.Id, r)
+	userID, connKey, reason, err := requestHelper(msg.Id, msg.Method, r)
 	if err != nil {
 		protocol.SendValidationMsg(connKey, *reason, err)
 		return
@@ -291,7 +293,7 @@ func (h *DeribitHandler) edit(r *gin.Context) {
 		return
 	}
 
-	userID, connKey, reason, err := requestHelper(msg.Id, r)
+	userID, connKey, reason, err := requestHelper(msg.Id, msg.Method, r)
 	if err != nil {
 		protocol.SendValidationMsg(connKey, *reason, err)
 		return
@@ -319,7 +321,7 @@ func (h *DeribitHandler) cancel(r *gin.Context) {
 		return
 	}
 
-	userID, connKey, reason, err := requestHelper(msg.Id, r)
+	userID, connKey, reason, err := requestHelper(msg.Id, msg.Method, r)
 	if err != nil {
 		protocol.SendValidationMsg(connKey, *reason, err)
 		return
@@ -345,7 +347,7 @@ func (h *DeribitHandler) cancelByInstrument(r *gin.Context) {
 		return
 	}
 
-	userID, connKey, reason, err := requestHelper(msg.Id, r)
+	userID, connKey, reason, err := requestHelper(msg.Id, msg.Method, r)
 	if err != nil {
 		protocol.SendValidationMsg(connKey, *reason, err)
 		return
@@ -372,7 +374,7 @@ func (h *DeribitHandler) cancelAll(r *gin.Context) {
 		return
 	}
 
-	userID, connKey, reason, err := requestHelper(msg.Id, r)
+	userID, connKey, reason, err := requestHelper(msg.Id, msg.Method, r)
 	if err != nil {
 		protocol.SendValidationMsg(connKey, *reason, err)
 		return
@@ -397,7 +399,7 @@ func (h *DeribitHandler) getUserTradeByInstrument(r *gin.Context) {
 		return
 	}
 
-	userID, connKey, reason, err := requestHelper(msg.Id, r)
+	userID, connKey, reason, err := requestHelper(msg.Id, msg.Method, r)
 	if err != nil {
 		protocol.SendValidationMsg(connKey, *reason, err)
 		return
@@ -429,7 +431,7 @@ func (h *DeribitHandler) getOpenOrdersByInstrument(r *gin.Context) {
 		return
 	}
 
-	userId, connKey, reason, err := requestHelper(msg.Id, r)
+	userId, connKey, reason, err := requestHelper(msg.Id, msg.Method, r)
 	if err != nil {
 		protocol.SendValidationMsg(connKey, *reason, err)
 		return
@@ -459,7 +461,7 @@ func (h *DeribitHandler) getOrderHistoryByInstrument(r *gin.Context) {
 		return
 	}
 
-	userId, connKey, reason, err := requestHelper(msg.Id, r)
+	userId, connKey, reason, err := requestHelper(msg.Id, msg.Method, r)
 	if err != nil {
 		protocol.SendValidationMsg(connKey, *reason, err)
 		return
@@ -492,7 +494,7 @@ func (h *DeribitHandler) getInstruments(r *gin.Context) {
 		return
 	}
 
-	_, connKey, reason, err := requestHelper(msg.Id, r)
+	_, connKey, reason, err := requestHelper(msg.Id, msg.Method, r)
 	if err != nil {
 		protocol.SendValidationMsg(connKey, *reason, err)
 		return
@@ -513,7 +515,7 @@ func (h *DeribitHandler) getOrderBook(r *gin.Context) {
 		return
 	}
 
-	_, connKey, reason, err := requestHelper(msg.Id, r)
+	_, connKey, reason, err := requestHelper(msg.Id, msg.Method, r)
 	if err != nil {
 		protocol.SendValidationMsg(connKey, *reason, err)
 		return
