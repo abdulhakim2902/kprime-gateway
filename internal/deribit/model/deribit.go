@@ -233,6 +233,19 @@ type DeribitGetOrderBookResponse struct {
 	UnderlyingIndex *float64                  `json:"underlying_index"`
 }
 
+type DeribitGetLastTradesByInstrumentResponse struct {
+	TradeSeq       int64   `json:"trade_seq"`
+	TradeId        string  `json:"trade_id"`
+	Timestamp      int64   `json:"timestamp"`
+	TickDirection  int64   `json:"tick_direction"`
+	Price          float64 `json:"price"`
+	MarkPrice      float64 `json:"mark_price"`
+	InstrumentName string  `json:"instrument_name"`
+	IndexPrice     float64 `json:"index_price"`
+	Direction      string  `json:"direction"`
+	Amount         int64   `json:"amount"`
+}
+
 type OrderBookStats struct {
 	Volume      float64 `json:"volume"`
 	PriceChange float64 `json:"price_change"`
