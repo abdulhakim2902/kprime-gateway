@@ -234,16 +234,20 @@ type DeribitGetOrderBookResponse struct {
 }
 
 type DeribitGetLastTradesByInstrumentResponse struct {
-	TradeSeq       int64   `json:"trade_seq"`
-	TradeId        string  `json:"trade_id"`
-	Timestamp      int64   `json:"timestamp"`
-	TickDirection  int64   `json:"tick_direction"`
-	Price          float64 `json:"price"`
-	MarkPrice      float64 `json:"mark_price"`
-	InstrumentName string  `json:"instrument_name"`
-	IndexPrice     float64 `json:"index_price"`
-	Direction      string  `json:"direction"`
-	Amount         int64   `json:"amount"`
+	Amount         int64  `json:"amount"`
+	Direction      string `json:"direction"`
+	InstrumentName string `json:"instrument_name"`
+	OrderId        string `json:"order_id"`
+	OrderType      string `json:"order_type"`
+	Price          string `json:"price"`
+	State          string `json:"state"`
+	Timestamp      int64  `json:"timestamp"`
+	TradeId        string `json:"trade_id"`
+	Api            bool   `json:"api"`
+	IndexPrice     int64  `json:"index_price"`
+	Label          string `json:"label"`
+	TickDirection  int64  `json:"tick_direction"`
+	TradeSeq       int64  `json:"trade_seq"`
 }
 
 type OrderBookStats struct {

@@ -745,16 +745,20 @@ func (svc wsOrderbookService) GetOrderBook(ctx context.Context, data _deribitMod
 
 func (svc wsOrderbookService) GetLastTradesByInstrument(ctx context.Context, data _deribitModel.DeribitGetLastTradesByInstrumentRequest) _deribitModel.DeribitGetLastTradesByInstrumentResponse {
 	results := _deribitModel.DeribitGetLastTradesByInstrumentResponse{
-		TradeSeq:       36798,
-		TradeId:        "277976",
-		Timestamp:      1590476708320,
-		TickDirection:  2,
-		Price:          8767.08,
-		MarkPrice:      8829.7,
-		InstrumentName: "BTC-PERPETUAL",
-		IndexPrice:     8878.53,
-		Direction:      "sell",
-		Amount:         100,
+		Amount:         21,
+		Direction:      "direction",
+		InstrumentName: "instrument_name",
+		OrderId:        "order_id",
+		OrderType:      "order_type",
+		Price:          "price",
+		State:          "state",
+		Timestamp:      1233,
+		TradeId:        "trade_id",
+		Api:            true,
+		IndexPrice:     34,
+		Label:          "label",
+		TickDirection:  11,
+		TradeSeq:       11,
 	}
 
 	return results
