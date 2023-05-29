@@ -743,6 +743,12 @@ func (svc wsOrderbookService) GetOrderBook(ctx context.Context, data _deribitMod
 	return results
 }
 
+func (svc wsOrderbookService) GetLastTradesByInstrument(ctx context.Context, data _deribitModel.DeribitGetLastTradesByInstrumentRequest) string {
+	haha := "test"
+
+	return haha
+}
+
 func (svc wsOrderbookService) GetOrderLatestTimestamp(o _orderbookTypes.GetOrderBook, after int64, isFilled bool) _orderbookTypes.Orderbook {
 	return svc.orderRepository.GetOrderLatestTimestamp(o, after, isFilled)
 }

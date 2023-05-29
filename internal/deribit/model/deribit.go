@@ -46,6 +46,16 @@ type GetOrderBookParams struct {
 	Depth          int64  `json:"depth" form:"depth"`
 }
 
+type GetLastTradesByInstrumentParams struct {
+	InstrumentName string `json:"instrument_name" form:"instrument_name"`
+	StartSeq       int64  `json:"start_seq" form:"start_seq"`
+	EndSeq         int64  `json:"end_seq" form:"end_seq"`
+	StartTimestamp int64  `json:"start_timestamp" form:"start_timestamp"`
+	EndTimestamp   int64  `json:"end_timestamp" form:"end_timestamp"`
+	Count          int64  `json:"count" form:"count"`
+	Sorting        string `json:"sorting" form:"sorting"`
+}
+
 type BaseParams struct {
 	AccessToken    string `json:"access_token" validate:"required" form:"access_token"`
 	InstrumentName string `json:"instrument_name" validate:"required" form:"instrument_name"`
@@ -191,6 +201,16 @@ type DeribitGetInstrumentsResponse struct {
 type DeribitGetOrderBookRequest struct {
 	InstrumentName string `json:"instrument_name"`
 	Depth          int64  `json:"depth"`
+}
+
+type DeribitGetLastTradesByInstrumentRequest struct {
+	InstrumentName string `json:"instrument_name"`
+	StartSeq       int64  `json:"start_seq"`
+	EndSeq         int64  `json:"end_seq"`
+	StartTimestamp int64  `json:"start_timestamp"`
+	EndTimestamp   int64  `json:"end_timestamp"`
+	Count          int64  `json:"count"`
+	Sorting        string `json:"sorting"`
 }
 
 type DeribitGetOrderBookResponse struct {
