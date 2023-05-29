@@ -84,12 +84,13 @@ func NewWebsocketHandler(
 
 func requestHelper(
 	msgID uint64,
+	method string,
 	accessToken *string,
 	c *ws.Client,
 ) (claim userType.JwtClaim, connKey string, reason *validation_reason.ValidationReason, err error) {
 	key := utils.GetKeyFromIdUserID(msgID, "")
 	if isDuplicateConnection := protocol.RegisterProtocolRequest(
-		key, protocol.ProtocolRequest{WS: c, Protocol: protocol.Websocket},
+		key, protocol.ProtocolRequest{WS: c, Protocol: protocol.Websocket, Method: method},
 	); isDuplicateConnection {
 		validation := validation_reason.DUPLICATED_REQUEST_ID
 		reason = &validation
@@ -129,7 +130,7 @@ func (svc wsHandler) PublicAuth(input interface{}, c *ws.Client) {
 		return
 	}
 
-	_, connKey, reason, err := requestHelper(msg.Id, nil, c)
+	_, connKey, reason, err := requestHelper(msg.Id, msg.Method, nil, c)
 	if err != nil {
 		protocol.SendValidationMsg(connKey, *reason, err)
 		return
@@ -193,7 +194,7 @@ func (svc wsHandler) PrivateBuy(input interface{}, c *ws.Client) {
 		return
 	}
 
-	claim, connKey, reason, err := requestHelper(msg.Id, &msg.Params.AccessToken, c)
+	claim, connKey, reason, err := requestHelper(msg.Id, msg.Method, &msg.Params.AccessToken, c)
 	if err != nil {
 		protocol.SendValidationMsg(connKey, *reason, err)
 		return
@@ -231,7 +232,7 @@ func (svc wsHandler) PrivateSell(input interface{}, c *ws.Client) {
 		return
 	}
 
-	claim, connKey, reason, err := requestHelper(msg.Id, &msg.Params.AccessToken, c)
+	claim, connKey, reason, err := requestHelper(msg.Id, msg.Method, &msg.Params.AccessToken, c)
 	if err != nil {
 		protocol.SendValidationMsg(connKey, *reason, err)
 		return
@@ -269,7 +270,7 @@ func (svc wsHandler) PrivateEdit(input interface{}, c *ws.Client) {
 		return
 	}
 
-	claim, connKey, reason, err := requestHelper(msg.Id, &msg.Params.AccessToken, c)
+	claim, connKey, reason, err := requestHelper(msg.Id, msg.Method, &msg.Params.AccessToken, c)
 	if err != nil {
 		protocol.SendValidationMsg(connKey, *reason, err)
 		return
@@ -300,7 +301,7 @@ func (svc wsHandler) PrivateCancel(input interface{}, c *ws.Client) {
 		return
 	}
 
-	claim, connKey, reason, err := requestHelper(msg.Id, &msg.Params.AccessToken, c)
+	claim, connKey, reason, err := requestHelper(msg.Id, msg.Method, &msg.Params.AccessToken, c)
 	if err != nil {
 		protocol.SendValidationMsg(connKey, *reason, err)
 		return
@@ -329,7 +330,7 @@ func (svc wsHandler) PrivateCancelByInstrument(input interface{}, c *ws.Client) 
 		return
 	}
 
-	claim, connKey, reason, err := requestHelper(msg.Id, &msg.Params.AccessToken, c)
+	claim, connKey, reason, err := requestHelper(msg.Id, msg.Method, &msg.Params.AccessToken, c)
 	if err != nil {
 		protocol.SendValidationMsg(connKey, *reason, nil)
 		return
@@ -358,7 +359,7 @@ func (svc wsHandler) PrivateCancelAll(input interface{}, c *ws.Client) {
 		return
 	}
 
-	claim, connKey, reason, err := requestHelper(msg.Id, &msg.Params.AccessToken, c)
+	claim, connKey, reason, err := requestHelper(msg.Id, msg.Method, &msg.Params.AccessToken, c)
 	if err != nil {
 		protocol.SendValidationMsg(connKey, *reason, err)
 		return
@@ -386,7 +387,7 @@ func (svc wsHandler) SubscribeHandler(input interface{}, c *ws.Client) {
 		return
 	}
 
-	_, connKey, reason, err := requestHelper(msg.Id, nil, c)
+	_, connKey, reason, err := requestHelper(msg.Id, msg.Method, nil, c)
 	if err != nil {
 		protocol.SendValidationMsg(connKey, *reason, err)
 		return
@@ -423,7 +424,7 @@ func (svc wsHandler) UnsubscribeHandler(input interface{}, c *ws.Client) {
 		return
 	}
 
-	_, connKey, reason, err := requestHelper(msg.Id, nil, c)
+	_, connKey, reason, err := requestHelper(msg.Id, msg.Method, nil, c)
 	if err != nil {
 		protocol.SendValidationMsg(connKey, *reason, err)
 		return
@@ -455,7 +456,7 @@ func (svc wsHandler) SubscribeHandlerPrivate(input interface{}, c *ws.Client) {
 		return
 	}
 
-	claim, connKey, reason, err := requestHelper(msg.Id, &msg.Params.AccessToken, c)
+	claim, connKey, reason, err := requestHelper(msg.Id, msg.Method, &msg.Params.AccessToken, c)
 	if err != nil {
 		protocol.SendValidationMsg(connKey, *reason, err)
 		return
@@ -484,7 +485,7 @@ func (svc wsHandler) UnsubscribeHandlerPrivate(input interface{}, c *ws.Client) 
 		return
 	}
 
-	_, connKey, reason, err := requestHelper(msg.Id, nil, c)
+	_, connKey, reason, err := requestHelper(msg.Id, msg.Method, nil, c)
 	if err != nil {
 		protocol.SendValidationMsg(connKey, *reason, err)
 		return
@@ -514,7 +515,7 @@ func (svc wsHandler) GetInstruments(input interface{}, c *ws.Client) {
 		return
 	}
 
-	_, connKey, reason, err := requestHelper(msg.Id, nil, c)
+	_, connKey, reason, err := requestHelper(msg.Id, msg.Method, nil, c)
 	if err != nil {
 		protocol.SendValidationMsg(connKey, *reason, err)
 	}
@@ -534,7 +535,7 @@ func (svc wsHandler) GetOrderBook(input interface{}, c *ws.Client) {
 		return
 	}
 
-	_, connKey, reason, err := requestHelper(msg.Id, nil, c)
+	_, connKey, reason, err := requestHelper(msg.Id, msg.Method, nil, c)
 	if err != nil {
 		protocol.SendValidationMsg(connKey, *reason, err)
 		return
@@ -555,7 +556,7 @@ func (svc wsHandler) PrivateGetUserTradesByInstrument(input interface{}, c *ws.C
 		return
 	}
 
-	claim, connKey, reason, err := requestHelper(msg.Id, &msg.Params.AccessToken, c)
+	claim, connKey, reason, err := requestHelper(msg.Id, msg.Method, &msg.Params.AccessToken, c)
 	if err != nil {
 		protocol.SendValidationMsg(connKey, *reason, err)
 		return
@@ -588,7 +589,7 @@ func (svc wsHandler) PrivateGetOpenOrdersByInstrument(input interface{}, c *ws.C
 		return
 	}
 
-	claim, connKey, reason, err := requestHelper(msg.Id, &msg.Params.AccessToken, c)
+	claim, connKey, reason, err := requestHelper(msg.Id, msg.Method, &msg.Params.AccessToken, c)
 	if err != nil {
 		protocol.SendValidationMsg(connKey, *reason, err)
 		return
@@ -618,7 +619,7 @@ func (svc wsHandler) PrivateGetOrderHistoryByInstrument(input interface{}, c *ws
 		return
 	}
 
-	claim, connKey, reason, err := requestHelper(msg.Id, &msg.Params.AccessToken, c)
+	claim, connKey, reason, err := requestHelper(msg.Id, msg.Method, &msg.Params.AccessToken, c)
 	if err != nil {
 		protocol.SendValidationMsg(connKey, *reason, err)
 		return

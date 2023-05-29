@@ -2,6 +2,7 @@ package protocol
 
 import (
 	"fmt"
+	"gateway/pkg/metrics"
 	"gateway/pkg/utils"
 	"gateway/pkg/ws"
 	"net/http"
@@ -11,6 +12,7 @@ import (
 	"git.devucc.name/dependencies/utilities/commons/logs"
 	"git.devucc.name/dependencies/utilities/types/validation_reason"
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 type ProtocolType int
@@ -54,10 +56,29 @@ type ProtocolRequest struct {
 	RequestedTime uint64
 	WS            *ws.Client
 	Http          *gin.Context
+	Method        string
 }
 
 var protocolConnections map[any]ProtocolRequest
 var protocolMutex sync.RWMutex
+
+func (p *ProtocolRequest) getMetricsProtocol() metrics.Protocol {
+	var protocol metrics.Protocol
+	if p.WS != nil {
+		protocol = metrics.WS
+	} else if p.Http != nil {
+		switch p.Http.Request.Method {
+		case "POST":
+			protocol = metrics.HTTP_POST
+			break
+		case "GET":
+			protocol = metrics.HTTP_GET
+			break
+		}
+	}
+
+	return protocol
+}
 
 func RegisterProtocolRequest(key string, conn ProtocolRequest) (duplicateConnection bool) {
 	protocolMutex.Lock()
@@ -72,6 +93,18 @@ func RegisterProtocolRequest(key string, conn ProtocolRequest) (duplicateConnect
 	protocolMutex.Lock()
 	protocolConnections[key] = conn
 	protocolMutex.Unlock()
+
+	// Metrics
+	if !duplicateConnection {
+		label := prometheus.Labels{
+			"protocol": string(conn.getMetricsProtocol()),
+			"method":   conn.Method,
+		}
+
+		go func(label prometheus.Labels) {
+			metrics.GatewayIncomingCounter.With(label).Inc()
+		}(label)
+	}
 
 	return
 }
@@ -155,7 +188,7 @@ func SendErrMsg(key string, err error) bool {
 
 // Responsible for handling to send for different protocol
 func doSend(key string, result any, err *ErrorMessage) bool {
-	ok, val := GetProtocol(key)
+	ok, conn := GetProtocol(key)
 	if !ok {
 		logs.Log.Error().Str("connection_key", key).Msg("no connection found")
 
@@ -174,11 +207,11 @@ func doSend(key string, result any, err *ErrorMessage) bool {
 	ID, _ := utils.GetIdUserIDFromKey(fmt.Sprintf("%v", key))
 	m.ID = ID
 
-	m.UsIn = val.RequestedTime
+	m.UsIn = conn.RequestedTime
 	m.UsOut = uint64(time.Now().UnixMicro())
 	m.UsDiff = m.UsOut - m.UsIn
 
-	switch val.Protocol {
+	switch conn.Protocol {
 	case Websocket:
 		msg := ws.WebsocketResponseMessage{
 			JSONRPC: m.JSONRPC,
@@ -195,7 +228,7 @@ func doSend(key string, result any, err *ErrorMessage) bool {
 			msg.Error = m.Error
 		}
 
-		val.WS.Send(msg)
+		conn.WS.Send(msg)
 
 		break
 	case HTTP:
@@ -203,13 +236,34 @@ func doSend(key string, result any, err *ErrorMessage) bool {
 		if m.Error != nil {
 			statusCode = m.Error.HttpStatusCode
 		}
-		val.Http.JSON(statusCode, m)
+		conn.Http.JSON(statusCode, m)
 
 		break
 	case GRPC:
 		// TODO: add grpc response
 		break
 	}
+
+	// Metrics
+	metricsLabel := prometheus.Labels{
+		"protocol": string(conn.getMetricsProtocol()),
+		"method":   conn.Method,
+	}
+
+	go func(label prometheus.Labels, errMsg *ErrorMessage, usDiff uint64) {
+		if errMsg != nil {
+			reason := validation_reason.PARSE_ERROR
+			if errMsg.Message == reason.String() {
+				metrics.GatewayErrorCounter.With(label).Inc()
+			} else {
+				metrics.GatewayValidationCounter.With(label).Inc()
+			}
+		} else {
+			metrics.GatewaySuccessCounter.With(label).Inc()
+		}
+
+		metrics.GatewayRequestDurationHistogram.WithLabelValues("success").Observe(float64(usDiff))
+	}(metricsLabel, m.Error, m.UsDiff)
 
 	UnregisterProtocol(key)
 
