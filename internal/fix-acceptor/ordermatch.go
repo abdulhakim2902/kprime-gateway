@@ -421,6 +421,8 @@ func (a *Application) onOrderCancelRequest(msg ordercancelrequest.OrderCancelReq
 	var partyId quickfix.FIXString
 	msg.GetField(tag.PartyID, &partyId)
 
+	fmt.Println(partyId.String())
+
 	_, reason, r := a.DeribitService.DeribitRequest(context.TODO(), user.ID.Hex(), _deribitModel.DeribitRequest{
 		ID:             orderId,
 		ClOrdID:        clOrdID,
@@ -906,7 +908,7 @@ func OrderConfirmation(userId string, order _orderbookType.Order, symbol string)
 	case "PARTIALLY FILLED":
 		exec = 1
 		break
-	case "CANCELLED":
+	case "ORDER_CANCELLED":
 		exec = 4
 	}
 

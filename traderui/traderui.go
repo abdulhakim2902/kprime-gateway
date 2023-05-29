@@ -441,6 +441,7 @@ func (c tradeClient) onOrderCancelRequest(w http.ResponseWriter, r *http.Request
 	fmt.Println("symbol ", order.Symbol)
 	msg.SetSymbol(order.Symbol)
 	msg.SetOrderID(order.OrderID)
+	msg.Set(field.NewPartyID(order.PartyID))
 
 	fmt.Println(msg.ToMessage().String())
 	err = quickfix.SendToTarget(msg, order.SessionID)

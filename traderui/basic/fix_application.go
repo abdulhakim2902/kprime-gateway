@@ -225,10 +225,12 @@ func (a *FIXApplication) onExecutionReport(msg *quickfix.Message, sessionID quic
 		return err
 	}
 
-	// Order Cancel Request success, 8 = Pending Cancel
-	if execType.String() == "8" {
+	// Order Cancel Request success, 4 = ORDER_CANCELLED
+	if execType.String() == "ORDER_CANCELLED" {
 		logs.Log.Info().Str("msg", msg.String()).Msg("Order Cancel Request success")
 	}
+
+	fmt.Println("execType", execType.String())
 
 	fmt.Println("clordid", clOrdID.String())
 	order, err := a.GetByClOrdID(clOrdID.String())
@@ -268,7 +270,8 @@ func (a *FIXApplication) onExecutionReport(msg *quickfix.Message, sessionID quic
 	if err := msg.Body.Get(&ordStatus); err != nil {
 		return err
 	}
-	order.Status = ordStatus.String()
+	order.Status = execType.String()
+	fmt.Println(order)
 	a.Save(order)
 	if ordStatus.String() != string(enum.OrdStatus_NEW) {
 		var lastQty field.LastQtyField
