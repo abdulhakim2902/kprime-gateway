@@ -418,7 +418,6 @@ func (a *Application) onOrderCancelRequest(msg ordercancelrequest.OrderCancelReq
 	if err != nil {
 		return err
 	}
-
 	var partyId quickfix.FIXString
 	msg.GetField(tag.PartyID, &partyId)
 
@@ -428,6 +427,7 @@ func (a *Application) onOrderCancelRequest(msg ordercancelrequest.OrderCancelReq
 		ClientId:       partyId.String(),
 		Side:           _utilitiesType.CANCEL,
 		InstrumentName: symbol,
+		Type:           _utilitiesType.LIMIT,
 	})
 
 	if r != nil {
