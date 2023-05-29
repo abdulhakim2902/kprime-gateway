@@ -233,21 +233,25 @@ type DeribitGetOrderBookResponse struct {
 	UnderlyingIndex *float64                  `json:"underlying_index"`
 }
 
+type DeribitGetLastTradesByInstrumentValue struct {
+	Amount         float64            `json:"amount"`
+	Direction      string             `json:"direction"`
+	InstrumentName string             `json:"instrument_name"`
+	OrderId        primitive.ObjectID `json:"order_id"`
+	OrderType      string             `json:"order_type"`
+	Price          float64            `json:"price"`
+	State          string             `json:"state"`
+	Timestamp      int64              `json:"timestamp"`
+	TradeId        int32              `json:"trade_id"`
+	Api            bool               `json:"api"`
+	IndexPrice     float64            `json:"index_price"`
+	Label          string             `json:"label"`
+	TickDirection  int32              `json:"tick_direction"`
+	TradeSeq       int32              `json:"trade_seq"`
+}
+
 type DeribitGetLastTradesByInstrumentResponse struct {
-	Amount         int64  `json:"amount"`
-	Direction      string `json:"direction"`
-	InstrumentName string `json:"instrument_name"`
-	OrderId        string `json:"order_id"`
-	OrderType      string `json:"order_type"`
-	Price          string `json:"price"`
-	State          string `json:"state"`
-	Timestamp      int64  `json:"timestamp"`
-	TradeId        string `json:"trade_id"`
-	Api            bool   `json:"api"`
-	IndexPrice     int64  `json:"index_price"`
-	Label          string `json:"label"`
-	TickDirection  int64  `json:"tick_direction"`
-	TradeSeq       int64  `json:"trade_seq"`
+	Trades []DeribitGetLastTradesByInstrumentValue `json:"trades"`
 }
 
 type OrderBookStats struct {

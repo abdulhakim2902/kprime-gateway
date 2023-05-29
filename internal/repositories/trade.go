@@ -30,6 +30,24 @@ func NewTradeRepository(db Database) *TradeRepository {
 	return &TradeRepository{collection}
 }
 
+func (r TradeRepository) GetTradesData() []*_engineType.Trade {
+	cursor, err := r.collection.Find(context.Background(), bson.D{})
+	if err != nil {
+		return nil
+	}
+
+	defer cursor.Close(context.Background())
+
+	Trades := []*_engineType.Trade{}
+
+	err = cursor.All(context.Background(), &Trades)
+	if err != nil {
+		return nil
+	}
+
+	return Trades
+}
+
 func (r TradeRepository) Find(filter interface{}, sort interface{}, offset, limit int64) ([]*_engineType.Trade, error) {
 	options := options.FindOptions{
 		MaxTime: &defaultTimeout,

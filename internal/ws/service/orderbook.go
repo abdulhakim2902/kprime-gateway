@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"strconv"
 	"strings"
 	"sync"
@@ -20,6 +21,8 @@ import (
 	"gateway/pkg/ws"
 
 	"github.com/Shopify/sarama"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type wsOrderbookService struct {
@@ -744,21 +747,50 @@ func (svc wsOrderbookService) GetOrderBook(ctx context.Context, data _deribitMod
 }
 
 func (svc wsOrderbookService) GetLastTradesByInstrument(ctx context.Context, data _deribitModel.DeribitGetLastTradesByInstrumentRequest) _deribitModel.DeribitGetLastTradesByInstrumentResponse {
+	_gets := svc.tradeRepository.GetTradesData()
+
+	bsonResponse := _gets
+
+	_getLastTradesByInstrument := []_deribitModel.DeribitGetLastTradesByInstrumentValue{}
+
+	for _, doc := range bsonResponse {
+		bsonData, err := bson.Marshal(doc)
+		if err != nil {
+			log.Println("Error marshaling BSON to JSON:", err)
+			continue
+		}
+
+		var jsonDoc map[string]interface{}
+		err = bson.Unmarshal(bsonData, &jsonDoc)
+		if err != nil {
+			log.Println("Error unmarshaling BSON to JSON:", err)
+			continue
+		}
+
+		resultData := _deribitModel.DeribitGetLastTradesByInstrumentValue{
+			Amount:         jsonDoc["amount"].(float64),
+			Direction:      jsonDoc["side"].(string),
+			InstrumentName: "",                                                                        // Need to Ask
+			OrderId:        jsonDoc["taker"].(map[string]interface{})["orderId"].(primitive.ObjectID), // Need to Ask
+			OrderType:      "limit",                                                                   // Need to Ask
+			Price:          jsonDoc["price"].(float64),
+			State:          "filled", // Need to Ask
+			Timestamp:      time.Now().UnixNano() / int64(time.Millisecond),
+			TradeId:        jsonDoc["tradeSequence"].(int32), // Need to Ask
+			Api:            true,
+			IndexPrice:     jsonDoc["indexPrice"].(float64),
+			Label:          "", // Need to Ask,
+			TickDirection:  jsonDoc["tickDirection"].(int32),
+			TradeSeq:       jsonDoc["tradeSequence"].(int32),
+		}
+
+		_getLastTradesByInstrument = append(_getLastTradesByInstrument, resultData)
+	}
+
+	fmt.Println("person:", _getLastTradesByInstrument)
+
 	results := _deribitModel.DeribitGetLastTradesByInstrumentResponse{
-		Amount:         21,
-		Direction:      "direction",
-		InstrumentName: "instrument_name",
-		OrderId:        "order_id",
-		OrderType:      "order_type",
-		Price:          "price",
-		State:          "state",
-		Timestamp:      1233,
-		TradeId:        "trade_id",
-		Api:            true,
-		IndexPrice:     34,
-		Label:          "label",
-		TickDirection:  11,
-		TradeSeq:       11,
+		Trades: _getLastTradesByInstrument,
 	}
 
 	return results
