@@ -88,3 +88,11 @@ and running the container by running this command
 ```bash
 docker run --rm -p 8080:8080 exchange-gateway
 ```
+
+### Metrics
+
+Run in port `2112`, Metrics endpoint:
+
+```bash
+<host>:2112/metrics
+```
