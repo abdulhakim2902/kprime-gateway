@@ -28,15 +28,15 @@ func GetOrderConnections(a string) OrderConnection {
 }
 
 func OrderSocketUnsubscribeHandler(a string) func(client *Client) {
-	registerOrderConnMutex.Lock()
-	defer registerOrderConnMutex.Unlock()
 	return func(client *Client) {
 		// logger.Info("In unsubscription handler")
+		registerOrderConnMutex.Lock()
 		orderConnection := orderConnections[a]
+		registerOrderConnMutex.Unlock()
 		if orderConnection == nil {
 			// logger.Info("No subscriptions")
 		}
-
+		registerOrderConnMutex.Lock()
 		if orderConnection != nil {
 			// logger.Info("%v connections before unsubscription", len(orderConnections[a]))
 			for i, c := range orderConnection {
@@ -44,10 +44,10 @@ func OrderSocketUnsubscribeHandler(a string) func(client *Client) {
 					orderConnection = append(orderConnection[:i], orderConnection[i+1:]...)
 				}
 			}
-
 		}
 
 		orderConnections[a] = orderConnection
+		registerOrderConnMutex.Unlock()
 		// logger.Info("%v connections after unsubscription", len(orderConnections[a]))
 	}
 }
@@ -55,21 +55,18 @@ func OrderSocketUnsubscribeHandler(a string) func(client *Client) {
 // RegisterOrderConnection registers a connection with and orderID.
 // It is called whenever a message is recieved over order channel
 func RegisterOrderConnection(a string, c *Client) {
-	registerOrderConnMutex.Lock()
-	defer registerOrderConnMutex.Unlock()
 	// logger.Info("Registering new order connection")
 
+	registerOrderConnMutex.Lock()
 	if orderConnections == nil {
 		orderConnections = make(map[string]OrderConnection)
 	}
-
 	if orderConnections[a] == nil {
 		// logger.Info("Registering a new order connection")
 		orderConnections[a] = OrderConnection{c}
 		RegisterConnectionUnsubscribeHandler(c, OrderSocketUnsubscribeHandler(a))
 		// logger.Info("Number of connections for this address: %v", len(orderConnections))
 	}
-
 	if orderConnections[a] != nil {
 		if !isClientConnected(a, c) {
 			// logger.Info("Registering a new order connection")
@@ -78,6 +75,7 @@ func RegisterOrderConnection(a string, c *Client) {
 			// logger.Info("Number of connections for this address: %v", len(orderConnections))
 		}
 	}
+	registerOrderConnMutex.Unlock()
 }
 
 func isClientConnected(a string, client *Client) bool {
