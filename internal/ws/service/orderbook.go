@@ -750,3 +750,18 @@ func (svc wsOrderbookService) GetOrderLatestTimestamp(o _orderbookTypes.GetOrder
 func (svc wsOrderbookService) GetOrderLatestTimestampAgg(o _orderbookTypes.GetOrderBook, after int64) _orderbookTypes.Orderbook {
 	return svc.orderRepository.GetOrderLatestTimestampAgg(o, after)
 }
+
+func (svc wsOrderbookService) GetIndexPrice(ctx context.Context, data _deribitModel.DeribitGetIndexPriceRequest) _deribitModel.DeribitGetIndexPriceResponse {
+	var indexPrice float64
+
+	_getIndexPrice := svc.rawPriceRepository.GetIndexPrice(data.IndexName)
+	if len(_getIndexPrice) > 0 {
+		indexPrice = float64(_getIndexPrice[0].Price)
+	} else {
+		indexPrice = float64(0)
+	}
+	result := _deribitModel.DeribitGetIndexPriceResponse{
+		IndexPrice: indexPrice,
+	}
+	return result
+}

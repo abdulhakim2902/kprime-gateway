@@ -81,6 +81,7 @@ func NewWebsocketHandler(
 
 	ws.RegisterChannel("public/get_instruments", handler.GetInstruments)
 	ws.RegisterChannel("public/get_order_book", handler.GetOrderBook)
+	ws.RegisterChannel("public/get_index_price", handler.GetIndexPrice)
 }
 
 func requestHelper(
@@ -644,6 +645,26 @@ func (svc wsHandler) PrivateGetOrderHistoryByInstrument(input interface{}, c *ws
 	)
 
 	protocol.SendSuccessMsg(connKey, res)
+}
+
+func (svc wsHandler) GetIndexPrice(input interface{}, c *ws.Client) {
+	var msg deribitModel.RequestDto[deribitModel.GetIndexPriceParams]
+	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
+		c.SendInvalidRequestMessage(err)
+		return
+	}
+
+	_, connKey, reason, err := requestHelper(msg.Id, msg.Method, nil, c)
+	if err != nil {
+		protocol.SendValidationMsg(connKey, *reason, err)
+		return
+	}
+
+	result := svc.wsOBSvc.GetIndexPrice(context.TODO(), deribitModel.DeribitGetIndexPriceRequest{
+		IndexName: msg.Params.IndexName,
+	})
+
+	protocol.SendSuccessMsg(connKey, result)
 }
 
 func (svc wsHandler) PrivateGetOrderState(input interface{}, c *ws.Client) {

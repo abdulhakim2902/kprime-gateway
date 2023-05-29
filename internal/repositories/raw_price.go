@@ -79,3 +79,23 @@ func (r RawPriceRepository) GetLatestIndexPrice(o _orderbookType.GetOrderBook) [
 
 	return trades
 }
+
+func (r RawPriceRepository) GetIndexPrice(indexName string) []*_engineType.RawPrice {
+	metadataType := "index"
+	metadataPair := strings.ToLower(indexName)
+
+	tradesQuery := bson.M{
+		"metadata.pair": metadataPair,
+		"metadata.type": metadataType,
+	}
+	tradesSort := bson.M{
+		"ts": -1,
+	}
+
+	trades, err := r.Find(tradesQuery, tradesSort, 0, 1)
+	if err != nil {
+		panic(err)
+	}
+
+	return trades
+}

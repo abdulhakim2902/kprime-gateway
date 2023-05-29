@@ -89,7 +89,6 @@ func init() {
 
 func main() {
 	// qf
-	go ordermatch.Execute()
 
 	// Websocket handlers
 	_wsEngineSvc := _wsEngineSvc.NewwsEngineService(redisConn)
@@ -110,6 +109,11 @@ func main() {
 	)
 	_wsOrderSvc := _wsSvc.NewWSOrderService(redisConn, orderRepo)
 	_wsTradeSvc := _wsSvc.NewWSTradeService(redisConn, tradeRepo)
+
+	_userSvc := _userSvc.NewUserService(engine, userRepo, memDb)
+
+	_userSvc.SyncMemDB(context.TODO(), nil)
+
 	_deribitSvc := _deribitSvc.NewDeribitService(
 		redisConn,
 		memDb,
@@ -119,8 +123,7 @@ func main() {
 		settlementPriceRepo,
 	)
 
-	_userSvc := _userSvc.NewUserService(engine, userRepo, memDb)
-	go _userSvc.SyncMemDB(context.TODO(), nil)
+	go ordermatch.Execute(_deribitSvc)
 
 	_deribitCtrl.NewDeribitHandler(engine, _deribitSvc, _authSvc)
 	_wsCtrl.NewWebsocketHandler(

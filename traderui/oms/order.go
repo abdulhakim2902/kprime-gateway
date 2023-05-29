@@ -36,8 +36,20 @@ type Order struct {
 	PutOrCall          enum.PutOrCall     `json:"put_or_call"`
 	StrikePrice        string             `json:"strike_price"`
 	StrikePriceDecimal decimal.Decimal    `json:"-"`
+	Status             string             `json:"status"`
 	Username           string             `json:"username"`
 	Password           string             `json:"password"`
+}
+
+type OrderCancelRequest struct {
+	ClOrdID     string             `json:"clord_id"`
+	OrderID     string             `json:"order_id"`
+	SessionID   quickfix.SessionID `json:"-"`
+	Session     string             `json:"session_id"`
+	Symbol      string             `json:"symbol"`
+	Side        string             `json:"side"`
+	OrigClOrdID string             `json:"orig_clord_id"`
+	PartyID     string             `json:"party_id"`
 }
 
 // Init initialized computed fields on order from user input

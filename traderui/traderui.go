@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"text/template"
+	"time"
 
 	"git.devucc.name/dependencies/utilities/commons/logs"
 	"github.com/gorilla/mux"
@@ -18,6 +19,7 @@ import (
 	"github.com/quickfixgo/field"
 	"github.com/quickfixgo/fix43/securitylistrequest"
 	"github.com/quickfixgo/fix44/marketdatarequest"
+	"github.com/quickfixgo/fix44/ordercancelrequest"
 	"github.com/quickfixgo/tag"
 	"github.com/quickfixgo/traderui/basic"
 	"github.com/quickfixgo/traderui/oms"
@@ -411,6 +413,43 @@ func (c tradeClient) onSecurityListRequest(w http.ResponseWriter, r *http.Reques
 	}
 }
 
+func (c tradeClient) onOrderCancelRequest(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("asdasdasd")
+
+	order, err := c.fetchRequestedOrder(r)
+	if err != nil {
+		log.Printf("[ERROR] %v\n", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if sessionID, ok := c.SessionIDs[order.Session]; ok {
+		order.SessionID = sessionID
+	} else {
+		log.Println("[ERROR] Invalid SessionID")
+		http.Error(w, "Invalid SessionID", http.StatusBadRequest)
+		return
+	}
+
+	msg := ordercancelrequest.New(
+		field.NewOrigClOrdID(order.ClOrdID),
+		field.NewClOrdID(order.ClOrdID),
+		field.NewSide(enum.Side(order.Side)),
+		field.NewTransactTime(time.Now()),
+	)
+
+	fmt.Println("symbol ", order.Symbol)
+	msg.SetSymbol(order.Symbol)
+	msg.SetOrderID(order.OrderID)
+	msg.Set(field.NewPartyID(order.PartyID))
+
+	fmt.Println(msg.ToMessage().String())
+	err = quickfix.SendToTarget(msg, order.SessionID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
 func (c tradeClient) onMarketDataRequest(w http.ResponseWriter, r *http.Request) {
 	logs.Log.Info().Str("tradeui.go", "onMarketDataRequest").Msg("")
 	var mktDataRequest secmaster.MarketDataRequest
@@ -513,7 +552,7 @@ func main() {
 	router.HandleFunc("/orders", app.getOrders).Methods("GET")
 	router.HandleFunc("/orders/{id:[0-9]+}", app.updateOrder).Methods("PUT")
 	router.HandleFunc("/orders/{id:[0-9]+}", app.getOrder).Methods("GET")
-	router.HandleFunc("/orders/{id:[0-9]+}", app.deleteOrder).Methods("DELETE")
+	router.HandleFunc("/orders/{id:[0-9]+}", app.onOrderCancelRequest).Methods("DELETE")
 
 	router.HandleFunc("/instruments", app.getInstruments).Methods("GET")
 	router.HandleFunc("/marketdata", app.getMarketData).Methods("GET")
