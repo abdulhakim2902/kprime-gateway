@@ -258,11 +258,13 @@ func doSend(key string, result any, err *ErrorMessage) bool {
 			} else {
 				metrics.GatewayValidationCounter.With(label).Inc()
 			}
+
+			metrics.GatewayRequestDurationHistogram.WithLabelValues("False").Observe(float64(usDiff))
 		} else {
 			metrics.GatewaySuccessCounter.With(label).Inc()
+			metrics.GatewayRequestDurationHistogram.WithLabelValues("True").Observe(float64(usDiff))
 		}
 
-		metrics.GatewayRequestDurationHistogram.WithLabelValues("success").Observe(float64(usDiff))
 	}(metricsLabel, m.Error, m.UsDiff)
 
 	UnregisterProtocol(key)
