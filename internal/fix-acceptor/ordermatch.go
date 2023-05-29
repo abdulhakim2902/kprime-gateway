@@ -52,6 +52,7 @@ import (
 	"github.com/quickfixgo/fix44/marketdatarequest"
 	"github.com/quickfixgo/fix44/marketdatasnapshotfullrefresh"
 	"github.com/quickfixgo/fix44/newordersingle"
+	"github.com/quickfixgo/fix44/ordercancelreject"
 	"github.com/quickfixgo/fix44/ordercancelreplacerequest"
 	"github.com/quickfixgo/fix44/ordercancelrequest"
 	"github.com/quickfixgo/fix44/securitylist"
@@ -82,7 +83,7 @@ var xMessagesSubs []XMessageSubscriber
 
 type Order struct {
 	ID                   string          `json:"id" bson:"_id"`
-	ClientOrderId        string          `json:"clOrdId" bson:"clOrdId"`
+	ClientOrderId        string          `json:"clOrdID" bson:"clOrdID"`
 	InstrumentName       string          `json:"instrumentName" bson:"instrumentName"`
 	Symbol               string          `json:"symbol" bson:"symbol"`
 	SenderCompID         string          `json:"sender_comp_id" bson:"sender_comp_id"`
@@ -135,26 +136,24 @@ type Application struct {
 	*repositories.TradeRepository
 	DeribitService _deribitSvc.IDeribitService
 	redis          *redis.RedisConnectionPool
+	memDb          *memdb.Schemas
 }
 
-func newApplication() *Application {
+func newApplication(deribit _deribitSvc.IDeribitService) *Application {
 
 	mongoDb, _ := _mongo.InitConnection(os.Getenv("MONGO_URL"))
 	redis := redis.NewRedisConnectionPool(os.Getenv("REDIS_URL"))
-	memDb, _ := memdb.InitSchemas()
 
 	orderRepo := repositories.NewOrderRepository(mongoDb)
 	tradeRepo := repositories.NewTradeRepository(mongoDb)
 	userRepo := repositories.NewUserRepository(mongoDb)
-
-	deribitSvc := _deribitSvc.NewDeribitService(redis, memDb, nil, nil, nil, nil)
 
 	app := &Application{
 		MessageRouter:   quickfix.NewMessageRouter(),
 		UserRepository:  userRepo,
 		OrderRepository: orderRepo,
 		TradeRepository: tradeRepo,
-		DeribitService:  deribitSvc,
+		DeribitService:  deribit,
 		redis:           redis,
 	}
 	app.AddRoute(newordersingle.Route(app.onNewOrderSingle))
@@ -206,6 +205,7 @@ func (a Application) FromAdmin(msg *quickfix.Message, sessionID quickfix.Session
 		if userSession == nil {
 			userSession = make(map[string]*quickfix.SessionID)
 		}
+
 		userSession[user.ID.Hex()] = &sessionID
 	}
 	return nil
@@ -291,7 +291,7 @@ func (a *Application) onNewOrderSingle(msg newordersingle.NewOrderSingle, sessio
 	priceFloat, _ := strconv.ParseFloat(price.String(), 64)
 	amountFloat, _ := strconv.ParseFloat(orderQty.String(), 64)
 
-	a.DeribitService.DeribitRequest(context.TODO(), user.ID.Hex(), _deribitModel.DeribitRequest{
+	response, reason, r := a.DeribitService.DeribitRequest(context.TODO(), user.ID.Hex(), _deribitModel.DeribitRequest{
 		ClientId:       partyId.String(),
 		InstrumentName: symbol,
 		ClOrdID:        clOrId,
@@ -301,6 +301,16 @@ func (a *Application) onNewOrderSingle(msg newordersingle.NewOrderSingle, sessio
 		Amount:         amountFloat,
 	})
 
+	if r != nil {
+		if reason != nil {
+			logs.Log.Err(r).Msg(fmt.Sprintf("Error placing order, %v", reason.String()))
+			return quickfix.NewMessageRejectError(fmt.Sprintf("Error placing order, %v", reason.String()), 1, nil)
+		}
+		logs.Log.Err(r).Msg(fmt.Sprintf("Error placing order, %v", r.Error()))
+		return quickfix.NewMessageRejectError(fmt.Sprintf("Error placing order, %v", r.Error()), 1, nil)
+	}
+
+	fmt.Println(response, reason, r)
 	return nil
 }
 
@@ -404,21 +414,66 @@ func (a *Application) onOrderCancelRequest(msg ordercancelrequest.OrderCancelReq
 		return err
 	}
 
+	symbol, err := msg.GetSymbol()
+	if err != nil {
+		return err
+	}
 	var partyId quickfix.FIXString
 	msg.GetField(tag.PartyID, &partyId)
 
-	if err := quickfix.SendToTarget(msg, sessionID); err != nil {
+	fmt.Println(partyId.String())
+
+	_, reason, r := a.DeribitService.DeribitRequest(context.TODO(), user.ID.Hex(), _deribitModel.DeribitRequest{
+		ID:             orderId,
+		ClOrdID:        clOrdID,
+		ClientId:       partyId.String(),
+		Side:           _utilitiesType.CANCEL,
+		InstrumentName: symbol,
+		Type:           _utilitiesType.LIMIT,
+	})
+
+	if r != nil {
+		fmt.Println(r)
+		logs.Log.Err(r).Msg("Failed to send cancel request")
 		return quickfix.NewMessageRejectError("Failed to send cancel request", 1, nil)
 	}
 
-	a.DeribitService.DeribitRequest(context.TODO(), user.ID.Hex(), _deribitModel.DeribitRequest{
-		ID:       orderId,
-		ClOrdID:  clOrdID,
-		ClientId: partyId.String(),
-		Side:     _utilitiesType.CANCEL,
-	})
+	if reason != nil {
+		a.sendOrderCancelReject(
+			field.NewOrderID(orderId),
+			field.NewClOrdID(clOrdID),
+			field.NewOrigClOrdID(clOrdID),
+			field.NewOrdStatus(enum.OrdStatus_REJECTED),
+			field.NewCxlRejResponseTo(enum.CxlRejResponseTo_ORDER_CANCEL_REQUEST),
+			field.NewText(reason.String()),
+			sessionID)
+		logs.Log.Err(r).Msg(fmt.Sprintf("Failed to send cancel request, %v", reason.String()))
+		return nil
+	}
 
 	return nil
+}
+
+func (a *Application) sendOrderCancelReject(
+	orderId field.OrderIDField,
+	clordid field.ClOrdIDField,
+	origclordid field.OrigClOrdIDField,
+	ordstatus field.OrdStatusField,
+	cxlrejresponseTo field.CxlRejResponseToField,
+	reason field.TextField,
+	sessionID quickfix.SessionID) {
+	msg := ordercancelreject.New(
+		orderId,
+		clordid,
+		origclordid,
+		ordstatus,
+		cxlrejresponseTo,
+	)
+	msg.SetText(reason.String())
+	err := quickfix.SendToTarget(msg, sessionID)
+	if err != nil {
+		logs.Log.Err(err).Msg("Failed sending order cancel reject")
+	}
 }
 
 func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataRequest, sessionID quickfix.SessionID) (err quickfix.MessageRejectError) {
@@ -585,7 +640,7 @@ func OnMarketDataUpdate(instrument string, book _orderbookType.BookData) {
 		if subs.Trade {
 			splits := strings.Split(instrument, "-")
 			price, _ := strconv.ParseFloat(splits[2], 64)
-			trades := newApplication().GetTrade(bson.M{
+			trades := newApplication(nil).GetTrade(bson.M{
 				"underlying":  splits[0],
 				"expiryDate":  splits[1],
 				"strikePrice": price,
@@ -836,7 +891,8 @@ func (a *Application) updateOrder(order Order, status enum.OrdStatus) {
 
 }
 
-func OrderConfirmation(userId string, order Order, symbol string) {
+func OrderConfirmation(userId string, order _orderbookType.Order, symbol string) {
+	fmt.Println("OrderConfirmation", order.Status)
 	if userSession == nil {
 		if userSession[userId] == nil {
 			return
@@ -852,21 +908,23 @@ func OrderConfirmation(userId string, order Order, symbol string) {
 	case "PARTIALLY FILLED":
 		exec = 1
 		break
+	case "ORDER_CANCELLED":
+		exec = 4
 	}
 
 	msg := executionreport.New(
-		field.NewOrderID(order.ClientOrderId),
+		field.NewOrderID(order.ID.Hex()),
 		field.NewExecID(strconv.Itoa(exec)),
 		field.NewExecType(enum.ExecType(order.Status)),
 		field.NewOrdStatus(enum.OrdStatus(order.Status)),
 		field.NewSide(enum.Side(order.Side)),
-		field.NewLeavesQty(order.Amount.Sub(order.FilledAmount), 2),
-		field.NewCumQty(order.FilledAmount, 2),
-		field.NewAvgPx(order.Price, 2),
+		field.NewLeavesQty(decimal.NewFromFloat(order.Amount).Sub(decimal.NewFromFloat(order.FilledAmount)), 2),
+		field.NewCumQty(decimal.NewFromFloat(order.FilledAmount), 2),
+		field.NewAvgPx(decimal.NewFromFloat(order.Price), 2),
 	)
+	fmt.Println("clientorderid", order.ClOrdID, order.ClOrdID, order.ClOrdID)
 	msg.SetOrdStatus(enum.OrdStatus_NEW)
-	msg.SetString(tag.OrderID, order.ID)
-	msg.SetString(tag.ClOrdID, order.ClientOrderId)
+	msg.SetClOrdID(order.ClOrdID)
 
 	if sessionId == nil {
 		return
@@ -875,7 +933,7 @@ func OrderConfirmation(userId string, order Order, symbol string) {
 	if err != nil {
 		fmt.Print(err.Error())
 	}
-	newApplication().broadcastInstrumentList(order.Underlying)
+	newApplication(nil).broadcastInstrumentList(order.Underlying)
 }
 
 func (a Application) onSecurityListRequest(msg securitylistrequest.SecurityListRequest, sessionID quickfix.SessionID) quickfix.MessageRejectError {
@@ -994,7 +1052,7 @@ const (
 	long  = "Start an order matching (FIX acceptor) service."
 )
 
-func Execute() error {
+func Execute(deribit _deribitSvc.IDeribitService) error {
 	cfgFileName := "ordermatch.cfg"
 	templateCfg := "ordermatch_template.cfg"
 	_, b, _, _ := runtime.Caller(0)
@@ -1021,7 +1079,7 @@ func Execute() error {
 	}
 
 	logger := log.NewFancyLog()
-	app := newApplication()
+	app := newApplication(deribit)
 	acceptor, err := quickfix.NewAcceptor(app, quickfix.NewMemoryStoreFactory(), appSettings, logger)
 	if err != nil {
 		return fmt.Errorf("unable to create acceptor: %s", err)

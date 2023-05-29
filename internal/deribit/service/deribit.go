@@ -95,6 +95,7 @@ func (svc deribitService) DeribitRequest(
 	}
 
 	payload := model.DeribitResponse{
+		ID:             data.ID,
 		UserId:         userId,
 		ClientId:       data.ClientId,
 		Underlying:     instruments.Underlying,

@@ -96,17 +96,21 @@ func handleTopicOrder(oSvc oInt.IwsOrderService, message *sarama.ConsumerMessage
 
 	// Send message to websocket
 	userIDStr := fmt.Sprintf("%v", data.Matches.TakerOrder.UserID)
-	fmt.Println("userIDStr", userIDStr)
+	fmt.Println("clordid", data.Matches.TakerOrder.ClOrdID)
 	// symbol := strings.Split(data["underlying"].(string), "-")[0]
 	var order ordermatch.Order
-	err = json.Unmarshal([]byte(str), &order)
+	err = json.Unmarshal([]byte(str), &data.Matches.TakerOrder.Order)
 	if err != nil {
 		fmt.Println("Error parsing order JSON:", err)
 		return
 	}
 
 	symbol := strings.Split(order.InstrumentName, "-")[0]
-	ordermatch.OrderConfirmation(userIDStr, order, symbol)
+
+	if order.Status == "" {
+
+	}
+	ordermatch.OrderConfirmation(userIDStr, *data.Matches.TakerOrder, symbol)
 
 	userId := data.Matches.TakerOrder.UserID
 	oSvc.HandleConsume(message, userId)

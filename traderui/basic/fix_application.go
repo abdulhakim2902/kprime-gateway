@@ -8,6 +8,7 @@ import (
 	"path"
 	"runtime"
 
+	"git.devucc.name/dependencies/utilities/commons/logs"
 	"github.com/joho/godotenv"
 	"github.com/quickfixgo/enum"
 	"github.com/quickfixgo/field"
@@ -111,9 +112,15 @@ func (a *FIXApplication) FromApp(msg *quickfix.Message, sessionID quickfix.Sessi
 	case enum.MsgType_MARKET_DATA_INCREMENTAL_REFRESH:
 		fmt.Println("Market Data Incremental Refresh")
 		return a.onMarketDataIncrementalRefresh(msg, sessionID)
+	case enum.MsgType_ORDER_CANCEL_REJECT:
 	}
 
 	return quickfix.UnsupportedMessageType()
+}
+
+func (a *FIXApplication) onOrderCancelReject(msg *quickfix.Message, sessionID quickfix.SessionID) quickfix.MessageRejectError {
+	logs.Log.Info().Str("msg", msg.String()).Msg("onOrderCancelReject")
+	return nil
 }
 
 func (a *FIXApplication) onSecurityList(msg *quickfix.Message, sessionID quickfix.SessionID) quickfix.MessageRejectError {
@@ -208,6 +215,24 @@ func (a *FIXApplication) onExecutionReport(msg *quickfix.Message, sessionID quic
 		return err
 	}
 
+	var execType field.ExecTypeField
+	if err := msg.Body.Get(&execType); err != nil {
+		return err
+	}
+
+	var execId field.ExecIDField
+	if err := msg.Body.Get(&execId); err != nil {
+		return err
+	}
+
+	// Order Cancel Request success, 4 = ORDER_CANCELLED
+	if execType.String() == "ORDER_CANCELLED" {
+		logs.Log.Info().Str("msg", msg.String()).Msg("Order Cancel Request success")
+	}
+
+	fmt.Println("execType", execType.String())
+
+	fmt.Println("clordid", clOrdID.String())
 	order, err := a.GetByClOrdID(clOrdID.String())
 	if err != nil {
 		log.Printf("[ERROR] err= %v", err)
@@ -240,13 +265,14 @@ func (a *FIXApplication) onExecutionReport(msg *quickfix.Message, sessionID quic
 	order.Open = leavesQty.String()
 	order.AvgPx = avgPx.String()
 	order.OrderID = orderId.String()
-	a.Save(order)
-	fmt.Println(order)
+
 	var ordStatus field.OrdStatusField
 	if err := msg.Body.Get(&ordStatus); err != nil {
 		return err
 	}
-	fmt.Println(ordStatus.String())
+	order.Status = execType.String()
+	fmt.Println(order)
+	a.Save(order)
 	if ordStatus.String() != string(enum.OrdStatus_NEW) {
 		var lastQty field.LastQtyField
 		if err := msg.Body.Get(&lastQty); err != nil {
