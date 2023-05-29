@@ -33,6 +33,7 @@ type IwsOrderService interface {
 	GetInstruments(ctx context.Context, request deribitModel.DeribitGetInstrumentsRequest) []deribitModel.DeribitGetInstrumentsResponse
 	GetOpenOrdersByInstrument(ctx context.Context, userId string, request deribitModel.DeribitGetOpenOrdersByInstrumentRequest) []deribitModel.DeribitGetOpenOrdersByInstrumentResponse
 	GetGetOrderHistoryByInstrument(ctx context.Context, userId string, request deribitModel.DeribitGetOrderHistoryByInstrumentRequest) []deribitModel.DeribitGetOrderHistoryByInstrumentResponse
+	GetOrderState(ctx context.Context, userId string, request deribitModel.DeribitGetOrderStateRequest) []deribitModel.DeribitGetOrderStateResponse
 }
 
 type IwsTradeService interface {

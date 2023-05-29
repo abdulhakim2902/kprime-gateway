@@ -72,6 +72,11 @@ type GetOrderHistoryByInstrumentParams struct {
 	IncludeUnfilled bool `json:"include_unfilled" form:"include_unfilled"`
 }
 
+type GetOrderStateParams struct {
+	BaseParams
+	OrderId string `json:"order_id"`
+}
+
 type DeribitRequest struct {
 	ID             string            `json:"id"`
 	ClientId       string            `json:"clientId"`
@@ -293,6 +298,30 @@ type DeribitGetOrderHistoryByInstrumentRequest struct {
 }
 
 type DeribitGetOrderHistoryByInstrumentResponse struct {
+	OrderState     string             `json:"order_state" bson:"orderState"`
+	Amount         float64            `json:"amount" bson:"amount"`
+	FilledAmount   float64            `json:"filled_amount" bson:"filledAmount"`
+	InstrumentName string             `json:"instrument_name" bson:"InstrumentName"`
+	Direction      string             `json:"direction" bson:"direction"`
+	Price          float64            `json:"price" bson:"price"`
+	OrderId        primitive.ObjectID `json:"order_id" bson:"orderId"`
+	Replaced       bool               `json:"replaced" bson:"replaced"`
+	OrderType      string             `json:"order_type" bson:"orderType"`
+	TimeInForce    string             `json:"time_in_force" bson:"timeInForce"`
+
+	Label               string   `json:"label,omitempty" bson:"label"`
+	Usd                 float64  `json:"usd" bson:"usd"`
+	CreationTimestamp   int64    `json:"creation_timestamp" bson:"creationTimestamp"`
+	LastUpdateTimestamp int64    `json:"last_update_timestamp" bson:"lastUpdateTimestamp"`
+	Api                 bool     `json:"api" bson:"api"`
+	AveragePrice        *float64 `json:"average_price" bson:"priceAvg"`
+	CancelledReason     string   `json:"cancel_reason" bson:"cancelledReason"`
+}
+type DeribitGetOrderStateRequest struct {
+	OrderId string `json:"order_id"`
+}
+
+type DeribitGetOrderStateResponse struct {
 	OrderState     string             `json:"order_state" bson:"orderState"`
 	Amount         float64            `json:"amount" bson:"amount"`
 	FilledAmount   float64            `json:"filled_amount" bson:"filledAmount"`
