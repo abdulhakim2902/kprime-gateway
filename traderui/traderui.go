@@ -20,6 +20,7 @@ import (
 	"github.com/quickfixgo/fix43/securitylistrequest"
 	"github.com/quickfixgo/fix44/marketdatarequest"
 	"github.com/quickfixgo/fix44/ordercancelrequest"
+	"github.com/quickfixgo/fix44/ordermasscancelrequest"
 	"github.com/quickfixgo/tag"
 	"github.com/quickfixgo/traderui/basic"
 	"github.com/quickfixgo/traderui/oms"
@@ -413,9 +414,36 @@ func (c tradeClient) onSecurityListRequest(w http.ResponseWriter, r *http.Reques
 	}
 }
 
-func (c tradeClient) onOrderCancelRequest(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("asdasdasd")
+func (c tradeClient) onMassOrderCancelRequest(w http.ResponseWriter, r *http.Request) {
+	var cancelRequest secmaster.MassCancelRequest
+	decoder := json.NewDecoder(r.Body)
+	err := decoder.Decode(&cancelRequest)
+	if err != nil {
+		logs.Log.Err(err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 
+	cancelType := enum.MassCancelRequestType_CANCEL_ORDERS_FOR_A_SECURITY
+
+	if cancelRequest.CancelType == "all" {
+		cancelType = enum.MassCancelRequestType_CANCEL_ALL_ORDERS
+	}
+
+	msg := ordermasscancelrequest.New(
+		field.NewClOrdID("1"),
+		field.NewMassCancelRequestType(cancelType),
+		field.NewTransactTime(time.Now()),
+	)
+
+	msg.SetSymbol(cancelRequest.Symbol)
+	err = quickfix.SendToTarget(msg, cancelRequest.SessionID)
+	if err != nil {
+		logs.Log.Err(err)
+	}
+}
+
+func (c tradeClient) onOrderCancelRequest(w http.ResponseWriter, r *http.Request) {
 	order, err := c.fetchRequestedOrder(r)
 	if err != nil {
 		log.Printf("[ERROR] %v\n", err)
@@ -553,6 +581,7 @@ func main() {
 	router.HandleFunc("/orders/{id:[0-9]+}", app.updateOrder).Methods("PUT")
 	router.HandleFunc("/orders/{id:[0-9]+}", app.getOrder).Methods("GET")
 	router.HandleFunc("/orders/{id:[0-9]+}", app.onOrderCancelRequest).Methods("DELETE")
+	router.HandleFunc("/orders/mass-cancel", app.onMassOrderCancelRequest).Methods("DELETE")
 
 	router.HandleFunc("/instruments", app.getInstruments).Methods("GET")
 	router.HandleFunc("/marketdata", app.getMarketData).Methods("GET")

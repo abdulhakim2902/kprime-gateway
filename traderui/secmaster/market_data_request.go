@@ -19,3 +19,10 @@ type MarketDataRequest struct {
 	Bid                     bool                     `json:"md_entry_type_1"`
 	Trade                   bool                     `json:"md_entry_type_3"`
 }
+
+type MassCancelRequest struct {
+	Symbol     string             `json:"symbol"`
+	Session    string             `json:"session"`
+	SessionID  quickfix.SessionID `json:"-"`
+	CancelType string             `json:"cancel_type"`
+}
