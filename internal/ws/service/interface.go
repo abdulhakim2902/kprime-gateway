@@ -19,6 +19,7 @@ type IwsOrderbookService interface {
 	Unsubscribe(c *ws.Client)
 	UnsubscribeQuote(c *ws.Client)
 	GetOrderBook(ctx context.Context, request deribitModel.DeribitGetOrderBookRequest) deribitModel.DeribitGetOrderBookResponse
+	GetIndexPrice(ctx context.Context, request deribitModel.DeribitGetIndexPriceRequest) deribitModel.DeribitGetIndexPriceResponse
 	GetOrderLatestTimestamp(o _orderbookTypes.GetOrderBook, after int64, isFilled bool) _orderbookTypes.Orderbook
 	GetOrderLatestTimestampAgg(o _orderbookTypes.GetOrderBook, after int64) _orderbookTypes.Orderbook
 	GetDataQuote(order _orderbookTypes.GetOrderBook) (_orderbookTypes.QuoteMessage, _orderbookTypes.Orderbook)
