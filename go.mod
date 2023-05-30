@@ -2,6 +2,8 @@ module gateway
 
 go 1.20
 
+replace git.devucc.name/dependencies/utilities => D:\ucc\utilities
+
 require (
 	git.devucc.name/dependencies/utilities v1.0.24
 	github.com/Shopify/sarama v1.38.1

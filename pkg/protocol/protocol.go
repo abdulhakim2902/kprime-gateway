@@ -2,7 +2,7 @@ package protocol
 
 import (
 	"fmt"
-	"gateway/pkg/metrics"
+	"gateway/pkg/collector"
 	"gateway/pkg/utils"
 	"gateway/pkg/ws"
 	"net/http"
@@ -62,17 +62,17 @@ type ProtocolRequest struct {
 var protocolConnections map[any]ProtocolRequest
 var protocolMutex sync.RWMutex
 
-func (p *ProtocolRequest) getMetricsProtocol() metrics.Protocol {
-	var protocol metrics.Protocol
+func (p *ProtocolRequest) getcollectorProtocol() collector.Protocol {
+	var protocol collector.Protocol
 	if p.WS != nil {
-		protocol = metrics.WS
+		protocol = collector.WS
 	} else if p.Http != nil {
 		switch p.Http.Request.Method {
 		case "POST":
-			protocol = metrics.HTTP_POST
+			protocol = collector.HTTP_POST
 			break
 		case "GET":
-			protocol = metrics.HTTP_GET
+			protocol = collector.HTTP_GET
 			break
 		}
 	}
@@ -94,15 +94,15 @@ func RegisterProtocolRequest(key string, conn ProtocolRequest) (duplicateConnect
 	protocolConnections[key] = conn
 	protocolMutex.Unlock()
 
-	// Metrics
+	// collector
 	if !duplicateConnection {
 		label := prometheus.Labels{
-			"protocol": string(conn.getMetricsProtocol()),
+			"protocol": string(conn.getcollectorProtocol()),
 			"method":   conn.Method,
 		}
 
 		go func(label prometheus.Labels) {
-			metrics.GatewayIncomingCounter.With(label).Inc()
+			collector.IncomingCounter.With(label).Inc()
 		}(label)
 	}
 
@@ -244,9 +244,9 @@ func doSend(key string, result any, err *ErrorMessage) bool {
 		break
 	}
 
-	// Metrics
-	metricsLabel := prometheus.Labels{
-		"protocol": string(conn.getMetricsProtocol()),
+	// collector
+	collectorLabel := prometheus.Labels{
+		"protocol": string(conn.getcollectorProtocol()),
 		"method":   conn.Method,
 	}
 
@@ -254,18 +254,18 @@ func doSend(key string, result any, err *ErrorMessage) bool {
 		if errMsg != nil {
 			reason := validation_reason.PARSE_ERROR
 			if errMsg.Message == reason.String() {
-				metrics.GatewayErrorCounter.With(label).Inc()
+				collector.ErrorCounter.With(label).Inc()
 			} else {
-				metrics.GatewayValidationCounter.With(label).Inc()
+				collector.ValidationCounter.With(label).Inc()
 			}
 
-			metrics.GatewayRequestDurationHistogram.WithLabelValues("False").Observe(float64(usDiff))
+			collector.RequestDurationHistogram.WithLabelValues("False").Observe(float64(usDiff))
 		} else {
-			metrics.GatewaySuccessCounter.With(label).Inc()
-			metrics.GatewayRequestDurationHistogram.WithLabelValues("True").Observe(float64(usDiff))
+			collector.SuccessCounter.With(label).Inc()
+			collector.RequestDurationHistogram.WithLabelValues("True").Observe(float64(usDiff))
 		}
 
-	}(metricsLabel, m.Error, m.UsDiff)
+	}(collectorLabel, m.Error, m.UsDiff)
 
 	UnregisterProtocol(key)
 
