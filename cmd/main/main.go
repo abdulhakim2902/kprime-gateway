@@ -110,6 +110,7 @@ func main() {
 	)
 	_wsOrderSvc := _wsSvc.NewWSOrderService(redisConn, orderRepo)
 	_wsTradeSvc := _wsSvc.NewWSTradeService(redisConn, tradeRepo)
+	_wsRawPriceSvc := _wsSvc.NewWSRawPriceService(redisConn, rawPriceRepo)
 
 	_userSvc := _userSvc.NewUserService(engine, userRepo, memDb)
 
@@ -135,6 +136,7 @@ func main() {
 		_wsEngineSvc,
 		_wsOrderSvc,
 		_wsTradeSvc,
+		_wsRawPriceSvc,
 		userRepo,
 	)
 
@@ -176,7 +178,7 @@ func main() {
 	_engSvc := _engSvc.NewEngineHandler(engine, redisConn, tradeRepo, _wsOrderbookSvc)
 
 	// kafka listener
-	consumer.KafkaConsumer(orderRepo, _engSvc, _obSvc, _wsOrderSvc, _wsTradeSvc)
+	consumer.KafkaConsumer(orderRepo, _engSvc, _obSvc, _wsOrderSvc, _wsTradeSvc, _wsRawPriceSvc)
 
 	// Wait for interrupt signal to gracefully shutdown the server with
 	// a timeout of 5 seconds.
