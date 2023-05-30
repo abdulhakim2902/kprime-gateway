@@ -14,9 +14,9 @@ import (
 
 	ordermatch "gateway/internal/fix-acceptor"
 	"gateway/internal/repositories"
+	"gateway/pkg/collector"
 	"gateway/pkg/kafka/consumer"
 	"gateway/pkg/memdb"
-	"gateway/pkg/metrics"
 	"gateway/pkg/mongo"
 	"gateway/pkg/redis"
 	"gateway/pkg/utils"
@@ -34,6 +34,7 @@ import (
 	_wsCtrl "gateway/internal/ws/controller"
 
 	"git.devucc.name/dependencies/utilities/commons/logs"
+	"git.devucc.name/dependencies/utilities/commons/metrics"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 )
@@ -153,7 +154,19 @@ func main() {
 
 	go func() {
 		// metrics connections
-		if err := metrics.ListenAndServeMetrics(); err != nil && err != http.ErrServerClosed {
+		m := metrics.NewMetrics()
+		m.RegisterCollector(
+			collector.IncomingCounter,
+			collector.SuccessCounter,
+			collector.ValidationCounter,
+			collector.ErrorCounter,
+			collector.OutgoingKafkaCounter,
+			collector.IncomingKafkaCounter,
+			collector.RequestDurationHistogram,
+			collector.KafkaDurationHistogram,
+		)
+
+		if err := m.Serve(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("listen: %s\n", err)
 		}
 
