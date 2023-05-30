@@ -747,9 +747,9 @@ func (svc wsOrderbookService) GetOrderBook(ctx context.Context, data _deribitMod
 }
 
 func (svc wsOrderbookService) GetLastTradesByInstrument(ctx context.Context, data _deribitModel.DeribitGetLastTradesByInstrumentRequest) _deribitModel.DeribitGetLastTradesByInstrumentResponse {
-	_gets := svc.tradeRepository.GetTradesData()
+	_filteredGets := svc.tradeRepository.FilterTradesData(data)
 
-	bsonResponse := _gets
+	bsonResponse := _filteredGets
 
 	_getLastTradesByInstrument := []_deribitModel.DeribitGetLastTradesByInstrumentValue{}
 
@@ -767,27 +767,34 @@ func (svc wsOrderbookService) GetLastTradesByInstrument(ctx context.Context, dat
 			continue
 		}
 
+		underlying := jsonDoc["underlying"].(string)
+		expiryDate := jsonDoc["expiryDate"].(string)
+		strikePrice := jsonDoc["strikePrice"].(float64)
+		contracts := jsonDoc["contracts"].(string)
+
+		switch contracts {
+		case "CALL":
+			contracts = "C"
+		case "PUT":
+			contracts = "P"
+		}
+
 		resultData := _deribitModel.DeribitGetLastTradesByInstrumentValue{
 			Amount:         jsonDoc["amount"].(float64),
 			Direction:      jsonDoc["side"].(string),
-			InstrumentName: "",                                                                        // Need to Ask
-			OrderId:        jsonDoc["taker"].(map[string]interface{})["orderId"].(primitive.ObjectID), // Need to Ask
-			OrderType:      "limit",                                                                   // Need to Ask
+			InstrumentName: fmt.Sprintf("%s-%s-%d-%s", underlying, expiryDate, int64(strikePrice), contracts),
 			Price:          jsonDoc["price"].(float64),
-			State:          "filled", // Need to Ask
 			Timestamp:      time.Now().UnixNano() / int64(time.Millisecond),
-			TradeId:        jsonDoc["tradeSequence"].(int32), // Need to Ask
+			TradeId:        jsonDoc["tradeSequence"].(int32),
 			Api:            true,
 			IndexPrice:     jsonDoc["indexPrice"].(float64),
-			Label:          "", // Need to Ask,
 			TickDirection:  jsonDoc["tickDirection"].(int32),
 			TradeSeq:       jsonDoc["tradeSequence"].(int32),
+			CreatedAt:      jsonDoc["createdAt"].(primitive.DateTime).Time(),
 		}
 
 		_getLastTradesByInstrument = append(_getLastTradesByInstrument, resultData)
 	}
-
-	fmt.Println("person:", _getLastTradesByInstrument)
 
 	results := _deribitModel.DeribitGetLastTradesByInstrumentResponse{
 		Trades: _getLastTradesByInstrument,

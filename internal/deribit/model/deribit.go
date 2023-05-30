@@ -47,13 +47,13 @@ type GetOrderBookParams struct {
 }
 
 type GetLastTradesByInstrumentParams struct {
-	InstrumentName string `json:"instrument_name" form:"instrument_name"`
-	StartSeq       int64  `json:"start_seq" form:"start_seq"`
-	EndSeq         int64  `json:"end_seq" form:"end_seq"`
-	StartTimestamp int64  `json:"start_timestamp" form:"start_timestamp"`
-	EndTimestamp   int64  `json:"end_timestamp" form:"end_timestamp"`
-	Count          int64  `json:"count" form:"count"`
-	Sorting        string `json:"sorting" form:"sorting"`
+	InstrumentName string    `json:"instrument_name" validate:"required" form:"instrument_name"`
+	StartSeq       int64     `json:"start_seq" form:"start_seq"`
+	EndSeq         int64     `json:"end_seq" form:"end_seq"`
+	StartTimestamp time.Time `json:"start_timestamp" form:"start_timestamp"`
+	EndTimestamp   time.Time `json:"end_timestamp" form:"end_timestamp"`
+	Count          int64     `json:"count" form:"count"`
+	Sorting        string    `json:"sorting" form:"sorting"`
 }
 
 type BaseParams struct {
@@ -204,13 +204,13 @@ type DeribitGetOrderBookRequest struct {
 }
 
 type DeribitGetLastTradesByInstrumentRequest struct {
-	InstrumentName string `json:"instrument_name"`
-	StartSeq       int64  `json:"start_seq"`
-	EndSeq         int64  `json:"end_seq"`
-	StartTimestamp int64  `json:"start_timestamp"`
-	EndTimestamp   int64  `json:"end_timestamp"`
-	Count          int64  `json:"count"`
-	Sorting        string `json:"sorting"`
+	InstrumentName string    `json:"instrument_name"`
+	StartSeq       int64     `json:"start_seq"`
+	EndSeq         int64     `json:"end_seq"`
+	StartTimestamp time.Time `json:"start_timestamp"`
+	EndTimestamp   time.Time `json:"end_timestamp"`
+	Count          int64     `json:"count"`
+	Sorting        string    `json:"sorting"`
 }
 
 type DeribitGetOrderBookResponse struct {
@@ -234,20 +234,17 @@ type DeribitGetOrderBookResponse struct {
 }
 
 type DeribitGetLastTradesByInstrumentValue struct {
-	Amount         float64            `json:"amount"`
-	Direction      string             `json:"direction"`
-	InstrumentName string             `json:"instrument_name"`
-	OrderId        primitive.ObjectID `json:"order_id"`
-	OrderType      string             `json:"order_type"`
-	Price          float64            `json:"price"`
-	State          string             `json:"state"`
-	Timestamp      int64              `json:"timestamp"`
-	TradeId        int32              `json:"trade_id"`
-	Api            bool               `json:"api"`
-	IndexPrice     float64            `json:"index_price"`
-	Label          string             `json:"label"`
-	TickDirection  int32              `json:"tick_direction"`
-	TradeSeq       int32              `json:"trade_seq"`
+	Amount         float64   `json:"amount"`
+	Direction      string    `json:"direction"`
+	InstrumentName string    `json:"instrument_name"`
+	Price          float64   `json:"price"`
+	Timestamp      int64     `json:"timestamp"`
+	TradeId        int32     `json:"trade_id"`
+	Api            bool      `json:"api"`
+	IndexPrice     float64   `json:"index_price"`
+	TickDirection  int32     `json:"tick_direction"`
+	TradeSeq       int32     `json:"trade_seq"`
+	CreatedAt      time.Time `json:"created_at"`
 }
 
 type DeribitGetLastTradesByInstrumentResponse struct {

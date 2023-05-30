@@ -3,6 +3,7 @@ package repositories
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -30,8 +31,80 @@ func NewTradeRepository(db Database) *TradeRepository {
 	return &TradeRepository{collection}
 }
 
-func (r TradeRepository) GetTradesData() []*_engineType.Trade {
-	cursor, err := r.collection.Find(context.Background(), bson.D{})
+func (r TradeRepository) FilterTradesData(data _deribitModel.DeribitGetLastTradesByInstrumentRequest) []*_engineType.Trade {
+	fmt.Println(data.StartSeq, " - type : ", reflect.TypeOf(data.StartSeq))
+
+	// Querry for Instrument Name
+	str := data.InstrumentName
+	components := strings.Split(str, "-")
+
+	underlying := components[0]
+	expiryDate := components[1]
+	strikePrice := components[2]
+	contracts := components[3]
+
+	switch contracts {
+	case "C":
+		contracts = "CALL"
+	case "P":
+		contracts = "PUT"
+	}
+
+	strikePriceFloat, _ := strconv.ParseFloat(strikePrice, 64)
+
+	filter := bson.M{
+		"underlying":  underlying,
+		"expiryDate":  expiryDate,
+		"strikePrice": strikePriceFloat,
+		"contracts":   contracts,
+	}
+
+	// Querry for Instrument Start Sequence
+	if data.StartSeq != 0 {
+		filter["tradeSequence"] = bson.M{"$gte": data.StartSeq}
+	}
+
+	// Querry for Instrument End Sequence
+	if data.EndSeq != 0 {
+		filter["tradeSequence"] = bson.M{"$lte": data.EndSeq}
+	}
+
+	// Querry for Instrument Start Time Stamp
+	if !data.StartTimestamp.IsZero() {
+		filter["createdAt"] = bson.M{"$gte": data.StartTimestamp}
+	}
+
+	// Querry for Instrument End Time Stamp
+	if !data.EndTimestamp.IsZero() {
+		filter["createdAt"] = bson.M{"$lte": data.EndTimestamp}
+	}
+
+	// Querry for Count
+	limit := int64(data.Count)
+	if limit == 0 {
+		limit = 3
+	}
+
+	findOptions := options.Find()
+	findOptions.SetLimit(limit)
+
+	sortOrder := -1 // Default sort order is descending
+
+	switch data.Sorting {
+	case "asc":
+		sortOrder = 1
+	case "desc":
+		sortOrder = -1
+	}
+
+	if data.Sorting == "" {
+		// Set your default sort order here
+		sortOrder = -1
+	}
+
+	findOptions.SetSort(bson.M{"createdAt": sortOrder})
+
+	cursor, err := r.collection.Find(context.Background(), filter, findOptions)
 	if err != nil {
 		return nil
 	}
