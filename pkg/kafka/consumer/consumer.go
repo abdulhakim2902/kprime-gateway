@@ -28,6 +28,7 @@ func KafkaConsumer(
 	obSvc obInt.IOrderbookService,
 	oSvc oInt.IwsOrderService,
 	tradeSvc oInt.IwsTradeService,
+	rawSvc oInt.IwsRawPriceService,
 ) {
 	// Metrics
 	go func() {
@@ -38,7 +39,7 @@ func KafkaConsumer(
 	config.Consumer.Return.Errors = true
 
 	brokers := []string{os.Getenv("KAFKA_BROKER")}
-	topics := []string{"ORDER", "TRADE", "ORDERBOOK", "ENGINE", "CANCELLED_ORDERS"}
+	topics := []string{"ORDER", "TRADE", "ORDERBOOK", "ENGINE", "CANCELLED_ORDERS", "PRICES"}
 
 	consumer, err := sarama.NewConsumer(brokers, config)
 	if err != nil {
@@ -72,6 +73,8 @@ func KafkaConsumer(
 					go obSvc.HandleConsumeBook(message)
 				case "CANCELLED_ORDERS":
 					handleTopicCancelledOrders(message)
+				case "PRICES":
+					go rawSvc.HandleConsume(message)
 				default:
 					log.Printf("Unknown topic: %s", topic)
 				}
