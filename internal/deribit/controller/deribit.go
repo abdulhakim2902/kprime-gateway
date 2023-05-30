@@ -47,6 +47,7 @@ func NewDeribitHandler(
 	handler.RegisterHandler("public/get_instruments", handler.getInstruments)
 	handler.RegisterHandler("public/test", handler.test)
 	handler.RegisterHandler("public/get_index_price", handler.getIndexPrice)
+	handler.RegisterHandler("public/get_last_trades_by_instrument", handler.getLastTradesByInstrument)
 
 	handler.RegisterHandler("private/buy", handler.buy)
 	handler.RegisterHandler("private/sell", handler.sell)
@@ -546,6 +547,32 @@ func (h *DeribitHandler) getIndexPrice(r *gin.Context) {
 	// Call service
 	result := h.svc.GetIndexPrice(context.TODO(), deribitModel.DeribitGetIndexPriceRequest{
 		IndexName: msg.Params.IndexName,
+	})
+
+	protocol.SendSuccessMsg(connKey, result)
+}
+
+func (h *DeribitHandler) getLastTradesByInstrument(r *gin.Context) {
+	var msg deribitModel.RequestDto[deribitModel.GetLastTradesByInstrumentParams]
+	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
+		r.AbortWithError(http.StatusBadRequest, err)
+		return
+	}
+
+	_, connKey, reason, err := requestHelper(msg.Id, msg.Method, r)
+	if err != nil {
+		protocol.SendValidationMsg(connKey, *reason, err)
+		return
+	}
+
+	result := h.svc.DeribitGetLastTradesByInstrument(context.TODO(), deribitModel.DeribitGetLastTradesByInstrumentRequest{
+		InstrumentName: msg.Params.InstrumentName,
+		StartSeq:       msg.Params.StartSeq,
+		EndSeq:         msg.Params.EndSeq,
+		StartTimestamp: msg.Params.StartTimestamp,
+		EndTimestamp:   msg.Params.EndTimestamp,
+		Count:          msg.Params.Count,
+		Sorting:        msg.Params.Sorting,
 	})
 
 	protocol.SendSuccessMsg(connKey, result)
