@@ -103,3 +103,25 @@ func (svc deribitService) DeribitGetInstruments(ctx context.Context, data model.
 
 	return instrumentData
 }
+func (svc deribitService) DeribitGetOrderState(ctx context.Context, userId string, request model.DeribitGetOrderStateRequest) []model.DeribitGetOrderStateResponse {
+	orders, err := svc.orderRepo.GetOrderState(
+		userId,
+		request.OrderId,
+	)
+	if err != nil {
+		return nil
+	}
+
+	jsonBytes, err := json.Marshal(orders)
+	if err != nil {
+		return nil
+	}
+
+	var orderState []model.DeribitGetOrderStateResponse
+	err = json.Unmarshal([]byte(jsonBytes), &orderState)
+	if err != nil {
+		return nil
+	}
+
+	return orderState
+}
