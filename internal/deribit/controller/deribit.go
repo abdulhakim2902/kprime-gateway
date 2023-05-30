@@ -46,6 +46,7 @@ func NewDeribitHandler(
 	handler.RegisterHandler("public/auth", handler.auth)
 	handler.RegisterHandler("public/get_instruments", handler.getInstruments)
 	handler.RegisterHandler("public/test", handler.test)
+	handler.RegisterHandler("public/get_index_price", handler.getIndexPrice)
 
 	handler.RegisterHandler("private/buy", handler.buy)
 	handler.RegisterHandler("private/sell", handler.sell)
@@ -124,7 +125,7 @@ func requestHelper(msgID uint64, method string, c *gin.Context) (
 		return
 	}
 
-	userId = c.Param("userId")
+	userId = c.Param("userID")
 
 	if len(userId) == 0 {
 		connKey = key
@@ -524,6 +525,27 @@ func (h *DeribitHandler) getOrderBook(r *gin.Context) {
 	result := h.svc.GetOrderBook(context.TODO(), deribitModel.DeribitGetOrderBookRequest{
 		InstrumentName: msg.Params.InstrumentName,
 		Depth:          msg.Params.Depth,
+	})
+
+	protocol.SendSuccessMsg(connKey, result)
+}
+
+func (h *DeribitHandler) getIndexPrice(r *gin.Context) {
+	var msg deribitModel.RequestDto[deribitModel.GetIndexPriceParams]
+	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
+		r.AbortWithError(http.StatusBadRequest, err)
+		return
+	}
+
+	_, connKey, reason, err := requestHelper(msg.Id, msg.Method, r)
+	if err != nil {
+		protocol.SendValidationMsg(connKey, *reason, err)
+		return
+	}
+
+	// Call service
+	result := h.svc.GetIndexPrice(context.TODO(), deribitModel.DeribitGetIndexPriceRequest{
+		IndexName: msg.Params.IndexName,
 	})
 
 	protocol.SendSuccessMsg(connKey, result)

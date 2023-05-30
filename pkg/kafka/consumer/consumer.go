@@ -40,7 +40,6 @@ func KafkaConsumer(
 	brokers := []string{os.Getenv("KAFKA_BROKER")}
 	topics := []string{"ORDER", "TRADE", "ORDERBOOK", "ENGINE", "CANCELLED_ORDERS"}
 
-	fmt.Println(brokers)
 	consumer, err := sarama.NewConsumer(brokers, config)
 	if err != nil {
 		log.Fatalf("Failed to create consumer: %s", err)
@@ -96,20 +95,28 @@ func handleTopicOrder(oSvc oInt.IwsOrderService, message *sarama.ConsumerMessage
 
 	// Send message to websocket
 	userIDStr := fmt.Sprintf("%v", data.Matches.TakerOrder.UserID)
-	fmt.Println("userIDStr", userIDStr)
+	fmt.Println("clordid", data.Matches.TakerOrder.ClOrdID)
 	// symbol := strings.Split(data["underlying"].(string), "-")[0]
 	var order ordermatch.Order
-	err = json.Unmarshal([]byte(str), &order)
+	err = json.Unmarshal([]byte(str), &data.Matches.TakerOrder.Order)
 	if err != nil {
 		fmt.Println("Error parsing order JSON:", err)
 		return
 	}
 
 	symbol := strings.Split(order.InstrumentName, "-")[0]
-	ordermatch.OrderConfirmation(userIDStr, order, symbol)
+
+	if order.Status == "" {
+
+	}
+	ordermatch.OrderConfirmation(userIDStr, *data.Matches.TakerOrder, symbol)
 
 	userId := data.Matches.TakerOrder.UserID
 	oSvc.HandleConsume(message, userId)
+
+	// Metrics
+	clOrdID := fmt.Sprintf("%v", data.Matches.TakerOrder.ClOrdID)
+	metrics.EndKafkaDuration(userIDStr, clOrdID)
 }
 
 func handleTopicTrade(tradeSvc oInt.IwsTradeService, message *sarama.ConsumerMessage) {
@@ -146,12 +153,16 @@ func handleTopicCancelledOrders(message *sarama.ConsumerMessage) {
 	// Send message to websocket
 	userIDStr := data["data"].(map[string]interface{})["userId"].(string)
 	ClOrdID := data["data"].(map[string]interface{})["clOrdId"].(string)
+
 	ID, _ := strconv.ParseUint(ClOrdID, 0, 64)
 
 	connectionKey := utils.GetKeyFromIdUserID(ID, userIDStr)
 
 	count := data["total"]
 	_payload := count.(float64)
+
+	// Metrics
+	metrics.EndKafkaDuration(userIDStr, ClOrdID)
 
 	protocol.SendSuccessMsg(connectionKey, _payload)
 }

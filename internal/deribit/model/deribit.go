@@ -56,6 +56,18 @@ type GetLastTradesByInstrumentParams struct {
 	Sorting        string    `json:"sorting" form:"sorting"`
 }
 
+type GetIndexPriceParams struct {
+	IndexName string `json:"index_name" validate:"required" form:"index_name"`
+}
+
+type DeribitGetIndexPriceRequest struct {
+	IndexName string `json:"index_name"`
+}
+
+type DeribitGetIndexPriceResponse struct {
+	IndexPrice float64 `json:"index_price"`
+}
+
 type BaseParams struct {
 	AccessToken    string `json:"access_token" validate:"required" form:"access_token"`
 	InstrumentName string `json:"instrument_name" validate:"required" form:"instrument_name"`

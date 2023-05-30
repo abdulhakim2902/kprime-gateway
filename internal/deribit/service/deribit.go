@@ -8,6 +8,7 @@ import (
 	"gateway/internal/repositories"
 	"gateway/pkg/kafka/producer"
 	"gateway/pkg/memdb"
+	"gateway/pkg/metrics"
 	"gateway/pkg/redis"
 	"gateway/pkg/utils"
 	"strings"
@@ -95,6 +96,7 @@ func (svc deribitService) DeribitRequest(
 	}
 
 	payload := model.DeribitResponse{
+		ID:             data.ID,
 		UserId:         userId,
 		ClientId:       data.ClientId,
 		Underlying:     instruments.Underlying,
@@ -119,6 +121,10 @@ func (svc deribitService) DeribitRequest(
 
 		return nil, nil, err
 	}
+
+	// Metrics
+	metrics.StartKafkaDuration(payload.UserId, payload.ClOrdID)
+
 	//send to kafka
 	producer.KafkaProducer(string(out), "NEW_ORDER")
 
@@ -164,6 +170,10 @@ func (svc deribitService) DeribitParseCancel(ctx context.Context, userId string,
 
 		return nil, err
 	}
+
+	// Metrics
+	metrics.StartKafkaDuration(cancel.UserId, cancel.ClOrdID)
+
 	//send to kafka
 	producer.KafkaProducer(string(_cancel), "NEW_ORDER")
 
@@ -193,6 +203,10 @@ func (svc deribitService) DeribitCancelByInstrument(ctx context.Context, userId 
 
 		return nil, err
 	}
+
+	// Metrics
+	metrics.StartKafkaDuration(cancel.UserId, cancel.ClOrdID)
+
 	//send to kafka
 	producer.KafkaProducer(string(_cancel), "NEW_ORDER")
 
@@ -213,6 +227,10 @@ func (svc deribitService) DeribitParseCancelAll(ctx context.Context, userId stri
 
 		return nil, err
 	}
+
+	// Metrics
+	metrics.StartKafkaDuration(cancel.UserId, cancel.ClOrdID)
+
 	//send to kafka
 	producer.KafkaProducer(string(_cancel), "NEW_ORDER")
 

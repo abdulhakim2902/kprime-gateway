@@ -135,9 +135,8 @@ func closeHandler(c *Client) func(code int, text string) error {
 // At the time of connection closing the ConnectionUnsubscribeHandler handlers associated with
 // that connection are triggered.
 func RegisterConnectionUnsubscribeHandler(c *Client, fn func(*Client)) {
-	subscriptionMutex.Lock()
-	defer subscriptionMutex.Unlock()
-
 	// logger.Info("Registering a new unsubscribe handler")
+	subscriptionMutex.Lock()
 	unsubscribeHandlers[c] = append(unsubscribeHandlers[c], fn)
+	subscriptionMutex.Unlock()
 }

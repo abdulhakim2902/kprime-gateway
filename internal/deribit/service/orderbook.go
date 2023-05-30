@@ -170,3 +170,18 @@ func (svc deribitService) GetDataQuote(order _orderbookTypes.GetOrderBook) (_ord
 
 	return initData, bidsAsksData
 }
+
+func (svc deribitService) GetIndexPrice(ctx context.Context, data model.DeribitGetIndexPriceRequest) model.DeribitGetIndexPriceResponse {
+	var indexPrice float64
+
+	_getIndexPrice := svc.rawPriceRepo.GetIndexPrice(data.IndexName)
+	if len(_getIndexPrice) > 0 {
+		indexPrice = float64(_getIndexPrice[0].Price)
+	} else {
+		indexPrice = float64(0)
+	}
+	result := model.DeribitGetIndexPriceResponse{
+		IndexPrice: indexPrice,
+	}
+	return result
+}

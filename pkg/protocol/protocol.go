@@ -6,6 +6,7 @@ import (
 	"gateway/pkg/utils"
 	"gateway/pkg/ws"
 	"net/http"
+	"sync"
 	"time"
 
 	"git.devucc.name/dependencies/utilities/commons/logs"
@@ -59,6 +60,7 @@ type ProtocolRequest struct {
 }
 
 var protocolConnections map[any]ProtocolRequest
+var protocolMutex sync.RWMutex
 
 func (p *ProtocolRequest) getMetricsProtocol() metrics.Protocol {
 	var protocol metrics.Protocol
@@ -79,14 +81,18 @@ func (p *ProtocolRequest) getMetricsProtocol() metrics.Protocol {
 }
 
 func RegisterProtocolRequest(key string, conn ProtocolRequest) (duplicateConnection bool) {
+	protocolMutex.Lock()
 	if protocolConnections == nil {
 		protocolConnections = make(map[any]ProtocolRequest)
 	}
+	protocolMutex.Unlock()
 
 	duplicateConnection = isConnExist(key)
 
 	conn.RequestedTime = uint64(time.Now().UnixMicro())
+	protocolMutex.Lock()
 	protocolConnections[key] = conn
+	protocolMutex.Unlock()
 
 	// Metrics
 	if !duplicateConnection {
@@ -104,6 +110,8 @@ func RegisterProtocolRequest(key string, conn ProtocolRequest) (duplicateConnect
 }
 
 func UpgradeProtocol(oldKey, newKey string) bool {
+	protocolMutex.Lock()
+	defer protocolMutex.Unlock()
 	conn := protocolConnections[oldKey]
 
 	// Set the new ID
@@ -116,12 +124,16 @@ func UpgradeProtocol(oldKey, newKey string) bool {
 }
 
 func UnregisterProtocol(key string) {
+	protocolMutex.Lock()
 	if protocolConnections != nil {
 		delete(protocolConnections, key)
 	}
+	protocolMutex.Unlock()
 }
 
 func GetProtocol(key string) (bool, ProtocolRequest) {
+	protocolMutex.RLock()
+	defer protocolMutex.RUnlock()
 	val, ok := protocolConnections[key]
 	if ok {
 		return true, val
@@ -246,11 +258,13 @@ func doSend(key string, result any, err *ErrorMessage) bool {
 			} else {
 				metrics.GatewayValidationCounter.With(label).Inc()
 			}
+
+			metrics.GatewayRequestDurationHistogram.WithLabelValues("False").Observe(float64(usDiff))
 		} else {
 			metrics.GatewaySuccessCounter.With(label).Inc()
+			metrics.GatewayRequestDurationHistogram.WithLabelValues("True").Observe(float64(usDiff))
 		}
 
-		metrics.GatewayRequestDurationHistogram.WithLabelValues("success").Observe(float64(usDiff))
 	}(metricsLabel, m.Error, m.UsDiff)
 
 	UnregisterProtocol(key)
@@ -259,6 +273,8 @@ func doSend(key string, result any, err *ErrorMessage) bool {
 }
 
 func isConnExist(key string) bool {
+	protocolMutex.RLock()
+	defer protocolMutex.RUnlock()
 	_, ok := protocolConnections[key]
 	return ok
 }

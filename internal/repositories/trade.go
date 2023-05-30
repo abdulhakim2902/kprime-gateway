@@ -712,7 +712,7 @@ func (r TradeRepository) FindTradesByInstrument(
 						bson.D{
 							{"$arrayElemAt",
 								bson.A{
-									"$takerOrderId.status",
+									"$takerOrder.status",
 									0,
 								},
 							},
