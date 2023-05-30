@@ -1054,7 +1054,7 @@ func (r OrderRepository) GetOrderLatestTimestampAgg(o _orderbookType.GetOrderBoo
 	return orderbooks
 }
 
-func (r OrderRepository) GetOrderState(userId string, orderId interface{}) ([]_deribitModel.DeribitGetOrderStateResponse, error) {
+func (r OrderRepository) GetOrderState(userId string, orderId string) ([]_deribitModel.DeribitGetOrderStateResponse, error) {
 	projectStage := bson.M{
 		"$project": bson.M{
 			"InstrumentName": bson.M{"$concat": bson.A{
@@ -1107,9 +1107,14 @@ func (r OrderRepository) GetOrderState(userId string, orderId interface{}) ([]_d
 		},
 	}
 
+	objectID, err := primitive.ObjectIDFromHex(orderId)
+	if err != nil {
+		return []_deribitModel.DeribitGetOrderStateResponse{}, err
+	}
+
 	query := bson.M{
 		"$match": bson.M{
-			"_id":    orderId,
+			"_id":    objectID,
 			"userId": userId,
 		},
 	}
