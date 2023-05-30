@@ -125,7 +125,7 @@ func requestHelper(msgID uint64, method string, c *gin.Context) (
 		return
 	}
 
-	userId = c.Param("userId")
+	userId = c.Param("userID")
 
 	if len(userId) == 0 {
 		connKey = key
