@@ -59,25 +59,37 @@ func (r TradeRepository) FilterTradesData(data _deribitModel.DeribitGetLastTrade
 		"contracts":   contracts,
 	}
 
-	// Querry for Instrument Start Sequence
-	if data.StartSeq != 0 {
-		filter["tradeSequence"] = bson.M{"$gte": data.StartSeq}
+	// Querry for Sequence
+	if data.StartSeq != 0 && data.EndSeq != 0 {
+		filter["tradeSequence"] = bson.M{
+			"$gte": data.StartSeq,
+			"$lte": data.EndSeq,
+		}
+	} else {
+		if data.StartSeq != 0 {
+			filter["tradeSequence"] = bson.M{"$gte": data.StartSeq}
+		}
+		if data.EndSeq != 0 {
+			filter["tradeSequence"] = bson.M{"$lte": data.EndSeq}
+		}
 	}
 
-	// Querry for Instrument End Sequence
-	if data.EndSeq != 0 {
-		filter["tradeSequence"] = bson.M{"$lte": data.EndSeq}
-	}
-
-	// Querry for Instrument Start Time Stamp
-	if !data.StartTimestamp.IsZero() {
-		filter["createdAt"] = bson.M{"$gte": data.StartTimestamp}
+	// Querry for Time Stamp
+	if !data.StartTimestamp.IsZero() && !data.EndTimestamp.IsZero() {
+		filter["createdAt"] = bson.M{
+			"$gte": data.StartTimestamp,
+			"$lte": data.EndTimestamp,
+		}
+	} else {
+		if !data.StartTimestamp.IsZero() {
+			filter["createdAt"] = bson.M{"$gte": data.StartTimestamp}
+		}
+		if !data.EndTimestamp.IsZero() {
+			filter["createdAt"] = bson.M{"$lte": data.EndTimestamp}
+		}
 	}
 
 	// Querry for Instrument End Time Stamp
-	if !data.EndTimestamp.IsZero() {
-		filter["createdAt"] = bson.M{"$lte": data.EndTimestamp}
-	}
 
 	// Querry for Count
 	limit := int64(data.Count)
