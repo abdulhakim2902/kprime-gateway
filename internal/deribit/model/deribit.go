@@ -58,6 +58,23 @@ type DeribitGetIndexPriceResponse struct {
 	IndexPrice float64 `json:"index_price"`
 }
 
+type DeribitGetUserTradesByOrderResponse struct {
+	Amount         int64  `json:"amount"`
+	Direction      string `json:"direction"`
+	InstrumentName string `json:"instrument_name"`
+	OrderId        string `json:"order_id"`
+	OrderType      string `json:"order_type"`
+	Price          int64  `json:"price"`
+	State          string `json:"state"`
+	Timestamp      int64  `json:"timestamp"`
+	TradeId        string `json:"trade_id"`
+	Api            bool   `json:"api"`
+	IndexPrice     int64  `json:"index_price"`
+	Label          string `json:"label"`
+	TickDirection  int64  `json:"tick_direction"`
+	TradeSeq       int64  `json:"trade_seq"`
+}
+
 type BaseParams struct {
 	AccessToken    string `json:"access_token" validate:"required" form:"access_token"`
 	InstrumentName string `json:"instrument_name" validate:"required" form:"instrument_name"`
@@ -82,6 +99,12 @@ type GetOrderHistoryByInstrumentParams struct {
 	Offset          int  `json:"offset" form:"offset"`
 	IncludeOld      bool `json:"include_old" form:"include_old"`
 	IncludeUnfilled bool `json:"include_unfilled" form:"include_unfilled"`
+}
+
+type GetUserTradesByOrderParams struct {
+	BaseParams
+	OrderId string `json:"order_id" validate:"required" form:"order_id "`
+	Sorting string `json:"sorting" form:"sorting"`
 }
 
 type DeribitRequest struct {
@@ -302,6 +325,11 @@ type DeribitGetOrderHistoryByInstrumentRequest struct {
 	Offset          int    `json:"offset"`
 	IncludeOld      bool   `json:"include_old"`
 	IncludeUnfilled bool   `json:"include_unfilled"`
+}
+
+type DeribitGetUserTradesByOrderRequest struct {
+	OrderId string `json:"order_id " validate:"required"`
+	Sorting string `json:"sorting "`
 }
 
 type DeribitGetOrderHistoryByInstrumentResponse struct {

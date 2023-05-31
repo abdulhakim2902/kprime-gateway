@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"gateway/internal/deribit/model"
 	deribitModel "gateway/internal/deribit/model"
 	"strings"
 	"sync"
@@ -346,4 +347,9 @@ func (svc wsOrderService) GetGetOrderHistoryByInstrument(ctx context.Context, us
 	}
 
 	return historyOrderData
+}
+
+func (svc *wsOrderService) GetUserTradesByOrder(ctx context.Context, instrument string, data model.DeribitGetUserTradesByOrderRequest) string {
+	// []model.DeribitGetUserTradesByOrderResponse
+	return "result"
 }
