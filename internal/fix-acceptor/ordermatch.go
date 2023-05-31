@@ -55,6 +55,7 @@ import (
 	"github.com/quickfixgo/fix44/ordercancelreject"
 	"github.com/quickfixgo/fix44/ordercancelreplacerequest"
 	"github.com/quickfixgo/fix44/ordercancelrequest"
+	"github.com/quickfixgo/fix44/ordermasscancelrequest"
 	"github.com/quickfixgo/fix44/securitylist"
 	"github.com/quickfixgo/fix44/securitylistrequest"
 	"github.com/quickfixgo/tag"
@@ -160,6 +161,7 @@ func newApplication(deribit _deribitSvc.IDeribitService) *Application {
 	app.AddRoute(ordercancelrequest.Route(app.onOrderCancelRequest))
 	app.AddRoute(marketdatarequest.Route(app.onMarketDataRequest))
 	app.AddRoute(ordercancelreplacerequest.Route(app.onOrderUpdateRequest))
+	app.AddRoute(ordermasscancelrequest.Route(app.onOrderMassCancelRequest))
 	app.AddRoute(securitylistrequest.Route(app.onSecurityListRequest))
 	return app
 }
@@ -387,6 +389,67 @@ func (a *Application) onOrderUpdateRequest(msg ordercancelreplacerequest.OrderCa
 		Price:          priceFloat,
 		Amount:         amountFloat,
 	})
+
+	return nil
+}
+
+func (a *Application) onOrderMassCancelRequest(msg ordermasscancelrequest.OrderMassCancelRequest, sessionID quickfix.SessionID) quickfix.MessageRejectError {
+	symbol, err := msg.GetSymbol()
+	if err != nil {
+		logs.Log.Err(err).Msg("Error getting symbol")
+	}
+
+	userId := ""
+	for i, v := range userSession {
+		if v.String() == sessionID.String() {
+			userId = i
+		}
+	}
+
+	clOrdID, err := msg.GetClOrdID()
+	if err != nil {
+		logs.Log.Err(err).Msg("Error getting clOrdId")
+	}
+
+	var partyId quickfix.FIXString
+	err = msg.GetField(tag.PartyID, &partyId)
+	if err != nil {
+		logs.Log.Err(err).Msg("Error getting partyId")
+	}
+
+	user, e := a.UserRepository.FindById(context.TODO(), userId)
+	if e != nil {
+		return quickfix.NewMessageRejectError("Failed getting user", 1, nil)
+	}
+
+	orderIds := []string{}
+
+	if symbol != "" {
+		orders, _ := a.OrderRepository.GetOpenOrdersByInstrument(symbol, "LIMIT", userId)
+		for _, order := range orders {
+			orderIds = append(orderIds, order.OrderId.Hex())
+		}
+	}
+
+	for _, orderId := range orderIds {
+		_, reason, r := a.DeribitService.DeribitRequest(context.TODO(), user.ID.Hex(), _deribitModel.DeribitRequest{
+			ID:             orderId,
+			ClOrdID:        clOrdID,
+			ClientId:       partyId.String(),
+			Side:           _utilitiesType.CANCEL,
+			InstrumentName: symbol,
+			Type:           _utilitiesType.LIMIT,
+		})
+
+		if r != nil {
+			if reason != nil {
+				logs.Log.Err(r).Msg(fmt.Sprintf("Failed to send cancel request for %v, %v", orderId, reason.String()))
+				continue
+			}
+			logs.Log.Err(r).Msg(fmt.Sprintf("Failed to send cancel request for %v", orderId))
+			continue
+		}
+	}
 
 	return nil
 }

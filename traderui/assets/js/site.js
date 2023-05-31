@@ -49,6 +49,11 @@ var App = new (Backbone.View.extend({
       symbols: options.symbols,
     });
 
+    this.cancelOrder = new App.Models.CancelOrder({
+      session_ids: options.session_ids,
+      symbols: options.symbols,
+    });
+
     this.orders = new App.Collections.Orders(options.orders);
     this.executions = new App.Collections.Executions(options.executions);
     this.instruments = new App.Collections.Instruments(options.symbols);
@@ -67,6 +72,21 @@ var App = new (Backbone.View.extend({
     $("#nav-execution").removeClass("active");
     $("#nav-secdef").removeClass("active");
     $("#nav-marketdata").removeClass("active");
+    $("#nav-cancel-order").removeClass("active");
+  },
+
+  showCancelOrders: function () {
+    console.log("show cancel orders")
+    var cancelOrderView = new App.Views.CancelOrder({ model: this.cancelOrder });
+    var ordersView = new App.Views.OrdersView({ collection: this.orders });
+
+    $("#app").html(cancelOrderView.render().el);
+    $("#app").append(ordersView.render().el);
+    $("#nav-cancel-order").addClass("active");
+    $("#nav-order").removeClass("active");
+    $("#nav-execution").removeClass("active");
+    $("#nav-secdef").removeClass("active");
+    $("#nav-marketdata").removeClass("active");
   },
 
   showExecutions: function () {
@@ -79,27 +99,30 @@ var App = new (Backbone.View.extend({
     $("#nav-execution").addClass("active");
     $("#nav-secdef").removeClass("active");
     $("#nav-marketdata").removeClass("active");
+    $("#nav-cancel-order").removeClass("active");
   },
 
   showSecurityDefinitions: function () {
     var secDefReq = new App.Views.SecurityDefinitionRequest({ model: this.securityDefinitionForm });
-    var secListView = new App.Views.SecurityList({model: this.instruments})
+    var secListView = new App.Views.SecurityList({ model: this.instruments })
     $("#app").html(secDefReq.render().el);
     $("#app").append(secListView.render().el);
     $("#nav-order").removeClass("active");
     $("#nav-execution").removeClass("active");
     $("#nav-secdef").addClass("active");
+    $("#nav-cancel-order").removeClass("active");
     $("#nav-marketdata").removeClass("active");
   },
 
   showMarketData: function () {
     var mrktDataReq = new App.Views.MarketDataRequest({ model: this.marketDataForm });
-    var mrktListView = new App.Views.MarketData({model: this.marketdata})
+    var mrktListView = new App.Views.MarketData({ model: this.marketdata })
     $("#app").html(mrktDataReq.render().el);
     $("#app").append(mrktListView.render().el);
     $("#nav-order").removeClass("active");
     $("#nav-execution").removeClass("active");
     $("#nav-secdef").removeClass("active");
+    $("#nav-cancel-order").removeClass("active");
     $("#nav-marketdata").addClass("active");
   },
 
@@ -140,6 +163,7 @@ App.Router = Backbone.Router.extend({
     "secdefs": "secdefs",
     "orders/:id": "orderDetails",
     "executions/:id": "executionDetails",
+    "cancel-orders": "cancelOrders"
   },
 
   index: function () {
@@ -164,11 +188,20 @@ App.Router = Backbone.Router.extend({
 
   executionDetails: function (id) {
     App.showExecutionDetails(id)
+  },
+
+  cancelOrders: function () {
+    console.log('cancel orders')
+    App.showCancelOrders();
   }
 });
 
 App.Models.Order = Backbone.Model.extend({
   urlRoot: "/orders",
+});
+
+App.Models.CancelOrder = Backbone.Model.extend({
+  urlRoot: "/cancel-orders",
 });
 
 App.Models.Execution = Backbone.Model.extend({
@@ -951,6 +984,7 @@ App.Views.OrderTicket = Backbone.View.extend({
   },
 
   submit: function (e) {
+
     e.preventDefault();
     var order = new App.Models.Order();
     order.set({
@@ -1043,6 +1077,41 @@ App.Views.OrderTicket = Backbone.View.extend({
         this.$("#stop").prop("required", false);
     }
   }
+});
+
+App.Views.CancelOrder = Backbone.View.extend({
+  template: _.template(`
+<form class='form-inline' action='/order' method='POST' id='order-ticket'>
+  <p>
+
+    <div class='form-group'>
+      <label for='symbol'>Symbol</label>
+      <input type='text' class='form-control' name='symbol' placeholder='Symbol, if empty all order will be cancelled'>
+    </div>
+  </p>
+  <button type='submit' class='btn btn-default'>Cancel Order</button>
+</form>
+`),
+  render: function () {
+    this.$el.html(this.template(this.model.attributes));
+    return this;
+  },
+
+  events: {
+    submit: "submit"
+  },
+
+  submit: function (e) {
+    e.preventDefault();
+    let symbol = encodeURIComponent(this.$('input[name=symbol]').val());
+    if (symbol == "") {
+      symbol = "all"
+    }
+    fetch(`/cancel-orders`, { method: 'DELETE', body: {
+      symbol: symbol
+    } })
+    .then(response => console.log(response.json()))
+  },
 });
 
 App.prettySide = function (sideEnum) {

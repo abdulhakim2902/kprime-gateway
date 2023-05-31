@@ -415,9 +415,10 @@ func (c tradeClient) onSecurityListRequest(w http.ResponseWriter, r *http.Reques
 }
 
 func (c tradeClient) onMassOrderCancelRequest(w http.ResponseWriter, r *http.Request) {
-	var cancelRequest secmaster.MassCancelRequest
+	logs.Log.Info().Str("tradeui.go", "onMassOrderCancelRequest").Msg("")
+	var massCancel secmaster.MassCancelRequest
 	decoder := json.NewDecoder(r.Body)
-	err := decoder.Decode(&cancelRequest)
+	err := decoder.Decode(&massCancel)
 	if err != nil {
 		logs.Log.Err(err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -426,7 +427,7 @@ func (c tradeClient) onMassOrderCancelRequest(w http.ResponseWriter, r *http.Req
 
 	cancelType := enum.MassCancelRequestType_CANCEL_ORDERS_FOR_A_SECURITY
 
-	if cancelRequest.CancelType == "all" {
+	if massCancel.Symbol == "all" {
 		cancelType = enum.MassCancelRequestType_CANCEL_ALL_ORDERS
 	}
 
@@ -436,10 +437,14 @@ func (c tradeClient) onMassOrderCancelRequest(w http.ResponseWriter, r *http.Req
 		field.NewTransactTime(time.Now()),
 	)
 
-	msg.SetSymbol(cancelRequest.Symbol)
-	err = quickfix.SendToTarget(msg, cancelRequest.SessionID)
-	if err != nil {
-		logs.Log.Err(err)
+	if massCancel.Symbol != "all" {
+		msg.SetSymbol(massCancel.Symbol)
+	}
+	sessionID := c.SessionIDs[massCancel.Session]
+
+	rr := quickfix.SendToTarget(msg, sessionID)
+	if rr != nil {
+		logs.Log.Err(rr)
 	}
 }
 
@@ -581,7 +586,7 @@ func main() {
 	router.HandleFunc("/orders/{id:[0-9]+}", app.updateOrder).Methods("PUT")
 	router.HandleFunc("/orders/{id:[0-9]+}", app.getOrder).Methods("GET")
 	router.HandleFunc("/orders/{id:[0-9]+}", app.onOrderCancelRequest).Methods("DELETE")
-	router.HandleFunc("/orders/mass-cancel", app.onMassOrderCancelRequest).Methods("DELETE")
+	router.HandleFunc("/cancel-orders", app.onMassOrderCancelRequest).Methods("DELETE")
 
 	router.HandleFunc("/instruments", app.getInstruments).Methods("GET")
 	router.HandleFunc("/marketdata", app.getMarketData).Methods("GET")
