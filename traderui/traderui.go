@@ -586,7 +586,7 @@ func main() {
 	router.HandleFunc("/orders/{id:[0-9]+}", app.updateOrder).Methods("PUT")
 	router.HandleFunc("/orders/{id:[0-9]+}", app.getOrder).Methods("GET")
 	router.HandleFunc("/orders/{id:[0-9]+}", app.onOrderCancelRequest).Methods("DELETE")
-	router.HandleFunc("/cancel-orders", app.onMassOrderCancelRequest).Methods("DELETE")
+	router.HandleFunc("/cancel-orders", app.onMassOrderCancelRequest).Methods("POST")
 
 	router.HandleFunc("/instruments", app.getInstruments).Methods("GET")
 	router.HandleFunc("/marketdata", app.getMarketData).Methods("GET")

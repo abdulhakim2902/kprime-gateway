@@ -394,6 +394,7 @@ func (a *Application) onOrderUpdateRequest(msg ordercancelreplacerequest.OrderCa
 }
 
 func (a *Application) onOrderMassCancelRequest(msg ordermasscancelrequest.OrderMassCancelRequest, sessionID quickfix.SessionID) quickfix.MessageRejectError {
+	logs.Log.Info().Str("ordermatch", "onOrderMassCancelRequest").Msg("")
 	symbol, err := msg.GetSymbol()
 	if err != nil {
 		logs.Log.Err(err).Msg("Error getting symbol")

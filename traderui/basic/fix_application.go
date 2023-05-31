@@ -113,15 +113,15 @@ func (a *FIXApplication) FromApp(msg *quickfix.Message, sessionID quickfix.Sessi
 		fmt.Println("Market Data Incremental Refresh")
 		return a.onMarketDataIncrementalRefresh(msg, sessionID)
 	case enum.MsgType_ORDER_CANCEL_REJECT:
-	case enum.MsgType_ORDER_MASS_CANCEL_REQUEST:
+	case enum.MsgType_ORDER_MASS_CANCEL_REPORT:
 		fmt.Println("Order Mass Cancel Request")
-		return a.onOrderMassCancelRequest(msg, sessionID)
+		return a.onOrderMassCancelReport(msg, sessionID)
 	}
 
 	return quickfix.UnsupportedMessageType()
 }
 
-func (a *FIXApplication) onOrderMassCancelRequest(msg *quickfix.Message, sessionID quickfix.SessionID) quickfix.MessageRejectError {
+func (a *FIXApplication) onOrderMassCancelReport(msg *quickfix.Message, sessionID quickfix.SessionID) quickfix.MessageRejectError {
 	logs.Log.Info().Str("msg", msg.String()).Msg("onOrderMassCancelRequest")
 
 	var clOrdID field.ClOrdIDField
@@ -133,6 +133,15 @@ func (a *FIXApplication) onOrderMassCancelRequest(msg *quickfix.Message, session
 	if err := msg.Body.Get(&origClOrdID); err != nil {
 		return err
 	}
+
+	order, err := a.GetByClOrdID(origClOrdID.String())
+	if err != nil {
+		log.Printf("[ERROR] err= %v", err)
+	}
+
+	order.Status = "ORDER_CANCELLED"
+	a.Save(order)
+
 	return nil
 }
 
