@@ -85,8 +85,8 @@ type GetOrderHistoryByInstrumentParams struct {
 }
 
 type GetOrderStateParams struct {
-	BaseParams
-	OrderId string `json:"order_id"`
+	AccessToken string `json:"access_token"`
+	OrderId     string `json:"order_id"`
 }
 
 type DeribitRequest struct {
