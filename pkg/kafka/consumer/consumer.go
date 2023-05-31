@@ -3,7 +3,7 @@ package consumer
 import (
 	"encoding/json"
 	"fmt"
-	"gateway/pkg/metrics"
+	"gateway/pkg/collector"
 	"gateway/pkg/protocol"
 	"gateway/pkg/utils"
 	"log"
@@ -28,17 +28,18 @@ func KafkaConsumer(
 	obSvc obInt.IOrderbookService,
 	oSvc oInt.IwsOrderService,
 	tradeSvc oInt.IwsTradeService,
+	rawSvc oInt.IwsRawPriceService,
 ) {
 	// Metrics
 	go func() {
-		metrics.GatewayIncomingKafkaCounter.Inc()
+		collector.IncomingKafkaCounter.Inc()
 	}()
 
 	config := sarama.NewConfig()
 	config.Consumer.Return.Errors = true
 
 	brokers := []string{os.Getenv("KAFKA_BROKER")}
-	topics := []string{"ORDER", "TRADE", "ORDERBOOK", "ENGINE", "CANCELLED_ORDERS"}
+	topics := []string{"ORDER", "TRADE", "ORDERBOOK", "ENGINE", "CANCELLED_ORDERS", "PRICES"}
 
 	consumer, err := sarama.NewConsumer(brokers, config)
 	if err != nil {
@@ -72,6 +73,8 @@ func KafkaConsumer(
 					go obSvc.HandleConsumeBook(message)
 				case "CANCELLED_ORDERS":
 					handleTopicCancelledOrders(message)
+				case "PRICES":
+					go rawSvc.HandleConsume(message)
 				default:
 					log.Printf("Unknown topic: %s", topic)
 				}
@@ -116,7 +119,7 @@ func handleTopicOrder(oSvc oInt.IwsOrderService, message *sarama.ConsumerMessage
 
 	// Metrics
 	clOrdID := fmt.Sprintf("%v", data.Matches.TakerOrder.ClOrdID)
-	metrics.EndKafkaDuration(userIDStr, clOrdID)
+	collector.EndKafkaDuration(userIDStr, clOrdID)
 }
 
 func handleTopicTrade(tradeSvc oInt.IwsTradeService, message *sarama.ConsumerMessage) {
@@ -162,7 +165,7 @@ func handleTopicCancelledOrders(message *sarama.ConsumerMessage) {
 	_payload := count.(float64)
 
 	// Metrics
-	metrics.EndKafkaDuration(userIDStr, ClOrdID)
+	collector.EndKafkaDuration(userIDStr, ClOrdID)
 
 	protocol.SendSuccessMsg(connectionKey, _payload)
 }
