@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"strconv"
 	"strings"
 	"sync"
@@ -20,6 +21,8 @@ import (
 	"gateway/pkg/ws"
 
 	"github.com/Shopify/sarama"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type wsOrderbookService struct {
@@ -738,6 +741,63 @@ func (svc wsOrderbookService) GetOrderBook(ctx context.Context, data _deribitMod
 	_getSettlementPrice := svc.settlementPriceRepository.GetLatestSettlementPrice(_order)
 	if len(_getSettlementPrice) > 0 {
 		results.SettlementPrice = &_getSettlementPrice[0].Price
+	}
+
+	return results
+}
+
+func (svc wsOrderbookService) GetLastTradesByInstrument(ctx context.Context, data _deribitModel.DeribitGetLastTradesByInstrumentRequest) _deribitModel.DeribitGetLastTradesByInstrumentResponse {
+	_filteredGets := svc.tradeRepository.FilterTradesData(data)
+
+	bsonResponse := _filteredGets
+
+	_getLastTradesByInstrument := []_deribitModel.DeribitGetLastTradesByInstrumentValue{}
+
+	for _, doc := range bsonResponse {
+		bsonData, err := bson.Marshal(doc)
+		if err != nil {
+			log.Println("Error marshaling BSON to JSON:", err)
+			continue
+		}
+
+		var jsonDoc map[string]interface{}
+		err = bson.Unmarshal(bsonData, &jsonDoc)
+		if err != nil {
+			log.Println("Error unmarshaling BSON to JSON:", err)
+			continue
+		}
+
+		underlying := jsonDoc["underlying"].(string)
+		expiryDate := jsonDoc["expiryDate"].(string)
+		strikePrice := jsonDoc["strikePrice"].(float64)
+		contracts := jsonDoc["contracts"].(string)
+
+		switch contracts {
+		case "CALL":
+			contracts = "C"
+		case "PUT":
+			contracts = "P"
+		}
+
+		resultData := _deribitModel.DeribitGetLastTradesByInstrumentValue{
+			Amount:         jsonDoc["amount"].(float64),
+			Direction:      jsonDoc["side"].(string),
+			InstrumentName: fmt.Sprintf("%s-%s-%d-%s", underlying, expiryDate, int64(strikePrice), contracts),
+			Price:          jsonDoc["price"].(float64),
+			Timestamp:      time.Now().UnixNano() / int64(time.Millisecond),
+			TradeId:        jsonDoc["tradeSequence"].(int32),
+			Api:            true,
+			IndexPrice:     jsonDoc["indexPrice"].(float64),
+			TickDirection:  jsonDoc["tickDirection"].(int32),
+			TradeSeq:       jsonDoc["tradeSequence"].(int32),
+			CreatedAt:      jsonDoc["createdAt"].(primitive.DateTime).Time(),
+		}
+
+		_getLastTradesByInstrument = append(_getLastTradesByInstrument, resultData)
+	}
+
+	results := _deribitModel.DeribitGetLastTradesByInstrumentResponse{
+		Trades: _getLastTradesByInstrument,
 	}
 
 	return results

@@ -82,6 +82,8 @@ func NewWebsocketHandler(
 	ws.RegisterChannel("public/unsubscribe", handler.UnsubscribeHandlerPrivate)
 
 	ws.RegisterChannel("public/get_instruments", handler.GetInstruments)
+	ws.RegisterChannel("public/get_last_trades_by_instrument", handler.GetLastTradesByInstrument)
+
 	ws.RegisterChannel("public/get_order_book", handler.GetOrderBook)
 	ws.RegisterChannel("public/get_index_price", handler.GetIndexPrice)
 }
@@ -553,6 +555,32 @@ func (svc wsHandler) GetOrderBook(input interface{}, c *ws.Client) {
 	result := svc.wsOBSvc.GetOrderBook(context.TODO(), deribitModel.DeribitGetOrderBookRequest{
 		InstrumentName: msg.Params.InstrumentName,
 		Depth:          msg.Params.Depth,
+	})
+
+	protocol.SendSuccessMsg(connKey, result)
+}
+
+func (svc wsHandler) GetLastTradesByInstrument(input interface{}, c *ws.Client) {
+	var msg deribitModel.RequestDto[deribitModel.GetLastTradesByInstrumentParams]
+	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
+		c.SendInvalidRequestMessage(err)
+		return
+	}
+
+	_, connKey, reason, err := requestHelper(msg.Id, msg.Method, nil, c)
+	if err != nil {
+		protocol.SendValidationMsg(connKey, *reason, err)
+		return
+	}
+
+	result := svc.wsOBSvc.GetLastTradesByInstrument(context.TODO(), deribitModel.DeribitGetLastTradesByInstrumentRequest{
+		InstrumentName: msg.Params.InstrumentName,
+		StartSeq:       msg.Params.StartSeq,
+		EndSeq:         msg.Params.EndSeq,
+		StartTimestamp: msg.Params.StartTimestamp,
+		EndTimestamp:   msg.Params.EndTimestamp,
+		Count:          msg.Params.Count,
+		Sorting:        msg.Params.Sorting,
 	})
 
 	protocol.SendSuccessMsg(connKey, result)

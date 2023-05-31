@@ -3,6 +3,7 @@ package repositories
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -28,6 +29,108 @@ type TradeRepository struct {
 func NewTradeRepository(db Database) *TradeRepository {
 	collection := db.InitCollection("trades")
 	return &TradeRepository{collection}
+}
+
+func (r TradeRepository) FilterTradesData(data _deribitModel.DeribitGetLastTradesByInstrumentRequest) []*_engineType.Trade {
+	fmt.Println(data.StartSeq, " - type : ", reflect.TypeOf(data.StartSeq))
+
+	// Querry for Instrument Name
+	str := data.InstrumentName
+	components := strings.Split(str, "-")
+
+	underlying := components[0]
+	expiryDate := components[1]
+	strikePrice := components[2]
+	contracts := components[3]
+
+	switch contracts {
+	case "C":
+		contracts = "CALL"
+	case "P":
+		contracts = "PUT"
+	}
+
+	strikePriceFloat, _ := strconv.ParseFloat(strikePrice, 64)
+
+	filter := bson.M{
+		"underlying":  underlying,
+		"expiryDate":  expiryDate,
+		"strikePrice": strikePriceFloat,
+		"contracts":   contracts,
+	}
+
+	// Querry for Sequence
+	if data.StartSeq != 0 && data.EndSeq != 0 {
+		filter["tradeSequence"] = bson.M{
+			"$gte": data.StartSeq,
+			"$lte": data.EndSeq,
+		}
+	} else {
+		if data.StartSeq != 0 {
+			filter["tradeSequence"] = bson.M{"$gte": data.StartSeq}
+		}
+		if data.EndSeq != 0 {
+			filter["tradeSequence"] = bson.M{"$lte": data.EndSeq}
+		}
+	}
+
+	// Querry for Time Stamp
+	if !data.StartTimestamp.IsZero() && !data.EndTimestamp.IsZero() {
+		filter["createdAt"] = bson.M{
+			"$gte": data.StartTimestamp,
+			"$lte": data.EndTimestamp,
+		}
+	} else {
+		if !data.StartTimestamp.IsZero() {
+			filter["createdAt"] = bson.M{"$gte": data.StartTimestamp}
+		}
+		if !data.EndTimestamp.IsZero() {
+			filter["createdAt"] = bson.M{"$lte": data.EndTimestamp}
+		}
+	}
+
+	// Querry for Instrument End Time Stamp
+
+	// Querry for Count
+	limit := int64(data.Count)
+	if limit == 0 {
+		limit = 3
+	}
+
+	findOptions := options.Find()
+	findOptions.SetLimit(limit)
+
+	sortOrder := -1 // Default sort order is descending
+
+	switch data.Sorting {
+	case "asc":
+		sortOrder = 1
+	case "desc":
+		sortOrder = -1
+	}
+
+	if data.Sorting == "" {
+		// Set your default sort order here
+		sortOrder = -1
+	}
+
+	findOptions.SetSort(bson.M{"createdAt": sortOrder})
+
+	cursor, err := r.collection.Find(context.Background(), filter, findOptions)
+	if err != nil {
+		return nil
+	}
+
+	defer cursor.Close(context.Background())
+
+	Trades := []*_engineType.Trade{}
+
+	err = cursor.All(context.Background(), &Trades)
+	if err != nil {
+		return nil
+	}
+
+	return Trades
 }
 
 func (r TradeRepository) Find(filter interface{}, sort interface{}, offset, limit int64) ([]*_engineType.Trade, error) {
