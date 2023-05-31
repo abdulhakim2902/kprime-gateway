@@ -39,7 +39,7 @@ func KafkaConsumer(
 	config.Consumer.Return.Errors = true
 
 	brokers := []string{os.Getenv("KAFKA_BROKER")}
-	topics := []string{"ORDER", "TRADE", "ORDERBOOK", "ENGINE", "CANCELLED_ORDERS", "PRICES"}
+	topics := []string{"ORDER", "TRADE", "ORDERBOOK", "ENGINE", "CANCELLED_ORDERS", "PRICES", "ENGINE_SAVED"}
 
 	consumer, err := sarama.NewConsumer(brokers, config)
 	if err != nil {
@@ -65,7 +65,8 @@ func KafkaConsumer(
 				case "ENGINE":
 					handleTopicOrder(oSvc, message)
 					engSvc.HandleConsume(message)
-
+				case "ENGINE_SAVED":
+					go engSvc.HandleConsumeQuote(message)
 					go oSvc.HandleConsumeUserOrder(message)
 					go tradeSvc.HandleConsumeUserTrades(message)
 					go tradeSvc.HandleConsumeInstrumentTrades(message)
