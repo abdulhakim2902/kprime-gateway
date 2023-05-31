@@ -1111,12 +1111,23 @@ func (r OrderRepository) GetOrderState(userId string, orderId string) ([]_deribi
 	if err != nil {
 		return []_deribitModel.DeribitGetOrderStateResponse{}, err
 	}
+	pipelineInstruments := bson.A{}
 
-	query := bson.M{
-		"$match": bson.M{
-			"_id":    objectID,
-			"userId": userId,
-		},
+	if userId == "" {
+		query := bson.M{
+			"$match": bson.M{
+				"_id": objectID,
+			},
+		}
+		pipelineInstruments = append(pipelineInstruments, query)
+	} else {
+		query := bson.M{
+			"$match": bson.M{
+				"_id":    objectID,
+				"userId": userId,
+			},
+		}
+		pipelineInstruments = append(pipelineInstruments, query)
 	}
 
 	sortStage := bson.M{
@@ -1125,9 +1136,8 @@ func (r OrderRepository) GetOrderState(userId string, orderId string) ([]_deribi
 		},
 	}
 
-	pipelineInstruments := bson.A{}
 	pipelineInstruments = append(pipelineInstruments, projectStage)
-	pipelineInstruments = append(pipelineInstruments, query)
+	// pipelineInstruments = append(pipelineInstruments, query)
 	pipelineInstruments = append(pipelineInstruments, sortStage)
 
 	cursor, err := r.collection.Aggregate(context.Background(), pipelineInstruments)
