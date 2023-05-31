@@ -71,6 +71,7 @@ func NewWebsocketHandler(
 	ws.RegisterChannel("private/get_user_trades_by_instrument", handler.PrivateGetUserTradesByInstrument)
 	ws.RegisterChannel("private/get_open_orders_by_instrument", handler.PrivateGetOpenOrdersByInstrument)
 	ws.RegisterChannel("private/get_order_history_by_instrument", handler.PrivateGetOrderHistoryByInstrument)
+	ws.RegisterChannel("private/get_order_state_by_label", handler.PrivateGetOrderStateByLabel)
 
 	ws.RegisterChannel("public/subscribe", handler.SubscribeHandler)
 	ws.RegisterChannel("public/unsubscribe", handler.UnsubscribeHandler)
@@ -664,4 +665,19 @@ func (svc wsHandler) GetIndexPrice(input interface{}, c *ws.Client) {
 	})
 
 	protocol.SendSuccessMsg(connKey, result)
+}
+
+func (svc wsHandler) PrivateGetOrderStateByLabel(input interface{}, c *ws.Client) {
+	var msg deribitModel.RequestDto[deribitModel.EmptyParams]
+	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
+		c.SendInvalidRequestMessage(err)
+		return
+	}
+	_, connKey, reason, err := requestHelper(msg.Id, msg.Method, nil, c)
+	if err != nil {
+		protocol.SendValidationMsg(connKey, *reason, err)
+		return
+	}
+
+	protocol.SendSuccessMsg(connKey, nil)
 }
