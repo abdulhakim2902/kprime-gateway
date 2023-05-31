@@ -1113,22 +1113,30 @@ func (r OrderRepository) GetOrderState(userId string, orderId string) ([]_deribi
 	}
 	pipelineInstruments := bson.A{}
 
-	if userId == "" {
-		query := bson.M{
-			"$match": bson.M{
-				"_id": objectID,
-			},
-		}
-		pipelineInstruments = append(pipelineInstruments, query)
-	} else {
-		query := bson.M{
-			"$match": bson.M{
-				"_id":    objectID,
-				"userId": userId,
-			},
-		}
-		pipelineInstruments = append(pipelineInstruments, query)
+	query := bson.M{
+		"$match": bson.M{
+			"_id":    objectID,
+			"userId": userId,
+		},
 	}
+	pipelineInstruments = append(pipelineInstruments, query)
+
+	// if userId == "" {
+	// 	query := bson.M{
+	// 		"$match": bson.M{
+	// 			"_id": objectID,
+	// 		},
+	// 	}
+	// 	pipelineInstruments = append(pipelineInstruments, query)
+	// } else {
+	// 	query := bson.M{
+	// 		"$match": bson.M{
+	// 			"_id":    objectID,
+	// 			"userId": userId,
+	// 		},
+	// 	}
+	// 	pipelineInstruments = append(pipelineInstruments, query)
+	// }
 
 	sortStage := bson.M{
 		"$sort": bson.M{
