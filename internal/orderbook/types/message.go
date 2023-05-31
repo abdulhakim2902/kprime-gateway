@@ -113,3 +113,14 @@ type ChangeResponse struct {
 	Trades         []interface{} `json:"trades"`
 	Orders         []interface{} `json:"orders"`
 }
+
+type PriceData struct {
+	Timestamp int64   `json:"timestamp"`
+	Price     float32 `json:"price"`
+	IndexName string  `json:"index_name"`
+}
+
+type PriceResponse struct {
+	Channel string    `json:"channel"`
+	Data    PriceData `json:"data"`
+}

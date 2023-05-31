@@ -6,6 +6,7 @@ import (
 	_orderbookType "gateway/internal/orderbook/types"
 
 	"git.devucc.name/dependencies/utilities/models/order"
+	"git.devucc.name/dependencies/utilities/models/price"
 	"git.devucc.name/dependencies/utilities/models/trade"
 	"git.devucc.name/dependencies/utilities/types"
 	"git.devucc.name/dependencies/utilities/types/validation_reason"
@@ -16,6 +17,11 @@ type Message struct {
 	Instrument string      `json:"instrument_name"`
 	Bids       interface{} `json:"bids"`
 	Asks       interface{} `json:"asks"`
+}
+
+type MessagePrices struct {
+	RawPrice        []price.RawPrice        `json:"raw_prices"`
+	SettlementPrice []price.SettlementPrice `json:"settlement_prices"`
 }
 
 type EngineResponse struct {

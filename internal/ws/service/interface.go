@@ -51,3 +51,9 @@ type IwsTradeService interface {
 		request deribitModel.DeribitGetUserTradesByInstrumentsRequest,
 	) *deribitModel.DeribitGetUserTradesByInstrumentsResponse
 }
+
+type IwsRawPriceService interface {
+	Subscribe(c *ws.Client, instrument string)
+	Unsubscribe(c *ws.Client)
+	HandleConsume(msg *sarama.ConsumerMessage)
+}
