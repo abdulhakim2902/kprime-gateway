@@ -324,3 +324,10 @@ type DeribitGetOrderHistoryByInstrumentResponse struct {
 	AveragePrice        *float64 `json:"average_price" bson:"priceAvg"`
 	CancelledReason     string   `json:"cancel_reason" bson:"cancelledReason"`
 }
+
+type DeribitGetOrderStateByLabelRequest struct {
+	AccessToken string `json:"access_token" form:"access_token"`
+	Currency    string `json:"currency" form:"currency" validate:"required"`
+	Label       string `json:"label" form:"label"`
+	UserId      string
+}

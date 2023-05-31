@@ -126,7 +126,7 @@ func requestHelper(msgID uint64, method string, c *gin.Context) (
 		return
 	}
 
-	userId = c.Param("userID")
+	userId = c.GetString("userID")
 
 	if len(userId) == 0 {
 		connKey = key
@@ -553,19 +553,23 @@ func (h *DeribitHandler) getIndexPrice(r *gin.Context) {
 }
 
 func (h *DeribitHandler) getOrderStateByLabel(r *gin.Context) {
-	var msg deribitModel.RequestDto[deribitModel.EmptyParams]
+	var msg deribitModel.RequestDto[deribitModel.DeribitGetOrderStateByLabelRequest]
 	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
 		r.AbortWithError(http.StatusBadRequest, err)
 		return
 	}
 
-	_, connKey, reason, err := requestHelper(msg.Id, msg.Method, r)
+	userId, connKey, reason, err := requestHelper(msg.Id, msg.Method, r)
 	if err != nil {
 		protocol.SendValidationMsg(connKey, *reason, err)
 		return
 	}
 
-	protocol.SendSuccessMsg(connKey, nil)
+	msg.Params.UserId = userId
+
+	res := h.svc.DeribitGetOrderStateByLabel(r.Request.Context(), msg.Params)
+
+	protocol.SendSuccessMsg(connKey, res)
 }
 
 func (h *DeribitHandler) test(r *gin.Context) {

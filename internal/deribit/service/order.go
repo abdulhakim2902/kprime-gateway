@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"gateway/internal/deribit/model"
+	orderbookType "gateway/internal/orderbook/types"
 	"strconv"
 
 	"git.devucc.name/dependencies/utilities/commons/logs"
@@ -69,6 +70,7 @@ func (svc deribitService) DeribitGetOrderHistoryByInstrument(ctx context.Context
 
 	return historyOrderData
 }
+
 func (svc deribitService) DeribitGetInstruments(ctx context.Context, data model.DeribitGetInstrumentsRequest) []*model.DeribitGetInstrumentsResponse {
 	key := "INSTRUMENTS-" + data.Currency + "" + strconv.FormatBool(data.Expired)
 
@@ -102,4 +104,14 @@ func (svc deribitService) DeribitGetInstruments(ctx context.Context, data model.
 	}
 
 	return instrumentData
+}
+
+func (svc deribitService) DeribitGetOrderStateByLabel(ctx context.Context, data model.DeribitGetOrderStateByLabelRequest) []*orderbookType.Order {
+	orders, err := svc.orderRepo.GetOrderStateByLabel(ctx, data)
+	if err != nil {
+		logs.Log.Error().Err(err).Msg("")
+		return nil
+	}
+
+	return orders
 }

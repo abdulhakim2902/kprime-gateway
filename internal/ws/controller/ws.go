@@ -676,16 +676,21 @@ func (svc wsHandler) GetIndexPrice(input interface{}, c *ws.Client) {
 }
 
 func (svc wsHandler) PrivateGetOrderStateByLabel(input interface{}, c *ws.Client) {
-	var msg deribitModel.RequestDto[deribitModel.EmptyParams]
+	var msg deribitModel.RequestDto[deribitModel.DeribitGetOrderStateByLabelRequest]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
 		c.SendInvalidRequestMessage(err)
 		return
 	}
-	_, connKey, reason, err := requestHelper(msg.Id, msg.Method, nil, c)
+
+	claim, connKey, reason, err := requestHelper(msg.Id, msg.Method, &msg.Params.AccessToken, c)
 	if err != nil {
 		protocol.SendValidationMsg(connKey, *reason, err)
 		return
 	}
 
-	protocol.SendSuccessMsg(connKey, nil)
+	msg.Params.UserId = claim.UserID
+
+	res := svc.deribitSvc.DeribitGetOrderStateByLabel(context.TODO(), msg.Params)
+
+	protocol.SendSuccessMsg(connKey, res)
 }

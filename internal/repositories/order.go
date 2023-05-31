@@ -1053,3 +1053,22 @@ func (r OrderRepository) GetOrderLatestTimestampAgg(o _orderbookType.GetOrderBoo
 
 	return orderbooks
 }
+
+func (r OrderRepository) GetOrderStateByLabel(ctx context.Context, req _deribitModel.DeribitGetOrderStateByLabelRequest) (orders []*_orderbookType.Order, err error) {
+	orders, err = r.Find(bson.D{
+		{"$and",
+			bson.A{
+				bson.D{{"label", bson.D{{"$eq", req.Label}}}},
+				bson.D{{"underlying", bson.D{{"$eq", req.Currency}}}},
+				bson.D{{"userId", bson.D{{"$eq", req.UserId}}}},
+			},
+		},
+	}, nil, 0, -1)
+
+	if err != nil {
+
+		return
+	}
+
+	return
+}

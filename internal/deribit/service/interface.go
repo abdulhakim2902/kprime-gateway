@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"gateway/internal/deribit/model"
+	orderbookType "gateway/internal/orderbook/types"
 
 	"git.devucc.name/dependencies/utilities/types/validation_reason"
 )
@@ -21,4 +22,6 @@ type IDeribitService interface {
 	DeribitGetInstruments(ctx context.Context, data model.DeribitGetInstrumentsRequest) []*model.DeribitGetInstrumentsResponse
 	GetOrderBook(ctx context.Context, data model.DeribitGetOrderBookRequest) *model.DeribitGetOrderBookResponse
 	GetIndexPrice(ctx context.Context, data model.DeribitGetIndexPriceRequest) model.DeribitGetIndexPriceResponse
+
+	DeribitGetOrderStateByLabel(ctx context.Context, data model.DeribitGetOrderStateByLabelRequest) []*orderbookType.Order
 }
