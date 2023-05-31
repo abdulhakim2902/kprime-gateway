@@ -59,7 +59,7 @@ type DeribitGetIndexPriceResponse struct {
 }
 
 type BaseParams struct {
-	AccessToken    string `json:"access_token" validate:"required" form:"access_token"`
+	AccessToken    string `json:"access_token" form:"access_token"`
 	InstrumentName string `json:"instrument_name" validate:"required" form:"instrument_name"`
 }
 
