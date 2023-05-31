@@ -1053,3 +1053,113 @@ func (r OrderRepository) GetOrderLatestTimestampAgg(o _orderbookType.GetOrderBoo
 
 	return orderbooks
 }
+
+func (r OrderRepository) GetOrderState(userId string, orderId string) ([]_deribitModel.DeribitGetOrderStateResponse, error) {
+	projectStage := bson.M{
+		"$project": bson.M{
+			"InstrumentName": bson.M{"$concat": bson.A{
+				bson.D{
+					{"$convert", bson.D{
+						{"input", "$underlying"},
+						{"to", "string"},
+					}}},
+				"-",
+				bson.D{
+					{"$convert", bson.D{
+						{"input", "$expiryDate"},
+						{"to", "string"},
+					}}},
+				"-",
+				bson.D{
+					{"$convert", bson.D{
+						{"input", "$strikePrice"},
+						{"to", "string"},
+					}}},
+				"-",
+				bson.M{"$substr": bson.A{"$contracts", 0, 1}},
+			}},
+			"replaced": bson.M{
+				"$cond": bson.M{"if": bson.M{"$and": []interface{}{bson.M{"$eq": []interface{}{bson.M{"$type": "$amendments"}, "array"}}, bson.M{"$ne": []interface{}{"$amendments", "[]"}}}},
+					"then": true,
+					"else": false}},
+			"filledAmount":        "$filledAmount",
+			"amount":              "$amount",
+			"direction":           "$side",
+			"price":               "$price",
+			"orderId":             "$_id",
+			"timeInForce":         "$timeInForce",
+			"orderType":           "$type",
+			"orderState":          "$status",
+			"userId":              "$userId",
+			"label":               "$label",
+			"usd":                 "$price",
+			"api":                 bson.M{"$toBool": "true"},
+			"creationTimestamp":   bson.M{"$toLong": "$createdAt"},
+			"lastUpdateTimestamp": bson.M{"$toLong": "$updatedAt"},
+			"cancelledReason":     canceledReasonQuery(),
+			"priceAvg": bson.M{
+				"$cond": bson.D{
+					{"if", bson.D{{"$gt", bson.A{"$tradePriceAvg.price", 0}}}},
+					{"then", "$tradePriceAvg.price"},
+					{"else", primitive.Null{}},
+				},
+			},
+		},
+	}
+
+	objectID, err := primitive.ObjectIDFromHex(orderId)
+	if err != nil {
+		return []_deribitModel.DeribitGetOrderStateResponse{}, err
+	}
+	pipelineInstruments := bson.A{}
+
+	query := bson.M{
+		"$match": bson.M{
+			"_id":    objectID,
+			"userId": userId,
+		},
+	}
+	pipelineInstruments = append(pipelineInstruments, query)
+
+	// if userId == "" {
+	// 	query := bson.M{
+	// 		"$match": bson.M{
+	// 			"_id": objectID,
+	// 		},
+	// 	}
+	// 	pipelineInstruments = append(pipelineInstruments, query)
+	// } else {
+	// 	query := bson.M{
+	// 		"$match": bson.M{
+	// 			"_id":    objectID,
+	// 			"userId": userId,
+	// 		},
+	// 	}
+	// 	pipelineInstruments = append(pipelineInstruments, query)
+	// }
+
+	sortStage := bson.M{
+		"$sort": bson.M{
+			"createdAt": -1,
+		},
+	}
+
+	pipelineInstruments = append(pipelineInstruments, projectStage)
+	// pipelineInstruments = append(pipelineInstruments, query)
+	pipelineInstruments = append(pipelineInstruments, sortStage)
+
+	cursor, err := r.collection.Aggregate(context.Background(), pipelineInstruments)
+	if err != nil {
+		fmt.Printf("__cursorError:%+v\n", err)
+		return []_deribitModel.DeribitGetOrderStateResponse{}, nil
+	}
+
+	orders := []_deribitModel.DeribitGetOrderStateResponse{}
+
+	if err = cursor.All(context.TODO(), &orders); err != nil {
+		fmt.Printf("%+v\n", err)
+		return []_deribitModel.DeribitGetOrderStateResponse{}, nil
+	}
+
+	return orders, nil
+}
