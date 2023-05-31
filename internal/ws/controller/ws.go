@@ -28,12 +28,13 @@ import (
 )
 
 type wsHandler struct {
-	authSvc    authService.IAuthService
-	deribitSvc deribitService.IDeribitService
-	wsOBSvc    wsService.IwsOrderbookService
-	wsOSvc     wsService.IwsOrderService
-	wsEngSvc   engService.IwsEngineService
-	wsTradeSvc wsService.IwsTradeService
+	authSvc       authService.IAuthService
+	deribitSvc    deribitService.IDeribitService
+	wsOBSvc       wsService.IwsOrderbookService
+	wsOSvc        wsService.IwsOrderService
+	wsEngSvc      engService.IwsEngineService
+	wsTradeSvc    wsService.IwsTradeService
+	wsRawPriceSvc wsService.IwsRawPriceService
 
 	userRepo *repositories.UserRepository
 }
@@ -46,16 +47,18 @@ func NewWebsocketHandler(
 	wsEngSvc engService.IwsEngineService,
 	wsOSvc wsService.IwsOrderService,
 	wsTradeSvc wsService.IwsTradeService,
+	wsRawPriceSvc wsService.IwsRawPriceService,
 	userRepo *repositories.UserRepository,
 ) {
 	handler := &wsHandler{
-		authSvc:    authSvc,
-		deribitSvc: deribitSvc,
-		wsOBSvc:    wsOBSvc,
-		wsEngSvc:   wsEngSvc,
-		wsOSvc:     wsOSvc,
-		wsTradeSvc: wsTradeSvc,
-		userRepo:   userRepo,
+		authSvc:       authSvc,
+		deribitSvc:    deribitSvc,
+		wsOBSvc:       wsOBSvc,
+		wsEngSvc:      wsEngSvc,
+		wsOSvc:        wsOSvc,
+		wsTradeSvc:    wsTradeSvc,
+		wsRawPriceSvc: wsRawPriceSvc,
+		userRepo:      userRepo,
 	}
 	r.Use(cors.AllowAll())
 
@@ -415,6 +418,8 @@ func (svc wsHandler) SubscribeHandler(input interface{}, c *ws.Client) {
 			svc.wsOBSvc.SubscribeQuote(c, s[1])
 		case "book":
 			svc.wsOBSvc.SubscribeBook(c, channel)
+		case "deribit_price_index":
+			svc.wsRawPriceSvc.Subscribe(c, s[1])
 		}
 	}
 }
