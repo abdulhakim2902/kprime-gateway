@@ -349,6 +349,32 @@ func (svc wsOrderService) GetGetOrderHistoryByInstrument(ctx context.Context, us
 	return historyOrderData
 }
 
+func (svc wsOrderService) GetOrderState(ctx context.Context, userId string, request deribitModel.DeribitGetOrderStateRequest) []deribitModel.DeribitGetOrderStateResponse {
+	orders, err := svc.repo.GetOrderState(
+		userId,
+		request.OrderId,
+	)
+	if err != nil {
+		return nil
+	}
+
+	jsonBytes, err := json.Marshal(orders)
+	if err != nil {
+		fmt.Println(err)
+
+		return nil
+	}
+
+	var orderState []deribitModel.DeribitGetOrderStateResponse
+	err = json.Unmarshal([]byte(jsonBytes), &orderState)
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+
+	return orderState
+}
+
 func (svc *wsOrderService) GetUserTradesByOrder(ctx context.Context, instrument string, data model.DeribitGetUserTradesByOrderRequest) []model.DeribitGetUserTradesByOrderResponse {
 
 	fmt.Println(instrument)

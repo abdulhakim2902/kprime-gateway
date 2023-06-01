@@ -47,6 +47,7 @@ import (
 	_utilitiesType "git.devucc.name/dependencies/utilities/types"
 	"github.com/quickfixgo/enum"
 	"github.com/quickfixgo/field"
+	"github.com/quickfixgo/fix43/ordermasscancelreport"
 	"github.com/quickfixgo/fix44/executionreport"
 	"github.com/quickfixgo/fix44/marketdataincrementalrefresh"
 	"github.com/quickfixgo/fix44/marketdatarequest"
@@ -55,6 +56,7 @@ import (
 	"github.com/quickfixgo/fix44/ordercancelreject"
 	"github.com/quickfixgo/fix44/ordercancelreplacerequest"
 	"github.com/quickfixgo/fix44/ordercancelrequest"
+	"github.com/quickfixgo/fix44/ordermasscancelrequest"
 	"github.com/quickfixgo/fix44/securitylist"
 	"github.com/quickfixgo/fix44/securitylistrequest"
 	"github.com/quickfixgo/tag"
@@ -160,6 +162,7 @@ func newApplication(deribit _deribitSvc.IDeribitService) *Application {
 	app.AddRoute(ordercancelrequest.Route(app.onOrderCancelRequest))
 	app.AddRoute(marketdatarequest.Route(app.onMarketDataRequest))
 	app.AddRoute(ordercancelreplacerequest.Route(app.onOrderUpdateRequest))
+	app.AddRoute(ordermasscancelrequest.Route(app.onOrderMassCancelRequest))
 	app.AddRoute(securitylistrequest.Route(app.onSecurityListRequest))
 	return app
 }
@@ -387,6 +390,92 @@ func (a *Application) onOrderUpdateRequest(msg ordercancelreplacerequest.OrderCa
 		Price:          priceFloat,
 		Amount:         amountFloat,
 	})
+
+	return nil
+}
+
+func (a *Application) onOrderMassCancelRequest(msg ordermasscancelrequest.OrderMassCancelRequest, sessionID quickfix.SessionID) quickfix.MessageRejectError {
+	logs.Log.Info().Str("ordermatch", "onOrderMassCancelRequest").Msg("")
+	symbol, err := msg.GetSymbol()
+	if err != nil {
+		logs.Log.Err(err).Msg("Error getting symbol")
+	}
+
+	userId := ""
+	for i, v := range userSession {
+		if v.String() == sessionID.String() {
+			userId = i
+		}
+	}
+
+	clOrdID, err := msg.GetClOrdID()
+	if err != nil {
+		logs.Log.Err(err).Msg("Error getting clOrdId")
+	}
+
+	var partyId quickfix.FIXString
+	err = msg.GetField(tag.PartyID, &partyId)
+	if err != nil {
+		logs.Log.Err(err).Msg("Error getting partyId")
+	}
+
+	user, e := a.UserRepository.FindById(context.TODO(), userId)
+	if e != nil {
+		return quickfix.NewMessageRejectError("Failed getting user", 1, nil)
+	}
+
+	orderIds := []string{}
+
+	if symbol != "" {
+		orders, _ := a.OrderRepository.GetOpenOrdersByInstrument(symbol, "LIMIT", userId)
+		for _, order := range orders {
+			orderIds = append(orderIds, order.OrderId.Hex())
+		}
+	}
+
+	for _, orderId := range orderIds {
+		response, reason, r := a.DeribitService.DeribitRequest(context.TODO(), user.ID.Hex(), _deribitModel.DeribitRequest{
+			ID:             orderId,
+			ClOrdID:        clOrdID,
+			ClientId:       partyId.String(),
+			Side:           _utilitiesType.CANCEL,
+			InstrumentName: symbol,
+			Type:           _utilitiesType.LIMIT,
+		})
+
+		requestType := enum.MassCancelRequestType_CANCEL_ORDERS_FOR_A_SECURITY
+		cancelResponse := enum.MassCancelResponse_CANCEL_ORDERS_FOR_AN_UNDERLYING_SECURITY
+
+		if r != nil {
+			cancelResponse = enum.MassCancelResponse_CANCEL_REQUEST_REJECTED
+			if reason != nil {
+				logs.Log.Err(r).Msg(fmt.Sprintf("Failed to send cancel request for %v, %v", orderId, reason.String()))
+			}
+			logs.Log.Err(r).Msg(fmt.Sprintf("Failed to send cancel request for %v", orderId))
+			continue
+		}
+
+		if symbol == "" {
+			requestType = enum.MassCancelRequestType_CANCEL_ALL_ORDERS
+			cancelResponse = enum.MassCancelResponse_CANCEL_ALL_ORDERS
+		}
+
+		msg := ordermasscancelreport.New(
+			field.NewOrderID(response.ID),
+			field.NewMassCancelRequestType(requestType),
+			field.NewMassCancelResponse(cancelResponse),
+		)
+
+		msg.SetOrderID(response.ID)
+		msg.SetClOrdID(response.ClOrdID)
+		if symbol != "" {
+			msg.SetSymbol(symbol)
+		}
+		err := quickfix.SendToTarget(msg, *userSession[response.UserId])
+		if err != nil {
+			fmt.Print(err.Error())
+		}
+	}
 
 	return nil
 }
@@ -933,7 +1022,8 @@ func OrderConfirmation(userId string, order _orderbookType.Order, symbol string)
 	if err != nil {
 		fmt.Print(err.Error())
 	}
-	newApplication(nil).broadcastInstrumentList(order.Underlying)
+	newApplication(nil).
+		broadcastInstrumentList(order.Underlying)
 }
 
 func (a Application) onSecurityListRequest(msg securitylistrequest.SecurityListRequest, sessionID quickfix.SessionID) quickfix.MessageRejectError {

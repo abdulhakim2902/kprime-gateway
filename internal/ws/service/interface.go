@@ -19,6 +19,7 @@ type IwsOrderbookService interface {
 	Unsubscribe(c *ws.Client)
 	UnsubscribeQuote(c *ws.Client)
 	GetOrderBook(ctx context.Context, request deribitModel.DeribitGetOrderBookRequest) deribitModel.DeribitGetOrderBookResponse
+	GetLastTradesByInstrument(ctx context.Context, request deribitModel.DeribitGetLastTradesByInstrumentRequest) deribitModel.DeribitGetLastTradesByInstrumentResponse
 	GetIndexPrice(ctx context.Context, request deribitModel.DeribitGetIndexPriceRequest) deribitModel.DeribitGetIndexPriceResponse
 	GetOrderLatestTimestamp(o _orderbookTypes.GetOrderBook, after int64, isFilled bool) _orderbookTypes.Orderbook
 	GetOrderLatestTimestampAgg(o _orderbookTypes.GetOrderBook, after int64) _orderbookTypes.Orderbook
@@ -35,6 +36,7 @@ type IwsOrderService interface {
 	GetOpenOrdersByInstrument(ctx context.Context, userId string, request deribitModel.DeribitGetOpenOrdersByInstrumentRequest) []deribitModel.DeribitGetOpenOrdersByInstrumentResponse
 	GetGetOrderHistoryByInstrument(ctx context.Context, userId string, request deribitModel.DeribitGetOrderHistoryByInstrumentRequest) []deribitModel.DeribitGetOrderHistoryByInstrumentResponse
 	GetUserTradesByOrder(ctx context.Context, userId string, request deribitModel.DeribitGetUserTradesByOrderRequest) []deribitModel.DeribitGetUserTradesByOrderResponse
+	GetOrderState(ctx context.Context, userId string, request deribitModel.DeribitGetOrderStateRequest) []deribitModel.DeribitGetOrderStateResponse
 }
 
 type IwsTradeService interface {
