@@ -47,6 +47,7 @@ func NewDeribitHandler(
 	handler.RegisterHandler("public/get_instruments", handler.getInstruments)
 	handler.RegisterHandler("public/test", handler.test)
 	handler.RegisterHandler("public/get_index_price", handler.getIndexPrice)
+	handler.RegisterHandler("public/get_last_trades_by_instrument", handler.getLastTradesByInstrument)
 
 	handler.RegisterHandler("private/buy", handler.buy)
 	handler.RegisterHandler("private/sell", handler.sell)
@@ -58,6 +59,7 @@ func NewDeribitHandler(
 	handler.RegisterHandler("private/get_open_orders_by_instrument", handler.getOpenOrdersByInstrument)
 	handler.RegisterHandler("private/get_order_history_by_instrument", handler.getOrderHistoryByInstrument)
 	handler.RegisterHandler("private/get_order_state_by_label", handler.getOrderStateByLabel)
+	handler.RegisterHandler("private/get_order_state", handler.getOrderState)
 
 	r.Use(cors.AllowAll())
 	r.Use(middleware.Authenticate())
@@ -552,6 +554,32 @@ func (h *DeribitHandler) getIndexPrice(r *gin.Context) {
 	protocol.SendSuccessMsg(connKey, result)
 }
 
+func (h *DeribitHandler) getLastTradesByInstrument(r *gin.Context) {
+	var msg deribitModel.RequestDto[deribitModel.GetLastTradesByInstrumentParams]
+	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
+		r.AbortWithError(http.StatusBadRequest, err)
+		return
+	}
+
+	_, connKey, reason, err := requestHelper(msg.Id, msg.Method, r)
+	if err != nil {
+		protocol.SendValidationMsg(connKey, *reason, err)
+		return
+	}
+
+	result := h.svc.DeribitGetLastTradesByInstrument(context.TODO(), deribitModel.DeribitGetLastTradesByInstrumentRequest{
+		InstrumentName: msg.Params.InstrumentName,
+		StartSeq:       msg.Params.StartSeq,
+		EndSeq:         msg.Params.EndSeq,
+		StartTimestamp: msg.Params.StartTimestamp,
+		EndTimestamp:   msg.Params.EndTimestamp,
+		Count:          msg.Params.Count,
+		Sorting:        msg.Params.Sorting,
+	})
+
+	protocol.SendSuccessMsg(connKey, result)
+}
+
 func (h *DeribitHandler) getOrderStateByLabel(r *gin.Context) {
 	var msg deribitModel.RequestDto[deribitModel.DeribitGetOrderStateByLabelRequest]
 	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
@@ -583,4 +611,29 @@ func (h *DeribitHandler) test(r *gin.Context) {
 		"usOut":   0,
 		"usDiff":  0,
 	})
+}
+
+func (h *DeribitHandler) getOrderState(r *gin.Context) {
+	var msg deribitModel.RequestDto[deribitModel.GetOrderStateParams]
+	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
+		r.AbortWithError(http.StatusBadRequest, err)
+		return
+	}
+
+	userId, connKey, reason, err := requestHelper(msg.Id, msg.Method, r)
+	if err != nil {
+		protocol.SendValidationMsg(connKey, *reason, err)
+		return
+	}
+
+	// Call service
+	res := h.svc.DeribitGetOrderState(
+		context.TODO(),
+		userId,
+		deribitModel.DeribitGetOrderStateRequest{
+			OrderId: msg.Params.OrderId,
+		},
+	)
+
+	protocol.SendSuccessMsg(connKey, res)
 }

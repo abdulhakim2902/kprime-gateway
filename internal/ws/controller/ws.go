@@ -75,6 +75,7 @@ func NewWebsocketHandler(
 	ws.RegisterChannel("private/get_open_orders_by_instrument", handler.PrivateGetOpenOrdersByInstrument)
 	ws.RegisterChannel("private/get_order_history_by_instrument", handler.PrivateGetOrderHistoryByInstrument)
 	ws.RegisterChannel("private/get_order_state_by_label", handler.PrivateGetOrderStateByLabel)
+	ws.RegisterChannel("private/get_order_state", handler.PrivateGetOrderState)
 
 	ws.RegisterChannel("public/subscribe", handler.SubscribeHandler)
 	ws.RegisterChannel("public/unsubscribe", handler.UnsubscribeHandler)
@@ -83,6 +84,8 @@ func NewWebsocketHandler(
 	ws.RegisterChannel("public/unsubscribe", handler.UnsubscribeHandlerPrivate)
 
 	ws.RegisterChannel("public/get_instruments", handler.GetInstruments)
+	ws.RegisterChannel("public/get_last_trades_by_instrument", handler.GetLastTradesByInstrument)
+
 	ws.RegisterChannel("public/get_order_book", handler.GetOrderBook)
 	ws.RegisterChannel("public/get_index_price", handler.GetIndexPrice)
 }
@@ -559,6 +562,32 @@ func (svc wsHandler) GetOrderBook(input interface{}, c *ws.Client) {
 	protocol.SendSuccessMsg(connKey, result)
 }
 
+func (svc wsHandler) GetLastTradesByInstrument(input interface{}, c *ws.Client) {
+	var msg deribitModel.RequestDto[deribitModel.GetLastTradesByInstrumentParams]
+	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
+		c.SendInvalidRequestMessage(err)
+		return
+	}
+
+	_, connKey, reason, err := requestHelper(msg.Id, msg.Method, nil, c)
+	if err != nil {
+		protocol.SendValidationMsg(connKey, *reason, err)
+		return
+	}
+
+	result := svc.wsOBSvc.GetLastTradesByInstrument(context.TODO(), deribitModel.DeribitGetLastTradesByInstrumentRequest{
+		InstrumentName: msg.Params.InstrumentName,
+		StartSeq:       msg.Params.StartSeq,
+		EndSeq:         msg.Params.EndSeq,
+		StartTimestamp: msg.Params.StartTimestamp,
+		EndTimestamp:   msg.Params.EndTimestamp,
+		Count:          msg.Params.Count,
+		Sorting:        msg.Params.Sorting,
+	})
+
+	protocol.SendSuccessMsg(connKey, result)
+}
+
 func (svc wsHandler) PrivateGetUserTradesByInstrument(input interface{}, c *ws.Client) {
 	var msg deribitModel.RequestDto[deribitModel.GetUserTradesByInstrumentParams]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
@@ -673,6 +702,30 @@ func (svc wsHandler) GetIndexPrice(input interface{}, c *ws.Client) {
 	})
 
 	protocol.SendSuccessMsg(connKey, result)
+}
+
+func (svc wsHandler) PrivateGetOrderState(input interface{}, c *ws.Client) {
+	var msg deribitModel.RequestDto[deribitModel.GetOrderStateParams]
+	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
+		c.SendInvalidRequestMessage(err)
+		return
+	}
+
+	claim, connKey, reason, err := requestHelper(msg.Id, msg.Method, &msg.Params.AccessToken, c)
+	if err != nil {
+		protocol.SendValidationMsg(connKey, *reason, err)
+		return
+	}
+
+	res := svc.wsOSvc.GetOrderState(
+		context.TODO(),
+		claim.UserID,
+		deribitModel.DeribitGetOrderStateRequest{
+			OrderId: msg.Params.OrderId,
+		},
+	)
+
+	protocol.SendSuccessMsg(connKey, res)
 }
 
 func (svc wsHandler) PrivateGetOrderStateByLabel(input interface{}, c *ws.Client) {

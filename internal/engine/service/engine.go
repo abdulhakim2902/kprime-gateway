@@ -41,8 +41,6 @@ func NewEngineHandler(
 
 }
 func (svc engineHandler) HandleConsume(msg *sarama.ConsumerMessage) {
-	go svc.HandleConsumeQuote(msg)
-
 	var data _engineType.EngineResponse
 	err := json.Unmarshal(msg.Value, &data)
 	if err != nil {
