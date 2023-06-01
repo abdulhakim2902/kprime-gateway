@@ -35,7 +35,6 @@ type IwsOrderService interface {
 	GetInstruments(ctx context.Context, request deribitModel.DeribitGetInstrumentsRequest) []deribitModel.DeribitGetInstrumentsResponse
 	GetOpenOrdersByInstrument(ctx context.Context, userId string, request deribitModel.DeribitGetOpenOrdersByInstrumentRequest) []deribitModel.DeribitGetOpenOrdersByInstrumentResponse
 	GetGetOrderHistoryByInstrument(ctx context.Context, userId string, request deribitModel.DeribitGetOrderHistoryByInstrumentRequest) []deribitModel.DeribitGetOrderHistoryByInstrumentResponse
-	GetUserTradesByOrder(ctx context.Context, userId string, request deribitModel.DeribitGetUserTradesByOrderRequest) []deribitModel.DeribitGetUserTradesByOrderResponse
 	GetOrderState(ctx context.Context, userId string, request deribitModel.DeribitGetOrderStateRequest) []deribitModel.DeribitGetOrderStateResponse
 }
 
@@ -52,6 +51,7 @@ type IwsTradeService interface {
 		userId string,
 		request deribitModel.DeribitGetUserTradesByInstrumentsRequest,
 	) *deribitModel.DeribitGetUserTradesByInstrumentsResponse
+	GetUserTradesByOrder(ctx context.Context, userId string, InstrumentName string, request deribitModel.DeribitGetUserTradesByOrderRequest) []deribitModel.DeribitGetUserTradesByOrderResponse
 }
 
 type IwsRawPriceService interface {

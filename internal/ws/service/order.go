@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"gateway/internal/deribit/model"
 	deribitModel "gateway/internal/deribit/model"
 	"strings"
 	"sync"
@@ -373,29 +372,4 @@ func (svc wsOrderService) GetOrderState(ctx context.Context, userId string, requ
 	}
 
 	return orderState
-}
-
-func (svc *wsOrderService) GetUserTradesByOrder(ctx context.Context, instrument string, data model.DeribitGetUserTradesByOrderRequest) []model.DeribitGetUserTradesByOrderResponse {
-
-	fmt.Println(instrument)
-	fmt.Println("data : ", data)
-
-	result := deribitModel.DeribitGetUserTradesByOrderResponse{
-		Amount:         100,
-		Direction:      "buy",
-		InstrumentName: "ETH-PERPETUAL",
-		OrderId:        "ETH-584830574",
-		OrderType:      "market",
-		Price:          203,
-		State:          "filled",
-		Timestamp:      1590480712800,
-		TradeId:        "ETH-2696068",
-		Api:            true,
-		IndexPrice:     203,
-		Label:          "",
-		TickDirection:  3,
-		TradeSeq:       1966042,
-	}
-
-	return []model.DeribitGetUserTradesByOrderResponse{result}
 }
