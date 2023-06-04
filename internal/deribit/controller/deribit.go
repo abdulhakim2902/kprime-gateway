@@ -58,6 +58,7 @@ func NewDeribitHandler(
 	handler.RegisterHandler("private/get_user_trades_by_instrument", handler.getUserTradeByInstrument)
 	handler.RegisterHandler("private/get_open_orders_by_instrument", handler.getOpenOrdersByInstrument)
 	handler.RegisterHandler("private/get_order_history_by_instrument", handler.getOrderHistoryByInstrument)
+	handler.RegisterHandler("private/get_order_state_by_label", handler.getOrderStateByLabel)
 	handler.RegisterHandler("private/get_order_state", handler.getOrderState)
 
 	r.Use(cors.AllowAll())
@@ -127,7 +128,7 @@ func requestHelper(msgID uint64, method string, c *gin.Context) (
 		return
 	}
 
-	userId = c.Param("userID")
+	userId = c.GetString("userID")
 
 	if len(userId) == 0 {
 		connKey = key
@@ -577,6 +578,26 @@ func (h *DeribitHandler) getLastTradesByInstrument(r *gin.Context) {
 	})
 
 	protocol.SendSuccessMsg(connKey, result)
+}
+
+func (h *DeribitHandler) getOrderStateByLabel(r *gin.Context) {
+	var msg deribitModel.RequestDto[deribitModel.DeribitGetOrderStateByLabelRequest]
+	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
+		r.AbortWithError(http.StatusBadRequest, err)
+		return
+	}
+
+	userId, connKey, reason, err := requestHelper(msg.Id, msg.Method, r)
+	if err != nil {
+		protocol.SendValidationMsg(connKey, *reason, err)
+		return
+	}
+
+	msg.Params.UserId = userId
+
+	res := h.svc.DeribitGetOrderStateByLabel(r.Request.Context(), msg.Params)
+
+	protocol.SendSuccessMsg(connKey, res)
 }
 
 func (h *DeribitHandler) test(r *gin.Context) {
