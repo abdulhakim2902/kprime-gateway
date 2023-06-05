@@ -825,3 +825,17 @@ func (svc wsOrderbookService) GetIndexPrice(ctx context.Context, data _deribitMo
 	}
 	return result
 }
+
+func (svc wsOrderbookService) GetDeliveryPrices(ctx context.Context, request _deribitModel.DeliveryPricesRequest) []_deribitModel.DeliveryPricesResponse {
+	//do something here
+
+	_deliveryPricesDummy := []_deribitModel.DeliveryPricesResponse{
+		{
+			Date:          "BTC-28JUN19-8000-C",
+			DeliveryPrice: 0.001,
+			RecordsTotal:  0,
+		},
+	}
+
+	return _deliveryPricesDummy
+}
