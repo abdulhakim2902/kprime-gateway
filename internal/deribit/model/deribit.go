@@ -123,7 +123,7 @@ type GetOrderStateParams struct {
 
 type GetUserTradesByOrderParams struct {
 	BaseParams
-	OrderId string `json:"order_id" validate:"required" form:"order_id "`
+	OrderId string `json:"order_id" validate:"required" form:"order_id"`
 	Sorting string `json:"sorting" form:"sorting"`
 }
 

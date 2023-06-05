@@ -557,6 +557,7 @@ func (h *DeribitHandler) getIndexPrice(r *gin.Context) {
 
 func (h *DeribitHandler) getLastTradesByInstrument(r *gin.Context) {
 	var msg deribitModel.RequestDto[deribitModel.GetLastTradesByInstrumentParams]
+
 	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
 		r.AbortWithError(http.StatusBadRequest, err)
 		return
@@ -641,7 +642,8 @@ func (h *DeribitHandler) getOrderState(r *gin.Context) {
 
 func (h *DeribitHandler) getUserTradesByOrder(r *gin.Context) {
 	var msg deribitModel.RequestDto[deribitModel.GetUserTradesByOrderParams]
-	if err := utils.UnmarshalAndValidateWS(r, &msg); err != nil {
+
+	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
 		r.AbortWithError(http.StatusBadRequest, err)
 		return
 	}
