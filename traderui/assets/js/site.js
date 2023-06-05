@@ -1089,12 +1089,15 @@ App.Views.CancelOrder = Backbone.View.extend({
       <input type='text' class='form-control' name='symbol' placeholder='Symbol, if empty all order will be cancelled'>
     </div>
     <div class='form-group'>
+      <label for='party_id'>PartyID</label>
+      <input type='text' class='form-control' name='party_id' placeholder='PartyID'>
+    </div>
+    <div class='form-group'>
     <label for='session'>Session</label>
     <select class='form-control' name='session'>
       <% _.each(session_ids, function(i){ %><option><%= i %></option><% }); %>
     </select>
   </div>
-  </p>
   <button type='submit' class='btn btn-default'>Cancel Order</button>
 </form>
 `),
@@ -1114,10 +1117,12 @@ App.Views.CancelOrder = Backbone.View.extend({
       symbol = "all"
     }
     console.log('canceling', symbol)
-    fetch(`/cancel-orders`, { method: 'POST', body: {
+    const data = {
       symbol: symbol,
-      session_id: this.$('select[name=session]').val(),
-    } })
+      party_id: this.$('input[name=party_id]').val(),
+      session: this.$('select[name=session]').val(),
+    }
+    fetch(`/cancel-orders`, { method: 'POST', body: JSON.stringify(data), headers: { 'Content-Type': 'application/json' }})
     .then(response => console.log(response.json()))
   },
 });
