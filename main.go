@@ -51,7 +51,8 @@ var (
 
 func init() {
 	_, b, _, _ := runtime.Caller(0)
-	rootDir = path.Join(b, "../../../")
+	rootDir = path.Join(b, "../")
+	fmt.Println(rootDir)
 
 	if err = godotenv.Load(path.Join(rootDir, ".env")); err != nil {
 		panic(err)

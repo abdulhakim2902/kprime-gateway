@@ -39,7 +39,7 @@ To run the migration, just follow the command below
 Migration up:
 
 ```bash
-go run cmd/main/main.go --migrate up
+go run main.go --migrate up
 ```
 
 or, for executable binary:
@@ -51,7 +51,7 @@ or, for executable binary:
 Migration down:
 
 ```bash
-go run cmd/main/main.go --migrate down
+go run main.go --migrate down
 ```
 
 or, for executable binary:
@@ -65,10 +65,10 @@ or, for executable binary:
 To start running the application, simply run:
 
 ```bash
-go run cmd/main/main.go
+go run main.go
 ```
 
-under cmd/main directory this will automatically install project dependecy.
+under root directory this will automatically install project dependecy.
 
 ### Using docker
 

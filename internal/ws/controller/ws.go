@@ -71,6 +71,7 @@ func NewWebsocketHandler(
 	ws.RegisterChannel("private/cancel", handler.PrivateCancel)
 	ws.RegisterChannel("private/cancel_all_by_instrument", handler.PrivateCancelByInstrument)
 	ws.RegisterChannel("private/cancel_all", handler.PrivateCancelAll)
+	ws.RegisterChannel("private/get_user_trades_by_order", handler.PrivateGetUserTradesByOrder)
 	ws.RegisterChannel("private/get_user_trades_by_instrument", handler.PrivateGetUserTradesByInstrument)
 	ws.RegisterChannel("private/get_open_orders_by_instrument", handler.PrivateGetOpenOrdersByInstrument)
 	ws.RegisterChannel("private/get_order_history_by_instrument", handler.PrivateGetOrderHistoryByInstrument)
@@ -691,6 +692,32 @@ func (svc wsHandler) PrivateGetOrderHistoryByInstrument(input interface{}, c *ws
 			Offset:          msg.Params.Offset,
 			IncludeOld:      msg.Params.IncludeOld,
 			IncludeUnfilled: msg.Params.IncludeUnfilled,
+		},
+	)
+
+	protocol.SendSuccessMsg(connKey, res)
+}
+
+func (svc wsHandler) PrivateGetUserTradesByOrder(input interface{}, c *ws.Client) {
+	var msg deribitModel.RequestDto[deribitModel.GetUserTradesByOrderParams]
+	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
+		c.SendInvalidRequestMessage(err)
+		return
+	}
+
+	claim, connKey, reason, err := requestHelper(msg.Id, msg.Method, &msg.Params.AccessToken, c)
+	if err != nil {
+		protocol.SendValidationMsg(connKey, *reason, err)
+		return
+	}
+
+	res := svc.wsTradeSvc.GetUserTradesByOrder(
+		context.TODO(),
+		claim.UserID,
+		msg.Params.InstrumentName,
+		deribitModel.DeribitGetUserTradesByOrderRequest{
+			OrderId: msg.Params.OrderId,
+			Sorting: msg.Params.Sorting,
 		},
 	)
 

@@ -51,6 +51,7 @@ type IwsTradeService interface {
 		userId string,
 		request deribitModel.DeribitGetUserTradesByInstrumentsRequest,
 	) *deribitModel.DeribitGetUserTradesByInstrumentsResponse
+	GetUserTradesByOrder(ctx context.Context, userId string, InstrumentName string, request deribitModel.DeribitGetUserTradesByOrderRequest) deribitModel.DeribitGetUserTradesByOrderResponse
 }
 
 type IwsRawPriceService interface {
