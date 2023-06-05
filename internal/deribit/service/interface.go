@@ -25,4 +25,5 @@ type IDeribitService interface {
 
 	DeribitGetOrderStateByLabel(ctx context.Context, data model.DeribitGetOrderStateByLabelRequest) []*model.DeribitGetOrderStateByLabelResponse
 	DeribitGetOrderState(ctx context.Context, userId string, request model.DeribitGetOrderStateRequest) []model.DeribitGetOrderStateResponse
+	DeribitGetUserTradesByOrder(ctx context.Context, userId string, InstrumentName string, request model.DeribitGetUserTradesByOrderRequest) []model.DeribitGetUserTradesByOrderResponse
 }
