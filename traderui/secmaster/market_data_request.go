@@ -23,5 +23,6 @@ type MarketDataRequest struct {
 type MassCancelRequest struct {
 	Symbol    string             `json:"symbol"`
 	Session   string             `json:"session"`
+	PartyID   string             `json:"party_id"`
 	SessionID quickfix.SessionID `json:"-"`
 }

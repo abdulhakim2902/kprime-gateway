@@ -436,9 +436,12 @@ func (c tradeClient) onMassOrderCancelRequest(w http.ResponseWriter, r *http.Req
 		field.NewMassCancelRequestType(cancelType),
 		field.NewTransactTime(time.Now()),
 	)
+	msg.Set(field.NewPartyID(massCancel.PartyID))
 
 	if massCancel.Symbol != "all" {
 		msg.SetSymbol(massCancel.Symbol)
+	} else {
+		msg.SetSymbol("all")
 	}
 	sessionID := c.SessionIDs[massCancel.Session]
 
