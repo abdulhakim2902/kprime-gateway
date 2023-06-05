@@ -74,19 +74,23 @@ func readHandler(c *Client) {
 		}
 
 		msg := WebsocketMessage{}
-		if err := json.Unmarshal(payload, &msg); err != nil {
-			logs.Log.Error().Err(err).Msg("")
+		if string(payload) == "PING" {
+			c.SendMessage("PONG", SendMessageParams{})
+		} else {
+			if err := json.Unmarshal(payload, &msg); err != nil {
+				logs.Log.Error().Err(err).Msg("")
 
-			c.SendMessage(err.Error(), SendMessageParams{})
-			return
+				c.SendMessage(err.Error(), SendMessageParams{})
+				return
+			}
+
+			if socketChannels[msg.Method] == nil {
+				c.SendMessage("INVALID_CHANNEL", SendMessageParams{})
+				return
+			}
+
+			go socketChannels[msg.Method](msg, c)
 		}
-
-		if socketChannels[msg.Method] == nil {
-			c.SendMessage("INVALID_CHANNEL", SendMessageParams{})
-			return
-		}
-
-		go socketChannels[msg.Method](msg, c)
 	}
 }
 
