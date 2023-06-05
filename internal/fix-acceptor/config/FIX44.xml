@@ -1041,6 +1041,7 @@
    <field name='MassCancelRequestType' required='Y' />
    <field name='TradingSessionID' required='N' />
    <field name='TradingSessionSubID' required='N' />
+   <field name='PartyID' required='N' />
    <component name='Instrument' required='N' />
    <component name='UnderlyingInstrument' required='N' />
    <field name='Side' required='N' />

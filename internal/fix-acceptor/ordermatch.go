@@ -424,22 +424,36 @@ func (a *Application) onOrderMassCancelRequest(msg ordermasscancelrequest.OrderM
 		return quickfix.NewMessageRejectError("Failed getting user", 1, nil)
 	}
 
-	orderIds := []string{}
-
-	if symbol != "" {
+	type MassCancel struct {
+		symbol  string
+		orderId string
+	}
+	orderIds := []MassCancel{}
+	if symbol != "all" {
 		orders, _ := a.OrderRepository.GetOpenOrdersByInstrument(symbol, "LIMIT", userId)
 		for _, order := range orders {
-			orderIds = append(orderIds, order.OrderId.Hex())
+			orderIds = append(orderIds, MassCancel{
+				symbol:  order.InstrumentName,
+				orderId: order.OrderId.Hex(),
+			})
+		}
+	} else {
+		orders, _ := a.OrderRepository.Find(bson.M{"userId": userId, "status": "OPEN", "type": "LIMIT"}, nil, 0, -1)
+		for _, order := range orders {
+			orderIds = append(orderIds, MassCancel{
+				symbol:  order.Underlying + "-" + order.ExpiryDate + "-" + strconv.FormatFloat(order.StrikePrice, 'f', 0, 64) + "-" + string(order.Contracts)[0:1],
+				orderId: order.ID.Hex(),
+			})
 		}
 	}
 
 	for _, orderId := range orderIds {
 		response, reason, r := a.DeribitService.DeribitRequest(context.TODO(), user.ID.Hex(), _deribitModel.DeribitRequest{
-			ID:             orderId,
+			ID:             orderId.orderId,
 			ClOrdID:        clOrdID,
 			ClientId:       partyId.String(),
 			Side:           _utilitiesType.CANCEL,
-			InstrumentName: symbol,
+			InstrumentName: orderId.symbol,
 			Type:           _utilitiesType.LIMIT,
 		})
 
