@@ -968,3 +968,82 @@ func (r TradeRepository) GetGreeks(types string, impliedVolatily float64, option
 
 	return delta
 }
+
+func (r TradeRepository) FilterUserTradesByOrder(userId string, InstrumentName string, data _deribitModel.DeribitGetUserTradesByOrderRequest) []*_engineType.Trade {
+	fmt.Println("userId : ", userId)
+	fmt.Println("data.OrderId : ", data.OrderId)
+
+	str := InstrumentName
+	components := strings.Split(str, "-")
+
+	underlying := components[0]
+	expiryDate := components[1]
+	strikePrice := components[2]
+	contracts := components[3]
+
+	switch contracts {
+	case "C":
+		contracts = "CALL"
+	case "P":
+		contracts = "PUT"
+	}
+
+	strikePriceFloat, _ := strconv.ParseFloat(strikePrice, 64)
+
+	// Querry for Order Id
+	idStr := data.OrderId
+	orderId, err := primitive.ObjectIDFromHex(idStr)
+	if err != nil {
+		return nil
+	}
+
+	filter := bson.M{
+		"underlying":  underlying,
+		"expiryDate":  expiryDate,
+		"strikePrice": strikePriceFloat,
+		"contracts":   contracts,
+	}
+
+	// Querry for Sort
+	findOptions := options.Find()
+	sortOrder := -1
+
+	switch data.Sorting {
+	case "asc":
+		sortOrder = 1
+	case "desc":
+		sortOrder = -1
+	}
+
+	if data.Sorting == "" {
+		sortOrder = -1
+	}
+
+	findOptions.SetSort(bson.M{"createdAt": sortOrder})
+
+	cursor, err := r.collection.Find(context.Background(), filter, findOptions)
+	if err != nil {
+		return nil
+	}
+
+	defer cursor.Close(context.Background())
+
+	Trades := []*_engineType.Trade{}
+	for cursor.Next(context.Background()) {
+		trade := &_engineType.Trade{}
+		err := cursor.Decode(trade)
+		if err != nil {
+			return nil
+		}
+
+		if (trade.Taker.UserID == userId || trade.Maker.UserID == userId) && (trade.Taker.OrderID == orderId || trade.Maker.OrderID == orderId) {
+			Trades = append(Trades, trade)
+		}
+	}
+
+	if err := cursor.Err(); err != nil {
+		return nil
+	}
+
+	return Trades
+}
