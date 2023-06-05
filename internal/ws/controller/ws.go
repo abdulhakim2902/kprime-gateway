@@ -697,6 +697,8 @@ func (svc wsHandler) PrivateGetUserTradesByOrder(input interface{}, c *ws.Client
 		return
 	}
 
+	fmt.Println("msg.Params ws : ", msg)
+
 	res := svc.wsTradeSvc.GetUserTradesByOrder(
 		context.TODO(),
 		claim.UserID,

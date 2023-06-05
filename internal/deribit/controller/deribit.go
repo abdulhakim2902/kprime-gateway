@@ -59,6 +59,7 @@ func NewDeribitHandler(
 	handler.RegisterHandler("private/get_open_orders_by_instrument", handler.getOpenOrdersByInstrument)
 	handler.RegisterHandler("private/get_order_history_by_instrument", handler.getOrderHistoryByInstrument)
 	handler.RegisterHandler("private/get_order_state", handler.getOrderState)
+	handler.RegisterHandler("private/get_user_trades_by_order", handler.getUserTradesByOrder)
 
 	r.Use(cors.AllowAll())
 	r.Use(middleware.Authenticate())
@@ -611,6 +612,32 @@ func (h *DeribitHandler) getOrderState(r *gin.Context) {
 		userId,
 		deribitModel.DeribitGetOrderStateRequest{
 			OrderId: msg.Params.OrderId,
+		},
+	)
+
+	protocol.SendSuccessMsg(connKey, res)
+}
+
+func (h *DeribitHandler) getUserTradesByOrder(r *gin.Context) {
+	var msg deribitModel.RequestDto[deribitModel.GetUserTradesByOrderParams]
+	if err := utils.UnmarshalAndValidateWS(r, &msg); err != nil {
+		r.AbortWithError(http.StatusBadRequest, err)
+		return
+	}
+
+	userId, connKey, reason, err := requestHelper(msg.Id, msg.Method, r)
+	if err != nil {
+		protocol.SendValidationMsg(connKey, *reason, err)
+		return
+	}
+
+	res := h.svc.DeribitGetUserTradesByOrder(
+		context.TODO(),
+		userId,
+		msg.Params.InstrumentName,
+		deribitModel.DeribitGetUserTradesByOrderRequest{
+			OrderId: msg.Params.OrderId,
+			Sorting: msg.Params.Sorting,
 		},
 	)
 
