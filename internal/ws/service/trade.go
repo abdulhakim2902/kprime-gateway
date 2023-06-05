@@ -440,7 +440,7 @@ func (svc wsTradeService) GetUserTradesByInstrument(
 	return out
 }
 
-func (svc *wsTradeService) GetUserTradesByOrder(ctx context.Context, userId string, InstrumentName string, data model.DeribitGetUserTradesByOrderRequest) []model.DeribitGetUserTradesByOrderResponse {
+func (svc *wsTradeService) GetUserTradesByOrder(ctx context.Context, userId string, InstrumentName string, data model.DeribitGetUserTradesByOrderRequest) model.DeribitGetUserTradesByOrderResponse {
 	_getFilterUserTradesByOrder := svc.repo.FilterUserTradesByOrder(userId, InstrumentName, data)
 
 	bsonResponse := _getFilterUserTradesByOrder
@@ -494,5 +494,5 @@ func (svc *wsTradeService) GetUserTradesByOrder(ctx context.Context, userId stri
 		Trades: _getUserTradesByOrder,
 	}
 
-	return []model.DeribitGetUserTradesByOrderResponse{results}
+	return results
 }
