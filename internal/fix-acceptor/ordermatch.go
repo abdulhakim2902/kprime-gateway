@@ -438,8 +438,6 @@ func (a *Application) onOrderMassCancelRequest(msg ordermasscancelrequest.OrderM
 			})
 		}
 	} else {
-		//cancel all order
-		fmt.Println("cancel all order")
 		orders, _ := a.OrderRepository.Find(bson.M{"userId": userId, "status": "OPEN", "type": "LIMIT"}, nil, 0, -1)
 		for _, order := range orders {
 			orderIds = append(orderIds, MassCancel{
@@ -450,7 +448,6 @@ func (a *Application) onOrderMassCancelRequest(msg ordermasscancelrequest.OrderM
 	}
 
 	for _, orderId := range orderIds {
-		fmt.Println("cancelling ", orderId.symbol)
 		response, reason, r := a.DeribitService.DeribitRequest(context.TODO(), user.ID.Hex(), _deribitModel.DeribitRequest{
 			ID:             orderId.orderId,
 			ClOrdID:        clOrdID,
