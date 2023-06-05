@@ -404,30 +404,36 @@ func (svc wsHandler) SubscribeHandler(input interface{}, c *ws.Client) {
 		return
 	}
 
-	protocol.SendSuccessMsg(connKey, msg.Params.Channels)
-
 	for _, channel := range msg.Params.Channels {
-		fmt.Println(channel)
 		s := strings.Split(channel, ".")
+
 		switch s[0] {
-		case "orderbook":
-			svc.wsOBSvc.Subscribe(c, s[1])
 		case "engine":
 			svc.wsEngSvc.Subscribe(c, s[1])
-		case "order":
-			svc.wsOSvc.Subscribe(c, s[1])
-		case "trade":
-			svc.wsTradeSvc.Subscribe(c, s[1])
 		case "trades":
 			svc.wsTradeSvc.SubscribeTrades(c, channel)
 		case "quote":
 			svc.wsOBSvc.SubscribeQuote(c, s[1])
 		case "book":
-			svc.wsOBSvc.SubscribeBook(c, channel)
+			if len(s) < 3 {
+				reason := validation_reason.INVALID_PARAMS
+				err := fmt.Errorf("unrecognize channel for '%s'", channel)
+				protocol.SendValidationMsg(connKey, reason, err)
+				return
+			}
+
+			svc.wsOBSvc.SubscribeBook(c, channel, s[1], s[2])
 		case "deribit_price_index":
 			svc.wsRawPriceSvc.Subscribe(c, s[1])
+		default:
+			reason := validation_reason.INVALID_PARAMS
+			err := fmt.Errorf("unrecognize channel for '%s'", channel)
+			protocol.SendValidationMsg(connKey, reason, err)
+			return
 		}
 	}
+
+	protocol.SendSuccessMsg(connKey, msg.Params.Channels)
 }
 
 func (svc wsHandler) UnsubscribeHandler(input interface{}, c *ws.Client) {
@@ -443,23 +449,23 @@ func (svc wsHandler) UnsubscribeHandler(input interface{}, c *ws.Client) {
 		return
 	}
 
-	protocol.SendSuccessMsg(connKey, msg.Params.Channels)
-
 	for _, channel := range msg.Params.Channels {
 		s := strings.Split(channel, ".")
+
 		switch s[0] {
-		case "orderbook":
-			svc.wsOBSvc.Unsubscribe(c)
 		case "engine":
 			svc.wsEngSvc.Unsubscribe(c)
-		case "order":
-			svc.wsOSvc.Unsubscribe(c)
-		case "trade":
-			svc.wsTradeSvc.Unsubscribe(c)
 		case "quote":
 			svc.wsOBSvc.UnsubscribeQuote(c)
+		default:
+			reason := validation_reason.INVALID_PARAMS
+			err := fmt.Errorf("unrecognize channel for '%s'", channel)
+			protocol.SendValidationMsg(connKey, reason, err)
+			return
 		}
 	}
+
+	protocol.SendSuccessMsg(connKey, msg.Params.Channels)
 }
 
 func (svc wsHandler) SubscribeHandlerPrivate(input interface{}, c *ws.Client) {
@@ -475,10 +481,15 @@ func (svc wsHandler) SubscribeHandlerPrivate(input interface{}, c *ws.Client) {
 		return
 	}
 
-	protocol.SendSuccessMsg(connKey, msg.Params.Channels)
-
 	for _, channel := range msg.Params.Channels {
 		s := strings.Split(channel, ".")
+		if len(s) < 3 {
+			reason := validation_reason.INVALID_PARAMS
+			err := fmt.Errorf("unrecognize channel for '%s'", channel)
+			protocol.SendValidationMsg(connKey, reason, err)
+			return
+		}
+
 		switch s[1] {
 		case "orders":
 			svc.wsOSvc.SubscribeUserOrder(c, channel, claim.UserID)
@@ -488,6 +499,8 @@ func (svc wsHandler) SubscribeHandlerPrivate(input interface{}, c *ws.Client) {
 			svc.wsOBSvc.SubscribeUserChange(c, channel, claim.UserID)
 		}
 	}
+
+	protocol.SendSuccessMsg(connKey, msg.Params.Channels)
 
 }
 

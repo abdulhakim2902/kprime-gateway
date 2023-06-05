@@ -20,6 +20,7 @@ import (
 	"gateway/pkg/utils"
 	"gateway/pkg/ws"
 
+	"git.devucc.name/dependencies/utilities/commons/logs"
 	"github.com/Shopify/sarama"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -142,9 +143,7 @@ func (svc wsOrderbookService) SubscribeQuote(c *ws.Client, instrument string) {
 	socket.SendInitMessage(c, method, params)
 }
 
-func (svc wsOrderbookService) SubscribeBook(c *ws.Client, channel string) {
-	s := strings.Split(channel, ".")
-	instrument := s[1]
+func (svc wsOrderbookService) SubscribeBook(c *ws.Client, channel, instrument, interval string) {
 	socket := ws.GetBookSocket()
 	_string := instrument
 	substring := strings.Split(_string, "-")
@@ -165,7 +164,7 @@ func (svc wsOrderbookService) SubscribeBook(c *ws.Client, channel string) {
 	}
 
 	// Subscribe
-	id := fmt.Sprintf("%s-%s", instrument, s[2])
+	id := fmt.Sprintf("%s-%s", instrument, interval)
 	err = socket.Subscribe(id, c)
 	if err != nil {
 		msg := map[string]string{"Message": err.Error()}
@@ -193,7 +192,7 @@ func (svc wsOrderbookService) SubscribeBook(c *ws.Client, channel string) {
 
 	// Get initial data from db
 	var orderBook _orderbookTypes.Orderbook
-	switch s[2] {
+	switch interval {
 	case "raw":
 		orderBook = svc.GetOrderLatestTimestamp(_order, changeId.Timestamp, false)
 	case "100ms":
@@ -236,7 +235,7 @@ func (svc wsOrderbookService) SubscribeBook(c *ws.Client, channel string) {
 	if res == "" {
 		// Set initial data if null
 		var changeIdData _orderbookTypes.Change
-		if s[2] == "agg2" {
+		if interval == "agg2" {
 			changeIdData = _orderbookTypes.Change{
 				Id:            1,
 				Timestamp:     ts,
@@ -244,7 +243,7 @@ func (svc wsOrderbookService) SubscribeBook(c *ws.Client, channel string) {
 				AsksAgg:       changeAsksRaw,
 				BidsAgg:       changeBidsRaw,
 			}
-		} else if s[2] == "100ms" {
+		} else if interval == "100ms" {
 			changeIdData = _orderbookTypes.Change{
 				Id:            1,
 				Timestamp:     ts,
@@ -275,7 +274,7 @@ func (svc wsOrderbookService) SubscribeBook(c *ws.Client, channel string) {
 			TimestampPrev: ts,
 		}
 	} else {
-		if s[2] == "agg2" {
+		if interval == "agg2" {
 			if len(changeId.AsksAgg) == 0 && len(changeId.BidsAgg) == 0 {
 				changeIdData := _orderbookTypes.Change{
 					Id:            changeId.Id,
@@ -298,7 +297,7 @@ func (svc wsOrderbookService) SubscribeBook(c *ws.Client, channel string) {
 
 				svc.redis.Set("CHANGEID-"+_string, string(jsonBytes))
 			}
-		} else if s[2] == "100ms" {
+		} else if interval == "100ms" {
 			if len(changeId.Asks100) == 0 && len(changeId.Bids100) == 0 {
 				changeIdData := _orderbookTypes.Change{
 					Id:            changeId.Id,
@@ -324,7 +323,7 @@ func (svc wsOrderbookService) SubscribeBook(c *ws.Client, channel string) {
 		}
 	}
 
-	if s[2] == "100ms" {
+	if interval == "100ms" {
 		svc.redis.Set("SNAPSHOTID-"+_string, strconv.Itoa(changeId.Id))
 	}
 
@@ -430,11 +429,14 @@ func (svc wsOrderbookService) SubscribeUserChange(c *ws.Client, channel string, 
 	// Subscribe
 
 	var id string
-	if key[3] == "100ms" {
+	if len(key) > 3 && key[3] == "100ms" {
 		id = fmt.Sprintf("%s.%s.%s-%s-100ms", key[0], key[1], key[2], userId)
 	} else {
 		id = fmt.Sprintf("%s.%s.%s-%s", key[0], key[1], key[2], userId)
 	}
+
+	logs.Log.Info().Str("subscribe", id).Msg("")
+
 	err := socket.Subscribe(id, c)
 	if err != nil {
 		msg := map[string]string{"Message": err.Error()}

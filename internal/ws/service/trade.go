@@ -16,6 +16,7 @@ import (
 	_deribitModel "gateway/internal/deribit/model"
 	_engineType "gateway/internal/engine/types"
 
+	"git.devucc.name/dependencies/utilities/commons/logs"
 	"git.devucc.name/dependencies/utilities/types"
 	"github.com/Shopify/sarama"
 )
@@ -357,11 +358,14 @@ func (svc wsTradeService) SubscribeUserTrades(c *ws.Client, channel string, user
 	// Subscribe
 
 	var id string
-	if key[3] == "100ms" {
+	if len(key) > 3 && key[3] == "100ms" {
 		id = fmt.Sprintf("%s.%s.%s-%s-100ms", key[0], key[1], key[2], userId)
 	} else {
 		id = fmt.Sprintf("%s.%s.%s-%s", key[0], key[1], key[2], userId)
 	}
+
+	logs.Log.Info().Str("subscribe", id).Msg("")
+
 	err := socket.Subscribe(id, c)
 	if err != nil {
 		msg := map[string]string{"Message": err.Error()}
