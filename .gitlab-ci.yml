@@ -26,7 +26,7 @@ install_packages_dev:
 build_dev:
   stage: build
   script:
-    - cd $path_deploy && go build cmd/main/main.go
+    - cd $path_deploy && go build main.go
   only:
     - development
   tags:
