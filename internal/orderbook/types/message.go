@@ -44,14 +44,12 @@ type Count struct {
 
 type Order struct {
 	order.Order          `bson:",inline"`
-	InstrumentName       string `json:"instrumentName" bson:"instrumentName"`
-	Symbol               string `json:"symbol" bson:"symbol"`
-	SenderCompID         string `json:"sender_comp_id" bson:"sender_comp_id"`
-	UserID               string `json:"userId" bson:"userId"`
-	ClOrdID              string `json:"clOrdId"`
-	InsertTime           time.Time
-	LastExecutedQuantity decimal.Decimal
-	LastExecutedPrice    decimal.Decimal
+	InstrumentName       string          `json:"instrumentName,omitempty" bson:"instrumentName"`
+	Symbol               string          `json:"symbol,omitempty" bson:"symbol"`
+	SenderCompID         string          `json:"sender_comp_id,omitempty" bson:"sender_comp_id"`
+	InsertTime           time.Time       `json:"-"`
+	LastExecutedQuantity decimal.Decimal `json:"-"`
+	LastExecutedPrice    decimal.Decimal `json:"-"`
 }
 
 type GetOrderBook struct {

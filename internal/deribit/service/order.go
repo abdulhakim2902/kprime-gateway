@@ -69,6 +69,7 @@ func (svc deribitService) DeribitGetOrderHistoryByInstrument(ctx context.Context
 
 	return historyOrderData
 }
+
 func (svc deribitService) DeribitGetInstruments(ctx context.Context, data model.DeribitGetInstrumentsRequest) []*model.DeribitGetInstrumentsResponse {
 	key := "INSTRUMENTS-" + data.Currency + "" + strconv.FormatBool(data.Expired)
 
@@ -103,6 +104,7 @@ func (svc deribitService) DeribitGetInstruments(ctx context.Context, data model.
 
 	return instrumentData
 }
+
 func (svc deribitService) DeribitGetOrderState(ctx context.Context, userId string, request model.DeribitGetOrderStateRequest) []model.DeribitGetOrderStateResponse {
 	orders, err := svc.orderRepo.GetOrderState(
 		userId,
@@ -124,4 +126,19 @@ func (svc deribitService) DeribitGetOrderState(ctx context.Context, userId strin
 	}
 
 	return orderState
+}
+
+func (svc deribitService) DeribitGetOrderStateByLabel(ctx context.Context, data model.DeribitGetOrderStateByLabelRequest) []*model.DeribitGetOrderStateByLabelResponse {
+	orders, err := svc.orderRepo.GetOrderStateByLabel(ctx, data)
+	if err != nil {
+		logs.Log.Error().Err(err).Msg("")
+
+		return nil
+	}
+
+	if orders == nil {
+		return make([]*model.DeribitGetOrderStateByLabelResponse, 0)
+	}
+
+	return orders
 }

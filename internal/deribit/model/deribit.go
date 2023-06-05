@@ -400,6 +400,7 @@ type DeribitGetOrderHistoryByInstrumentResponse struct {
 	AveragePrice        *float64 `json:"average_price" bson:"priceAvg"`
 	CancelledReason     string   `json:"cancel_reason" bson:"cancelledReason"`
 }
+
 type DeribitGetOrderStateRequest struct {
 	OrderId string `json:"order_id"`
 }
@@ -422,5 +423,33 @@ type DeribitGetOrderStateResponse struct {
 	LastUpdateTimestamp int64    `json:"last_update_timestamp" bson:"lastUpdateTimestamp"`
 	Api                 bool     `json:"api" bson:"api"`
 	AveragePrice        *float64 `json:"average_price" bson:"priceAvg"`
+	CancelledReason     string   `json:"cancel_reason" bson:"cancelledReason"`
+}
+
+type DeribitGetOrderStateByLabelRequest struct {
+	AccessToken string `json:"access_token" form:"access_token"`
+	Currency    string `json:"currency" form:"currency" validate:"required"`
+	Label       string `json:"label" form:"label"`
+	UserId      string
+}
+
+type DeribitGetOrderStateByLabelResponse struct {
+	FilledAmount   float64            `json:"filled_amount" bson:"filledAmount"`
+	Amount         float64            `json:"amount" bson:"amount"`
+	Direction      types.Side         `json:"direction" bson:"direction"`
+	InstrumentName string             `json:"instrument_name" bson:"InstrumentName"`
+	Price          float64            `json:"price" bson:"price"`
+	OrderId        primitive.ObjectID `json:"order_id" bson:"orderId"`
+	Replaced       bool               `json:"replaced" bson:"replaced"`
+	OrderType      string             `json:"order_type" bson:"orderType"`
+	TimeInForce    string             `json:"time_in_force" bson:"timeInForce"`
+	OrderState     types.OrderStatus  `json:"order_state" bson:"orderState"`
+
+	Label               string   `json:"label,omitempty" bson:"label"`
+	Usd                 float64  `json:"usd" bson:"usd"`
+	CreationTimestamp   int64    `json:"creation_timestamp" bson:"creationTimestamp"`
+	LastUpdateTimestamp int64    `json:"last_update_timestamp" bson:"lastUpdateTimestamp"`
+	Api                 bool     `json:"api" bson:"api"`
+	AveragePrice        *float64 `json:"average_price,omitempty" bson:"priceAvg"`
 	CancelledReason     string   `json:"cancel_reason" bson:"cancelledReason"`
 }
