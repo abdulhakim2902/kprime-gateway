@@ -483,6 +483,7 @@ func (svc wsHandler) UnsubscribeAllHandler(input interface{}, c *ws.Client) {
 	svc.wsTradeSvc.Unsubscribe(c)
 	svc.wsOBSvc.UnsubscribeQuote(c)
 	svc.wsOBSvc.UnsubscribeBook(c)
+	svc.wsRawPriceSvc.Unsubscribe(c)
 
 	protocol.SendSuccessMsg(connKey, "ok")
 }
