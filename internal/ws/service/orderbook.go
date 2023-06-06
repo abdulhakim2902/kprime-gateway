@@ -826,16 +826,22 @@ func (svc wsOrderbookService) GetIndexPrice(ctx context.Context, data _deribitMo
 	return result
 }
 
-func (svc wsOrderbookService) GetDeliveryPrices(ctx context.Context, request _deribitModel.DeliveryPricesRequest) []_deribitModel.DeliveryPricesResponse {
-	//do something here
-
-	_deliveryPricesDummy := []_deribitModel.DeliveryPricesResponse{
-		{
-			Date:          "BTC-28JUN19-8000-C",
-			DeliveryPrice: 0.001,
-			RecordsTotal:  0,
-		},
+func (svc wsOrderbookService) GetDeliveryPrices(ctx context.Context, request _deribitModel.DeliveryPricesRequest) _deribitModel.DeliveryPricesResponse {
+	deliveryPrice, err := svc.settlementPriceRepository.GetDeliveryPrice(request)
+	if err != nil {
+		fmt.Println(err)
 	}
 
-	return _deliveryPricesDummy
+	jsonBytes, err := json.Marshal(deliveryPrice)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	var orderState _deribitModel.DeliveryPricesResponse
+	err = json.Unmarshal([]byte(jsonBytes), &orderState)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	return orderState
 }

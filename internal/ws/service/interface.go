@@ -24,7 +24,7 @@ type IwsOrderbookService interface {
 	GetOrderLatestTimestamp(o _orderbookTypes.GetOrderBook, after int64, isFilled bool) _orderbookTypes.Orderbook
 	GetOrderLatestTimestampAgg(o _orderbookTypes.GetOrderBook, after int64) _orderbookTypes.Orderbook
 	GetDataQuote(order _orderbookTypes.GetOrderBook) (_orderbookTypes.QuoteMessage, _orderbookTypes.Orderbook)
-	GetDeliveryPrices(ctx context.Context, request deribitModel.DeliveryPricesRequest) []deribitModel.DeliveryPricesResponse
+	GetDeliveryPrices(ctx context.Context, request deribitModel.DeliveryPricesRequest) deribitModel.DeliveryPricesResponse
 }
 
 type IwsOrderService interface {

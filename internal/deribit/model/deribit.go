@@ -466,8 +466,12 @@ type DeliveryPricesRequest struct {
 	Count     int    `json:"count"`
 }
 
+type DeliveryPricesData struct {
+	Date          string  `bson:"date" json:"date"`
+	DeliveryPrice float64 `bson:"delivery_price" json:"delivery_price"`
+}
+
 type DeliveryPricesResponse struct {
-	Date          string  `json:"date"`
-	DeliveryPrice float64 `json:"delivery_price"`
-	RecordsTotal  int     `json:"records_total"`
+	Prices       []DeliveryPricesData `bson:"prices" json:"prices"`
+	RecordsTotal int                  `bson:"records_total" json:"records_total"`
 }
