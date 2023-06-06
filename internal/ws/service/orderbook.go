@@ -90,26 +90,23 @@ func (svc wsOrderbookService) Subscribe(c *ws.Client, instrument string) {
 
 func (svc wsOrderbookService) SubscribeQuote(c *ws.Client, instrument string) {
 	socket := ws.GetQuoteSocket()
-	_string := instrument
-	substring := strings.Split(_string, "-")
-
-	_strikePrice, err := strconv.ParseFloat(substring[2], 64)
+	ins, err := utils.ParseInstruments(instrument)
 	if err != nil {
-		panic(err)
+		msg := map[string]string{"Message": fmt.Sprintf("invalid instrument '%s'", instrument)}
+		socket.SendErrorMessage(c, msg)
+		return
 	}
-	_underlying := substring[0]
-	_expiryDate := strings.ToUpper(substring[1])
 
 	_order := _orderbookTypes.GetOrderBook{
-		InstrumentName: _string,
-		Underlying:     _underlying,
-		ExpiryDate:     _expiryDate,
-		StrikePrice:    _strikePrice,
+		InstrumentName: instrument,
+		Underlying:     ins.Underlying,
+		ExpiryDate:     ins.ExpDate,
+		StrikePrice:    ins.Strike,
 	}
 
 	// Get initial data from the redis
 	var initData _orderbookTypes.QuoteMessage
-	res, err := svc.redis.GetValue("QUOTE-" + _string)
+	res, err := svc.redis.GetValue("QUOTE-" + instrument)
 	if res == "" || err != nil {
 		// Get initial data if null
 		initData, _ = svc.GetDataQuote(_order)
@@ -145,22 +142,18 @@ func (svc wsOrderbookService) SubscribeQuote(c *ws.Client, instrument string) {
 
 func (svc wsOrderbookService) SubscribeBook(c *ws.Client, channel, instrument, interval string) {
 	socket := ws.GetBookSocket()
-	_string := instrument
-	substring := strings.Split(_string, "-")
-
-	_strikePrice, err := strconv.ParseFloat(substring[2], 64)
+	ins, err := utils.ParseInstruments(instrument)
 	if err != nil {
-		fmt.Println(err)
+		msg := map[string]string{"Message": fmt.Sprintf("invalid instrument '%s'", instrument)}
+		socket.SendErrorMessage(c, msg)
 		return
 	}
-	_underlying := substring[0]
-	_expiryDate := strings.ToUpper(substring[1])
 
 	_order := _orderbookTypes.GetOrderBook{
-		InstrumentName: _string,
-		Underlying:     _underlying,
-		ExpiryDate:     _expiryDate,
-		StrikePrice:    _strikePrice,
+		InstrumentName: instrument,
+		Underlying:     ins.Underlying,
+		ExpiryDate:     ins.ExpDate,
+		StrikePrice:    ins.Strike,
 	}
 
 	// Subscribe
@@ -178,7 +171,7 @@ func (svc wsOrderbookService) SubscribeBook(c *ws.Client, channel, instrument, i
 	ts := time.Now().UnixNano() / int64(time.Millisecond)
 	var changeId _orderbookTypes.Change
 	// Get change_id
-	res, err := svc.redis.GetValue("CHANGEID-" + _string)
+	res, err := svc.redis.GetValue("CHANGEID-" + instrument)
 	if res == "" || err != nil {
 		changeId.Timestamp = ts
 	} else {
@@ -267,7 +260,7 @@ func (svc wsOrderbookService) SubscribeBook(c *ws.Client, channel, instrument, i
 			fmt.Println(err)
 			return
 		}
-		svc.redis.Set("CHANGEID-"+_string, string(jsonBytes))
+		svc.redis.Set("CHANGEID-"+instrument, string(jsonBytes))
 		changeId = _orderbookTypes.Change{
 			Id:            1,
 			Timestamp:     ts,
@@ -295,7 +288,7 @@ func (svc wsOrderbookService) SubscribeBook(c *ws.Client, channel, instrument, i
 					return
 				}
 
-				svc.redis.Set("CHANGEID-"+_string, string(jsonBytes))
+				svc.redis.Set("CHANGEID-"+instrument, string(jsonBytes))
 			}
 		} else if interval == "100ms" {
 			if len(changeId.Asks100) == 0 && len(changeId.Bids100) == 0 {
@@ -318,13 +311,13 @@ func (svc wsOrderbookService) SubscribeBook(c *ws.Client, channel, instrument, i
 					return
 				}
 
-				svc.redis.Set("CHANGEID-"+_string, string(jsonBytes))
+				svc.redis.Set("CHANGEID-"+instrument, string(jsonBytes))
 			}
 		}
 	}
 
 	if interval == "100ms" {
-		svc.redis.Set("SNAPSHOTID-"+_string, strconv.Itoa(changeId.Id))
+		svc.redis.Set("SNAPSHOTID-"+instrument, strconv.Itoa(changeId.Id))
 	}
 
 	bookData := _orderbookTypes.BookData{

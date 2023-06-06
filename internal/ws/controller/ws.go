@@ -408,6 +408,13 @@ func (svc wsHandler) SubscribeHandler(input interface{}, c *ws.Client) {
 	for _, channel := range msg.Params.Channels {
 		s := strings.Split(channel, ".")
 
+		if (s[0] == "trades" || s[0] == "book") && len(s) != 3 {
+			reason := validation_reason.INVALID_PARAMS
+			err := fmt.Errorf("unrecognize channel for '%s'", channel)
+			protocol.SendValidationMsg(connKey, reason, err)
+			return
+		}
+
 		switch s[0] {
 		case "engine":
 			svc.wsEngSvc.Subscribe(c, s[1])
@@ -416,13 +423,6 @@ func (svc wsHandler) SubscribeHandler(input interface{}, c *ws.Client) {
 		case "quote":
 			svc.wsOBSvc.SubscribeQuote(c, s[1])
 		case "book":
-			if len(s) < 3 {
-				reason := validation_reason.INVALID_PARAMS
-				err := fmt.Errorf("unrecognize channel for '%s'", channel)
-				protocol.SendValidationMsg(connKey, reason, err)
-				return
-			}
-
 			svc.wsOBSvc.SubscribeBook(c, channel, s[1], s[2])
 		case "deribit_price_index":
 			svc.wsRawPriceSvc.Subscribe(c, s[1])
@@ -484,7 +484,7 @@ func (svc wsHandler) SubscribeHandlerPrivate(input interface{}, c *ws.Client) {
 
 	for _, channel := range msg.Params.Channels {
 		s := strings.Split(channel, ".")
-		if len(s) < 3 {
+		if len(s) != 4 {
 			reason := validation_reason.INVALID_PARAMS
 			err := fmt.Errorf("unrecognize channel for '%s'", channel)
 			protocol.SendValidationMsg(connKey, reason, err)
@@ -498,6 +498,11 @@ func (svc wsHandler) SubscribeHandlerPrivate(input interface{}, c *ws.Client) {
 			svc.wsTradeSvc.SubscribeUserTrades(c, channel, claim.UserID)
 		case "changes":
 			svc.wsOBSvc.SubscribeUserChange(c, channel, claim.UserID)
+		default:
+			reason := validation_reason.INVALID_PARAMS
+			err := fmt.Errorf("unrecognize channel for '%s'", channel)
+			protocol.SendValidationMsg(connKey, reason, err)
+			return
 		}
 	}
 
