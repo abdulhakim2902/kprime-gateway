@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 	"errors"
+	"fmt"
 	"gateway/pkg/protocol"
 	"gateway/pkg/utils"
 	"strconv"
@@ -409,36 +410,32 @@ func (svc wsHandler) SubscribeHandler(input interface{}, c *ws.Client) {
 	const t = true
 	method := map[string]bool{"orderbook": t, "engine": t, "order": t, "trade": t, "trades": t, "quote": false, "book": t, "deribit_price_index": false}
 	interval := map[string]bool{"raw": t, "100ms": t, "agg2": t}
-	if len(msg.Params.Channels) > 0 {
-		s := strings.Split(msg.Params.Channels[0], ".")
-		if len(s) > 0 {
-			if val, ok := method[s[0]]; ok {
-				if val {
-					if len(s) < 3 {
-						err := errors.New("error invalid interval")
-						c.SendInvalidRequestMessage(err)
-						return
-					} else {
-						if _, ok := interval[s[2]]; !ok {
-							err := errors.New("error invalid interval")
-							c.SendInvalidRequestMessage(err)
-							return
-						}
-					}
-				}
-			} else {
-				err := errors.New("error invalid channel")
+	for _, channel := range msg.Params.Channels {
+		s := strings.Split(channel, ".")
+		if len(s) == 0 {
+			err := errors.New("error invalid channel")
+			c.SendInvalidRequestMessage(err)
+			return
+		}
+		val, ok := method[s[0]]
+		if !ok {
+			err := errors.New("error invalid channel")
+			c.SendInvalidRequestMessage(err)
+			return
+		}
+
+		if val {
+			if len(s) < 3 {
+				err := errors.New("error invalid interval")
 				c.SendInvalidRequestMessage(err)
 				return
 			}
-		} else {
-			err := errors.New("error invalid channel")
-			c.SendInvalidRequestMessage(err)
+			if _, ok := interval[s[2]]; !ok {
+				err := errors.New("error invalid interval")
+				c.SendInvalidRequestMessage(err)
+				return
+			}
 		}
-	} else {
-		err := errors.New("error empty channel")
-		c.SendInvalidRequestMessage(err)
-		return
 	}
 
 	protocol.SendSuccessMsg(connKey, msg.Params.Channels)
@@ -557,36 +554,32 @@ func (svc wsHandler) SubscribeHandlerPrivate(input interface{}, c *ws.Client) {
 	const t = true
 	method := map[string]bool{"orders": t, "trades": t, "changes": t}
 	interval := map[string]bool{"raw": t, "100ms": t, "agg2": t}
-	if len(msg.Params.Channels) > 0 {
-		s := strings.Split(msg.Params.Channels[0], ".")
-		if len(s) > 0 {
-			if val, ok := method[s[1]]; ok {
-				if val {
-					if len(s) < 4 {
-						err := errors.New("error invalid interval")
-						c.SendInvalidRequestMessage(err)
-						return
-					} else {
-						if _, ok := interval[s[3]]; !ok {
-							err := errors.New("error invalid interval")
-							c.SendInvalidRequestMessage(err)
-							return
-						}
-					}
-				}
-			} else {
-				err := errors.New("error invalid channel")
+	for _, channel := range msg.Params.Channels {
+		s := strings.Split(channel, ".")
+		if len(s) == 0 {
+			err := errors.New("error invalid channel")
+			c.SendInvalidRequestMessage(err)
+			return
+		}
+		val, ok := method[s[0]]
+		if !ok {
+			err := errors.New("error invalid channel")
+			c.SendInvalidRequestMessage(err)
+			return
+		}
+
+		if val {
+			if len(s) < 4 {
+				err := errors.New("error invalid interval")
 				c.SendInvalidRequestMessage(err)
 				return
 			}
-		} else {
-			err := errors.New("error invalid channel")
-			c.SendInvalidRequestMessage(err)
+			if _, ok := interval[s[3]]; !ok {
+				err := errors.New("error invalid interval")
+				c.SendInvalidRequestMessage(err)
+				return
+			}
 		}
-	} else {
-		err := errors.New("error empty channel")
-		c.SendInvalidRequestMessage(err)
-		return
 	}
 
 	protocol.SendSuccessMsg(connKey, msg.Params.Channels)
