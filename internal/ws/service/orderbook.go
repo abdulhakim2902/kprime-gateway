@@ -423,6 +423,11 @@ func (svc wsOrderbookService) UnsubscribeQuote(c *ws.Client) {
 	socket.Unsubscribe(c)
 }
 
+func (svc wsOrderbookService) UnsubscribeBook(c *ws.Client) {
+	socket := ws.GetBookSocket()
+	socket.Unsubscribe(c)
+}
+
 func (svc wsOrderbookService) SubscribeUserChange(c *ws.Client, channel string, userId string) {
 	socket := ws.GetOrderBookSocket()
 	key := strings.Split(channel, ".")
