@@ -572,6 +572,8 @@ func (svc orderbookHandler) Handle100msInterval(instrument string) {
 									askData = append(askData, ask.Price)
 									askData = append(askData, ask.Amount)
 									asksData = append(asksData, askData)
+								} else {
+									changeAsksRaw[fmt.Sprintf("%f", ask.Price)] = ask.Amount
 								}
 							} else {
 								if ask.Amount != 0 {
@@ -602,6 +604,8 @@ func (svc orderbookHandler) Handle100msInterval(instrument string) {
 									bidData = append(bidData, bid.Price)
 									bidData = append(bidData, bid.Amount)
 									bidsData = append(bidsData, bidData)
+								} else {
+									changeBidsRaw[fmt.Sprintf("%f", bid.Price)] = bid.Amount
 								}
 							} else {
 								if bid.Amount != 0 {
