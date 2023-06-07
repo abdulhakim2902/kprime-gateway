@@ -116,7 +116,7 @@ func requestHelper(
 	claim, err = authService.ClaimJWT(c, *accessToken)
 	if err != nil {
 		connKey = key
-
+		fmt.Println(err)
 		validation := validation_reason.UNAUTHORIZED
 		reason = &validation
 		return
