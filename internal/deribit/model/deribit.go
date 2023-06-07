@@ -472,6 +472,6 @@ type DeliveryPricesData struct {
 }
 
 type DeliveryPricesResponse struct {
-	Prices       []DeliveryPricesData `bson:"prices" json:"prices"`
 	RecordsTotal int                  `bson:"records_total" json:"records_total"`
+	Prices       []DeliveryPricesData `bson:"prices" json:"data"`
 }

@@ -48,6 +48,7 @@ func NewDeribitHandler(
 	handler.RegisterHandler("public/test", handler.test)
 	handler.RegisterHandler("public/get_index_price", handler.getIndexPrice)
 	handler.RegisterHandler("public/get_last_trades_by_instrument", handler.getLastTradesByInstrument)
+	handler.RegisterHandler("public/get_delivery_prices", handler.getDeliveryPrices)
 
 	handler.RegisterHandler("private/buy", handler.buy)
 	handler.RegisterHandler("private/sell", handler.sell)
@@ -665,4 +666,26 @@ func (h *DeribitHandler) getUserTradesByOrder(r *gin.Context) {
 	)
 
 	protocol.SendSuccessMsg(connKey, res)
+}
+
+func (h *DeribitHandler) getDeliveryPrices(r *gin.Context) {
+	var msg deribitModel.RequestDto[deribitModel.DeliveryPricesParams]
+	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
+		r.AbortWithError(http.StatusBadRequest, err)
+		return
+	}
+
+	_, connKey, reason, err := requestHelper(msg.Id, msg.Method, r)
+	if err != nil {
+		protocol.SendValidationMsg(connKey, *reason, err)
+		return
+	}
+
+	result := h.svc.GetDeliveryPrices(context.TODO(), deribitModel.DeliveryPricesRequest{
+		IndexName: msg.Params.IndexName,
+		Offset:    msg.Params.Offset,
+		Count:     msg.Params.Count,
+	})
+
+	protocol.SendSuccessMsg(connKey, result)
 }

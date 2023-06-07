@@ -102,6 +102,22 @@ func (r SettlementPriceRepository) GetDeliveryPrice(o _deribitModel.DeliveryPric
 		}},
 	}
 
+	pipeline := mongo.Pipeline{matchStage, projectStage}
+
+	if o.Offset > 0 {
+		skipStage := bson.D{
+			{"$skip", o.Offset},
+		}
+		pipeline = append(pipeline, skipStage)
+	}
+
+	if o.Count > 0 {
+		limitStage := bson.D{
+			{"$limit", o.Count},
+		}
+		pipeline = append(pipeline, limitStage)
+	}
+
 	groupStage := bson.D{
 		{"$group", bson.D{
 			{"_id", nil},
@@ -109,17 +125,7 @@ func (r SettlementPriceRepository) GetDeliveryPrice(o _deribitModel.DeliveryPric
 			{"prices", bson.D{{"$push", "$$ROOT"}}},
 		}},
 	}
-
-	// skipStage := bson.D{
-	// 	{"$skip", 10}, // Replace with the desired static value for offset
-	// }
-
-	// limitStage := bson.D{
-	// 	{"$limit", 10}, // Assuming a limit of 10 documents per page
-	// }
-
-	// pipeline := mongo.Pipeline{matchStage, projectStage, groupStage, skipStage}
-	pipeline := mongo.Pipeline{matchStage, projectStage, groupStage}
+	pipeline = append(pipeline, groupStage)
 
 	options := options.Aggregate().SetMaxTime(10 * time.Second)
 
