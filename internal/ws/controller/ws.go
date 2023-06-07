@@ -561,7 +561,7 @@ func (svc wsHandler) SubscribeHandlerPrivate(input interface{}, c *ws.Client) {
 			c.SendInvalidRequestMessage(err)
 			return
 		}
-		val, ok := method[s[0]]
+		val, ok := method[s[1]]
 		if !ok {
 			err := errors.New("error invalid channel")
 			c.SendInvalidRequestMessage(err)
