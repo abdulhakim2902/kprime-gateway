@@ -63,6 +63,8 @@ func KafkaConsumer(
 				case "ORDERBOOK":
 					obSvc.HandleConsume(message)
 				case "ENGINE":
+					fmt.Println("ENGINE")
+					fmt.Println(string(message.Value))
 					handleTopicOrder(oSvc, message)
 					engSvc.HandleConsume(message)
 				case "ENGINE_SAVED":

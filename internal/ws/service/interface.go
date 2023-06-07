@@ -18,6 +18,7 @@ type IwsOrderbookService interface {
 	HandleConsumeUserChange(msg *sarama.ConsumerMessage)
 	Unsubscribe(c *ws.Client)
 	UnsubscribeQuote(c *ws.Client)
+	UnsubscribeBook(c *ws.Client)
 	GetOrderBook(ctx context.Context, request deribitModel.DeribitGetOrderBookRequest) deribitModel.DeribitGetOrderBookResponse
 	GetLastTradesByInstrument(ctx context.Context, request deribitModel.DeribitGetLastTradesByInstrumentRequest) deribitModel.DeribitGetLastTradesByInstrumentResponse
 	GetIndexPrice(ctx context.Context, request deribitModel.DeribitGetIndexPriceRequest) deribitModel.DeribitGetIndexPriceResponse
