@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
+	_deribitModel "gateway/internal/deribit/model"
 	_engineType "gateway/internal/engine/types"
 	_orderbookType "gateway/internal/orderbook/types"
 
@@ -78,4 +80,72 @@ func (r SettlementPriceRepository) GetLatestSettlementPrice(o _orderbookType.Get
 	}
 
 	return trades
+}
+
+func (r SettlementPriceRepository) GetDeliveryPrice(o _deribitModel.DeliveryPricesRequest) (_deribitModel.DeliveryPricesResponse, error) {
+	matchStage := bson.D{
+		{"$match", bson.D{
+			{"metadata.pair", o.IndexName},
+		}},
+	}
+
+	projectStage := bson.D{
+		{"$project", bson.D{
+			{"date", bson.D{
+				{"$dateToString", bson.D{
+					{"format", "%Y-%m-%d"},
+					{"date", "$ts"},
+				}},
+			}},
+			{"delivery_price", "$price"},
+			{"_id", 0},
+		}},
+	}
+
+	pipeline := mongo.Pipeline{matchStage, projectStage}
+
+	if o.Offset > 0 {
+		skipStage := bson.D{
+			{"$skip", o.Offset},
+		}
+		pipeline = append(pipeline, skipStage)
+	}
+
+	if o.Count > 0 {
+		limitStage := bson.D{
+			{"$limit", o.Count},
+		}
+		pipeline = append(pipeline, limitStage)
+	}
+
+	groupStage := bson.D{
+		{"$group", bson.D{
+			{"_id", nil},
+			{"records_total", bson.D{{"$sum", 1}}},
+			{"prices", bson.D{{"$push", "$$ROOT"}}},
+		}},
+	}
+	pipeline = append(pipeline, groupStage)
+
+	options := options.Aggregate().SetMaxTime(10 * time.Second)
+
+	cursor, err := r.collection.Aggregate(context.Background(), pipeline, options)
+	if err != nil {
+		return _deribitModel.DeliveryPricesResponse{}, err
+	}
+	defer cursor.Close(context.Background())
+
+	var result _deribitModel.DeliveryPricesResponse
+	if cursor.Next(context.Background()) {
+		err := cursor.Decode(&result)
+		if err != nil {
+			return _deribitModel.DeliveryPricesResponse{}, err
+		}
+	}
+
+	if err := cursor.Err(); err != nil {
+		return _deribitModel.DeliveryPricesResponse{}, err
+	}
+
+	return result, nil
 }

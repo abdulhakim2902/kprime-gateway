@@ -80,15 +80,19 @@ func NewWebsocketHandler(
 
 	ws.RegisterChannel("public/subscribe", handler.SubscribeHandler)
 	ws.RegisterChannel("public/unsubscribe", handler.UnsubscribeHandler)
+	ws.RegisterChannel("public/unsubscribe_all", handler.UnsubscribeAllHandler)
 
 	ws.RegisterChannel("private/subscribe", handler.SubscribeHandlerPrivate)
-	ws.RegisterChannel("public/unsubscribe", handler.UnsubscribeHandlerPrivate)
+	ws.RegisterChannel("private/unsubscribe", handler.UnsubscribeHandlerPrivate)
+	ws.RegisterChannel("private/unsubscribe_all", handler.UnsubscribeAllHandlerPrivate)
 
 	ws.RegisterChannel("public/get_instruments", handler.GetInstruments)
 	ws.RegisterChannel("public/get_last_trades_by_instrument", handler.GetLastTradesByInstrument)
 
 	ws.RegisterChannel("public/get_order_book", handler.GetOrderBook)
 	ws.RegisterChannel("public/get_index_price", handler.GetIndexPrice)
+
+	ws.RegisterChannel("public/get_delivery_prices", handler.PublicGetDeliveryPrices)
 }
 
 func requestHelper(
@@ -116,7 +120,7 @@ func requestHelper(
 	claim, err = authService.ClaimJWT(c, *accessToken)
 	if err != nil {
 		connKey = key
-
+		fmt.Println(err)
 		validation := validation_reason.UNAUTHORIZED
 		reason = &validation
 		return
@@ -405,6 +409,39 @@ func (svc wsHandler) SubscribeHandler(input interface{}, c *ws.Client) {
 		return
 	}
 
+	const t = true
+	method := map[string]bool{"orderbook": t, "engine": t, "order": t, "trade": t, "trades": t, "quote": false, "book": t, "deribit_price_index": false}
+	interval := map[string]bool{"raw": t, "100ms": t, "agg2": t}
+	for _, channel := range msg.Params.Channels {
+		s := strings.Split(channel, ".")
+		if len(s) == 0 {
+			err := errors.New("error invalid channel")
+			c.SendInvalidRequestMessage(err)
+			return
+		}
+		val, ok := method[s[0]]
+		if !ok {
+			err := errors.New("error invalid channel")
+			c.SendInvalidRequestMessage(err)
+			return
+		}
+
+		if val {
+			if len(s) < 3 {
+				err := errors.New("error invalid interval")
+				c.SendInvalidRequestMessage(err)
+				return
+			}
+			if _, ok := interval[s[2]]; !ok {
+				err := errors.New("error invalid interval")
+				c.SendInvalidRequestMessage(err)
+				return
+			}
+		}
+	}
+
+	protocol.SendSuccessMsg(connKey, msg.Params.Channels)
+
 	for _, channel := range msg.Params.Channels {
 		s := strings.Split(channel, ".")
 
@@ -469,6 +506,47 @@ func (svc wsHandler) UnsubscribeHandler(input interface{}, c *ws.Client) {
 	protocol.SendSuccessMsg(connKey, msg.Params.Channels)
 }
 
+func (svc wsHandler) UnsubscribeAllHandler(input interface{}, c *ws.Client) {
+	var msg deribitModel.RequestDto[deribitModel.ChannelParams]
+	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
+		c.SendInvalidRequestMessage(err)
+		return
+	}
+
+	_, connKey, reason, err := requestHelper(msg.Id, msg.Method, nil, c)
+	if err != nil {
+		protocol.SendValidationMsg(connKey, *reason, err)
+		return
+	}
+
+	svc.wsTradeSvc.Unsubscribe(c)
+	svc.wsOBSvc.UnsubscribeQuote(c)
+	svc.wsOBSvc.UnsubscribeBook(c)
+	svc.wsRawPriceSvc.Unsubscribe(c)
+
+	protocol.SendSuccessMsg(connKey, "ok")
+}
+
+func (svc wsHandler) UnsubscribeAllHandlerPrivate(input interface{}, c *ws.Client) {
+	var msg deribitModel.RequestDto[deribitModel.ChannelParams]
+	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
+		c.SendInvalidRequestMessage(err)
+		return
+	}
+
+	_, connKey, reason, err := requestHelper(msg.Id, msg.Method, nil, c)
+	if err != nil {
+		protocol.SendValidationMsg(connKey, *reason, err)
+		return
+	}
+
+	svc.wsOSvc.Unsubscribe(c)
+	svc.wsTradeSvc.Unsubscribe(c)
+	svc.wsOBSvc.Unsubscribe(c)
+
+	protocol.SendSuccessMsg(connKey, "ok")
+}
+
 func (svc wsHandler) SubscribeHandlerPrivate(input interface{}, c *ws.Client) {
 	var msg deribitModel.RequestDto[deribitModel.ChannelParams]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
@@ -481,6 +559,39 @@ func (svc wsHandler) SubscribeHandlerPrivate(input interface{}, c *ws.Client) {
 		protocol.SendValidationMsg(connKey, *reason, err)
 		return
 	}
+
+	const t = true
+	method := map[string]bool{"orders": t, "trades": t, "changes": t}
+	interval := map[string]bool{"raw": t, "100ms": t, "agg2": t}
+	for _, channel := range msg.Params.Channels {
+		s := strings.Split(channel, ".")
+		if len(s) == 0 {
+			err := errors.New("error invalid channel")
+			c.SendInvalidRequestMessage(err)
+			return
+		}
+		val, ok := method[s[1]]
+		if !ok {
+			err := errors.New("error invalid channel")
+			c.SendInvalidRequestMessage(err)
+			return
+		}
+
+		if val {
+			if len(s) < 4 {
+				err := errors.New("error invalid interval")
+				c.SendInvalidRequestMessage(err)
+				return
+			}
+			if _, ok := interval[s[3]]; !ok {
+				err := errors.New("error invalid interval")
+				c.SendInvalidRequestMessage(err)
+				return
+			}
+		}
+	}
+
+	protocol.SendSuccessMsg(connKey, msg.Params.Channels)
 
 	for _, channel := range msg.Params.Channels {
 		s := strings.Split(channel, ".")
@@ -791,4 +902,26 @@ func (svc wsHandler) PrivateGetOrderStateByLabel(input interface{}, c *ws.Client
 	res := svc.deribitSvc.DeribitGetOrderStateByLabel(context.TODO(), msg.Params)
 
 	protocol.SendSuccessMsg(connKey, res)
+}
+
+func (svc wsHandler) PublicGetDeliveryPrices(input interface{}, c *ws.Client) {
+	var msg deribitModel.RequestDto[deribitModel.DeliveryPricesParams]
+	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
+		c.SendInvalidRequestMessage(err)
+		return
+	}
+
+	_, connKey, reason, err := requestHelper(msg.Id, msg.Method, nil, c)
+	if err != nil {
+		protocol.SendValidationMsg(connKey, *reason, err)
+		return
+	}
+
+	result := svc.wsOBSvc.GetDeliveryPrices(context.TODO(), deribitModel.DeliveryPricesRequest{
+		IndexName: msg.Params.IndexName,
+		Offset:    msg.Params.Offset,
+		Count:     msg.Params.Count,
+	})
+
+	protocol.SendSuccessMsg(connKey, result)
 }

@@ -57,6 +57,8 @@ func KafkaConsumer(
 			for message := range partitionConsumer.Messages() {
 				switch topic {
 				case "ENGINE":
+					fmt.Println("ENGINE")
+					fmt.Println(string(message.Value))
 					handleTopicOrder(oSvc, message)
 					engSvc.HandleConsume(message)
 				case "ENGINE_SAVED":

@@ -415,6 +415,11 @@ func (svc wsOrderbookService) UnsubscribeQuote(c *ws.Client) {
 	socket.Unsubscribe(c)
 }
 
+func (svc wsOrderbookService) UnsubscribeBook(c *ws.Client) {
+	socket := ws.GetBookSocket()
+	socket.Unsubscribe(c)
+}
+
 func (svc wsOrderbookService) SubscribeUserChange(c *ws.Client, channel string, userId string) {
 	socket := ws.GetOrderBookSocket()
 	key := strings.Split(channel, ".")
@@ -819,4 +824,24 @@ func (svc wsOrderbookService) GetIndexPrice(ctx context.Context, data _deribitMo
 		IndexPrice: indexPrice,
 	}
 	return result
+}
+
+func (svc wsOrderbookService) GetDeliveryPrices(ctx context.Context, request _deribitModel.DeliveryPricesRequest) _deribitModel.DeliveryPricesResponse {
+	_deliveryPrice, err := svc.settlementPriceRepository.GetDeliveryPrice(request)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	jsonBytes, err := json.Marshal(_deliveryPrice)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	var deliveryPrice _deribitModel.DeliveryPricesResponse
+	err = json.Unmarshal([]byte(jsonBytes), &deliveryPrice)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	return deliveryPrice
 }
