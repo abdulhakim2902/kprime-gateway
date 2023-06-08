@@ -123,17 +123,17 @@ func main() {
 	_wsTradeSvc := _wsSvc.NewWSTradeService(redisConn, tradeRepo)
 	_wsRawPriceSvc := _wsSvc.NewWSRawPriceService(redisConn, rawPriceRepo)
 
-	memdb, err := memdb.InitSchemas()
+	memoryDb, err := memdb.InitSchemas()
 	if err != nil {
 		logs.Log.Fatal().Err(err).Msg("failed to initialize memory schemas")
 	}
-	_userSvc := _userSvc.NewUserService(engine, userRepo, memdb)
+	_userSvc := _userSvc.NewUserService(engine, userRepo, memoryDb)
 
 	_userSvc.SyncMemDB(context.TODO(), nil)
 
 	_deribitSvc := _deribitSvc.NewDeribitService(
 		redisConn,
-		memDb,
+		memoryDb,
 		tradeRepo,
 		orderRepo,
 		rawPriceRepo,
