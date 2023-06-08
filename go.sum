@@ -1,5 +1,5 @@
-git.devucc.name/dependencies/utilities v1.0.33 h1:bVAJRYbg871aclMJth83hm44q0keuvKLC/g/laLY/H8=
-git.devucc.name/dependencies/utilities v1.0.33/go.mod h1:NACNTS5LPKFoMXx0JEy6/2+5+/IAk/665aOHKzz//x8=
+git.devucc.name/dependencies/utilities v1.0.28 h1:LFPFmzyrjCrKvxs2wqjSD48sW2ReanU1jBNeCUi2jjE=
+git.devucc.name/dependencies/utilities v1.0.28/go.mod h1:q+vKsHyMgi309g0/WIc5fG9O1UGf27Z4DBBdbLZus50=
 github.com/Shopify/sarama v1.38.1 h1:lqqPUPQZ7zPqYlWpTh+LQ9bhYNu2xJL6k1SJN4WVe2A=
 github.com/Shopify/sarama v1.38.1/go.mod h1:iwv9a67Ha8VNa+TifujYoWGxWnu2kNVAQdSdZ4X2o5g=
 github.com/Shopify/toxiproxy/v2 v2.5.0 h1:i4LPT+qrSlKNtQf5QliVjdP08GyAH8+BUIc9gT0eahc=
@@ -96,7 +96,6 @@ github.com/joho/godotenv v1.5.1/go.mod h1:f4LDr5Voq0i2e/R5DDNOoa2zzDfwtkZa6DnEwA
 github.com/json-iterator/go v1.1.12 h1:PV8peI4a0ysnczrg+LtxykD8LfKY9ML6u2jnxaEnrnM=
 github.com/json-iterator/go v1.1.12/go.mod h1:e30LSqwooZae/UwlEbR2852Gd8hjQvJoHmT4TnhNGBo=
 github.com/klauspost/compress v1.13.6/go.mod h1:/3/Vjq9QcHkK5uEr5lBEmyoZ1iFhe47etQ6QUkpK6sk=
-github.com/klauspost/compress v1.15.9/go.mod h1:PhcZ0MbTNciWF3rruxRgKxI5NkcHHrHUDtV4Yw2GlzU=
 github.com/klauspost/compress v1.16.3 h1:XuJt9zzcnaz6a16/OU53ZjWp/v7/42WcR5t2a0PcNQY=
 github.com/klauspost/compress v1.16.3/go.mod h1:ntbaceVETuRiXiv4DpjP66DpAtAGkEQskQzEyD//IeE=
 github.com/klauspost/cpuid/v2 v2.0.9/go.mod h1:FInQzS24/EEf25PyTYn52gqo7WaD8xa0213Md/qVLRg=
@@ -133,7 +132,6 @@ github.com/op/go-logging v0.0.0-20160315200505-970db520ece7 h1:lDH9UUVJtmYCjyT0C
 github.com/op/go-logging v0.0.0-20160315200505-970db520ece7/go.mod h1:HzydrMdWErDVzsI23lYNej1Htcns9BCg93Dk0bBINWk=
 github.com/pelletier/go-toml/v2 v2.0.7 h1:muncTPStnKRos5dpVKULv2FVd4bMOhNePj9CjgDb8Us=
 github.com/pelletier/go-toml/v2 v2.0.7/go.mod h1:eumQOmlWiOPt5WriQQqoM5y18pDHwha2N+QD+EUNTek=
-github.com/pierrec/lz4/v4 v4.1.15/go.mod h1:gZWDp/Ze/IJXGXf23ltt2EXimqmTUXEy0GFuRQyBid4=
 github.com/pierrec/lz4/v4 v4.1.17 h1:kV4Ip+/hUBC+8T6+2EgburRtkE9ef4nbY3f4dFhGjMc=
 github.com/pierrec/lz4/v4 v4.1.17/go.mod h1:gZWDp/Ze/IJXGXf23ltt2EXimqmTUXEy0GFuRQyBid4=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
@@ -152,8 +150,6 @@ github.com/quickfixgo/enum v0.1.0 h1:TnCPOqxAWA5/IWp7lsvj97x7oyuHYgj3STBJlBzZGjM
 github.com/quickfixgo/enum v0.1.0/go.mod h1:65gdG2/8vr6uOYcjZBObVHMuTEYc5rr/+aKVWTrFIrQ=
 github.com/quickfixgo/field v0.1.0 h1:JVO6fVD6Nkyy8e/ROYQtV/nQhMX/BStD5Lq7XIgYz2g=
 github.com/quickfixgo/field v0.1.0/go.mod h1:Zu0qYmpj+gljlB2HgpUt9EcTIThs2lIQb8C57qbJr8o=
-github.com/quickfixgo/fix43 v0.1.0 h1:o+DP2EqbpRzKvxdUyMFm4dHs4Y94ZTCLS1SeSGpPVjM=
-github.com/quickfixgo/fix43 v0.1.0/go.mod h1:FF2SXSfCd3v+ZNNX/cYwh3CJo3LfCmHAlXldjXY16To=
 github.com/quickfixgo/fix44 v0.1.0 h1:g/rTl6mXDlG7iIMbY7zaPbHcj9N/B+tteOZ01yGzeSQ=
 github.com/quickfixgo/fix44 v0.1.0/go.mod h1:d6Ia02Eq/JYgKCn/2V9FHxguAl1Alp/yu/xVpry82dA=
 github.com/quickfixgo/quickfix v0.7.0 h1:UXfJsJi7j11ejyXdQAKaWJxCaiA2SXVWJbV6v2wfdnQ=
@@ -174,8 +170,6 @@ github.com/rs/xid v1.4.0/go.mod h1:trrq9SKmegXys3aeAKXMUTdJsYXVwGY3RLcfgqegfbg=
 github.com/rs/zerolog v1.29.1 h1:cO+d60CHkknCbvzEWxP0S9K6KqyTjrCNUy1LdQLCGPc=
 github.com/rs/zerolog v1.29.1/go.mod h1:Le6ESbR7hc+DP6Lt1THiV8CQSdkkNrd3R0XbEgp3ZBU=
 github.com/rwtodd/Go.Sed v0.0.0-20210816025313-55464686f9ef/go.mod h1:8AEUvGVi2uQ5b24BIhcr0GCcpd/RNAFWaN2CJFrWIIQ=
-github.com/segmentio/kafka-go v0.4.40 h1:sszW7c0/uyv7+VcTW5trx2ZC7kMWDTxuR/6Zn8U1bm8=
-github.com/segmentio/kafka-go v0.4.40/go.mod h1:naFEZc5MQKdeL3W6NkZIAn48Y6AazqjRFDhnXeg3h94=
 github.com/shopspring/decimal v1.3.1 h1:2Usl1nmF/WZucqkFZhnfFYxxxu8LG21F6nPQBE5gKV8=
 github.com/shopspring/decimal v1.3.1/go.mod h1:DKyhrW/HYNuLGql+MJL6WCR6knT2jwCFRcu2hWCYk4o=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=

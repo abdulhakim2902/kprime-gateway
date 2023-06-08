@@ -80,9 +80,11 @@ func NewWebsocketHandler(
 
 	ws.RegisterChannel("public/subscribe", handler.SubscribeHandler)
 	ws.RegisterChannel("public/unsubscribe", handler.UnsubscribeHandler)
+	ws.RegisterChannel("public/unsubscribe_all", handler.UnsubscribeAllHandler)
 
 	ws.RegisterChannel("private/subscribe", handler.SubscribeHandlerPrivate)
-	ws.RegisterChannel("public/unsubscribe", handler.UnsubscribeHandlerPrivate)
+	ws.RegisterChannel("private/unsubscribe", handler.UnsubscribeHandlerPrivate)
+	ws.RegisterChannel("private/unsubscribe_all", handler.UnsubscribeAllHandlerPrivate)
 
 	ws.RegisterChannel("public/get_instruments", handler.GetInstruments)
 	ws.RegisterChannel("public/get_last_trades_by_instrument", handler.GetLastTradesByInstrument)
@@ -459,8 +461,51 @@ func (svc wsHandler) UnsubscribeHandler(input interface{}, c *ws.Client) {
 			svc.wsTradeSvc.Unsubscribe(c)
 		case "quote":
 			svc.wsOBSvc.UnsubscribeQuote(c)
+		case "book":
+			svc.wsOBSvc.UnsubscribeBook(c)
 		}
 	}
+}
+
+func (svc wsHandler) UnsubscribeAllHandler(input interface{}, c *ws.Client) {
+	var msg deribitModel.RequestDto[deribitModel.ChannelParams]
+	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
+		c.SendInvalidRequestMessage(err)
+		return
+	}
+
+	_, connKey, reason, err := requestHelper(msg.Id, msg.Method, nil, c)
+	if err != nil {
+		protocol.SendValidationMsg(connKey, *reason, err)
+		return
+	}
+
+	svc.wsTradeSvc.Unsubscribe(c)
+	svc.wsOBSvc.UnsubscribeQuote(c)
+	svc.wsOBSvc.UnsubscribeBook(c)
+	svc.wsRawPriceSvc.Unsubscribe(c)
+
+	protocol.SendSuccessMsg(connKey, "ok")
+}
+
+func (svc wsHandler) UnsubscribeAllHandlerPrivate(input interface{}, c *ws.Client) {
+	var msg deribitModel.RequestDto[deribitModel.ChannelParams]
+	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
+		c.SendInvalidRequestMessage(err)
+		return
+	}
+
+	_, connKey, reason, err := requestHelper(msg.Id, msg.Method, nil, c)
+	if err != nil {
+		protocol.SendValidationMsg(connKey, *reason, err)
+		return
+	}
+
+	svc.wsOSvc.Unsubscribe(c)
+	svc.wsTradeSvc.Unsubscribe(c)
+	svc.wsOBSvc.Unsubscribe(c)
+
+	protocol.SendSuccessMsg(connKey, "ok")
 }
 
 func (svc wsHandler) SubscribeHandlerPrivate(input interface{}, c *ws.Client) {

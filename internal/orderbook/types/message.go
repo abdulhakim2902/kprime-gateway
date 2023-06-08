@@ -114,7 +114,7 @@ type ChangeResponse struct {
 
 type PriceData struct {
 	Timestamp int64   `json:"timestamp"`
-	Price     float64 `json:"price"`
+	Price     float32 `json:"price"`
 	IndexName string  `json:"index_name"`
 }
 

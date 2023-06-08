@@ -12,7 +12,6 @@ import (
 	"syscall"
 	"time"
 
-	"gateway/cmd/server"
 	ordermatch "gateway/internal/fix-acceptor"
 	"gateway/internal/repositories"
 	"gateway/pkg/collector"
@@ -34,13 +33,8 @@ import (
 
 	_wsCtrl "gateway/internal/ws/controller"
 
-	memory "gateway/datasources/memdb"
-
 	"git.devucc.name/dependencies/utilities/commons/logs"
 	"git.devucc.name/dependencies/utilities/commons/metrics"
-	memoryDb "git.devucc.name/dependencies/utilities/repository/memdb"
-	"git.devucc.name/dependencies/utilities/repository/mongodb"
-	"git.devucc.name/dependencies/utilities/schema"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 )
@@ -89,14 +83,10 @@ func init() {
 	redisConn = redis.NewRedisConnectionPool(os.Getenv("REDIS_URL"))
 
 	// Initialize MemoryDB schemas
-	err := memory.InitSchema(schema.Schema)
+	memDb, err = memdb.InitSchemas()
 	if err != nil {
-		logs.Log.Fatal().Err(err).Msg("failed to initialize memory schemas")
+		logs.Log.Fatal().Err(err).Msg("failed to init memdb")
 	}
-
-	mongoRepo := mongodb.NewRepositories(mongoConn)
-	memRepo := memoryDb.NewRepositories(memory.Database)
-	server.InitializeData(mongoRepo, memRepo)
 }
 
 func main() {
