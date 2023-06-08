@@ -20,6 +20,7 @@ import (
 	"gateway/pkg/utils"
 	"gateway/pkg/ws"
 
+	"git.devucc.name/dependencies/utilities/commons/logs"
 	"github.com/Shopify/sarama"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -89,26 +90,23 @@ func (svc wsOrderbookService) Subscribe(c *ws.Client, instrument string) {
 
 func (svc wsOrderbookService) SubscribeQuote(c *ws.Client, instrument string) {
 	socket := ws.GetQuoteSocket()
-	_string := instrument
-	substring := strings.Split(_string, "-")
-
-	_strikePrice, err := strconv.ParseFloat(substring[2], 64)
+	ins, err := utils.ParseInstruments(instrument)
 	if err != nil {
-		panic(err)
+		msg := map[string]string{"Message": fmt.Sprintf("invalid instrument '%s'", instrument)}
+		socket.SendErrorMessage(c, msg)
+		return
 	}
-	_underlying := substring[0]
-	_expiryDate := strings.ToUpper(substring[1])
 
 	_order := _orderbookTypes.GetOrderBook{
-		InstrumentName: _string,
-		Underlying:     _underlying,
-		ExpiryDate:     _expiryDate,
-		StrikePrice:    _strikePrice,
+		InstrumentName: instrument,
+		Underlying:     ins.Underlying,
+		ExpiryDate:     ins.ExpDate,
+		StrikePrice:    ins.Strike,
 	}
 
 	// Get initial data from the redis
 	var initData _orderbookTypes.QuoteMessage
-	res, err := svc.redis.GetValue("QUOTE-" + _string)
+	res, err := svc.redis.GetValue("QUOTE-" + instrument)
 	if res == "" || err != nil {
 		// Get initial data if null
 		initData, _ = svc.GetDataQuote(_order)
@@ -142,30 +140,24 @@ func (svc wsOrderbookService) SubscribeQuote(c *ws.Client, instrument string) {
 	socket.SendInitMessage(c, method, params)
 }
 
-func (svc wsOrderbookService) SubscribeBook(c *ws.Client, channel string) {
-	s := strings.Split(channel, ".")
-	instrument := s[1]
+func (svc wsOrderbookService) SubscribeBook(c *ws.Client, channel, instrument, interval string) {
 	socket := ws.GetBookSocket()
-	_string := instrument
-	substring := strings.Split(_string, "-")
-
-	_strikePrice, err := strconv.ParseFloat(substring[2], 64)
+	ins, err := utils.ParseInstruments(instrument)
 	if err != nil {
-		fmt.Println(err)
+		msg := map[string]string{"Message": fmt.Sprintf("invalid instrument '%s'", instrument)}
+		socket.SendErrorMessage(c, msg)
 		return
 	}
-	_underlying := substring[0]
-	_expiryDate := strings.ToUpper(substring[1])
 
 	_order := _orderbookTypes.GetOrderBook{
-		InstrumentName: _string,
-		Underlying:     _underlying,
-		ExpiryDate:     _expiryDate,
-		StrikePrice:    _strikePrice,
+		InstrumentName: instrument,
+		Underlying:     ins.Underlying,
+		ExpiryDate:     ins.ExpDate,
+		StrikePrice:    ins.Strike,
 	}
 
 	// Subscribe
-	id := fmt.Sprintf("%s-%s", instrument, s[2])
+	id := fmt.Sprintf("%s-%s", instrument, interval)
 	err = socket.Subscribe(id, c)
 	if err != nil {
 		msg := map[string]string{"Message": err.Error()}
@@ -179,7 +171,7 @@ func (svc wsOrderbookService) SubscribeBook(c *ws.Client, channel string) {
 	ts := time.Now().UnixNano() / int64(time.Millisecond)
 	var changeId _orderbookTypes.Change
 	// Get change_id
-	res, err := svc.redis.GetValue("CHANGEID-" + _string)
+	res, err := svc.redis.GetValue("CHANGEID-" + instrument)
 	if res == "" || err != nil {
 		changeId.Timestamp = ts
 	} else {
@@ -193,7 +185,7 @@ func (svc wsOrderbookService) SubscribeBook(c *ws.Client, channel string) {
 
 	// Get initial data from db
 	var orderBook _orderbookTypes.Orderbook
-	switch s[2] {
+	switch interval {
 	case "raw":
 		orderBook = svc.GetOrderLatestTimestamp(_order, changeId.Timestamp, false)
 	case "100ms":
@@ -236,7 +228,7 @@ func (svc wsOrderbookService) SubscribeBook(c *ws.Client, channel string) {
 	if res == "" {
 		// Set initial data if null
 		var changeIdData _orderbookTypes.Change
-		if s[2] == "agg2" {
+		if interval == "agg2" {
 			changeIdData = _orderbookTypes.Change{
 				Id:            1,
 				Timestamp:     ts,
@@ -244,7 +236,7 @@ func (svc wsOrderbookService) SubscribeBook(c *ws.Client, channel string) {
 				AsksAgg:       changeAsksRaw,
 				BidsAgg:       changeBidsRaw,
 			}
-		} else if s[2] == "100ms" {
+		} else if interval == "100ms" {
 			changeIdData = _orderbookTypes.Change{
 				Id:            1,
 				Timestamp:     ts,
@@ -268,14 +260,14 @@ func (svc wsOrderbookService) SubscribeBook(c *ws.Client, channel string) {
 			fmt.Println(err)
 			return
 		}
-		svc.redis.Set("CHANGEID-"+_string, string(jsonBytes))
+		svc.redis.Set("CHANGEID-"+instrument, string(jsonBytes))
 		changeId = _orderbookTypes.Change{
 			Id:            1,
 			Timestamp:     ts,
 			TimestampPrev: ts,
 		}
 	} else {
-		if s[2] == "agg2" {
+		if interval == "agg2" {
 			if len(changeId.AsksAgg) == 0 && len(changeId.BidsAgg) == 0 {
 				changeIdData := _orderbookTypes.Change{
 					Id:            changeId.Id,
@@ -296,9 +288,9 @@ func (svc wsOrderbookService) SubscribeBook(c *ws.Client, channel string) {
 					return
 				}
 
-				svc.redis.Set("CHANGEID-"+_string, string(jsonBytes))
+				svc.redis.Set("CHANGEID-"+instrument, string(jsonBytes))
 			}
-		} else if s[2] == "100ms" {
+		} else if interval == "100ms" {
 			if len(changeId.Asks100) == 0 && len(changeId.Bids100) == 0 {
 				changeIdData := _orderbookTypes.Change{
 					Id:            changeId.Id,
@@ -319,13 +311,13 @@ func (svc wsOrderbookService) SubscribeBook(c *ws.Client, channel string) {
 					return
 				}
 
-				svc.redis.Set("CHANGEID-"+_string, string(jsonBytes))
+				svc.redis.Set("CHANGEID-"+instrument, string(jsonBytes))
 			}
 		}
 	}
 
-	if s[2] == "100ms" {
-		svc.redis.Set("SNAPSHOTID-"+_string, strconv.Itoa(changeId.Id))
+	if interval == "100ms" {
+		svc.redis.Set("SNAPSHOTID-"+instrument, strconv.Itoa(changeId.Id))
 	}
 
 	bookData := _orderbookTypes.BookData{
@@ -435,11 +427,14 @@ func (svc wsOrderbookService) SubscribeUserChange(c *ws.Client, channel string, 
 	// Subscribe
 
 	var id string
-	if key[3] == "100ms" {
+	if len(key) > 3 && key[3] == "100ms" {
 		id = fmt.Sprintf("%s.%s.%s-%s-100ms", key[0], key[1], key[2], userId)
 	} else {
 		id = fmt.Sprintf("%s.%s.%s-%s", key[0], key[1], key[2], userId)
 	}
+
+	logs.Log.Info().Str("subscribe", id).Msg("")
+
 	err := socket.Subscribe(id, c)
 	if err != nil {
 		msg := map[string]string{"Message": err.Error()}

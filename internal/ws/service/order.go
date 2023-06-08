@@ -17,6 +17,7 @@ import (
 	engineType "gateway/internal/engine/types"
 	_types "gateway/internal/orderbook/types"
 
+	"git.devucc.name/dependencies/utilities/commons/logs"
 	"github.com/Shopify/sarama"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -232,11 +233,13 @@ func (svc wsOrderService) SubscribeUserOrder(c *ws.Client, channel string, userI
 	// Subscribe
 
 	var id string
-	if key[3] == "100ms" {
+	if len(key) > 3 && key[3] == "100ms" {
 		id = fmt.Sprintf("%s.%s.%s-%s-100ms", key[0], key[1], key[2], userId)
 	} else {
 		id = fmt.Sprintf("%s.%s.%s-%s", key[0], key[1], key[2], userId)
 	}
+
+	logs.Log.Info().Str("subscribe", id).Msg("")
 	err := socket.Subscribe(id, c)
 	if err != nil {
 		msg := map[string]string{"Message": err.Error()}

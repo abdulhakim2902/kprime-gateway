@@ -13,7 +13,7 @@ import (
 type IwsOrderbookService interface {
 	Subscribe(c *ws.Client, instrument string)
 	SubscribeQuote(c *ws.Client, instrument string)
-	SubscribeBook(c *ws.Client, instrument string)
+	SubscribeBook(c *ws.Client, channel, instrument, interval string)
 	SubscribeUserChange(c *ws.Client, instrument string, userId string)
 	HandleConsumeUserChange(msg *sarama.ConsumerMessage)
 	Unsubscribe(c *ws.Client)
