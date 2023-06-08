@@ -495,6 +495,8 @@ func (svc wsHandler) UnsubscribeHandler(input interface{}, c *ws.Client) {
 			svc.wsEngSvc.Unsubscribe(c)
 		case "quote":
 			svc.wsOBSvc.UnsubscribeQuote(c)
+		case "book":
+			svc.wsOBSvc.UnsubscribeBook(c)
 		default:
 			reason := validation_reason.INVALID_PARAMS
 			err := fmt.Errorf("unrecognize channel for '%s'", channel)
