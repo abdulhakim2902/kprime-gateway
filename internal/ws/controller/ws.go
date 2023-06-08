@@ -91,6 +91,8 @@ func NewWebsocketHandler(
 
 	ws.RegisterChannel("public/get_order_book", handler.GetOrderBook)
 	ws.RegisterChannel("public/get_index_price", handler.GetIndexPrice)
+
+	ws.RegisterChannel("public/get_delivery_prices", handler.PublicGetDeliveryPrices)
 }
 
 func requestHelper(
@@ -879,4 +881,26 @@ func (svc wsHandler) PrivateGetOrderStateByLabel(input interface{}, c *ws.Client
 	res := svc.deribitSvc.DeribitGetOrderStateByLabel(context.TODO(), msg.Params)
 
 	protocol.SendSuccessMsg(connKey, res)
+}
+
+func (svc wsHandler) PublicGetDeliveryPrices(input interface{}, c *ws.Client) {
+	var msg deribitModel.RequestDto[deribitModel.DeliveryPricesParams]
+	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
+		c.SendInvalidRequestMessage(err)
+		return
+	}
+
+	_, connKey, reason, err := requestHelper(msg.Id, msg.Method, nil, c)
+	if err != nil {
+		protocol.SendValidationMsg(connKey, *reason, err)
+		return
+	}
+
+	result := svc.wsOBSvc.GetDeliveryPrices(context.TODO(), deribitModel.DeliveryPricesRequest{
+		IndexName: msg.Params.IndexName,
+		Offset:    msg.Params.Offset,
+		Count:     msg.Params.Count,
+	})
+
+	protocol.SendSuccessMsg(connKey, result)
 }

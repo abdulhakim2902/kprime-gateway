@@ -830,3 +830,23 @@ func (svc wsOrderbookService) GetIndexPrice(ctx context.Context, data _deribitMo
 	}
 	return result
 }
+
+func (svc wsOrderbookService) GetDeliveryPrices(ctx context.Context, request _deribitModel.DeliveryPricesRequest) _deribitModel.DeliveryPricesResponse {
+	_deliveryPrice, err := svc.settlementPriceRepository.GetDeliveryPrice(request)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	jsonBytes, err := json.Marshal(_deliveryPrice)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	var deliveryPrice _deribitModel.DeliveryPricesResponse
+	err = json.Unmarshal([]byte(jsonBytes), &deliveryPrice)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	return deliveryPrice
+}

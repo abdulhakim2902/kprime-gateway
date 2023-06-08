@@ -453,3 +453,25 @@ type DeribitGetOrderStateByLabelResponse struct {
 	AveragePrice        *float64 `json:"average_price,omitempty" bson:"priceAvg"`
 	CancelledReason     string   `json:"cancel_reason" bson:"cancelledReason"`
 }
+
+type DeliveryPricesParams struct {
+	IndexName string `json:"index_name"`
+	Offset    int    `json:"offset"`
+	Count     int    `json:"count"`
+}
+
+type DeliveryPricesRequest struct {
+	IndexName string `json:"index_name"`
+	Offset    int    `json:"offset"`
+	Count     int    `json:"count"`
+}
+
+type DeliveryPricesData struct {
+	Date          string  `bson:"date" json:"date"`
+	DeliveryPrice float64 `bson:"delivery_price" json:"delivery_price"`
+}
+
+type DeliveryPricesResponse struct {
+	RecordsTotal int                  `bson:"records_total" json:"records_total"`
+	Prices       []DeliveryPricesData `bson:"prices" json:"data"`
+}
