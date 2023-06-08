@@ -20,8 +20,8 @@ type Message struct {
 }
 
 type MessagePrices struct {
-	RawPrice        []price.Price `json:"raw_prices"`
-	SettlementPrice []price.Price `json:"settlement_prices"`
+	RawPrice        []price.RawPrice        `json:"raw_prices"`
+	SettlementPrice []price.SettlementPrice `json:"settlement_prices"`
 }
 
 type EngineResponse struct {
