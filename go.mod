@@ -3,7 +3,7 @@ module gateway
 go 1.20
 
 require (
-	git.devucc.name/dependencies/utilities v1.0.28
+	git.devucc.name/dependencies/utilities v1.0.33
 	github.com/Shopify/sarama v1.38.1
 	github.com/gin-gonic/gin v1.9.0
 	github.com/go-playground/locales v0.14.1
@@ -17,6 +17,7 @@ require (
 	github.com/prometheus/client_golang v1.15.1
 	github.com/quickfixgo/enum v0.1.0
 	github.com/quickfixgo/field v0.1.0
+	github.com/quickfixgo/fix43 v0.1.0
 	github.com/quickfixgo/fix44 v0.1.0
 	github.com/quickfixgo/quickfix v0.7.0
 	github.com/quickfixgo/tag v0.1.0
@@ -74,6 +75,7 @@ require (
 	github.com/rogpeppe/go-internal v1.10.0 // indirect
 	github.com/rs/cors v1.8.3 // indirect
 	github.com/rs/zerolog v1.29.1 // indirect
+	github.com/segmentio/kafka-go v0.4.40 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.2.11 // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
