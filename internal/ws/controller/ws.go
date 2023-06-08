@@ -407,10 +407,40 @@ func (svc wsHandler) SubscribeHandler(input interface{}, c *ws.Client) {
 		return
 	}
 
+	const t = true
+	method := map[string]bool{"orderbook": t, "engine": t, "order": t, "trade": t, "trades": t, "quote": false, "book": t, "deribit_price_index": false}
+	interval := map[string]bool{"raw": t, "100ms": t, "agg2": t}
+	for _, channel := range msg.Params.Channels {
+		s := strings.Split(channel, ".")
+		if len(s) == 0 {
+			err := errors.New("error invalid channel")
+			c.SendInvalidRequestMessage(err)
+			return
+		}
+		val, ok := method[s[0]]
+		if !ok {
+			err := errors.New("error invalid channel")
+			c.SendInvalidRequestMessage(err)
+			return
+		}
+
+		if val {
+			if len(s) < 3 {
+				err := errors.New("error invalid interval")
+				c.SendInvalidRequestMessage(err)
+				return
+			}
+			if _, ok := interval[s[2]]; !ok {
+				err := errors.New("error invalid interval")
+				c.SendInvalidRequestMessage(err)
+				return
+			}
+		}
+	}
+
 	protocol.SendSuccessMsg(connKey, msg.Params.Channels)
 
 	for _, channel := range msg.Params.Channels {
-		fmt.Println(channel)
 		s := strings.Split(channel, ".")
 		switch s[0] {
 		case "orderbook":
@@ -519,6 +549,37 @@ func (svc wsHandler) SubscribeHandlerPrivate(input interface{}, c *ws.Client) {
 	if err != nil {
 		protocol.SendValidationMsg(connKey, *reason, err)
 		return
+	}
+
+	const t = true
+	method := map[string]bool{"orders": t, "trades": t, "changes": t}
+	interval := map[string]bool{"raw": t, "100ms": t, "agg2": t}
+	for _, channel := range msg.Params.Channels {
+		s := strings.Split(channel, ".")
+		if len(s) == 0 {
+			err := errors.New("error invalid channel")
+			c.SendInvalidRequestMessage(err)
+			return
+		}
+		val, ok := method[s[1]]
+		if !ok {
+			err := errors.New("error invalid channel")
+			c.SendInvalidRequestMessage(err)
+			return
+		}
+
+		if val {
+			if len(s) < 4 {
+				err := errors.New("error invalid interval")
+				c.SendInvalidRequestMessage(err)
+				return
+			}
+			if _, ok := interval[s[3]]; !ok {
+				err := errors.New("error invalid interval")
+				c.SendInvalidRequestMessage(err)
+				return
+			}
+		}
 	}
 
 	protocol.SendSuccessMsg(connKey, msg.Params.Channels)
