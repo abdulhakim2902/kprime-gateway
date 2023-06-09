@@ -124,6 +124,11 @@ func (svc wsTradeService) HandleConsumeUserTrades(msg *sarama.ConsumerMessage) {
 		fmt.Println(err)
 		return
 	}
+
+	if data.Matches == nil {
+		return
+	}
+
 	if len(data.Matches.Trades) > 0 {
 		_instrument := data.Matches.Trades[0].Underlying + "-" + data.Matches.Trades[0].ExpiryDate + "-" + fmt.Sprintf("%.0f", data.Matches.Trades[0].StrikePrice) + "-" + string(data.Matches.Trades[0].Contracts[0])
 
@@ -223,6 +228,11 @@ func (svc wsTradeService) HandleConsumeInstrumentTrades(msg *sarama.ConsumerMess
 		fmt.Println(err)
 		return
 	}
+
+	if data.Matches == nil {
+		return
+	}
+
 	if len(data.Matches.Trades) > 0 {
 		_instrument := data.Matches.Trades[0].Underlying + "-" + data.Matches.Trades[0].ExpiryDate + "-" + fmt.Sprintf("%.0f", data.Matches.Trades[0].StrikePrice) + "-" + string(data.Matches.Trades[0].Contracts[0])
 

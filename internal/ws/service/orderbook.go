@@ -454,6 +454,11 @@ func (svc wsOrderbookService) HandleConsumeUserChange(msg *sarama.ConsumerMessag
 		fmt.Println(err)
 		return
 	}
+
+	if data.Matches == nil {
+		return
+	}
+
 	_instrument := data.Matches.TakerOrder.Underlying + "-" + data.Matches.TakerOrder.ExpiryDate + "-" + fmt.Sprintf("%.0f", data.Matches.TakerOrder.StrikePrice) + "-" + string(data.Matches.TakerOrder.Contracts[0])
 
 	var orderId []interface{}
