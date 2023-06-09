@@ -74,6 +74,11 @@ func (svc orderbookHandler) HandleConsumeBook(msg *sarama.ConsumerMessage) {
 		fmt.Println(err)
 		return
 	}
+
+	if data.Matches == nil {
+		return
+	}
+
 	order = *data.Matches.TakerOrder
 	_instrument := data.Matches.TakerOrder.Underlying + "-" + data.Matches.TakerOrder.ExpiryDate + "-" + fmt.Sprintf("%.0f", data.Matches.TakerOrder.StrikePrice) + "-" + string(data.Matches.TakerOrder.Contracts[0])
 
