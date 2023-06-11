@@ -969,81 +969,216 @@ func (r TradeRepository) GetGreeks(types string, impliedVolatily float64, option
 	return delta
 }
 
-func (r TradeRepository) FilterUserTradesByOrder(userId string, InstrumentName string, data _deribitModel.DeribitGetUserTradesByOrderRequest) []*_engineType.Trade {
-	fmt.Println("userId : ", userId)
-	fmt.Println("data.OrderId : ", data.OrderId)
-
-	str := InstrumentName
-	components := strings.Split(str, "-")
-
-	underlying := components[0]
-	expiryDate := components[1]
-	strikePrice := components[2]
-	contracts := components[3]
-
-	switch contracts {
-	case "C":
-		contracts = "CALL"
-	case "P":
-		contracts = "PUT"
+func (r TradeRepository) FilterUserTradesByOrder(userId string, InstrumentName string, orderId string) (result _deribitModel.DeribitGetUserTradesByOrderResponse, err error) {
+	options := options.AggregateOptions{
+		MaxTime: &defaultTimeout,
 	}
 
-	strikePriceFloat, _ := strconv.ParseFloat(strikePrice, 64)
+	_string := InstrumentName
+	substring := strings.Split(_string, "-")
 
-	// Querry for Order Id
-	idStr := data.OrderId
-	orderId, err := primitive.ObjectIDFromHex(idStr)
+	_strikePrice, err := strconv.ParseFloat(substring[2], 64)
 	if err != nil {
-		return nil
+		fmt.Println(err)
 	}
+	_underlying := substring[0]
+	_expiryDate := strings.ToUpper(substring[1])
 
-	filter := bson.M{
-		"underlying":  underlying,
-		"expiryDate":  expiryDate,
-		"strikePrice": strikePriceFloat,
-		"contracts":   contracts,
-	}
-
-	// Querry for Sort
-	findOptions := options.Find()
-	sortOrder := -1
-
-	switch data.Sorting {
-	case "asc":
-		sortOrder = 1
-	case "desc":
-		sortOrder = -1
-	}
-
-	if data.Sorting == "" {
-		sortOrder = -1
-	}
-
-	findOptions.SetSort(bson.M{"createdAt": sortOrder})
-
-	cursor, err := r.collection.Find(context.Background(), filter, findOptions)
+	objectID, err := primitive.ObjectIDFromHex(orderId)
 	if err != nil {
-		return nil
+		fmt.Println(err)
+		return
 	}
 
+	lookupTakerOrderStage := bson.D{
+		{"$lookup",
+			bson.D{
+				{"from", "orders"},
+				{"localField", "taker.orderId"},
+				{"foreignField", "_id"},
+				{"as", "takerOrder"},
+			},
+		},
+	}
+
+	lookupMakerOrderStage := bson.D{
+		{"$lookup",
+			bson.D{
+				{"from", "orders"},
+				{"localField", "maker.orderId"},
+				{"foreignField", "_id"},
+				{"as", "makerOrder"},
+			},
+		},
+	}
+
+	matchStage := bson.D{
+		{"$match",
+			bson.D{
+				{"underlying", _underlying},
+				{"strikePrice", _strikePrice},
+				{"expiryDate", _expiryDate},
+				{"$or",
+					bson.A{
+						bson.D{{"taker.userId", userId}, {"taker.orderId", objectID}},
+						bson.D{{"maker.userId", userId}, {"maker.orderId", objectID}},
+					},
+				},
+			},
+		},
+	}
+
+	projectStage := bson.D{
+		{"$project",
+			bson.D{
+				{"InstrumentName", bson.M{"$concat": bson.A{
+					bson.D{
+						{"$convert", bson.D{
+							{"input", "$underlying"},
+							{"to", "string"},
+						}}},
+					"-",
+					bson.D{
+						{"$convert", bson.D{
+							{"input", "$expiryDate"},
+							{"to", "string"},
+						}}},
+					"-",
+					bson.D{
+						{"$convert", bson.D{
+							{"input", "$strikePrice"},
+							{"to", "string"},
+						}}},
+					"-",
+					bson.M{"$substr": bson.A{"$contracts", 0, 1}},
+				}}},
+				{"amount", "$amount"},
+				{"direction", "$side"},
+				{"label",
+					bson.D{
+						{"$cond",
+							bson.A{
+								bson.D{{"$eq", bson.A{"$taker.orderId", objectID}}},
+								bson.D{
+									{"$arrayElemAt",
+										bson.A{
+											"$takerOrder.label",
+											0,
+										},
+									},
+								},
+								bson.D{
+									{"$arrayElemAt",
+										bson.A{
+											"$makerOrder.label",
+											0,
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				{"order_id",
+					bson.D{
+						{"$cond",
+							bson.A{
+								bson.D{{"$eq", bson.A{"$taker.orderId", objectID}}},
+								"$taker.orderId",
+								"$maker.orderId",
+							},
+						},
+					},
+				},
+				{"order_type",
+					bson.D{
+						{"$cond",
+							bson.A{
+								bson.D{{"$eq", bson.A{"$taker.orderId", objectID}}},
+								bson.D{
+									{"$arrayElemAt",
+										bson.A{
+											"$takerOrder.type",
+											0,
+										},
+									},
+								},
+								bson.D{
+									{"$arrayElemAt",
+										bson.A{
+											"$makerOrder.type",
+											0,
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				{"price", "$price"},
+				{"state",
+					bson.D{
+						{"$cond",
+							bson.A{
+								bson.D{{"$eq", bson.A{"$taker.orderId", objectID}}},
+								bson.D{
+									{"$arrayElemAt",
+										bson.A{
+											"$takerOrderId.status",
+											0,
+										},
+									},
+								},
+								bson.D{
+									{"$arrayElemAt",
+										bson.A{
+											"$makerOrder.status",
+											0,
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				{"timestamp", bson.M{"$toLong": "$createdAt"}},
+				{"strikePrice", "$strikePrice"},
+				{"tickDirection", "$tickDirection"},
+				{"tradeSequence", "$tradeSequence"},
+				{"indexPrice", "$indexPrice"},
+			},
+		},
+	}
+
+	groupStage := bson.D{
+		{"$group", bson.D{
+			{"_id", nil},
+			{"trades", bson.D{{"$push", "$$ROOT"}}},
+		}},
+	}
+
+	pipeline := mongo.Pipeline{lookupMakerOrderStage, lookupTakerOrderStage, matchStage, projectStage, groupStage}
+
+	var cursor *mongo.Cursor
+	cursor, err = r.collection.Aggregate(context.Background(), pipeline, &options)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 	defer cursor.Close(context.Background())
 
-	Trades := []*_engineType.Trade{}
-	for cursor.Next(context.Background()) {
-		trade := &_engineType.Trade{}
-		err := cursor.Decode(trade)
-		if err != nil {
-			return nil
+	var res _tradeType.UserTradesByOderResult
+	for cursor.Next(context.TODO()) {
+		if err = cursor.Decode(&res); err != nil {
+			fmt.Println(err)
+			return
 		}
-
-		if (trade.Taker.UserID == userId || trade.Maker.UserID == userId) && (trade.Taker.OrderID == orderId || trade.Maker.OrderID == orderId) {
-			Trades = append(Trades, trade)
+		for _, trade := range res.Trades {
+			trade.Api = true
 		}
 	}
 
-	if err := cursor.Err(); err != nil {
-		return nil
-	}
+	result.Trades = res.Trades
 
-	return Trades
+	return result, nil
 }
