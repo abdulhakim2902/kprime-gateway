@@ -121,9 +121,9 @@ type GetOrderStateParams struct {
 }
 
 type GetUserTradesByOrderParams struct {
-	BaseParams
-	OrderId string `json:"order_id" validate:"required" form:"order_id"`
-	Sorting string `json:"sorting" form:"sorting"`
+	AccessToken string `json:"access_token"`
+	OrderId     string `json:"order_id" validate:"required" form:"order_id"`
+	Sorting     string `json:"sorting" form:"sorting"`
 }
 
 type DeribitRequest struct {

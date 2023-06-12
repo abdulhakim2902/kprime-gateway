@@ -969,20 +969,10 @@ func (r TradeRepository) GetGreeks(types string, impliedVolatily float64, option
 	return delta
 }
 
-func (r TradeRepository) FilterUserTradesByOrder(userId string, InstrumentName string, orderId string) (result _deribitModel.DeribitGetUserTradesByOrderResponse, err error) {
+func (r TradeRepository) FilterUserTradesByOrder(userId string, orderId string) (result _deribitModel.DeribitGetUserTradesByOrderResponse, err error) {
 	options := options.AggregateOptions{
 		MaxTime: &defaultTimeout,
 	}
-
-	_string := InstrumentName
-	substring := strings.Split(_string, "-")
-
-	_strikePrice, err := strconv.ParseFloat(substring[2], 64)
-	if err != nil {
-		fmt.Println(err)
-	}
-	_underlying := substring[0]
-	_expiryDate := strings.ToUpper(substring[1])
 
 	objectID, err := primitive.ObjectIDFromHex(orderId)
 	if err != nil {
@@ -1015,9 +1005,6 @@ func (r TradeRepository) FilterUserTradesByOrder(userId string, InstrumentName s
 	matchStage := bson.D{
 		{"$match",
 			bson.D{
-				{"underlying", _underlying},
-				{"strikePrice", _strikePrice},
-				{"expiryDate", _expiryDate},
 				{"$or",
 					bson.A{
 						bson.D{{"taker.userId", userId}, {"taker.orderId", objectID}},

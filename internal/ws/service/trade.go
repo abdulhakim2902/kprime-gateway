@@ -451,10 +451,9 @@ func (svc wsTradeService) GetUserTradesByInstrument(
 	return out
 }
 
-func (svc *wsTradeService) GetUserTradesByOrder(ctx context.Context, userId string, InstrumentName string, data model.DeribitGetUserTradesByOrderRequest) *_deribitModel.DeribitGetUserTradesByOrderResponse {
+func (svc *wsTradeService) GetUserTradesByOrder(ctx context.Context, userId string, data model.DeribitGetUserTradesByOrderRequest) *_deribitModel.DeribitGetUserTradesByOrderResponse {
 	trades, err := svc.repo.FilterUserTradesByOrder(
 		userId,
-		InstrumentName,
 		data.OrderId,
 	)
 	if err != nil {
