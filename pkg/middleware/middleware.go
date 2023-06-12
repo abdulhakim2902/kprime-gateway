@@ -22,12 +22,6 @@ func Authenticate() gin.HandlerFunc {
 			isPrivateMethod = method == "private"
 			break
 		case "POST":
-			// var dto model.RequestDto[model.EmptyParams]
-			// if err := utils.UnmarshalAndValidate(c, &dto); err != nil {
-			// 	c.AbortWithStatus(http.StatusBadRequest)
-			// 	return
-			// }
-
 			body, err := ioutil.ReadAll(c.Request.Body)
 			if err != nil {
 				logs.Log.Err(err).Msg("")
