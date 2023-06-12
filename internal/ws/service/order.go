@@ -135,12 +135,14 @@ func (svc wsOrderService) HandleConsumeUserOrder(msg *sarama.ConsumerMessage) {
 			// broadcast to user id
 			broadcastId := fmt.Sprintf("%s.%s.%s-%s", "user", "orders", _instrument, id)
 
-			params := _types.QuoteResponse{
-				Channel: fmt.Sprintf("user.orders.%s.raw", _instrument),
-				Data:    orders,
+			for _, order := range orders {
+				params := _types.QuoteResponse{
+					Channel: fmt.Sprintf("user.orders.%s.raw", _instrument),
+					Data:    order,
+				}
+				method := "subscription"
+				ws.GetOrderSocket().BroadcastMessageOrder(broadcastId, method, params)
 			}
-			method := "subscription"
-			ws.GetOrderSocket().BroadcastMessageOrder(broadcastId, method, params)
 		}
 	}
 	return
