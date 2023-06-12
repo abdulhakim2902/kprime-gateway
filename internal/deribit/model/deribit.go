@@ -69,25 +69,24 @@ type DeribitGetIndexPriceResponse struct {
 }
 
 type DeribitGetUserTradesByOrderValue struct {
-	Amount         float64   `json:"amount"`
-	Direction      string    `json:"direction"`
-	InstrumentName string    `json:"instrument_name"`
-	OrderId        string    `json:"order_id"`
-	OrderType      string    `json:"order_type"`
-	Price          float64   `json:"price"`
-	State          string    `json:"state"`
-	Timestamp      int64     `json:"timestamp"`
-	TradeId        int32     `json:"trade_id"`
-	Api            bool      `json:"api"`
-	IndexPrice     float64   `json:"index_price"`
-	Label          string    `json:"label"`
-	TickDirection  int32     `json:"tick_direction"`
-	TradeSeq       int32     `json:"trade_seq"`
-	CreatedAt      time.Time `json:"createdAt"`
+	TradeId        primitive.ObjectID `json:"trade_id" bson:"_id"`
+	Amount         float64            `json:"amount" bson:"amount"`
+	Direction      types.Side         `json:"direction" bson:"direction"`
+	InstrumentName string             `json:"instrument_name" bson:"InstrumentName"`
+	OrderId        primitive.ObjectID `json:"order_id" bson:"order_id"`
+	OrderType      types.Type         `json:"order_type" bson:"order_type"`
+	Price          float64            `json:"price" bson:"price"`
+	State          types.OrderStatus  `json:"state" bson:"state"`
+	Timestamp      int64              `json:"timestamp" bson:"timestamp"`
+	Api            bool               `json:"api"`
+	IndexPrice     float64            `json:"index_price" bson:"indexPrice"`
+	Label          string             `json:"label,omitempty" bson:"label"`
+	TickDirection  int                `json:"tick_direction" bson:"tickDirection"`
+	TradeSequence  int                `json:"trade_seq" bson:"tradeSequence"`
 }
 
 type DeribitGetUserTradesByOrderResponse struct {
-	Trades []DeribitGetUserTradesByOrderValue `json:"trades"`
+	Trades []*DeribitGetUserTradesByOrderValue `json:"trades"`
 }
 
 type BaseParams struct {
@@ -122,9 +121,9 @@ type GetOrderStateParams struct {
 }
 
 type GetUserTradesByOrderParams struct {
-	BaseParams
-	OrderId string `json:"order_id" validate:"required" form:"order_id"`
-	Sorting string `json:"sorting" form:"sorting"`
+	AccessToken string `json:"access_token"`
+	OrderId     string `json:"order_id" validate:"required" form:"order_id"`
+	Sorting     string `json:"sorting" form:"sorting"`
 }
 
 type DeribitRequest struct {

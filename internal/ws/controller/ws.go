@@ -832,7 +832,6 @@ func (svc wsHandler) PrivateGetUserTradesByOrder(input interface{}, c *ws.Client
 	res := svc.wsTradeSvc.GetUserTradesByOrder(
 		context.TODO(),
 		claim.UserID,
-		msg.Params.InstrumentName,
 		deribitModel.DeribitGetUserTradesByOrderRequest{
 			OrderId: msg.Params.OrderId,
 			Sorting: msg.Params.Sorting,

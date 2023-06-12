@@ -10,3 +10,10 @@ type UserTradesByInstrumentResult struct {
 		Count int64 `bson:"count"`
 	} `bson:"total"`
 }
+
+type UserTradesByOderResult struct {
+	Trades []*deribitModel.DeribitGetUserTradesByOrderValue `bson:"trades"`
+	Total  []*struct {
+		Count int64 `bson:"count"`
+	} `bson:"total"`
+}
