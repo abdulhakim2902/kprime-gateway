@@ -122,6 +122,7 @@ func main() {
 	_wsOrderSvc := _wsSvc.NewWSOrderService(redisConn, orderRepo)
 	_wsTradeSvc := _wsSvc.NewWSTradeService(redisConn, tradeRepo)
 	_wsRawPriceSvc := _wsSvc.NewWSRawPriceService(redisConn, rawPriceRepo)
+	_wsUserBalanceSvc := _wsSvc.NewWSUserBalanceService()
 
 	memoryDb, err := memdb.InitSchemas()
 	if err != nil {
@@ -142,7 +143,7 @@ func main() {
 
 	go ordermatch.Execute(_deribitSvc)
 
-	_deribitCtrl.NewDeribitHandler(engine, _deribitSvc, _authSvc)
+	_deribitCtrl.NewDeribitHandler(engine, _deribitSvc, _authSvc, userRepo)
 	_wsCtrl.NewWebsocketHandler(
 		engine,
 		_authSvc,
@@ -152,6 +153,7 @@ func main() {
 		_wsOrderSvc,
 		_wsTradeSvc,
 		_wsRawPriceSvc,
+		_wsUserBalanceSvc,
 		userRepo,
 	)
 

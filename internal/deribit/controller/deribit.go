@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"gateway/internal/deribit/service"
 	"net/http"
+	"time"
 
 	"git.devucc.name/dependencies/utilities/commons/logs"
 	"git.devucc.name/dependencies/utilities/types"
@@ -23,12 +24,15 @@ import (
 	"git.devucc.name/dependencies/utilities/types/validation_reason"
 	cors "github.com/rs/cors/wrapper/gin"
 
+	"gateway/internal/repositories"
+
 	"github.com/gin-gonic/gin"
 )
 
 type DeribitHandler struct {
-	svc     service.IDeribitService
-	authSvc authService.IAuthService
+	svc      service.IDeribitService
+	authSvc  authService.IAuthService
+	userRepo *repositories.UserRepository
 
 	handlers map[string]gin.HandlerFunc
 }
@@ -37,10 +41,12 @@ func NewDeribitHandler(
 	r *gin.Engine,
 	svc service.IDeribitService,
 	authSvc authService.IAuthService,
+	userRepo *repositories.UserRepository,
 ) {
 	handler := DeribitHandler{
-		svc:     svc,
-		authSvc: authSvc,
+		svc:      svc,
+		authSvc:  authSvc,
+		userRepo: userRepo,
 	}
 
 	handler.RegisterHandler("public/auth", handler.auth)
@@ -62,6 +68,7 @@ func NewDeribitHandler(
 	handler.RegisterHandler("private/get_order_state_by_label", handler.getOrderStateByLabel)
 	handler.RegisterHandler("private/get_order_state", handler.getOrderState)
 	handler.RegisterHandler("private/get_user_trades_by_order", handler.getUserTradesByOrder)
+	handler.RegisterHandler("private/get_account_summary", handler.getAccountSummary)
 
 	r.Use(cors.AllowAll())
 	r.Use(middleware.Authenticate())
@@ -665,6 +672,39 @@ func (h *DeribitHandler) getUserTradesByOrder(r *gin.Context) {
 	)
 
 	protocol.SendSuccessMsg(connKey, res)
+}
+
+func (h *DeribitHandler) getAccountSummary(r *gin.Context) {
+	var msg deribitModel.RequestDto[deribitModel.GetAccountSummary]
+
+	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
+		r.AbortWithError(http.StatusBadRequest, err)
+		return
+	}
+
+	userId, connKey, reason, err := requestHelper(msg.Id, msg.Method, r)
+	if err != nil {
+		protocol.SendValidationMsg(connKey, *reason, err)
+		return
+	}
+
+	result := h.svc.FetchUserBalance(
+		msg.Params.Currency,
+		userId,
+	)
+	balance, _ := strconv.ParseFloat(result.Balance, 64)
+
+	user, _ := h.userRepo.FindById(context.TODO(), userId)
+	resp := deribitModel.GetAccountSummaryResponse{
+		Id:                userId,
+		Currency:          msg.Params.Currency,
+		Email:             user.Email,
+		Balance:           balance,
+		MarginBalance:     balance,
+		CreationTimestamp: time.Now().UnixNano() / int64(time.Millisecond),
+	}
+
+	protocol.SendSuccessMsg(connKey, resp)
 }
 
 func (h *DeribitHandler) getDeliveryPrices(r *gin.Context) {

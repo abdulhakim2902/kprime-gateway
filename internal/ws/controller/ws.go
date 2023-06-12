@@ -8,6 +8,7 @@ import (
 	"gateway/pkg/utils"
 	"strconv"
 	"strings"
+	"time"
 
 	deribitModel "gateway/internal/deribit/model"
 	"gateway/internal/repositories"
@@ -28,13 +29,14 @@ import (
 )
 
 type wsHandler struct {
-	authSvc       authService.IAuthService
-	deribitSvc    deribitService.IDeribitService
-	wsOBSvc       wsService.IwsOrderbookService
-	wsOSvc        wsService.IwsOrderService
-	wsEngSvc      engService.IwsEngineService
-	wsTradeSvc    wsService.IwsTradeService
-	wsRawPriceSvc wsService.IwsRawPriceService
+	authSvc          authService.IAuthService
+	deribitSvc       deribitService.IDeribitService
+	wsOBSvc          wsService.IwsOrderbookService
+	wsOSvc           wsService.IwsOrderService
+	wsEngSvc         engService.IwsEngineService
+	wsTradeSvc       wsService.IwsTradeService
+	wsRawPriceSvc    wsService.IwsRawPriceService
+	wsUserBalanceSvc wsService.IwsUserBalanceService
 
 	userRepo *repositories.UserRepository
 }
@@ -48,17 +50,19 @@ func NewWebsocketHandler(
 	wsOSvc wsService.IwsOrderService,
 	wsTradeSvc wsService.IwsTradeService,
 	wsRawPriceSvc wsService.IwsRawPriceService,
+	wsUserBalanceSvc wsService.IwsUserBalanceService,
 	userRepo *repositories.UserRepository,
 ) {
 	handler := &wsHandler{
-		authSvc:       authSvc,
-		deribitSvc:    deribitSvc,
-		wsOBSvc:       wsOBSvc,
-		wsEngSvc:      wsEngSvc,
-		wsOSvc:        wsOSvc,
-		wsTradeSvc:    wsTradeSvc,
-		wsRawPriceSvc: wsRawPriceSvc,
-		userRepo:      userRepo,
+		authSvc:          authSvc,
+		deribitSvc:       deribitSvc,
+		wsOBSvc:          wsOBSvc,
+		wsEngSvc:         wsEngSvc,
+		wsOSvc:           wsOSvc,
+		wsTradeSvc:       wsTradeSvc,
+		wsRawPriceSvc:    wsRawPriceSvc,
+		wsUserBalanceSvc: wsUserBalanceSvc,
+		userRepo:         userRepo,
 	}
 	r.Use(cors.AllowAll())
 
@@ -77,6 +81,7 @@ func NewWebsocketHandler(
 	ws.RegisterChannel("private/get_order_history_by_instrument", handler.PrivateGetOrderHistoryByInstrument)
 	ws.RegisterChannel("private/get_order_state_by_label", handler.PrivateGetOrderStateByLabel)
 	ws.RegisterChannel("private/get_order_state", handler.PrivateGetOrderState)
+	ws.RegisterChannel("private/get_account_summary", handler.PrivateGetAccountSummary)
 
 	ws.RegisterChannel("public/subscribe", handler.SubscribeHandler)
 	ws.RegisterChannel("public/unsubscribe", handler.UnsubscribeHandler)
@@ -883,6 +888,38 @@ func (svc wsHandler) PrivateGetOrderState(input interface{}, c *ws.Client) {
 	)
 
 	protocol.SendSuccessMsg(connKey, res)
+}
+
+func (svc wsHandler) PrivateGetAccountSummary(input interface{}, c *ws.Client) {
+	var msg deribitModel.RequestDto[deribitModel.GetAccountSummary]
+	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
+		c.SendInvalidRequestMessage(err)
+		return
+	}
+
+	claim, connKey, reason, err := requestHelper(msg.Id, msg.Method, &msg.Params.AccessToken, c)
+	if err != nil {
+		protocol.SendValidationMsg(connKey, *reason, err)
+		return
+	}
+
+	result := svc.wsUserBalanceSvc.FetchUserBalance(
+		msg.Params.Currency,
+		claim.UserID,
+	)
+	balance, _ := strconv.ParseFloat(result.Balance, 64)
+
+	user, _ := svc.userRepo.FindById(context.TODO(), claim.UserID)
+	resp := deribitModel.GetAccountSummaryResponse{
+		Id:                claim.UserID,
+		Currency:          msg.Params.Currency,
+		Email:             user.Email,
+		Balance:           balance,
+		MarginBalance:     balance,
+		CreationTimestamp: time.Now().UnixNano() / int64(time.Millisecond),
+	}
+
+	protocol.SendSuccessMsg(connKey, resp)
 }
 
 func (svc wsHandler) PrivateGetOrderStateByLabel(input interface{}, c *ws.Client) {
