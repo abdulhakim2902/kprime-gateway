@@ -1,9 +1,9 @@
 package middleware
 
 import (
-	"gateway/internal/deribit/model"
+	"encoding/json"
 	authSvc "gateway/internal/user/service"
-	"gateway/pkg/utils"
+	"io/ioutil"
 	"net/http"
 	"strings"
 
@@ -22,13 +22,38 @@ func Authenticate() gin.HandlerFunc {
 			isPrivateMethod = method == "private"
 			break
 		case "POST":
-			var dto model.RequestDto[model.EmptyParams]
-			if err := utils.UnmarshalAndValidate(c, &dto); err != nil {
+			// var dto model.RequestDto[model.EmptyParams]
+			// if err := utils.UnmarshalAndValidate(c, &dto); err != nil {
+			// 	c.AbortWithStatus(http.StatusBadRequest)
+			// 	return
+			// }
+
+			body, err := ioutil.ReadAll(c.Request.Body)
+			if err != nil {
+				logs.Log.Err(err).Msg("")
+				c.AbortWithStatus(http.StatusBadRequest)
+			}
+
+			var data gin.H
+			if err := json.Unmarshal(body, &data); err != nil {
 				c.AbortWithStatus(http.StatusBadRequest)
 				return
 			}
 
-			isPrivateMethod = strings.Contains(dto.Method, "private")
+			val, ok := data["method"]
+			if !ok {
+				c.AbortWithStatus(http.StatusBadRequest)
+				return
+			}
+
+			_, ok = data["id"]
+			if !ok {
+				c.AbortWithStatus(http.StatusBadRequest)
+				return
+			}
+
+			isPrivateMethod = strings.Contains(val.(string), "private")
+			c.Set("body", body)
 			break
 		}
 

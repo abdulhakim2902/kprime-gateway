@@ -2,13 +2,13 @@ package utils
 
 import (
 	"encoding/json"
+	"errors"
 	"reflect"
 	"strings"
 	"sync"
 
 	"git.devucc.name/dependencies/utilities/commons/logs"
 	"github.com/gin-gonic/gin"
-	"github.com/gin-gonic/gin/binding"
 	"github.com/go-playground/locales/en"
 	ut "github.com/go-playground/universal-translator"
 	validator "github.com/go-playground/validator/v10"
@@ -72,7 +72,13 @@ func validate(i any) error {
 
 func UnmarshalAndValidate[T any](r *gin.Context, data *T) (err error) {
 	if r.Request.Method == "POST" {
-		err = r.ShouldBindBodyWith(data, binding.JSON)
+		body, ok := r.Get("body")
+		if !ok {
+			err = errors.New("invalid request")
+			return
+		}
+
+		err = json.Unmarshal(body.([]byte), data)
 	} else {
 		err = r.ShouldBindQuery(data)
 	}
