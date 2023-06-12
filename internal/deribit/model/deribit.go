@@ -121,6 +121,31 @@ type GetOrderStateParams struct {
 	OrderId     string `json:"order_id"`
 }
 
+type GetAccountSummary struct {
+	AccessToken string `json:"access_token"`
+	Currency    string `json:"currency"`
+}
+
+type GetAccountSummaryResult struct {
+	Currency string `json:"currency"`
+	UserId   string `json:"userId"`
+	Balance  string `json:"balance"`
+}
+
+type GetAccountSummaryRes struct {
+	Success bool                      `json:"success"`
+	Data    []GetAccountSummaryResult `json:"data"`
+}
+
+type GetAccountSummaryResponse struct {
+	Id                string  `json:"id"`
+	Currency          string  `json:"currency"`
+	Email             string  `json:"email"`
+	Balance           float64 `json:"balance"`
+	MarginBalance     float64 `json:"margin_balance"`
+	CreationTimestamp int64   `json:"creation_timestamp"`
+}
+
 type GetUserTradesByOrderParams struct {
 	BaseParams
 	OrderId string `json:"order_id" validate:"required" form:"order_id"`

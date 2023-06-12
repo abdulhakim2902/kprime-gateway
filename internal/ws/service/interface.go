@@ -61,3 +61,7 @@ type IwsRawPriceService interface {
 	Unsubscribe(c *ws.Client)
 	HandleConsume(msg *sarama.ConsumerMessage)
 }
+
+type IwsUserBalanceService interface {
+	FetchUserBalance(currency string, userID string) deribitModel.GetAccountSummaryResult
+}
