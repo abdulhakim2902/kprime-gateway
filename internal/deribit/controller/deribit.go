@@ -665,7 +665,6 @@ func (h *DeribitHandler) getUserTradesByOrder(r *gin.Context) {
 	res := h.svc.DeribitGetUserTradesByOrder(
 		context.TODO(),
 		userId,
-		msg.Params.InstrumentName,
 		deribitModel.DeribitGetUserTradesByOrderRequest{
 			OrderId: msg.Params.OrderId,
 			Sorting: msg.Params.Sorting,
