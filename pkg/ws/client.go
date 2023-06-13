@@ -36,13 +36,13 @@ type SendMessageParams struct {
 type WebsocketMessage struct {
 	JSONRPC string      `json:"jsonrpc"`
 	Method  string      `json:"method"`
-	ID      uint64      `json:"id"`
+	ID      *uint64     `json:"id"`
 	Params  interface{} `json:"params"`
 }
 
 type WebsocketResponseMessage struct {
 	JSONRPC string      `json:"jsonrpc"`
-	ID      uint64      `json:"id,omitempty"`
+	ID      uint64      `json:"id"`
 	Method  string      `json:"method,omitempty"`
 	Result  interface{} `json:"result,omitempty"`
 	Error   interface{} `json:"error,omitempty"`

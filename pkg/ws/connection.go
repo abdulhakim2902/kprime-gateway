@@ -89,6 +89,11 @@ func readHandler(c *Client) {
 				return
 			}
 
+			if msg.ID == nil {
+				c.SendMessage("INVALID_REQUEST", SendMessageParams{})
+				return
+			}
+
 			go socketChannels[msg.Method](msg, c)
 		}
 	}
