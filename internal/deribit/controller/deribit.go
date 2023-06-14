@@ -15,6 +15,7 @@ import (
 	authService "gateway/internal/user/service"
 	userType "gateway/internal/user/types"
 
+	"gateway/pkg/memdb"
 	"gateway/pkg/middleware"
 	"gateway/pkg/protocol"
 	"gateway/pkg/utils"
@@ -42,6 +43,7 @@ func NewDeribitHandler(
 	svc service.IDeribitService,
 	authSvc authService.IAuthService,
 	userRepo *repositories.UserRepository,
+	memDb *memdb.Schemas,
 ) {
 	handler := DeribitHandler{
 		svc:      svc,
@@ -71,7 +73,7 @@ func NewDeribitHandler(
 	handler.RegisterHandler("private/get_account_summary", handler.getAccountSummary)
 
 	r.Use(cors.AllowAll())
-	r.Use(middleware.Authenticate())
+	r.Use(middleware.Authenticate(memDb))
 
 	api := r.Group("/api/v2")
 	api.POST("", handler.ApiPostHandler)

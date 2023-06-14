@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"errors"
-	"fmt"
 	"gateway/internal/repositories"
 	"gateway/internal/user/types"
 	"gateway/pkg/ws"
@@ -110,8 +109,7 @@ func ClaimJWT(c *ws.Client, jwtToken string) (types.JwtClaim, error) {
 	}
 
 	claims := token.Claims.(jwt.MapClaims)
-	fmt.Println("claims")
-	fmt.Println(claims)
+	logs.Log.Info().Any("CLAIMS", claims).Msg("authed user")
 
 	userId, ok := claims["userID"].(string)
 	if !ok {

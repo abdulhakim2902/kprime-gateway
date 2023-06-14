@@ -143,7 +143,7 @@ func main() {
 
 	go ordermatch.Execute(_deribitSvc)
 
-	_deribitCtrl.NewDeribitHandler(engine, _deribitSvc, _authSvc, userRepo)
+	_deribitCtrl.NewDeribitHandler(engine, _deribitSvc, _authSvc, userRepo, memoryDb)
 	_wsCtrl.NewWebsocketHandler(
 		engine,
 		_authSvc,

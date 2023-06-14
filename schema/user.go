@@ -9,6 +9,7 @@ type User struct {
 	ID              string                 `json:"id"`
 	OrderExclusions []order.OrderExclusion `json:"order_exclusions"`
 	TypeInclusions  []order.TypeInclusions `json:"type_inclustion"`
+	ClientIds       []string               `json:"client_ids"`
 }
 
 var UserSchema = &memdb.DBSchema{
@@ -30,6 +31,11 @@ var UserSchema = &memdb.DBSchema{
 					Name:    "type_inclustion",
 					Unique:  false,
 					Indexer: &memdb.StringFieldIndex{Field: "TypeInclusions"},
+				},
+				"client_ids": {
+					Name:    "client_ids",
+					Unique:  false,
+					Indexer: &memdb.StringFieldIndex{Field: "ClientIds"},
 				},
 			},
 		},
