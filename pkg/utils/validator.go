@@ -3,6 +3,7 @@ package utils
 import (
 	"encoding/json"
 	"errors"
+	"gateway/internal/deribit/model"
 	"reflect"
 	"strings"
 	"sync"
@@ -68,6 +69,26 @@ func validate(i any) error {
 	}
 
 	return er
+}
+
+// TODO: Could be removed in the future.
+func ValidateDeribitRequestParam(request model.RequestParams) (err error) {
+	if request.MaxShow != 0.1 {
+		err := errors.New("max_show must be 0.1")
+		return err
+	}
+
+	if request.ReduceOnly {
+		err := errors.New("reduce_only must be false")
+		return err
+	}
+
+	if request.PostOnly {
+		err := errors.New("post_only must be false")
+		return err
+	}
+
+	return
 }
 
 func UnmarshalAndValidate[T any](r *gin.Context, data *T) (err error) {

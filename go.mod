@@ -26,6 +26,8 @@ require (
 	go.mongodb.org/mongo-driver v1.11.6
 )
 
+replace git.devucc.name/dependencies/utilities => ../../utilities
+
 require (
 	github.com/armon/go-proxyproto v0.0.0-20210323213023-7e956b284f0a // indirect
 	github.com/beorn7/perks v1.0.1 // indirect

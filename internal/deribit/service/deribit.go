@@ -115,6 +115,9 @@ func (svc deribitService) DeribitRequest(
 		Contracts:      instruments.Contracts,
 		TimeInForce:    _timeInForce,
 		Label:          data.Label,
+		MaxShow:        data.MaxShow,
+		ReduceOnly:     data.ReduceOnly,
+		PostOnly:       data.PostOnly,
 
 		OrderExclusions: userCast.OrderExclusions,
 		TypeInclusions:  userCast.TypeInclusions,
