@@ -87,7 +87,6 @@ func (h *DeribitHandler) RegisterHandler(method string, handler gin.HandlerFunc)
 }
 
 func (h *DeribitHandler) ApiPostHandler(r *gin.Context) {
-	fmt.Println("ApiPostHandler")
 	type Params struct{}
 
 	var dto deribitModel.RequestDto[Params]
@@ -108,8 +107,6 @@ func (h *DeribitHandler) ApiPostHandler(r *gin.Context) {
 }
 
 func (h *DeribitHandler) ApiGetHandler(r *gin.Context) {
-	fmt.Println("ApiGetHandler")
-
 	method := fmt.Sprintf("%s%s", r.Param("type"), r.Param("action"))
 
 	handler, ok := h.handlers[method]
