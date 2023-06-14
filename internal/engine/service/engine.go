@@ -122,7 +122,7 @@ func (svc engineHandler) HandleConsumeQuote(msg *sarama.ConsumerMessage) {
 		return
 	}
 
-	if data.Matches == nil {
+	if data.Matches == nil && len(data.Matches.TakerOrder.Contracts) > 0 {
 		return
 	}
 

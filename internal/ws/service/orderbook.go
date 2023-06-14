@@ -15,6 +15,8 @@ import (
 	_orderbookTypes "gateway/internal/orderbook/types"
 	_tradeType "gateway/internal/repositories/types"
 
+	orderType "git.devucc.name/dependencies/utilities/models/order"
+
 	"gateway/internal/repositories"
 	"gateway/pkg/redis"
 	"gateway/pkg/utils"
@@ -455,7 +457,7 @@ func (svc wsOrderbookService) HandleConsumeUserChange(msg *sarama.ConsumerMessag
 		return
 	}
 
-	if data.Matches == nil {
+	if data.Matches == nil && len(data.Matches.TakerOrder.Contracts) > 0 {
 		return
 	}
 
@@ -549,6 +551,62 @@ func (svc wsOrderbookService) HandleConsumeUserChange(msg *sarama.ConsumerMessag
 				userChangesMutex.Lock()
 				userChanges[mapIndex] = append(userChanges[mapIndex], ordersInterface...)
 				userChangesTrades[mapIndex] = append(userChangesTrades[mapIndex], tradesInterface...)
+				userChangesMutex.Unlock()
+			}
+			// broadcast to user id
+			broadcastId := fmt.Sprintf("%s.%s.%s-%s", "user", "changes", _instrument, id)
+
+			params := _orderbookTypes.QuoteResponse{
+				Channel: fmt.Sprintf("user.changes.%s.raw", _instrument),
+				Data:    response,
+			}
+			method := "subscription"
+			ws.GetOrderBookSocket().BroadcastMessageSubcription(broadcastId, method, params)
+		}
+	}
+	return
+}
+
+func (svc wsOrderbookService) HandleConsumeUserChangeCancel(order orderType.Order) {
+	_instrument := order.Underlying + "-" + order.ExpiryDate + "-" + fmt.Sprintf("%.0f", order.StrikePrice) + "-" + string(order.Contracts[0])
+
+	var orderId []interface{}
+	var userId []interface{}
+	orderId = append(orderId, order.ID)
+	userId = append(userId, order.UserID)
+
+	orders, err := svc.orderRepository.GetChangeOrdersByInstrument(
+		_instrument,
+		userId,
+		orderId,
+	)
+	if err != nil {
+		return
+	}
+	tradesInterface := make([]interface{}, 0)
+	ordersInterface := make([]interface{}, 0)
+	for _, order := range orders {
+		ordersInterface = append(ordersInterface, order)
+	}
+	response := _orderbookTypes.ChangeResponse{
+		InstrumentName: _instrument,
+		Trades:         tradesInterface,
+		Orders:         ordersInterface,
+	}
+
+	keys := make(map[interface{}]bool)
+	for _, id := range userId {
+		if _, ok := keys[id]; !ok {
+			keys[id] = true
+			mapIndex := fmt.Sprintf("%s-%s", _instrument, id)
+			if _, ok := userChanges[mapIndex]; !ok {
+				userChangesMutex.Lock()
+				userChanges[mapIndex] = ordersInterface
+				userChangesMutex.Unlock()
+				go svc.HandleConsumeUserChange100ms(_instrument, id.(string))
+			} else {
+				userChangesMutex.Lock()
+				userChanges[mapIndex] = append(userChanges[mapIndex], ordersInterface...)
 				userChangesMutex.Unlock()
 			}
 			// broadcast to user id

@@ -33,6 +33,12 @@ type Orderbook struct {
 	Asks           []*WsOrder `json:"asks" bson:"asks"`
 }
 
+type OrderbookMap struct {
+	InstrumentName string              `json:"instrumentName" bson:"instrumentName"`
+	Bids           map[float64]WsOrder `json:"bids" bson:"bids"`
+	Asks           map[float64]WsOrder `json:"asks" bson:"asks"`
+}
+
 type WsOrder struct {
 	Price  float64 `json:"price" bson:"price"`
 	Amount float64 `json:"amount" bson:"amount"`
@@ -50,6 +56,13 @@ type Order struct {
 	InsertTime           time.Time       `json:"-"`
 	LastExecutedQuantity decimal.Decimal `json:"-"`
 	LastExecutedPrice    decimal.Decimal `json:"-"`
+}
+
+type CancelledOrder struct {
+	Data      []*Order    `json:"data"`
+	Query     interface{} `json:"query"`
+	Nonce     int64       `json:"nonce"`
+	CreatedAt time.Time   `json:"createdAt"`
 }
 
 type GetOrderBook struct {
@@ -97,13 +110,14 @@ type Change struct {
 }
 
 type ChangeStruct struct {
-	Id         int               `json:"id"`
-	IdPrev     int               `json:"id_prev"`
-	Status     types.OrderStatus `json:"status"`
-	Side       types.Side        `json:"side"`
-	Price      float64           `json:"price"`
-	Amount     float64           `json:"amount"`
-	Amendments []order.Amendment `json:"amendments"`
+	Id             int                     `json:"id"`
+	IdPrev         int                     `json:"id_prev"`
+	Status         types.OrderStatus       `json:"status"`
+	Side           types.Side              `json:"side"`
+	Price          float64                 `json:"price"`
+	Amount         float64                 `json:"amount"`
+	Amendments     []order.Amendment       `json:"amendments"`
+	CancelledBooks map[string]OrderbookMap `json:"cancelled_books"`
 }
 
 type ChangeResponse struct {
