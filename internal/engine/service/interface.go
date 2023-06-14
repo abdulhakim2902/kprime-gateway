@@ -7,4 +7,5 @@ import (
 type IEngineService interface {
 	HandleConsume(message *sarama.ConsumerMessage)
 	HandleConsumeQuote(message *sarama.ConsumerMessage)
+	HandleConsumeQuoteCancel(message *sarama.ConsumerMessage)
 }

@@ -74,6 +74,7 @@ func KafkaConsumer(
 					go obSvc.HandleConsumeUserChangeCancel(message)
 					go oSvc.HandleConsumeUserOrderCancel(message)
 					go obSvc.HandleConsumeBookCancel(message)
+					go engSvc.HandleConsumeQuoteCancel(message)
 
 				case "PRICES":
 					go rawSvc.HandleConsume(message)
