@@ -75,6 +75,9 @@ type BuySellEditCancelOrder struct {
 	Api                 bool               `json:"api"`
 	AveragePrice        float64            `json:"average_price,omitempty"`
 	CancelReason        string             `json:"cancel_reason"`
+	MaxShow             float64            `json:"max_show"`
+	PostOnly            bool               `json:"post_only"`
+	ReduceOnly          bool               `json:"reduce_only"`
 
 	OrderExclusions []order.OrderExclusion `json:"order_exclusions"`
 	TypeInclusions  []order.TypeInclusions `json:"type_inclusions"`
