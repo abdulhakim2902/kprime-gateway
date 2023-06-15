@@ -115,9 +115,9 @@ func (svc deribitService) DeribitRequest(
 		Contracts:      instruments.Contracts,
 		TimeInForce:    _timeInForce,
 		Label:          data.Label,
-
-		OrderExclusions: userCast.OrderExclusions,
-		TypeInclusions:  userCast.TypeInclusions,
+		MaxShow:        data.MaxShow,
+		ReduceOnly:     data.ReduceOnly,
+		PostOnly:       data.PostOnly,
 	}
 
 	out, err := json.Marshal(payload)

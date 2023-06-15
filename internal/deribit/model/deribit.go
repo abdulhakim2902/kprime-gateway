@@ -5,7 +5,6 @@ import (
 
 	"time"
 
-	"git.devucc.name/dependencies/utilities/models/order"
 	"git.devucc.name/dependencies/utilities/types"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -162,6 +161,9 @@ type DeribitRequest struct {
 	TimeInForce    types.TimeInForce `json:"time_in_force"`
 	Label          string            `json:"label"`
 	Side           types.Side        `json:"side"`
+	MaxShow        float64           `json:"max_show"`
+	PostOnly       bool              `json:"post_only"`
+	ReduceOnly     bool              `json:"reduce_only"`
 }
 
 type DeribitCancelRequest struct {
@@ -241,9 +243,9 @@ type DeribitResponse struct {
 	Label          string            `json:"label,omitempty,omitempty"`
 	FilledAmount   float64           `json:"filledAmount,omitempty"`
 	Status         string            `json:"status,omitempty"`
-
-	OrderExclusions []order.OrderExclusion `json:"order_exclusions,omitempty"`
-	TypeInclusions  []order.TypeInclusions `json:"type_inclusions,omitempty"`
+	MaxShow        float64           `json:"maxShow,omitempty"`
+	ReduceOnly     bool              `json:"reduceOnly,omitempty"`
+	PostOnly       bool              `json:"postOnly,omitempty"`
 }
 
 type DeribitGetInstrumentsRequest struct {
