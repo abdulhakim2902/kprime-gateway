@@ -382,6 +382,9 @@ type DeribitGetOpenOrdersByInstrumentResponse struct {
 	OrderType      types.Type         `json:"order_type" bson:"orderType"`
 	OrderState     types.OrderStatus  `json:"order_state" bson:"orderState"`
 
+	MaxShow             float64  `json:"max_show" bson:"maxShow"`
+	PostOnly            bool     `json:"post_only" bson:"postOnly"`
+	ReduceOnly          bool     `json:"reduce_only" bson:"reduceOnly"`
 	Label               string   `json:"label,omitempty" bson:"label"`
 	Usd                 float64  `json:"usd" bson:"usd"`
 	CreationTimestamp   int64    `json:"creation_timestamp" bson:"creationTimestamp"`
