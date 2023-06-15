@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"git.devucc.name/dependencies/utilities/commons/logs"
+	"git.devucc.name/dependencies/utilities/types/validation_reason"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/locales/en"
 	ut "github.com/go-playground/universal-translator"
@@ -73,18 +74,18 @@ func validate(i any) error {
 
 // TODO: Could be removed in the future.
 func ValidateDeribitRequestParam(request model.RequestParams) (err error) {
-	if request.MaxShow != 0.1 {
-		err := errors.New("max_show must be 0.1")
+	if *request.MaxShow != 0.1 {
+		err := errors.New(validation_reason.WRONG_MAXSHOW_VALUE.String())
 		return err
 	}
 
 	if request.ReduceOnly {
-		err := errors.New("reduce_only must be false")
+		err := errors.New(validation_reason.REDUCE_ONLY_MUST_BE_FALSE.String())
 		return err
 	}
 
 	if request.PostOnly {
-		err := errors.New("post_only must be false")
+		err := errors.New(validation_reason.POST_ONLY_MUST_BE_FALSE.String())
 		return err
 	}
 

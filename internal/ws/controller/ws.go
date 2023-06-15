@@ -215,6 +215,11 @@ func (svc wsHandler) PrivateBuy(input interface{}, c *ws.Client) {
 		return
 	}
 
+	maxShow := 0.1
+	if msg.Params.MaxShow == nil {
+		msg.Params.MaxShow = &maxShow
+	}
+
 	if err := utils.ValidateDeribitRequestParam(msg.Params); err != nil {
 		c.SendInvalidRequestMessage(err)
 		return
@@ -236,7 +241,7 @@ func (svc wsHandler) PrivateBuy(input interface{}, c *ws.Client) {
 		TimeInForce:    msg.Params.TimeInForce,
 		Label:          msg.Params.Label,
 		Side:           types.BUY,
-		MaxShow:        msg.Params.MaxShow,
+		MaxShow:        *msg.Params.MaxShow,
 		PostOnly:       msg.Params.PostOnly,
 		ReduceOnly:     msg.Params.ReduceOnly,
 	})
@@ -261,6 +266,11 @@ func (svc wsHandler) PrivateSell(input interface{}, c *ws.Client) {
 		return
 	}
 
+	maxShow := 0.1
+	if msg.Params.MaxShow == nil {
+		msg.Params.MaxShow = &maxShow
+	}
+
 	if err := utils.ValidateDeribitRequestParam(msg.Params); err != nil {
 		c.SendInvalidRequestMessage(err)
 		return
@@ -282,7 +292,7 @@ func (svc wsHandler) PrivateSell(input interface{}, c *ws.Client) {
 		TimeInForce:    msg.Params.TimeInForce,
 		Label:          msg.Params.Label,
 		Side:           types.SELL,
-		MaxShow:        msg.Params.MaxShow,
+		MaxShow:        *msg.Params.MaxShow,
 		PostOnly:       msg.Params.PostOnly,
 		ReduceOnly:     msg.Params.ReduceOnly,
 	})

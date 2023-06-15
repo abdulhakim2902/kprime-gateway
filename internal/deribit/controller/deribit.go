@@ -231,6 +231,11 @@ func (h *DeribitHandler) buy(r *gin.Context) {
 		return
 	}
 
+	maxShow := 0.1
+	if msg.Params.MaxShow == nil {
+		msg.Params.MaxShow = &maxShow
+	}
+
 	if err := utils.ValidateDeribitRequestParam(msg.Params); err != nil {
 		r.AbortWithError(http.StatusBadRequest, err)
 		return
@@ -252,7 +257,7 @@ func (h *DeribitHandler) buy(r *gin.Context) {
 		TimeInForce:    msg.Params.TimeInForce,
 		Label:          msg.Params.Label,
 		Side:           types.BUY,
-		MaxShow:        msg.Params.MaxShow,
+		MaxShow:        *msg.Params.MaxShow,
 		ReduceOnly:     msg.Params.ReduceOnly,
 		PostOnly:       msg.Params.PostOnly,
 	})
@@ -276,6 +281,11 @@ func (h *DeribitHandler) sell(r *gin.Context) {
 		return
 	}
 
+	maxShow := 0.1
+	if msg.Params.MaxShow == nil {
+		msg.Params.MaxShow = &maxShow
+	}
+
 	if err := utils.ValidateDeribitRequestParam(msg.Params); err != nil {
 		r.AbortWithError(http.StatusBadRequest, err)
 		return
@@ -297,7 +307,7 @@ func (h *DeribitHandler) sell(r *gin.Context) {
 		TimeInForce:    msg.Params.TimeInForce,
 		Label:          msg.Params.Label,
 		Side:           types.SELL,
-		MaxShow:        msg.Params.MaxShow,
+		MaxShow:        *msg.Params.MaxShow,
 		ReduceOnly:     msg.Params.ReduceOnly,
 		PostOnly:       msg.Params.PostOnly,
 	})
