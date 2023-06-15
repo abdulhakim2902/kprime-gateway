@@ -557,6 +557,7 @@ func (r OrderRepository) GetChangeOrdersByInstrument(InstrumentName string, user
 			"creationTimestamp":   bson.M{"$toLong": "$createdAt"},
 			"lastUpdateTimestamp": bson.M{"$toLong": "$updatedAt"},
 			"cancelledReason":     canceledReasonQuery(),
+			"maxShow":             "$maxShow",
 			"priceAvg": bson.M{
 				"$cond": bson.D{
 					{"if", bson.D{{"$gt", bson.A{"$tradePriceAvg.price", 0}}}},
@@ -613,7 +614,6 @@ func (r OrderRepository) GetChangeOrdersByInstrument(InstrumentName string, user
 
 		return []_deribitModel.DeribitGetOpenOrdersByInstrumentResponse{}, nil
 	}
-
 	return orders, nil
 }
 
