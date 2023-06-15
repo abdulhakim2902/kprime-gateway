@@ -215,6 +215,11 @@ func (svc wsHandler) PrivateBuy(input interface{}, c *ws.Client) {
 		return
 	}
 
+	if err := utils.ValidateDeribitRequestParam(msg.Params); err != nil {
+		c.SendInvalidRequestMessage(err)
+		return
+	}
+
 	claim, connKey, reason, err := requestHelper(msg.Id, msg.Method, &msg.Params.AccessToken, c)
 	if err != nil {
 		protocol.SendValidationMsg(connKey, *reason, err)
@@ -231,6 +236,9 @@ func (svc wsHandler) PrivateBuy(input interface{}, c *ws.Client) {
 		TimeInForce:    msg.Params.TimeInForce,
 		Label:          msg.Params.Label,
 		Side:           types.BUY,
+		MaxShow:        msg.Params.MaxShow,
+		PostOnly:       msg.Params.PostOnly,
+		ReduceOnly:     msg.Params.ReduceOnly,
 	})
 	if err != nil {
 		if validation != nil {
@@ -253,6 +261,11 @@ func (svc wsHandler) PrivateSell(input interface{}, c *ws.Client) {
 		return
 	}
 
+	if err := utils.ValidateDeribitRequestParam(msg.Params); err != nil {
+		c.SendInvalidRequestMessage(err)
+		return
+	}
+
 	claim, connKey, reason, err := requestHelper(msg.Id, msg.Method, &msg.Params.AccessToken, c)
 	if err != nil {
 		protocol.SendValidationMsg(connKey, *reason, err)
@@ -269,6 +282,9 @@ func (svc wsHandler) PrivateSell(input interface{}, c *ws.Client) {
 		TimeInForce:    msg.Params.TimeInForce,
 		Label:          msg.Params.Label,
 		Side:           types.SELL,
+		MaxShow:        msg.Params.MaxShow,
+		PostOnly:       msg.Params.PostOnly,
+		ReduceOnly:     msg.Params.ReduceOnly,
 	})
 	if err != nil {
 		if validation != nil {
