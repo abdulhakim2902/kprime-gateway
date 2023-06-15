@@ -954,7 +954,7 @@ func (r OrderRepository) GetOrderLatestTimestampAgg(o _orderbookType.GetOrderBoo
 		return []bson.M{
 			{
 				"$match": bson.M{
-					"status":      bson.M{"$in": []types.OrderStatus{types.OPEN, types.PARTIAL_FILLED, types.FILLED}},
+					"status":      bson.M{"$in": []types.OrderStatus{types.OPEN, types.PARTIAL_FILLED}},
 					"underlying":  o.Underlying,
 					"strikePrice": o.StrikePrice,
 					"expiryDate":  o.ExpiryDate,

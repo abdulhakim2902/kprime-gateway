@@ -124,7 +124,7 @@ func (svc orderbookHandler) HandleConsumeBook(msg *sarama.ConsumerMessage) {
 		}
 	}
 	// Get latest data from db
-	orderBook := svc.wsOBSvc.GetOrderLatestTimestamp(_order, ts, true)
+	orderBook := svc.wsOBSvc.GetOrderLatestTimestamp(_order, ts, false)
 
 	var bidsData = make([][]interface{}, 0)
 	var asksData = make([][]interface{}, 0)
@@ -216,6 +216,29 @@ func (svc orderbookHandler) HandleConsumeBook(msg *sarama.ConsumerMessage) {
 					askData = append(askData, order.Price)
 					askData = append(askData, 0)
 					asksData = append(asksData, askData)
+				}
+			}
+		}
+	} else if order.Status == "FILLED" { // Check on filled order
+		switch order.Side {
+		case "BUY":
+			if amount, ok := changeId.Asks[fmt.Sprintf("%f", order.Price)]; ok {
+				if amount-order.Amount == 0 {
+					var askData []interface{}
+					askData = append(askData, "delete")
+					askData = append(askData, order.Price)
+					askData = append(askData, 0)
+					asksData = append(asksData, askData)
+				}
+			}
+		case "SELL":
+			if amount, ok := changeId.Bids[fmt.Sprintf("%f", order.Price)]; ok {
+				if amount-order.Amount == 0 {
+					var bidData []interface{}
+					bidData = append(bidData, "delete")
+					bidData = append(bidData, order.Price)
+					bidData = append(bidData, 0)
+					bidsData = append(bidsData, bidData)
 				}
 			}
 		}
@@ -423,7 +446,10 @@ func (svc orderbookHandler) HandleConsumeBookCancel(msg *sarama.ConsumerMessage)
 			}
 		}
 		// Get latest data from db
-		orderBook := svc.wsOBSvc.GetOrderLatestTimestamp(_order, ts, true)
+		orderBook := svc.wsOBSvc.GetOrderLatestTimestamp(_order, ts, false)
+
+		var askKeys = make(map[interface{}]bool)
+		var bidKeys = make(map[interface{}]bool)
 
 		var bidsData = make([][]interface{}, 0)
 		var asksData = make([][]interface{}, 0)
@@ -444,6 +470,7 @@ func (svc orderbookHandler) HandleConsumeBookCancel(msg *sarama.ConsumerMessage)
 						askData = append(askData, ask.Price)
 						askData = append(askData, ask.Amount)
 						asksData = append(asksData, askData)
+						askKeys[ask.Price] = true
 					} else {
 						changeAsksRaw[fmt.Sprintf("%f", ask.Price)] = ask.Amount
 					}
@@ -453,6 +480,7 @@ func (svc orderbookHandler) HandleConsumeBookCancel(msg *sarama.ConsumerMessage)
 						askData = append(askData, ask.Price)
 						askData = append(askData, ask.Amount)
 						asksData = append(asksData, askData)
+						askKeys[ask.Price] = true
 						changeAsksRaw[fmt.Sprintf("%f", ask.Price)] = ask.Amount
 					}
 				}
@@ -476,6 +504,7 @@ func (svc orderbookHandler) HandleConsumeBookCancel(msg *sarama.ConsumerMessage)
 						bidData = append(bidData, bid.Price)
 						bidData = append(bidData, bid.Amount)
 						bidsData = append(bidsData, bidData)
+						bidKeys[bid.Price] = true
 					} else {
 						changeBidsRaw[fmt.Sprintf("%f", bid.Price)] = bid.Amount
 					}
@@ -485,6 +514,7 @@ func (svc orderbookHandler) HandleConsumeBookCancel(msg *sarama.ConsumerMessage)
 						bidData = append(bidData, bid.Price)
 						bidData = append(bidData, bid.Amount)
 						bidsData = append(bidsData, bidData)
+						bidKeys[bid.Price] = true
 						changeBidsRaw[fmt.Sprintf("%f", bid.Price)] = bid.Amount
 					}
 				}
@@ -495,6 +525,10 @@ func (svc orderbookHandler) HandleConsumeBookCancel(msg *sarama.ConsumerMessage)
 		// Check on cancelled orders
 		for _, book := range books {
 			for _, ask := range book.Asks {
+				if _, ok := askKeys[ask.Price]; ok {
+					continue
+				}
+
 				if amount, ok := changeId.Asks[fmt.Sprintf("%f", ask.Price)]; ok {
 					if amount-ask.Amount == 0 {
 						var askData []interface{}
@@ -502,10 +536,14 @@ func (svc orderbookHandler) HandleConsumeBookCancel(msg *sarama.ConsumerMessage)
 						askData = append(askData, ask.Price)
 						askData = append(askData, 0)
 						asksData = append(asksData, askData)
+						askKeys[ask.Price] = true
 					}
 				}
 			}
 			for _, bid := range book.Bids {
+				if _, ok := bidKeys[bid.Price]; ok {
+					continue
+				}
 				if amount, ok := changeId.Bids[fmt.Sprintf("%f", bid.Price)]; ok {
 					if amount-bid.Amount == 0 {
 						var bidData []interface{}
@@ -513,6 +551,7 @@ func (svc orderbookHandler) HandleConsumeBookCancel(msg *sarama.ConsumerMessage)
 						bidData = append(bidData, bid.Price)
 						bidData = append(bidData, 0)
 						bidsData = append(bidsData, bidData)
+						bidKeys[bid.Price] = true
 					}
 				}
 			}
@@ -612,6 +651,9 @@ func (svc orderbookHandler) HandleConsumeBookAgg(_instrument string, order types
 	// Get data
 	orderBook := svc.wsOBSvc.GetOrderLatestTimestampAgg(_order, changeId.Timestamp)
 
+	var askKeys = make(map[interface{}]bool)
+	var bidKeys = make(map[interface{}]bool)
+
 	var bidsData = make([][]interface{}, 0)
 	var asksData = make([][]interface{}, 0)
 	var changeAsksRaw = make(map[string]float64)
@@ -632,6 +674,7 @@ func (svc orderbookHandler) HandleConsumeBookAgg(_instrument string, order types
 					askData = append(askData, ask.Price)
 					askData = append(askData, ask.Amount)
 					asksData = append(asksData, askData)
+					askKeys[ask.Price] = true
 				} else {
 					changeAsksRaw[fmt.Sprintf("%f", ask.Price)] = ask.Amount
 				}
@@ -641,6 +684,7 @@ func (svc orderbookHandler) HandleConsumeBookAgg(_instrument string, order types
 					askData = append(askData, ask.Price)
 					askData = append(askData, ask.Amount)
 					asksData = append(asksData, askData)
+					askKeys[ask.Price] = true
 					changeAsksRaw[fmt.Sprintf("%f", ask.Price)] = ask.Amount
 				}
 			}
@@ -664,6 +708,7 @@ func (svc orderbookHandler) HandleConsumeBookAgg(_instrument string, order types
 					bidData = append(bidData, bid.Price)
 					bidData = append(bidData, bid.Amount)
 					bidsData = append(bidsData, bidData)
+					bidKeys[bid.Price] = true
 				} else {
 					changeBidsRaw[fmt.Sprintf("%f", bid.Price)] = bid.Amount
 				}
@@ -673,6 +718,7 @@ func (svc orderbookHandler) HandleConsumeBookAgg(_instrument string, order types
 					bidData = append(bidData, bid.Price)
 					bidData = append(bidData, bid.Amount)
 					bidsData = append(bidsData, bidData)
+					bidKeys[bid.Price] = true
 					changeBidsRaw[fmt.Sprintf("%f", bid.Price)] = bid.Amount
 				}
 			}
@@ -685,6 +731,9 @@ func (svc orderbookHandler) HandleConsumeBookAgg(_instrument string, order types
 		// Check on cancelled orders
 		for _, book := range cancelledBooks {
 			for _, ask := range book.Asks {
+				if _, ok := askKeys[ask.Price]; ok {
+					continue
+				}
 				if amount, ok := changeId.AsksAgg[fmt.Sprintf("%f", ask.Price)]; ok {
 					if amount-ask.Amount == 0 {
 						var askData []interface{}
@@ -692,10 +741,14 @@ func (svc orderbookHandler) HandleConsumeBookAgg(_instrument string, order types
 						askData = append(askData, ask.Price)
 						askData = append(askData, 0)
 						asksData = append(asksData, askData)
+						askKeys[ask.Price] = true
 					}
 				}
 			}
 			for _, bid := range book.Bids {
+				if _, ok := bidKeys[bid.Price]; ok {
+					continue
+				}
 				if amount, ok := changeId.BidsAgg[fmt.Sprintf("%f", bid.Price)]; ok {
 					if amount-bid.Amount == 0 {
 						var bidData []interface{}
@@ -703,6 +756,7 @@ func (svc orderbookHandler) HandleConsumeBookAgg(_instrument string, order types
 						bidData = append(bidData, bid.Price)
 						bidData = append(bidData, 0)
 						bidsData = append(bidsData, bidData)
+						bidKeys[bid.Price] = true
 					}
 				}
 
@@ -731,6 +785,29 @@ func (svc orderbookHandler) HandleConsumeBookAgg(_instrument string, order types
 						askData = append(askData, order.Price)
 						askData = append(askData, 0)
 						asksData = append(asksData, askData)
+					}
+				}
+			}
+		} else if order.Status == "FILLED" { // Check on filled order
+			switch order.Side {
+			case "BUY":
+				if amount, ok := changeId.AsksAgg[fmt.Sprintf("%f", order.Price)]; ok {
+					if amount-order.Amount == 0 {
+						var askData []interface{}
+						askData = append(askData, "delete")
+						askData = append(askData, order.Price)
+						askData = append(askData, 0)
+						asksData = append(asksData, askData)
+					}
+				}
+			case "SELL":
+				if amount, ok := changeId.BidsAgg[fmt.Sprintf("%f", order.Price)]; ok {
+					if amount-order.Amount == 0 {
+						var bidData []interface{}
+						bidData = append(bidData, "delete")
+						bidData = append(bidData, order.Price)
+						bidData = append(bidData, 0)
+						bidsData = append(bidsData, bidData)
 					}
 				}
 			}
@@ -868,7 +945,10 @@ func (svc orderbookHandler) Handle100msInterval(instrument string) {
 						}
 					}
 					// Get latest data from db
-					orderBook := svc.wsOBSvc.GetOrderLatestTimestamp(_order, ts, true)
+					orderBook := svc.wsOBSvc.GetOrderLatestTimestamp(_order, ts, false)
+
+					var askKeys = make(map[interface{}]bool)
+					var bidKeys = make(map[interface{}]bool)
 
 					var bidsData = make([][]interface{}, 0)
 					var asksData = make([][]interface{}, 0)
@@ -890,6 +970,7 @@ func (svc orderbookHandler) Handle100msInterval(instrument string) {
 									askData = append(askData, ask.Price)
 									askData = append(askData, ask.Amount)
 									asksData = append(asksData, askData)
+									askKeys[ask.Price] = true
 								} else {
 									changeAsksRaw[fmt.Sprintf("%f", ask.Price)] = ask.Amount
 								}
@@ -899,6 +980,7 @@ func (svc orderbookHandler) Handle100msInterval(instrument string) {
 									askData = append(askData, ask.Price)
 									askData = append(askData, ask.Amount)
 									asksData = append(asksData, askData)
+									askKeys[ask.Price] = true
 									changeAsksRaw[fmt.Sprintf("%f", ask.Price)] = ask.Amount
 								}
 							}
@@ -922,6 +1004,7 @@ func (svc orderbookHandler) Handle100msInterval(instrument string) {
 									bidData = append(bidData, bid.Price)
 									bidData = append(bidData, bid.Amount)
 									bidsData = append(bidsData, bidData)
+									bidKeys[bid.Price] = true
 								} else {
 									changeBidsRaw[fmt.Sprintf("%f", bid.Price)] = bid.Amount
 								}
@@ -931,6 +1014,7 @@ func (svc orderbookHandler) Handle100msInterval(instrument string) {
 									bidData = append(bidData, bid.Price)
 									bidData = append(bidData, bid.Amount)
 									bidsData = append(bidsData, bidData)
+									bidKeys[bid.Price] = true
 									changeBidsRaw[fmt.Sprintf("%f", bid.Price)] = bid.Amount
 								}
 							}
@@ -942,6 +1026,9 @@ func (svc orderbookHandler) Handle100msInterval(instrument string) {
 					if len(changeIdLocalVar.CancelledBooks) > 0 {
 						for _, book := range changeIdLocalVar.CancelledBooks {
 							for _, ask := range book.Asks {
+								if _, ok := askKeys[ask.Price]; ok {
+									continue
+								}
 								if amount, ok := changeId.Asks100[fmt.Sprintf("%f", ask.Price)]; ok {
 									if amount-ask.Amount == 0 {
 										var askData []interface{}
@@ -949,10 +1036,14 @@ func (svc orderbookHandler) Handle100msInterval(instrument string) {
 										askData = append(askData, ask.Price)
 										askData = append(askData, 0)
 										asksData = append(asksData, askData)
+										askKeys[ask.Price] = true
 									}
 								}
 							}
 							for _, bid := range book.Bids {
+								if _, ok := bidKeys[bid.Price]; ok {
+									continue
+								}
 								if amount, ok := changeId.Bids100[fmt.Sprintf("%f", bid.Price)]; ok {
 									if amount-bid.Amount == 0 {
 										var bidData []interface{}
@@ -960,6 +1051,7 @@ func (svc orderbookHandler) Handle100msInterval(instrument string) {
 										bidData = append(bidData, bid.Price)
 										bidData = append(bidData, 0)
 										bidsData = append(bidsData, bidData)
+										bidKeys[bid.Price] = true
 									}
 								}
 							}
@@ -986,6 +1078,29 @@ func (svc orderbookHandler) Handle100msInterval(instrument string) {
 										askData = append(askData, changeIdLocalVar.Price)
 										askData = append(askData, 0)
 										asksData = append(asksData, askData)
+									}
+								}
+							}
+						} else if changeIdLocalVar.Status == "FILLED" { // Check on filled order
+							switch changeIdLocalVar.Side {
+							case "BUY":
+								if amount, ok := changeId.Asks100[fmt.Sprintf("%f", changeIdLocalVar.Price)]; ok {
+									if amount-changeIdLocalVar.Amount == 0 {
+										var askData []interface{}
+										askData = append(askData, "delete")
+										askData = append(askData, changeIdLocalVar.Price)
+										askData = append(askData, 0)
+										asksData = append(asksData, askData)
+									}
+								}
+							case "SELL":
+								if amount, ok := changeId.Bids100[fmt.Sprintf("%f", changeIdLocalVar.Price)]; ok {
+									if amount-changeIdLocalVar.Amount == 0 {
+										var bidData []interface{}
+										bidData = append(bidData, "delete")
+										bidData = append(bidData, changeIdLocalVar.Price)
+										bidData = append(bidData, 0)
+										bidsData = append(bidsData, bidData)
 									}
 								}
 							}
