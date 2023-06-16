@@ -9,12 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type Hmac struct {
-}
-
-var (
-	key = []byte("yek-terces-tluafed")
-)
+type Hmac struct{}
 
 func NewHmac() Hmac {
 	return Hmac{}
@@ -73,8 +68,8 @@ func (h *Hmac) DecodeSignature(signature string, c *gin.Context) (sign Signature
 		bodyStr = string(b)
 	}
 
-	data := strings.Join([]string{strings.ToUpper(c.Request.Method), path, bodyStr, ""}, "\n")
-	data = strings.Join([]string{ts, nonce, data}, "\n")
+	b := strings.Join([]string{c.Request.Method, path, bodyStr}, "\n")
+	data := strings.Join([]string{ts, nonce, b}, "\n")
 
 	sign = Signature{
 		ClientId: clientId,

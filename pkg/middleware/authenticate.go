@@ -59,7 +59,7 @@ func Authenticate(memDb *memdb.Schemas) gin.HandlerFunc {
 				return
 			}
 
-			var userId string
+			var userId, clientSecret string
 			switch authorization[0] {
 			case "Bearer":
 				claim, err := authSvc.ClaimJWT(nil, authorization[1])
@@ -79,12 +79,6 @@ func Authenticate(memDb *memdb.Schemas) gin.HandlerFunc {
 					return
 				}
 
-				ok := sig.Verify()
-				if !ok {
-					c.AbortWithStatus(http.StatusUnauthorized)
-					return
-				}
-
 				users := memDb.User.Find("id")
 				if users == nil {
 					c.AbortWithStatus(http.StatusInternalServerError)
@@ -95,12 +89,20 @@ func Authenticate(memDb *memdb.Schemas) gin.HandlerFunc {
 				for _, user := range users {
 					if usr, ok := user.(userSchema.User); ok {
 						for _, key := range usr.ClientIds {
-							if key == sig.ClientId {
+							if strings.HasPrefix(key, sig.ClientId) {
 								userId = usr.ID
+								clientSecret = strings.Split(key, ":")[1]
 								goto foundClientId
 							}
 						}
 					}
+				}
+
+			foundClientId:
+				ok := sig.Verify(clientSecret)
+				if !ok {
+					c.AbortWithStatus(http.StatusUnauthorized)
+					return
 				}
 
 			default:
@@ -108,7 +110,6 @@ func Authenticate(memDb *memdb.Schemas) gin.HandlerFunc {
 				return
 			}
 
-		foundClientId:
 			c.Set("userID", userId)
 		}
 

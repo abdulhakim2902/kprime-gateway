@@ -3,6 +3,7 @@ package middleware
 import (
 	"encoding/json"
 	"fmt"
+	"gateway/pkg/utils"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -14,17 +15,20 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var sig = Signature{
-	Ts:       "1686730272930",
-	ClientId: "clientId",
-	Nonce:    "nonce",
-}
+var (
+	testKey = "yek-terces-tluafed"
+	sig     = Signature{
+		Ts:       "1686730272930",
+		ClientId: "clientId",
+		Nonce:    "nonce",
+	}
+)
 
 func TestGenerateAndSignMessage(t *testing.T) {
 
-	hash := sig.Sign()
+	hash := sig.Sign(testKey)
 
-	expectedHash := "ebfaab6f68a8000216bcc641c804d2b47013c785132a74bae85b5d387202102f"
+	expectedHash := "014124da1c04cbd6bc65b89d88f6feb8df849b1a1e456a3a6bc1ea0c24891519"
 	assert.Equal(t, expectedHash, hash)
 
 }
@@ -36,6 +40,7 @@ func TestGetSignatureValue(t *testing.T) {
 }
 
 func TestGetRequest(t *testing.T) {
+	utils.InitLogger()
 	ctx, engine := gin.CreateTestContext(httptest.NewRecorder())
 	engine.GET("/test", func(ctx *gin.Context) {
 		ctx.String(http.StatusOK, "Hello")
@@ -55,19 +60,11 @@ func TestGetRequest(t *testing.T) {
 		path = fmt.Sprintf("%s?%s", path, querys.Encode())
 	}
 
-	body, _ := ctx.Get("body")
-	bodyStr := ""
-	if body != nil {
-		bodyStr = body.(string)
-	}
-
+	b := strings.Join([]string{ctx.Request.Method, path, ""}, "\n")
 	sig.Ts = strconv.Itoa(int(time.Now().UnixMilli()))
-
-	data := strings.Join([]string{strings.ToUpper(ctx.Request.Method), path, bodyStr, ""}, "\n")
-	data = strings.Join([]string{sig.Ts, sig.Nonce, data}, "\n")
+	data := strings.Join([]string{sig.Ts, sig.Nonce, b}, "\n")
 	sig.Data = data
-
-	hash := sig.Sign()
+	hash := sig.Sign(testKey)
 
 	// Test Wrong signature
 	hmac := NewHmac()
@@ -79,7 +76,7 @@ func TestGetRequest(t *testing.T) {
 	assert.Equal(t, sig.Ts, decodedSig.Ts, "Ts id check")
 	assert.Equal(t, sig.Nonce, decodedSig.Nonce, "Nonce id check")
 
-	ok := decodedSig.Verify()
+	ok := decodedSig.Verify(testKey)
 	assert.Equal(t, false, ok, "Expected not ok")
 
 	// Test correct signature
@@ -91,7 +88,7 @@ func TestGetRequest(t *testing.T) {
 	assert.Equal(t, sig.Ts, decodedSig.Ts, "Ts id check")
 	assert.Equal(t, sig.Nonce, decodedSig.Nonce, "Nonce id check")
 
-	ok = decodedSig.Verify()
+	ok = decodedSig.Verify(testKey)
 	assert.Equal(t, true, ok, "Expected ok")
 
 }
@@ -128,13 +125,11 @@ func TestPostRequest(t *testing.T) {
 		bodyStr = string(b)
 	}
 
+	b := strings.Join([]string{ctx.Request.Method, path, bodyStr}, "\n")
 	sig.Ts = strconv.Itoa(int(time.Now().UnixMilli()))
-
-	data := strings.Join([]string{strings.ToUpper(ctx.Request.Method), path, bodyStr, ""}, "\n")
-	data = strings.Join([]string{sig.Ts, sig.Nonce, data}, "\n")
+	data := strings.Join([]string{sig.Ts, sig.Nonce, b}, "\n")
 	sig.Data = data
-
-	hash := sig.Sign()
+	hash := sig.Sign(testKey)
 
 	// Test Wrong signature
 	hmac := NewHmac()
@@ -146,7 +141,7 @@ func TestPostRequest(t *testing.T) {
 	assert.Equal(t, sig.Ts, decodedSig.Ts, "Ts id check")
 	assert.Equal(t, sig.Nonce, decodedSig.Nonce, "Nonce id check")
 
-	ok := decodedSig.Verify()
+	ok := decodedSig.Verify(testKey)
 	assert.Equal(t, false, ok, "Expected not ok")
 
 	// Test correct signature
@@ -158,7 +153,7 @@ func TestPostRequest(t *testing.T) {
 	assert.Equal(t, sig.Ts, decodedSig.Ts, "Ts id check")
 	assert.Equal(t, sig.Nonce, decodedSig.Nonce, "Nonce id check")
 
-	ok = decodedSig.Verify()
+	ok = decodedSig.Verify(testKey)
 	assert.Equal(t, true, ok, "Expected ok")
 
 }

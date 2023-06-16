@@ -4,8 +4,6 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
-	"fmt"
-	"os"
 	"strconv"
 	"time"
 
@@ -16,24 +14,18 @@ type Signature struct {
 	Ts, ClientId, Sig, Nonce, Data string
 }
 
-func (s *Signature) GenerateMessage() []byte {
-	if len(os.Getenv("HMAC_SECRET_KEY")) > 0 {
-		key = []byte(os.Getenv("HMAC_SECRET_KEY"))
-	}
-
-	msg := fmt.Sprintf("%v\n%v\n%v", s.Ts, s.Nonce, s.Data)
-
-	mac := hmac.New(sha256.New, key)
-	mac.Write([]byte(msg))
+func (s *Signature) GenerateMessage(key string) []byte {
+	mac := hmac.New(sha256.New, []byte(key))
+	mac.Write([]byte(s.Data))
 
 	return mac.Sum(nil)
 }
 
-func (s *Signature) Sign() string {
-	return hex.EncodeToString(s.GenerateMessage())
+func (s *Signature) Sign(key string) string {
+	return hex.EncodeToString(s.GenerateMessage(key))
 }
 
-func (s *Signature) Verify() bool {
+func (s *Signature) Verify(key string) bool {
 	decoded, err := hex.DecodeString(s.Sig)
 	if err != nil {
 		logs.Log.Error().Err(err).Msg("")
@@ -41,7 +33,7 @@ func (s *Signature) Verify() bool {
 		return false
 	}
 
-	msg := s.GenerateMessage()
+	msg := s.GenerateMessage(key)
 
 	// Is signature ok
 	signatureOk := hmac.Equal(decoded, msg)
