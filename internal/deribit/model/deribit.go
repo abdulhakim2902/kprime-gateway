@@ -25,6 +25,9 @@ type RequestParams struct {
 	Amount         float64           `json:"amount" form:"amount"`
 	Type           types.Type        `json:"type" form:"type"`
 	Price          float64           `json:"price" form:"price"`
+	MaxShow        *float64          `json:"max_show,omitempty" form:"max_show,omitempty"`
+	PostOnly       bool              `json:"post_only,omitempty" form:"post_only,omitempty"`
+	ReduceOnly     bool              `json:"reduce_only,omitempty" form:"reduce_only,omitempty"`
 	TimeInForce    types.TimeInForce `json:"time_in_force" form:"time_in_force"`
 	Label          string            `json:"label" form:"label"`
 }
@@ -384,6 +387,9 @@ type DeribitGetOpenOrdersByInstrumentResponse struct {
 	OrderType      types.Type         `json:"order_type" bson:"orderType"`
 	OrderState     types.OrderStatus  `json:"order_state" bson:"orderState"`
 
+	MaxShow             float64  `json:"max_show" bson:"maxShow"`
+	PostOnly            bool     `json:"post_only" bson:"postOnly"`
+	ReduceOnly          bool     `json:"reduce_only" bson:"reduceOnly"`
 	Label               string   `json:"label,omitempty" bson:"label"`
 	Usd                 float64  `json:"usd" bson:"usd"`
 	CreationTimestamp   int64    `json:"creation_timestamp" bson:"creationTimestamp"`

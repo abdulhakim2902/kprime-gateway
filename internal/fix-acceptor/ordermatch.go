@@ -302,6 +302,10 @@ func (a *Application) onNewOrderSingle(msg newordersingle.NewOrderSingle, sessio
 		Side:           sideType,
 		Price:          priceFloat,
 		Amount:         amountFloat,
+		//
+		MaxShow:    0.1,
+		ReduceOnly: false,
+		PostOnly:   false,
 	})
 
 	if r != nil {
