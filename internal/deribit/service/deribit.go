@@ -145,7 +145,7 @@ func (svc deribitService) DeribitParseEdit(ctx context.Context, userId string, d
 		Id:       data.Id,
 		UserId:   userId,
 		ClientId: "",
-		Side:     "EDIT",
+		Side:     string(types.EDIT),
 		ClOrdID:  data.ClOrdID,
 		Price:    data.Price,
 		Amount:   data.Amount,
@@ -168,7 +168,7 @@ func (svc deribitService) DeribitParseCancel(ctx context.Context, userId string,
 		Id:       data.Id,
 		UserId:   userId,
 		ClientId: "",
-		Side:     "CANCEL",
+		Side:     string(types.CANCEL),
 		ClOrdID:  data.ClOrdID,
 	}
 
@@ -201,7 +201,7 @@ func (svc deribitService) DeribitCancelByInstrument(ctx context.Context, userId 
 		ExpirationDate: instruments.ExpDate,
 		StrikePrice:    instruments.Strike,
 		Contracts:      instruments.Contracts,
-		Side:           "CANCEL_ALL_BY_INSTRUMENT",
+		Side:           string(types.CANCEL_ALL_BY_INSTRUMENT),
 		ClOrdID:        data.ClOrdID,
 	}
 
@@ -225,7 +225,7 @@ func (svc deribitService) DeribitParseCancelAll(ctx context.Context, userId stri
 	cancel := model.DeribitCancelAllResponse{
 		UserId:   userId,
 		ClientId: "",
-		Side:     "CANCEL_ALL",
+		Side:     string(types.CANCEL_ALL),
 		ClOrdID:  data.ClOrdID,
 	}
 
