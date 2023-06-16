@@ -75,17 +75,17 @@ func validate(i any) error {
 // TODO: Could be removed in the future.
 func ValidateDeribitRequestParam(request model.RequestParams) (err error) {
 	if *request.MaxShow != 0.1 {
-		err := errors.New(validation_reason.WRONG_MAXSHOW_VALUE.String())
+		err = errors.New(validation_reason.WRONG_MAXSHOW_VALUE.String())
 		return err
 	}
 
 	if request.ReduceOnly {
-		err := errors.New(validation_reason.REDUCE_ONLY_MUST_BE_FALSE.String())
+		err = errors.New(validation_reason.REDUCE_ONLY_MUST_BE_FALSE.String())
 		return err
 	}
 
 	if request.PostOnly {
-		err := errors.New(validation_reason.POST_ONLY_MUST_BE_FALSE.String())
+		err = errors.New(validation_reason.POST_ONLY_MUST_BE_FALSE.String())
 		return err
 	}
 

@@ -236,14 +236,14 @@ func (h *DeribitHandler) buy(r *gin.Context) {
 		msg.Params.MaxShow = &maxShow
 	}
 
-	if err := utils.ValidateDeribitRequestParam(msg.Params); err != nil {
-		r.AbortWithError(http.StatusBadRequest, err)
-		return
-	}
-
 	userID, connKey, reason, err := requestHelper(msg.Id, msg.Method, r)
 	if err != nil {
 		protocol.SendValidationMsg(connKey, *reason, err)
+		return
+	}
+
+	if err := utils.ValidateDeribitRequestParam(msg.Params); err != nil {
+		protocol.SendValidationMsg(connKey, validation_reason.INVALID_PARAMS, err)
 		return
 	}
 
@@ -286,14 +286,14 @@ func (h *DeribitHandler) sell(r *gin.Context) {
 		msg.Params.MaxShow = &maxShow
 	}
 
-	if err := utils.ValidateDeribitRequestParam(msg.Params); err != nil {
-		r.AbortWithError(http.StatusBadRequest, err)
-		return
-	}
-
 	userID, connKey, reason, err := requestHelper(msg.Id, msg.Method, r)
 	if err != nil {
 		protocol.SendValidationMsg(connKey, *reason, err)
+		return
+	}
+
+	if err := utils.ValidateDeribitRequestParam(msg.Params); err != nil {
+		protocol.SendValidationMsg(connKey, validation_reason.INVALID_PARAMS, err)
 		return
 	}
 
