@@ -5,7 +5,6 @@ import (
 
 	"time"
 
-	"git.devucc.name/dependencies/utilities/models/order"
 	"git.devucc.name/dependencies/utilities/types"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -250,9 +249,6 @@ type DeribitResponse struct {
 	MaxShow        float64           `json:"maxShow,omitempty"`
 	ReduceOnly     bool              `json:"reduceOnly,omitempty"`
 	PostOnly       bool              `json:"postOnly,omitempty"`
-
-	OrderExclusions []order.OrderExclusion `json:"order_exclusions,omitempty"`
-	TypeInclusions  []order.TypeInclusions `json:"type_inclusions,omitempty"`
 }
 
 type DeribitGetInstrumentsRequest struct {
