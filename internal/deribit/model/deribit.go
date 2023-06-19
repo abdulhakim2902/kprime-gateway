@@ -313,7 +313,7 @@ type DeribitGetLastTradesByInstrumentValue struct {
 	InstrumentName string    `json:"instrument_name"`
 	Price          float64   `json:"price"`
 	Timestamp      int64     `json:"timestamp"`
-	TradeId        int32     `json:"trade_id"`
+	TradeId        string    `json:"trade_id"`
 	Api            bool      `json:"api"`
 	IndexPrice     float64   `json:"index_price"`
 	TickDirection  int32     `json:"tick_direction"`
