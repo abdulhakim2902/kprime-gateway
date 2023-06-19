@@ -109,6 +109,20 @@ func (s *EngineSocket) BroadcastMessage(channelID string, p interface{}) error {
 	return nil
 }
 
+// BroadcastMessage streams message to all the subscribtions subscribed to the pair
+func (s *EngineSocket) BroadcastMessageSubcription(channelID string, method string, p interface{}) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	for c, status := range s.subscriptions[channelID] {
+		if status {
+			s.SendUpdateMessageSubcription(c, method, p)
+		}
+	}
+
+	return nil
+}
+
 // SendErrorMessage sends error message on orderbookchannel
 func (s *EngineSocket) SendErrorMessage(c *Client, data interface{}) {
 	c.SendMessage(data, SendMessageParams{})
@@ -122,4 +136,9 @@ func (s *EngineSocket) SendInitMessage(c *Client, data interface{}) {
 // SendUpdateMessage sends UPDATE message on enginechannel as new data is created
 func (s *EngineSocket) SendUpdateMessage(c *Client, data interface{}) {
 	c.SendMessage(data, SendMessageParams{})
+}
+
+// SendUpdateMessage sends UPDATE message on enginechannel as new data is created
+func (s *EngineSocket) SendUpdateMessageSubcription(c *Client, method string, data interface{}) {
+	c.SendMessageSubcription(data, method, SendMessageParams{})
 }

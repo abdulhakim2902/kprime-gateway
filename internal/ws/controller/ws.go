@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"gateway/pkg/protocol"
 	"gateway/pkg/utils"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -98,6 +99,9 @@ func NewWebsocketHandler(
 	ws.RegisterChannel("public/get_index_price", handler.GetIndexPrice)
 
 	ws.RegisterChannel("public/get_delivery_prices", handler.PublicGetDeliveryPrices)
+
+	ws.RegisterChannel("public/set_heartbeat", handler.PublicSetHeartbeat)
+	ws.RegisterChannel("public/test", handler.PublicTest)
 }
 
 func requestHelper(
@@ -1005,6 +1009,61 @@ func (svc wsHandler) PublicGetDeliveryPrices(input interface{}, c *ws.Client) {
 		Offset:    msg.Params.Offset,
 		Count:     msg.Params.Count,
 	})
+
+	protocol.SendSuccessMsg(connKey, result)
+}
+
+func (svc wsHandler) PublicSetHeartbeat(input interface{}, c *ws.Client) {
+	var msg deribitModel.RequestDto[deribitModel.SetHeartbeatParams]
+	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
+		c.SendInvalidRequestMessage(err)
+		return
+	}
+
+	_, connKey, reason, err := requestHelper(msg.Id, msg.Method, nil, c)
+	if err != nil {
+		protocol.SendValidationMsg(connKey, *reason, err)
+		return
+	}
+
+	// parameter default value
+	if msg.Params.Interval < 10 {
+		protocol.SendValidationMsg(connKey,
+			validation_reason.INVALID_PARAMS, errors.New("interval must be 10 or greater"))
+		return
+	}
+	go svc.wsEngSvc.SubscribeHeartbeat(c, connKey, msg.Params.Interval)
+
+	protocol.SendSuccessMsg(connKey, "ok")
+}
+
+func (svc wsHandler) PublicTest(input interface{}, c *ws.Client) {
+	var msg deribitModel.RequestDto[deribitModel.TestParams]
+	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
+		c.SendInvalidRequestMessage(err)
+		return
+	}
+
+	_, connKey, reason, err := requestHelper(msg.Id, msg.Method, nil, c)
+	if err != nil {
+		protocol.SendValidationMsg(connKey, *reason, err)
+		return
+	}
+
+	go svc.wsEngSvc.AddHeartbeat(c)
+
+	type Version struct {
+		Version string `json:"version"`
+	}
+
+	version, exists := os.LookupEnv("APP_VERSION")
+	if !exists {
+		version = "1.0.0"
+	}
+
+	result := Version{
+		Version: version,
+	}
 
 	protocol.SendSuccessMsg(connKey, result)
 }

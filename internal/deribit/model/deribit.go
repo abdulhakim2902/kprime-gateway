@@ -509,3 +509,11 @@ type DeliveryPricesResponse struct {
 	RecordsTotal int                  `bson:"records_total" json:"records_total"`
 	Prices       []DeliveryPricesData `bson:"prices" json:"data"`
 }
+
+type SetHeartbeatParams struct {
+	Interval int `json:"interval"`
+}
+
+type TestParams struct {
+	ExpectedResult string `json:"expected_result"`
+}
