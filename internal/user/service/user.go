@@ -102,10 +102,16 @@ func (svc *userService) SyncMemDB(ctx context.Context, filter interface{}) (err 
 			})
 		}
 
+		var clientIds []string
+		for _, client := range user.APICredentials {
+			clientIds = append(clientIds, fmt.Sprintf("%s:%s", client.APIKey, client.APISecret))
+		}
+
 		if err = svc.memDb.User.Create(schema.User{
 			ID:              user.ID.Hex(),
 			OrderExclusions: orderExclusions,
 			TypeInclusions:  typeInclusions,
+			ClientIds:       clientIds,
 		}); err != nil {
 			logs.Log.Error().Err(err).Msg("")
 		}
