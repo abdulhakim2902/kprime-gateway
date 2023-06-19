@@ -115,9 +115,9 @@ func (svc deribitService) DeribitRequest(
 		Contracts:      instruments.Contracts,
 		TimeInForce:    _timeInForce,
 		Label:          data.Label,
-
-		OrderExclusions: userCast.OrderExclusions,
-		TypeInclusions:  userCast.TypeInclusions,
+		MaxShow:        data.MaxShow,
+		ReduceOnly:     data.ReduceOnly,
+		PostOnly:       data.PostOnly,
 	}
 
 	out, err := json.Marshal(payload)
@@ -142,7 +142,7 @@ func (svc deribitService) DeribitParseEdit(ctx context.Context, userId string, d
 		Id:       data.Id,
 		UserId:   userId,
 		ClientId: "",
-		Side:     "edit",
+		Side:     string(types.EDIT),
 		ClOrdID:  data.ClOrdID,
 		Price:    data.Price,
 		Amount:   data.Amount,
@@ -165,7 +165,7 @@ func (svc deribitService) DeribitParseCancel(ctx context.Context, userId string,
 		Id:       data.Id,
 		UserId:   userId,
 		ClientId: "",
-		Side:     "cancel",
+		Side:     string(types.CANCEL),
 		ClOrdID:  data.ClOrdID,
 	}
 
@@ -198,7 +198,7 @@ func (svc deribitService) DeribitCancelByInstrument(ctx context.Context, userId 
 		ExpirationDate: instruments.ExpDate,
 		StrikePrice:    instruments.Strike,
 		Contracts:      instruments.Contracts,
-		Side:           "cancell_all_by_instrument",
+		Side:           string(types.CANCEL_ALL_BY_INSTRUMENT),
 		ClOrdID:        data.ClOrdID,
 	}
 
@@ -222,7 +222,7 @@ func (svc deribitService) DeribitParseCancelAll(ctx context.Context, userId stri
 	cancel := model.DeribitCancelAllResponse{
 		UserId:   userId,
 		ClientId: "",
-		Side:     "cancel_all",
+		Side:     string(types.CANCEL_ALL),
 		ClOrdID:  data.ClOrdID,
 	}
 

@@ -5,7 +5,6 @@ import (
 
 	_orderbookType "gateway/internal/orderbook/types"
 
-	"git.devucc.name/dependencies/utilities/models/order"
 	"git.devucc.name/dependencies/utilities/models/price"
 	"git.devucc.name/dependencies/utilities/models/trade"
 	"git.devucc.name/dependencies/utilities/types"
@@ -75,9 +74,9 @@ type BuySellEditCancelOrder struct {
 	Api                 bool               `json:"api"`
 	AveragePrice        float64            `json:"average_price,omitempty"`
 	CancelReason        string             `json:"cancel_reason"`
-
-	OrderExclusions []order.OrderExclusion `json:"order_exclusions"`
-	TypeInclusions  []order.TypeInclusions `json:"type_inclusions"`
+	MaxShow             float64            `json:"max_show"`
+	PostOnly            bool               `json:"post_only"`
+	ReduceOnly          bool               `json:"reduce_only"`
 }
 
 type BuySellEditTrade struct {

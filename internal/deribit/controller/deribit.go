@@ -231,9 +231,19 @@ func (h *DeribitHandler) buy(r *gin.Context) {
 		return
 	}
 
+	maxShow := 0.1
+	if msg.Params.MaxShow == nil {
+		msg.Params.MaxShow = &maxShow
+	}
+
 	userID, connKey, reason, err := requestHelper(msg.Id, msg.Method, r)
 	if err != nil {
 		protocol.SendValidationMsg(connKey, *reason, err)
+		return
+	}
+
+	if err := utils.ValidateDeribitRequestParam(msg.Params); err != nil {
+		protocol.SendValidationMsg(connKey, validation_reason.INVALID_PARAMS, err)
 		return
 	}
 
@@ -247,6 +257,9 @@ func (h *DeribitHandler) buy(r *gin.Context) {
 		TimeInForce:    msg.Params.TimeInForce,
 		Label:          msg.Params.Label,
 		Side:           types.BUY,
+		MaxShow:        *msg.Params.MaxShow,
+		ReduceOnly:     msg.Params.ReduceOnly,
+		PostOnly:       msg.Params.PostOnly,
 	})
 	if err != nil {
 		if validation != nil {
@@ -268,9 +281,19 @@ func (h *DeribitHandler) sell(r *gin.Context) {
 		return
 	}
 
+	maxShow := 0.1
+	if msg.Params.MaxShow == nil {
+		msg.Params.MaxShow = &maxShow
+	}
+
 	userID, connKey, reason, err := requestHelper(msg.Id, msg.Method, r)
 	if err != nil {
 		protocol.SendValidationMsg(connKey, *reason, err)
+		return
+	}
+
+	if err := utils.ValidateDeribitRequestParam(msg.Params); err != nil {
+		protocol.SendValidationMsg(connKey, validation_reason.INVALID_PARAMS, err)
 		return
 	}
 
@@ -284,6 +307,9 @@ func (h *DeribitHandler) sell(r *gin.Context) {
 		TimeInForce:    msg.Params.TimeInForce,
 		Label:          msg.Params.Label,
 		Side:           types.SELL,
+		MaxShow:        *msg.Params.MaxShow,
+		ReduceOnly:     msg.Params.ReduceOnly,
+		PostOnly:       msg.Params.PostOnly,
 	})
 	if err != nil {
 		if validation != nil {

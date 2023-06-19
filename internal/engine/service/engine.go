@@ -268,6 +268,9 @@ func (svc engineHandler) PublishOrder(data _engineType.EngineResponse) {
 		Api:                 true,
 		CancelReason:        data.Matches.TakerOrder.CancelledReason.String(),
 		AveragePrice:        tradePriceAvg,
+		MaxShow:             data.Matches.TakerOrder.MaxShow,
+		PostOnly:            data.Matches.TakerOrder.PostOnly,
+		ReduceOnly:          data.Matches.TakerOrder.ReduceOnly,
 	}
 
 	ID, _ := strconv.ParseUint(data.Matches.TakerOrder.ClOrdID, 0, 64)
