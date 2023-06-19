@@ -155,6 +155,7 @@ func main() {
 		_wsRawPriceSvc,
 		_wsUserBalanceSvc,
 		userRepo,
+		memoryDb,
 	)
 
 	fmt.Printf("Server is running on %s \n", os.Getenv("PORT"))
