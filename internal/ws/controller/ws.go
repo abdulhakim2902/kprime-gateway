@@ -4,8 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"gateway/pkg/memdb"
-	"gateway/pkg/middleware"
+	"gateway/pkg/hmac"
 	"gateway/pkg/protocol"
 	"gateway/pkg/utils"
 	"strconv"
@@ -15,7 +14,6 @@ import (
 	deribitModel "gateway/internal/deribit/model"
 	"gateway/internal/repositories"
 	userType "gateway/internal/user/types"
-	userSchema "gateway/schema"
 
 	deribitService "gateway/internal/deribit/service"
 	authService "gateway/internal/user/service"
@@ -42,8 +40,6 @@ type wsHandler struct {
 	wsUserBalanceSvc wsService.IwsUserBalanceService
 
 	userRepo *repositories.UserRepository
-
-	memDb *memdb.Schemas
 }
 
 func NewWebsocketHandler(
@@ -57,8 +53,6 @@ func NewWebsocketHandler(
 	wsRawPriceSvc wsService.IwsRawPriceService,
 	wsUserBalanceSvc wsService.IwsUserBalanceService,
 	userRepo *repositories.UserRepository,
-
-	memDb *memdb.Schemas,
 ) {
 	handler := &wsHandler{
 		authSvc:          authSvc,
@@ -70,7 +64,6 @@ func NewWebsocketHandler(
 		wsRawPriceSvc:    wsRawPriceSvc,
 		wsUserBalanceSvc: wsUserBalanceSvc,
 		userRepo:         userRepo,
-		memDb:            memDb,
 	}
 	r.Use(cors.AllowAll())
 
@@ -197,62 +190,25 @@ func (svc wsHandler) PublicAuth(input interface{}, c *ws.Client) {
 			return
 		}
 	case "client_signature":
-		users := svc.memDb.User.Find("id")
-		if users == nil {
-			protocol.SendValidationMsg(connKey, validation_reason.OTHER, err)
-			return
-
-		}
-
-		var userId, clientSecret string
-		for _, user := range users {
-			if usr, ok := user.(userSchema.User); ok {
-				for _, key := range usr.ClientIds {
-					if strings.HasPrefix(key, msg.Params.ClientID) {
-						userId = usr.ID
-						clientSecret = strings.Split(key, ":")[1]
-						goto VERIFY_SIGNATURE
-					}
-				}
-			}
-		}
-
-	VERIFY_SIGNATURE:
-		sig := middleware.Signature{
+		sig := hmac.Signature{
 			Ts:       msg.Params.Timestamp,
 			Sig:      msg.Params.Signature,
 			Nonce:    msg.Params.Nonce,
 			ClientId: msg.Params.ClientID,
+			Data:     msg.Params.Data,
 		}
 
-		// Populate data
-		sig.Data = fmt.Sprintf("%s\n%s\n%s", sig.Ts, sig.Nonce, msg.Params.Data)
-
-		ok := sig.Verify(clientSecret)
-		if !ok {
-			protocol.SendValidationMsg(connKey, validation_reason.UNAUTHORIZED, err)
-			return
-		}
-
-		accessToken, refreshToken, accessTokenExp, err := authService.GenerateToken(userId)
+		res, user, err = svc.authSvc.LoginWithSignature(context.TODO(), sig)
 		if err != nil {
+			if strings.Contains(err.Error(), "invalid credential") {
+				protocol.SendValidationMsg(connKey, validation_reason.UNAUTHORIZED, err)
+				return
+			}
 
-			protocol.SendValidationMsg(connKey, validation_reason.OTHER, err)
+			protocol.SendErrMsg(connKey, err)
 			return
 		}
 
-		res = &userType.AuthResponse{
-			AccessToken:  accessToken,
-			RefreshToken: refreshToken,
-			ExpiresIn:    int64(accessTokenExp),
-			Scope:        "connection mainaccount",
-			TokenType:    "bearer",
-		}
-
-		c.RegisterAuthedConnection(userId)
-
-		protocol.SendSuccessMsg(connKey, res)
-		return
 	case "refresh_token":
 		if msg.Params.RefreshToken == "" {
 			protocol.SendValidationMsg(connKey,

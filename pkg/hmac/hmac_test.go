@@ -1,4 +1,4 @@
-package middleware
+package hmac
 
 import (
 	"encoding/json"
@@ -68,7 +68,7 @@ func TestGetRequest(t *testing.T) {
 	hash := sig.Sign(testKey)
 
 	// Test Wrong signature
-	hmac := NewHmac()
+	hmac := New()
 	signature := fmt.Sprintf("id=%s,ts=%s,sig=%s,nonce=%s", sig.ClientId, sig.Ts, "wrong hash", sig.Nonce)
 	decodedSig, err := hmac.DecodeSignature(signature, ctx)
 	assert.NoError(t, err, "Should not error")
@@ -135,7 +135,7 @@ func TestPostRequest(t *testing.T) {
 	hash := sig.Sign(testKey)
 
 	// Test Wrong signature
-	hmac := NewHmac()
+	hmac := New()
 	signature := fmt.Sprintf("id=%s,ts=%s,sig=%s,nonce=%s", sig.ClientId, sig.Ts, "wrong hash", sig.Nonce)
 	decodedSig, err := hmac.DecodeSignature(signature, ctx)
 	assert.NoError(t, err, "Should not error")
