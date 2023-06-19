@@ -1,4 +1,4 @@
-package middleware
+package hmac
 
 import (
 	"errors"
@@ -11,7 +11,7 @@ import (
 
 type Hmac struct{}
 
-func NewHmac() Hmac {
+func New() Hmac {
 	return Hmac{}
 }
 

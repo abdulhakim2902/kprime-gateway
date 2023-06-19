@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"gateway/pkg/hmac"
 	"gateway/pkg/protocol"
 	"gateway/pkg/utils"
 	"os"
@@ -147,6 +148,11 @@ func (svc wsHandler) PublicAuth(input interface{}, c *ws.Client) {
 		ClientID     string `json:"client_id"`
 		ClientSecret string `json:"client_secret"`
 		RefreshToken string `json:"refresh_token"`
+
+		Signature string `json:"signature"`
+		Timestamp string `json:"timestamp"`
+		Nonce     string `json:"nonce"`
+		Data      string `json:"data"`
 	}
 
 	var msg deribitModel.RequestDto[Params]
@@ -187,6 +193,26 @@ func (svc wsHandler) PublicAuth(input interface{}, c *ws.Client) {
 			protocol.SendErrMsg(connKey, err)
 			return
 		}
+	case "client_signature":
+		sig := hmac.Signature{
+			Ts:       msg.Params.Timestamp,
+			Sig:      msg.Params.Signature,
+			Nonce:    msg.Params.Nonce,
+			ClientId: msg.Params.ClientID,
+			Data:     msg.Params.Data,
+		}
+
+		res, user, err = svc.authSvc.LoginWithSignature(context.TODO(), sig)
+		if err != nil {
+			if strings.Contains(err.Error(), "invalid credential") {
+				protocol.SendValidationMsg(connKey, validation_reason.UNAUTHORIZED, err)
+				return
+			}
+
+			protocol.SendErrMsg(connKey, err)
+			return
+		}
+
 	case "refresh_token":
 		if msg.Params.RefreshToken == "" {
 			protocol.SendValidationMsg(connKey,

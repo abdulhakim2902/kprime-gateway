@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	authSvc "gateway/internal/user/service"
+	"gateway/pkg/hmac"
 	"gateway/pkg/memdb"
 	"io"
 	"net/http"
@@ -73,7 +74,7 @@ func Authenticate(memDb *memdb.Schemas) gin.HandlerFunc {
 
 				userId = claim.UserID
 			case "deri-hmac-sha256":
-				hmac := NewHmac()
+				hmac := hmac.New()
 				sig, err := hmac.DecodeSignature(authorization[1], c)
 				if err != nil {
 					c.AbortWithError(http.StatusUnauthorized, err)

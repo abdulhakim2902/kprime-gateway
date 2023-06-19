@@ -1,4 +1,4 @@
-package middleware
+package hmac
 
 import (
 	"crypto/hmac"
