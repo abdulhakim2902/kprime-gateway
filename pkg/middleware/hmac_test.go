@@ -60,7 +60,7 @@ func TestGetRequest(t *testing.T) {
 		path = fmt.Sprintf("%s?%s", path, querys.Encode())
 	}
 
-	b := strings.Join([]string{ctx.Request.Method, path, ""}, "\n")
+	b := strings.Join([]string{ctx.Request.Method, path, "", "\n"}, "\n")
 	sig.Ts = strconv.Itoa(int(time.Now().UnixMilli()))
 	data := strings.Join([]string{sig.Ts, sig.Nonce, b}, "\n")
 	sig.Data = data
@@ -125,7 +125,7 @@ func TestPostRequest(t *testing.T) {
 		bodyStr = string(b)
 	}
 
-	b := strings.Join([]string{ctx.Request.Method, path, bodyStr}, "\n")
+	b := strings.Join([]string{ctx.Request.Method, path, bodyStr, "\n"}, "\n")
 	sig.Ts = strconv.Itoa(int(time.Now().UnixMilli()))
 	data := strings.Join([]string{sig.Ts, sig.Nonce, b}, "\n")
 	sig.Data = data

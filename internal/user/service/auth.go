@@ -108,17 +108,20 @@ func ClaimJWT(c *ws.Client, jwtToken string) (types.JwtClaim, error) {
 		return types.JwtClaim{}, errors.New("invalid token")
 	}
 
-	claims := token.Claims.(jwt.MapClaims)
-	logs.Log.Info().Any("CLAIMS", claims).Msg("authed user")
+	if claims, ok := token.Claims.(jwt.MapClaims); ok {
+		logs.Log.Info().Any("CLAIMS", claims).Msg("authed user")
 
-	userId, ok := claims["userID"].(string)
-	if !ok {
-		return types.JwtClaim{}, errors.New("invalid token")
+		userId, ok := claims["userID"].(string)
+		if !ok {
+			return types.JwtClaim{}, errors.New("invalid token")
+		}
+
+		return types.JwtClaim{
+			UserID: userId,
+		}, nil
 	}
 
-	return types.JwtClaim{
-		UserID: userId,
-	}, nil
+	return types.JwtClaim{}, errors.New("invalid token")
 }
 
 func GenerateToken(userId string) (accessToken, refreshToken string, accessTokenExp int, err error) {
