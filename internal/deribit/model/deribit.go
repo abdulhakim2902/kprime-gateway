@@ -36,9 +36,11 @@ type ChannelParams struct {
 }
 
 type GetInstrumentsParams struct {
-	AccessToken string `json:"access_token" form:"access_token"`
-	Currency    string `json:"currency" validate:"required" form:"currency"`
-	Expired     bool   `json:"expired" form:"expired"`
+	AccessToken  string `json:"access_token" form:"access_token"`
+	Currency     string `json:"currency" validate:"required" form:"currency"`
+	Kind         string `json:"kind" form:"kind"`
+	IncludeSpots bool   `json:"include_spots" form:"include_spots"`
+	Expired      bool   `json:"expired" form:"expired"`
 }
 
 type GetOrderBookParams struct {

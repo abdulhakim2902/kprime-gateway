@@ -503,13 +503,43 @@ func (h *DeribitHandler) getOrderHistoryByInstrument(r *gin.Context) {
 func (h *DeribitHandler) getInstruments(r *gin.Context) {
 	var msg deribitModel.RequestDto[deribitModel.GetInstrumentsParams]
 	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
-		r.AbortWithError(http.StatusBadRequest, err)
+		errMsg := protocol.ErrorMessage{
+			Message:        err.Error(),
+			Data:           protocol.ReasonMessage{},
+			HttpStatusCode: http.StatusBadRequest,
+		}
+		m := protocol.RPCResponseMessage{
+			JSONRPC: "2.0",
+			ID:      msg.Id,
+			Error:   &errMsg,
+			Testnet: true,
+		}
+		r.AbortWithStatusJSON(http.StatusBadRequest, m)
 		return
 	}
 
 	_, connKey, reason, err := requestHelper(msg.Id, msg.Method, r)
 	if err != nil {
 		protocol.SendValidationMsg(connKey, *reason, err)
+		return
+	}
+
+	currency := map[string]bool{"BTC": true, "ETH": true, "USDC": true}
+	if _, ok := currency[strings.ToUpper(msg.Params.Currency)]; !ok {
+		protocol.SendValidationMsg(connKey,
+			validation_reason.INVALID_PARAMS, errors.New("invalid currency"))
+		return
+	}
+
+	if msg.Params.Kind != "" && strings.ToLower(msg.Params.Kind) != "option" {
+		protocol.SendValidationMsg(connKey,
+			validation_reason.INVALID_PARAMS, errors.New("invalid value of kind"))
+		return
+	}
+
+	if msg.Params.IncludeSpots {
+		protocol.SendValidationMsg(connKey,
+			validation_reason.INVALID_PARAMS, errors.New("invalid value of include_spots"))
 		return
 	}
 

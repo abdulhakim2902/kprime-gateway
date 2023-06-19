@@ -670,6 +670,25 @@ func (svc wsHandler) GetInstruments(input interface{}, c *ws.Client) {
 		protocol.SendValidationMsg(connKey, *reason, err)
 	}
 
+	currency := map[string]bool{"BTC": true, "ETH": true, "USDC": true}
+	if _, ok := currency[strings.ToUpper(msg.Params.Currency)]; !ok {
+		protocol.SendValidationMsg(connKey,
+			validation_reason.INVALID_PARAMS, errors.New("invalid currency"))
+		return
+	}
+
+	if msg.Params.Kind != "" && strings.ToLower(msg.Params.Kind) != "option" {
+		protocol.SendValidationMsg(connKey,
+			validation_reason.INVALID_PARAMS, errors.New("invalid value of kind"))
+		return
+	}
+
+	if msg.Params.IncludeSpots {
+		protocol.SendValidationMsg(connKey,
+			validation_reason.INVALID_PARAMS, errors.New("invalid value of include_spots"))
+		return
+	}
+
 	result := svc.wsOSvc.GetInstruments(context.TODO(), deribitModel.DeribitGetInstrumentsRequest{
 		Currency: msg.Params.Currency,
 		Expired:  msg.Params.Expired,
