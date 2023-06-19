@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"gateway/pkg/middleware"
 	"gateway/pkg/protocol"
 	"gateway/pkg/utils"
 	"strconv"
@@ -22,6 +23,7 @@ import (
 	"git.devucc.name/dependencies/utilities/types"
 	"git.devucc.name/dependencies/utilities/types/validation_reason"
 	cors "github.com/rs/cors/wrapper/gin"
+	"github.com/ulule/limiter/v3"
 
 	"gateway/pkg/ws"
 
@@ -52,6 +54,7 @@ func NewWebsocketHandler(
 	wsRawPriceSvc wsService.IwsRawPriceService,
 	wsUserBalanceSvc wsService.IwsUserBalanceService,
 	userRepo *repositories.UserRepository,
+	limiter *limiter.Limiter,
 ) {
 	handler := &wsHandler{
 		authSvc:          authSvc,
@@ -65,7 +68,7 @@ func NewWebsocketHandler(
 		userRepo:         userRepo,
 	}
 	r.Use(cors.AllowAll())
-
+	r.Use(middleware.RateLimiter(limiter))
 	r.GET("/ws/api/v2", ws.ConnectionEndpoint)
 
 	ws.RegisterChannel("public/auth", handler.PublicAuth)

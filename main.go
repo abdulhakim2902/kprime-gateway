@@ -104,13 +104,14 @@ func init() {
 func main() {
 	// qf
 	store := limiterMem.NewStore()
-	engine.Use(middleware.RateLimiter(&limiter.Limiter{
+	limiter := &limiter.Limiter{
 		Rate: limiter.Rate{
 			Period: 1 * time.Hour,
 			Limit:  5,
 		},
 		Store: store,
-	}))
+	}
+	engine.Use(middleware.RateLimiter(limiter))
 	// Websocket handlers
 	_wsEngineSvc := _wsEngineSvc.NewwsEngineService(redisConn)
 
@@ -164,6 +165,7 @@ func main() {
 		_wsRawPriceSvc,
 		_wsUserBalanceSvc,
 		userRepo,
+		limiter,
 	)
 
 	fmt.Printf("Server is running on %s \n", os.Getenv("PORT"))
