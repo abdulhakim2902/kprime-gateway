@@ -215,6 +215,16 @@ func (svc wsHandler) PrivateBuy(input interface{}, c *ws.Client) {
 		return
 	}
 
+	maxShow := 0.1
+	if msg.Params.MaxShow == nil {
+		msg.Params.MaxShow = &maxShow
+	}
+
+	if err := utils.ValidateDeribitRequestParam(msg.Params); err != nil {
+		c.SendInvalidRequestMessage(err)
+		return
+	}
+
 	claim, connKey, reason, err := requestHelper(msg.Id, msg.Method, &msg.Params.AccessToken, c)
 	if err != nil {
 		protocol.SendValidationMsg(connKey, *reason, err)
@@ -231,6 +241,9 @@ func (svc wsHandler) PrivateBuy(input interface{}, c *ws.Client) {
 		TimeInForce:    msg.Params.TimeInForce,
 		Label:          msg.Params.Label,
 		Side:           types.BUY,
+		MaxShow:        *msg.Params.MaxShow,
+		PostOnly:       msg.Params.PostOnly,
+		ReduceOnly:     msg.Params.ReduceOnly,
 	})
 	if err != nil {
 		if validation != nil {
@@ -253,6 +266,16 @@ func (svc wsHandler) PrivateSell(input interface{}, c *ws.Client) {
 		return
 	}
 
+	maxShow := 0.1
+	if msg.Params.MaxShow == nil {
+		msg.Params.MaxShow = &maxShow
+	}
+
+	if err := utils.ValidateDeribitRequestParam(msg.Params); err != nil {
+		c.SendInvalidRequestMessage(err)
+		return
+	}
+
 	claim, connKey, reason, err := requestHelper(msg.Id, msg.Method, &msg.Params.AccessToken, c)
 	if err != nil {
 		protocol.SendValidationMsg(connKey, *reason, err)
@@ -269,6 +292,9 @@ func (svc wsHandler) PrivateSell(input interface{}, c *ws.Client) {
 		TimeInForce:    msg.Params.TimeInForce,
 		Label:          msg.Params.Label,
 		Side:           types.SELL,
+		MaxShow:        *msg.Params.MaxShow,
+		PostOnly:       msg.Params.PostOnly,
+		ReduceOnly:     msg.Params.ReduceOnly,
 	})
 	if err != nil {
 		if validation != nil {
@@ -668,6 +694,25 @@ func (svc wsHandler) GetInstruments(input interface{}, c *ws.Client) {
 	_, connKey, reason, err := requestHelper(msg.Id, msg.Method, nil, c)
 	if err != nil {
 		protocol.SendValidationMsg(connKey, *reason, err)
+	}
+
+	currency := map[string]bool{"BTC": true, "ETH": true, "USDC": true}
+	if _, ok := currency[strings.ToUpper(msg.Params.Currency)]; !ok {
+		protocol.SendValidationMsg(connKey,
+			validation_reason.INVALID_PARAMS, errors.New("invalid currency"))
+		return
+	}
+
+	if msg.Params.Kind != "" && strings.ToLower(msg.Params.Kind) != "option" {
+		protocol.SendValidationMsg(connKey,
+			validation_reason.INVALID_PARAMS, errors.New("invalid value of kind"))
+		return
+	}
+
+	if msg.Params.IncludeSpots {
+		protocol.SendValidationMsg(connKey,
+			validation_reason.INVALID_PARAMS, errors.New("invalid value of include_spots"))
+		return
 	}
 
 	result := svc.wsOSvc.GetInstruments(context.TODO(), deribitModel.DeribitGetInstrumentsRequest{

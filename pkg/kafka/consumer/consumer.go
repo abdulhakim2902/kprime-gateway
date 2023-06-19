@@ -39,7 +39,7 @@ func KafkaConsumer(
 	config.Consumer.Return.Errors = true
 
 	brokers := []string{os.Getenv("KAFKA_BROKER")}
-	topics := []string{"ENGINE", "CANCELLED_ORDERS", "PRICES", "ENGINE_SAVED"}
+	topics := []string{"ENGINE", "CANCELLED_ORDER", "PRICES", "ENGINE_SAVED", "CANCELLED_ORDER_SAVED"}
 
 	consumer, err := sarama.NewConsumer(brokers, config)
 	if err != nil {
@@ -68,8 +68,14 @@ func KafkaConsumer(
 					go tradeSvc.HandleConsumeInstrumentTrades(message)
 					go obSvc.HandleConsumeUserChange(message)
 					go obSvc.HandleConsumeBook(message)
-				case "CANCELLED_ORDERS":
+				case "CANCELLED_ORDER":
 					handleTopicCancelledOrders(message)
+				case "CANCELLED_ORDER_SAVED":
+					go obSvc.HandleConsumeUserChangeCancel(message)
+					go oSvc.HandleConsumeUserOrderCancel(message)
+					go obSvc.HandleConsumeBookCancel(message)
+					go engSvc.HandleConsumeQuoteCancel(message)
+
 				case "PRICES":
 					go rawSvc.HandleConsume(message)
 				default:
@@ -139,6 +145,37 @@ func handleTopicOrderbook(message *sarama.ConsumerMessage) {
 	ordermatch.OnOrderboookUpdate(symbol, data)
 }
 
+// func handleTopicCancelledOrdersSubcription(tradeSvc oInt.IwsTradeService, message *sarama.ConsumerMessage) {
+// 	fmt.Printf("Received message from CANCELLED_ORDER_SAVED: %s\n", string(message.Value))
+
+// 	str := string(message.Value)
+// 	var data map[string]interface{}
+// 	err := json.Unmarshal([]byte(str), &data)
+// 	if err != nil {
+// 		fmt.Println("Error parsing JSON:", err)
+// 		return
+// 	}
+// 	dataArr := data["data"].([]interface{})
+// 	for _, order := range dataArr {
+// 		go obSvc.HandleConsumeUserChange(message)
+
+// 		fmt.Printf("dt:%+v\n", order)
+// 	}
+
+// 	// userIDStr := data["query"].(map[string]interface{})["userId"].(string)
+// 	// ClOrdID := data["query"].(map[string]interface{})["clOrdId"].(string)
+
+// 	// ID, _ := strconv.ParseUint(ClOrdID, 0, 64)
+
+// 	// connectionKey := utils.GetKeyFromIdUserID(ID, userIDStr)
+// 	// _payload := len(dataArr)
+
+// 	// // Metrics
+// 	// collector.EndKafkaDuration(userIDStr, ClOrdID)
+
+// 	// protocol.SendSuccessMsg(connectionKey, _payload)
+// }
+
 func handleTopicCancelledOrders(message *sarama.ConsumerMessage) {
 	fmt.Printf("Received message from CANCELLED_ORDERS: %s\n", string(message.Value))
 
@@ -149,17 +186,15 @@ func handleTopicCancelledOrders(message *sarama.ConsumerMessage) {
 		fmt.Println("Error parsing JSON:", err)
 		return
 	}
+	dataArr := data["data"].([]interface{})
 
-	// Send message to websocket
-	userIDStr := data["data"].(map[string]interface{})["userId"].(string)
-	ClOrdID := data["data"].(map[string]interface{})["clOrdId"].(string)
+	userIDStr := data["query"].(map[string]interface{})["userId"].(string)
+	ClOrdID := data["query"].(map[string]interface{})["clOrdId"].(string)
 
 	ID, _ := strconv.ParseUint(ClOrdID, 0, 64)
 
 	connectionKey := utils.GetKeyFromIdUserID(ID, userIDStr)
-
-	count := data["total"]
-	_payload := count.(float64)
+	_payload := len(dataArr)
 
 	// Metrics
 	collector.EndKafkaDuration(userIDStr, ClOrdID)

@@ -3,11 +3,13 @@ package utils
 import (
 	"encoding/json"
 	"errors"
+	"gateway/internal/deribit/model"
 	"reflect"
 	"strings"
 	"sync"
 
 	"git.devucc.name/dependencies/utilities/commons/logs"
+	"git.devucc.name/dependencies/utilities/types/validation_reason"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/locales/en"
 	ut "github.com/go-playground/universal-translator"
@@ -68,6 +70,26 @@ func validate(i any) error {
 	}
 
 	return er
+}
+
+// TODO: Could be removed in the future.
+func ValidateDeribitRequestParam(request model.RequestParams) (err error) {
+	if *request.MaxShow != 0.1 {
+		err = errors.New(validation_reason.WRONG_MAXSHOW_VALUE.String())
+		return err
+	}
+
+	if request.ReduceOnly {
+		err = errors.New(validation_reason.REDUCE_ONLY_MUST_BE_FALSE.String())
+		return err
+	}
+
+	if request.PostOnly {
+		err = errors.New(validation_reason.POST_ONLY_MUST_BE_FALSE.String())
+		return err
+	}
+
+	return
 }
 
 func UnmarshalAndValidate[T any](r *gin.Context, data *T) (err error) {

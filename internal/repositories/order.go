@@ -161,17 +161,14 @@ func (r OrderRepository) GetInstruments(currency string, expired bool) ([]*_deri
 			"OptionType":         bson.M{"$toLower": "$contracts"},
 			"underlying":         "$underlying",
 		}}
-	matchUnerlyingStage := bson.M{
+
+	matchesStage := bson.M{
 		"$match": bson.M{
 			"underlying": currency,
+			"IsActive":   !expired,
 		},
 	}
 
-	matchIsActiveStage := bson.M{
-		"$match": bson.M{
-			"IsActive": !expired,
-		},
-	}
 	groupStage := bson.M{
 		"$group": bson.M{
 			"_id": bson.M{
@@ -224,8 +221,7 @@ func (r OrderRepository) GetInstruments(currency string, expired bool) ([]*_deri
 	pipelineInstruments := bson.A{}
 
 	pipelineInstruments = append(pipelineInstruments, projectStage)
-	pipelineInstruments = append(pipelineInstruments, matchUnerlyingStage)
-	pipelineInstruments = append(pipelineInstruments, matchIsActiveStage)
+	pipelineInstruments = append(pipelineInstruments, matchesStage)
 	pipelineInstruments = append(pipelineInstruments, groupStage)
 	pipelineInstruments = append(pipelineInstruments, sortStage)
 
@@ -561,6 +557,7 @@ func (r OrderRepository) GetChangeOrdersByInstrument(InstrumentName string, user
 			"creationTimestamp":   bson.M{"$toLong": "$createdAt"},
 			"lastUpdateTimestamp": bson.M{"$toLong": "$updatedAt"},
 			"cancelledReason":     canceledReasonQuery(),
+			"maxShow":             "$maxShow",
 			"priceAvg": bson.M{
 				"$cond": bson.D{
 					{"if", bson.D{{"$gt", bson.A{"$tradePriceAvg.price", 0}}}},
@@ -617,7 +614,6 @@ func (r OrderRepository) GetChangeOrdersByInstrument(InstrumentName string, user
 
 		return []_deribitModel.DeribitGetOpenOrdersByInstrumentResponse{}, nil
 	}
-
 	return orders, nil
 }
 
@@ -958,7 +954,7 @@ func (r OrderRepository) GetOrderLatestTimestampAgg(o _orderbookType.GetOrderBoo
 		return []bson.M{
 			{
 				"$match": bson.M{
-					"status":      bson.M{"$in": []types.OrderStatus{types.OPEN, types.PARTIAL_FILLED, types.FILLED}},
+					"status":      bson.M{"$in": []types.OrderStatus{types.OPEN, types.PARTIAL_FILLED}},
 					"underlying":  o.Underlying,
 					"strikePrice": o.StrikePrice,
 					"expiryDate":  o.ExpiryDate,

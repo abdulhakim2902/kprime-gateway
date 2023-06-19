@@ -5,6 +5,9 @@ import (
 
 	deribitModel "gateway/internal/deribit/model"
 	_orderbookTypes "gateway/internal/orderbook/types"
+
+	orderType "git.devucc.name/dependencies/utilities/models/order"
+
 	"gateway/pkg/ws"
 
 	"github.com/Shopify/sarama"
@@ -16,6 +19,7 @@ type IwsOrderbookService interface {
 	SubscribeBook(c *ws.Client, channel, instrument, interval string)
 	SubscribeUserChange(c *ws.Client, instrument string, userId string)
 	HandleConsumeUserChange(msg *sarama.ConsumerMessage)
+	HandleConsumeUserChangeCancel(order orderType.Order)
 	Unsubscribe(c *ws.Client)
 	UnsubscribeQuote(c *ws.Client)
 	UnsubscribeBook(c *ws.Client)
@@ -34,6 +38,7 @@ type IwsOrderService interface {
 	SubscribeUserOrder(c *ws.Client, instrument string, userId string)
 	HandleConsume(msg *sarama.ConsumerMessage, userId string)
 	HandleConsumeUserOrder(msg *sarama.ConsumerMessage)
+	HandleConsumeUserOrderCancel(msg *sarama.ConsumerMessage)
 	GetInstruments(ctx context.Context, request deribitModel.DeribitGetInstrumentsRequest) []deribitModel.DeribitGetInstrumentsResponse
 	GetOpenOrdersByInstrument(ctx context.Context, userId string, request deribitModel.DeribitGetOpenOrdersByInstrumentRequest) []deribitModel.DeribitGetOpenOrdersByInstrumentResponse
 	GetGetOrderHistoryByInstrument(ctx context.Context, userId string, request deribitModel.DeribitGetOrderHistoryByInstrumentRequest) []deribitModel.DeribitGetOrderHistoryByInstrumentResponse

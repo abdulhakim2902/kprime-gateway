@@ -17,6 +17,8 @@ import (
 	engineType "gateway/internal/engine/types"
 	_types "gateway/internal/orderbook/types"
 
+	orderType "git.devucc.name/dependencies/utilities/models/order"
+
 	"git.devucc.name/dependencies/utilities/commons/logs"
 	"github.com/Shopify/sarama"
 
@@ -83,7 +85,7 @@ func (svc wsOrderService) HandleConsumeUserOrder(msg *sarama.ConsumerMessage) {
 		return
 	}
 
-	if data.Matches == nil {
+	if data.Matches == nil && len(data.Matches.TakerOrder.Contracts) > 0 {
 		return
 	}
 	_instrument := data.Matches.TakerOrder.Underlying + "-" + data.Matches.TakerOrder.ExpiryDate + "-" + fmt.Sprintf("%.0f", data.Matches.TakerOrder.StrikePrice) + "-" + string(data.Matches.TakerOrder.Contracts[0])
@@ -141,7 +143,65 @@ func (svc wsOrderService) HandleConsumeUserOrder(msg *sarama.ConsumerMessage) {
 					Data:    order,
 				}
 				method := "subscription"
+				fmt.Println("HandleConsumeUserOrder", order.MaxShow)
 				ws.GetOrderSocket().BroadcastMessageOrder(broadcastId, method, params)
+			}
+		}
+	}
+	return
+}
+
+func (svc wsOrderService) HandleConsumeUserOrderCancel(msg *sarama.ConsumerMessage) {
+	var data orderType.CancelledOrder
+
+	err := json.Unmarshal(msg.Value, &data)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	for _, order := range data.Data {
+		_instrument := order.Underlying + "-" + order.ExpiryDate + "-" + fmt.Sprintf("%.0f", order.StrikePrice) + "-" + string(order.Contracts[0])
+
+		var orderId []interface{}
+		var userId []interface{}
+		orderId = append(orderId, order.ID)
+		userId = append(userId, order.UserID)
+
+		orders, err := svc.repo.GetChangeOrdersByInstrument(
+			_instrument,
+			userId,
+			orderId,
+		)
+		if err != nil {
+			continue
+		}
+		keys := make(map[interface{}]bool)
+		for _, id := range userId {
+			if _, ok := keys[id]; !ok {
+				keys[id] = true
+				mapIndex := fmt.Sprintf("%s-%s", _instrument, id)
+				if _, ok := userOrders[mapIndex]; !ok {
+					userOrdersMutex.Lock()
+					userOrders[mapIndex] = orders
+					userOrdersMutex.Unlock()
+					go svc.HandleConsumeUserOrder100ms(_instrument, id.(string))
+				} else {
+					userOrdersMutex.Lock()
+					userOrders[mapIndex] = append(userOrders[mapIndex], orders...)
+					userOrdersMutex.Unlock()
+				}
+				// broadcast to user id
+				broadcastId := fmt.Sprintf("%s.%s.%s-%s", "user", "orders", _instrument, id)
+
+				for _, order := range orders {
+					params := _types.QuoteResponse{
+						Channel: fmt.Sprintf("user.orders.%s.raw", _instrument),
+						Data:    order,
+					}
+					method := "subscription"
+					ws.GetOrderSocket().BroadcastMessageOrder(broadcastId, method, params)
+				}
 			}
 		}
 	}

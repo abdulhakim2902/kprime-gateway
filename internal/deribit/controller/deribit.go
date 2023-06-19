@@ -233,9 +233,19 @@ func (h *DeribitHandler) buy(r *gin.Context) {
 		return
 	}
 
+	maxShow := 0.1
+	if msg.Params.MaxShow == nil {
+		msg.Params.MaxShow = &maxShow
+	}
+
 	userID, connKey, reason, err := requestHelper(msg.Id, msg.Method, r)
 	if err != nil {
 		protocol.SendValidationMsg(connKey, *reason, err)
+		return
+	}
+
+	if err := utils.ValidateDeribitRequestParam(msg.Params); err != nil {
+		protocol.SendValidationMsg(connKey, validation_reason.INVALID_PARAMS, err)
 		return
 	}
 
@@ -249,6 +259,9 @@ func (h *DeribitHandler) buy(r *gin.Context) {
 		TimeInForce:    msg.Params.TimeInForce,
 		Label:          msg.Params.Label,
 		Side:           types.BUY,
+		MaxShow:        *msg.Params.MaxShow,
+		ReduceOnly:     msg.Params.ReduceOnly,
+		PostOnly:       msg.Params.PostOnly,
 	})
 	if err != nil {
 		if validation != nil {
@@ -270,9 +283,19 @@ func (h *DeribitHandler) sell(r *gin.Context) {
 		return
 	}
 
+	maxShow := 0.1
+	if msg.Params.MaxShow == nil {
+		msg.Params.MaxShow = &maxShow
+	}
+
 	userID, connKey, reason, err := requestHelper(msg.Id, msg.Method, r)
 	if err != nil {
 		protocol.SendValidationMsg(connKey, *reason, err)
+		return
+	}
+
+	if err := utils.ValidateDeribitRequestParam(msg.Params); err != nil {
+		protocol.SendValidationMsg(connKey, validation_reason.INVALID_PARAMS, err)
 		return
 	}
 
@@ -286,6 +309,9 @@ func (h *DeribitHandler) sell(r *gin.Context) {
 		TimeInForce:    msg.Params.TimeInForce,
 		Label:          msg.Params.Label,
 		Side:           types.SELL,
+		MaxShow:        *msg.Params.MaxShow,
+		ReduceOnly:     msg.Params.ReduceOnly,
+		PostOnly:       msg.Params.PostOnly,
 	})
 	if err != nil {
 		if validation != nil {
@@ -505,13 +531,43 @@ func (h *DeribitHandler) getOrderHistoryByInstrument(r *gin.Context) {
 func (h *DeribitHandler) getInstruments(r *gin.Context) {
 	var msg deribitModel.RequestDto[deribitModel.GetInstrumentsParams]
 	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
-		r.AbortWithError(http.StatusBadRequest, err)
+		errMsg := protocol.ErrorMessage{
+			Message:        err.Error(),
+			Data:           protocol.ReasonMessage{},
+			HttpStatusCode: http.StatusBadRequest,
+		}
+		m := protocol.RPCResponseMessage{
+			JSONRPC: "2.0",
+			ID:      msg.Id,
+			Error:   &errMsg,
+			Testnet: true,
+		}
+		r.AbortWithStatusJSON(http.StatusBadRequest, m)
 		return
 	}
 
 	_, connKey, reason, err := requestHelper(msg.Id, msg.Method, r)
 	if err != nil {
 		protocol.SendValidationMsg(connKey, *reason, err)
+		return
+	}
+
+	currency := map[string]bool{"BTC": true, "ETH": true, "USDC": true}
+	if _, ok := currency[strings.ToUpper(msg.Params.Currency)]; !ok {
+		protocol.SendValidationMsg(connKey,
+			validation_reason.INVALID_PARAMS, errors.New("invalid currency"))
+		return
+	}
+
+	if msg.Params.Kind != "" && strings.ToLower(msg.Params.Kind) != "option" {
+		protocol.SendValidationMsg(connKey,
+			validation_reason.INVALID_PARAMS, errors.New("invalid value of kind"))
+		return
+	}
+
+	if msg.Params.IncludeSpots {
+		protocol.SendValidationMsg(connKey,
+			validation_reason.INVALID_PARAMS, errors.New("invalid value of include_spots"))
 		return
 	}
 

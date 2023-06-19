@@ -19,6 +19,8 @@ import (
 	_orderbookTypes "gateway/internal/orderbook/types"
 	wsService "gateway/internal/ws/service"
 
+	orderType "git.devucc.name/dependencies/utilities/models/order"
+
 	"gateway/internal/repositories"
 
 	"gateway/pkg/redis"
@@ -122,7 +124,7 @@ func (svc engineHandler) HandleConsumeQuote(msg *sarama.ConsumerMessage) {
 		return
 	}
 
-	if data.Matches == nil {
+	if data.Matches == nil && len(data.Matches.TakerOrder.Contracts) > 0 {
 		return
 	}
 
@@ -156,6 +158,49 @@ func (svc engineHandler) HandleConsumeQuote(msg *sarama.ConsumerMessage) {
 	}
 	method := "subscription"
 	ws.GetQuoteSocket().BroadcastMessage(_instrument, method, params)
+}
+
+func (svc engineHandler) HandleConsumeQuoteCancel(msg *sarama.ConsumerMessage) {
+	var data orderType.CancelledOrder
+
+	err := json.Unmarshal(msg.Value, &data)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	for _, order := range data.Data {
+		//convert instrument name
+		_instrument := order.Underlying + "-" + order.ExpiryDate + "-" + fmt.Sprintf("%.0f", order.StrikePrice) + "-" + string(order.Contracts[0])
+
+		_order := _orderbookTypes.GetOrderBook{
+			InstrumentName: _instrument,
+			Underlying:     order.Underlying,
+			ExpiryDate:     order.ExpiryDate,
+			StrikePrice:    order.StrikePrice,
+		}
+
+		initData, _ := svc.wsOBSvc.GetDataQuote(_order)
+
+		//convert redisDataArray to json
+		jsonBytes, err := json.Marshal(initData)
+		if err != nil {
+			logs.Log.Error().Err(err).Msg("")
+			return
+		}
+
+		//save to redis
+		svc.redis.Set("QUOTE-"+_instrument, string(jsonBytes))
+
+		//broadcast to websocket
+
+		params := _orderbookTypes.QuoteResponse{
+			Channel: fmt.Sprintf("quote.%s", _instrument),
+			Data:    initData,
+		}
+		method := "subscription"
+		ws.GetQuoteSocket().BroadcastMessage(_instrument, method, params)
+	}
 }
 
 func checkDateToRemoveRedis(_expiryDate string, _instrument string, svc engineHandler) {
@@ -223,6 +268,9 @@ func (svc engineHandler) PublishOrder(data _engineType.EngineResponse) {
 		Api:                 true,
 		CancelReason:        data.Matches.TakerOrder.CancelledReason.String(),
 		AveragePrice:        tradePriceAvg,
+		MaxShow:             data.Matches.TakerOrder.MaxShow,
+		PostOnly:            data.Matches.TakerOrder.PostOnly,
+		ReduceOnly:          data.Matches.TakerOrder.ReduceOnly,
 	}
 
 	ID, _ := strconv.ParseUint(data.Matches.TakerOrder.ClOrdID, 0, 64)
