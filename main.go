@@ -24,13 +24,13 @@ import (
 
 	_deribitCtrl "gateway/internal/deribit/controller"
 	_deribitSvc "gateway/internal/deribit/service"
+	_engSvc "gateway/internal/engine/service"
+	_obSvc "gateway/internal/orderbook/service"
 	_userSvc "gateway/internal/user/service"
 	_wsEngineSvc "gateway/internal/ws/engine/service"
 	_wsOrderbookSvc "gateway/internal/ws/service"
 	_wsSvc "gateway/internal/ws/service"
-
-	_engSvc "gateway/internal/engine/service"
-	_obSvc "gateway/internal/orderbook/service"
+	"gateway/pkg/middleware"
 
 	_wsCtrl "gateway/internal/ws/controller"
 
@@ -43,6 +43,8 @@ import (
 	"git.devucc.name/dependencies/utilities/schema"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
+	"github.com/ulule/limiter/v3"
+	limiterMem "github.com/ulule/limiter/v3/drivers/store/memory"
 )
 
 var (
@@ -101,7 +103,14 @@ func init() {
 
 func main() {
 	// qf
-
+	store := limiterMem.NewStore()
+	engine.Use(middleware.RateLimiter(&limiter.Limiter{
+		Rate: limiter.Rate{
+			Period: 1 * time.Hour,
+			Limit:  5,
+		},
+		Store: store,
+	}))
 	// Websocket handlers
 	_wsEngineSvc := _wsEngineSvc.NewwsEngineService(redisConn)
 
