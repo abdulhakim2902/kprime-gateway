@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"gateway/pkg/protocol"
 	"gateway/pkg/utils"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -1051,5 +1052,18 @@ func (svc wsHandler) PublicTest(input interface{}, c *ws.Client) {
 
 	go svc.wsEngSvc.AddHeartbeat(c)
 
-	protocol.SendSuccessMsg(connKey, "ok")
+	type Version struct {
+		Version string `json:"version"`
+	}
+
+	version, exists := os.LookupEnv("APP_VERSION")
+	if !exists {
+		version = "1.0.0"
+	}
+
+	result := Version{
+		Version: version,
+	}
+
+	protocol.SendSuccessMsg(connKey, result)
 }
