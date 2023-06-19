@@ -4,7 +4,6 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
-	"fmt"
 	"strconv"
 	"time"
 
@@ -17,7 +16,6 @@ type Signature struct {
 
 func (s *Signature) GenerateMessage(key string) []byte {
 	mac := hmac.New(sha256.New, []byte(key))
-	fmt.Println(s.Data, key)
 	mac.Write([]byte(s.Data))
 
 	return mac.Sum(nil)
