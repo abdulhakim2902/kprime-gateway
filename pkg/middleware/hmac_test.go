@@ -60,9 +60,12 @@ func TestGetRequest(t *testing.T) {
 		path = fmt.Sprintf("%s?%s", path, querys.Encode())
 	}
 
-	b := strings.Join([]string{ctx.Request.Method, path, "", "\n"}, "\n")
 	sig.Ts = strconv.Itoa(int(time.Now().UnixMilli()))
-	data := strings.Join([]string{sig.Ts, sig.Nonce, b}, "\n")
+	data := fmt.Sprintf("%s\n%s\n%s",
+		sig.Ts,
+		sig.Nonce,
+		fmt.Sprintf("%s\n%s\n%s\n", ctx.Request.Method, path, ""),
+	)
 	sig.Data = data
 	hash := sig.Sign(testKey)
 
@@ -125,9 +128,11 @@ func TestPostRequest(t *testing.T) {
 		bodyStr = string(b)
 	}
 
-	b := strings.Join([]string{ctx.Request.Method, path, bodyStr, "\n"}, "\n")
-	sig.Ts = strconv.Itoa(int(time.Now().UnixMilli()))
-	data := strings.Join([]string{sig.Ts, sig.Nonce, b}, "\n")
+	data := fmt.Sprintf("%s\n%s\n%s",
+		sig.Ts,
+		sig.Nonce,
+		fmt.Sprintf("%s\n%s\n%s\n", ctx.Request.Method, path, bodyStr),
+	)
 	sig.Data = data
 	hash := sig.Sign(testKey)
 

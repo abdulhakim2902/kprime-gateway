@@ -68,8 +68,11 @@ func (h *Hmac) DecodeSignature(signature string, c *gin.Context) (sign Signature
 		bodyStr = string(b)
 	}
 
-	b := strings.Join([]string{c.Request.Method, path, bodyStr, "\n"}, "\n")
-	data := strings.Join([]string{ts, nonce, b}, "\n")
+	data := fmt.Sprintf("%s\n%s\n%s",
+		ts,
+		nonce,
+		fmt.Sprintf("%s\n%s\n%s\n", c.Request.Method, path, bodyStr),
+	)
 
 	sign = Signature{
 		ClientId: clientId,

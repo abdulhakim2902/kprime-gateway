@@ -4,6 +4,7 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"strconv"
 	"time"
 
@@ -16,6 +17,7 @@ type Signature struct {
 
 func (s *Signature) GenerateMessage(key string) []byte {
 	mac := hmac.New(sha256.New, []byte(key))
+	fmt.Println(s.Data, key)
 	mac.Write([]byte(s.Data))
 
 	return mac.Sum(nil)
@@ -26,23 +28,6 @@ func (s *Signature) Sign(key string) string {
 }
 
 func (s *Signature) Verify(key string) bool {
-	decoded, err := hex.DecodeString(s.Sig)
-	if err != nil {
-		logs.Log.Error().Err(err).Msg("")
-
-		return false
-	}
-
-	msg := s.GenerateMessage(key)
-
-	// Is signature ok
-	signatureOk := hmac.Equal(decoded, msg)
-	if !signatureOk {
-		logs.Log.Warn().Msg("signature not ok")
-
-		return false
-	}
-
 	ts, err := strconv.Atoi(s.Ts)
 	if err != nil {
 		logs.Log.Warn().Msg("ts not ok")
@@ -60,6 +45,21 @@ func (s *Signature) Verify(key string) bool {
 		return false
 	}
 
-	return true
+	decoded, err := hex.DecodeString(s.Sig)
+	if err != nil {
+		logs.Log.Error().Err(err).Msg("")
+
+		return false
+	}
+
+	msg := s.GenerateMessage(key)
+
+	// Is signature ok
+	signatureOk := hmac.Equal(decoded, msg)
+	if !signatureOk {
+		logs.Log.Warn().Msg("signature not ok")
+	}
+
+	return signatureOk
 
 }
