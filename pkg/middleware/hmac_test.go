@@ -3,7 +3,6 @@ package middleware
 import (
 	"encoding/json"
 	"fmt"
-	"gateway/pkg/utils"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -40,7 +39,6 @@ func TestGetSignatureValue(t *testing.T) {
 }
 
 func TestGetRequest(t *testing.T) {
-	utils.InitLogger()
 	ctx, engine := gin.CreateTestContext(httptest.NewRecorder())
 	engine.GET("/test", func(ctx *gin.Context) {
 		ctx.String(http.StatusOK, "Hello")
