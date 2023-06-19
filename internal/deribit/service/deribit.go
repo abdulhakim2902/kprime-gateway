@@ -275,13 +275,14 @@ func (svc *deribitService) DeribitGetLastTradesByInstrument(ctx context.Context,
 			contracts = "P"
 		}
 
+		tradeObjectId := jsonDoc["_id"].(primitive.ObjectID)
 		resultData := model.DeribitGetLastTradesByInstrumentValue{
 			Amount:         jsonDoc["amount"].(float64),
 			Direction:      jsonDoc["side"].(string),
 			InstrumentName: fmt.Sprintf("%s-%s-%d-%s", underlying, expiryDate, int64(strikePrice), contracts),
 			Price:          jsonDoc["price"].(float64),
 			Timestamp:      time.Now().UnixNano() / int64(time.Millisecond),
-			TradeId:        jsonDoc["tradeSequence"].(int32),
+			TradeId:        tradeObjectId.Hex(),
 			Api:            true,
 			IndexPrice:     jsonDoc["indexPrice"].(float64),
 			TickDirection:  jsonDoc["tickDirection"].(int32),
@@ -297,7 +298,6 @@ func (svc *deribitService) DeribitGetLastTradesByInstrument(ctx context.Context,
 			Trades: _getLastTradesByInstrument,
 		},
 	}
-
 	return results
 }
 
