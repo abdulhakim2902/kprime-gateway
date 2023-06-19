@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	authSvc "gateway/internal/user/service"
 	"gateway/pkg/memdb"
@@ -92,24 +93,52 @@ func Authenticate(memDb *memdb.Schemas) gin.HandlerFunc {
 							if strings.HasPrefix(key, sig.ClientId) {
 								userId = usr.ID
 								clientSecret = strings.Split(key, ":")[1]
-								goto foundClientId
+								goto VERIFY_SIGNATURE
 							}
 						}
 					}
 				}
 
-			foundClientId:
+			VERIFY_SIGNATURE:
 				ok := sig.Verify(clientSecret)
 				if !ok {
 					c.AbortWithStatus(http.StatusUnauthorized)
 					return
 				}
+			case "Basic":
+				decoded, err := base64.StdEncoding.DecodeString(authorization[1])
+				if err != nil {
+					c.AbortWithError(http.StatusUnauthorized, err)
+					return
+				}
 
+				users := memDb.User.Find("id")
+				if users == nil {
+					c.AbortWithStatus(http.StatusInternalServerError)
+					return
+
+				}
+
+				for _, user := range users {
+					if usr, ok := user.(userSchema.User); ok {
+						for _, key := range usr.ClientIds {
+							if strings.EqualFold(key, string(decoded)) {
+								userId = usr.ID
+								goto SET_USERID
+							}
+						}
+					}
+				}
 			default:
 				c.AbortWithStatus(http.StatusUnauthorized)
 				return
 			}
 
+		SET_USERID:
+			if userId == "" {
+				c.AbortWithStatus(http.StatusUnauthorized)
+				return
+			}
 			c.Set("userID", userId)
 		}
 
