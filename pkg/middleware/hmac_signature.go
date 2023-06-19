@@ -4,7 +4,6 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
-	"log"
 	"strconv"
 	"time"
 
@@ -35,8 +34,6 @@ func (s *Signature) Verify(key string) bool {
 	}
 
 	msg := s.GenerateMessage(key)
-
-	log.Println(hex.EncodeToString(msg), s.Sig, key)
 
 	// Is signature ok
 	signatureOk := hmac.Equal(decoded, msg)

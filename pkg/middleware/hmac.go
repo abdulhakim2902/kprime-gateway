@@ -3,7 +3,6 @@ package middleware
 import (
 	"errors"
 	"fmt"
-	"log"
 	"strings"
 
 	"git.devucc.name/dependencies/utilities/commons/logs"
@@ -71,7 +70,6 @@ func (h *Hmac) DecodeSignature(signature string, c *gin.Context) (sign Signature
 
 	b := strings.Join([]string{c.Request.Method, path, bodyStr, "\n"}, "\n")
 	data := strings.Join([]string{ts, nonce, b}, "\n")
-	log.Println(data)
 
 	sign = Signature{
 		ClientId: clientId,
