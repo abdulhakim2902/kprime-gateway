@@ -25,7 +25,7 @@ const (
 
 type RPCResponseMessage struct {
 	JSONRPC string      `json:"jsonrpc"`
-	ID      uint64      `json:"id"`
+	ID      uint64      `json:"id,omitempty"`
 	Method  string      `json:"method,omitempty"`
 	Result  interface{} `json:"result,omitempty"`
 	Params  interface{} `json:"params,omitempty"`
