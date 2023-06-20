@@ -5,6 +5,7 @@ import (
 	"gateway/pkg/protocol"
 	"gateway/pkg/ws"
 
+	"git.devucc.name/dependencies/utilities/types/validation_reason"
 	"github.com/ulule/limiter/v3"
 )
 
@@ -53,9 +54,9 @@ func (middleware *MiddlewareWs) HandleLimitReachedWs(c *ws.Client) *protocol.RPC
 		JSONRPC: "2.0",
 		Result:  nil,
 		Error: &protocol.ErrorMessage{
-			Message: "Too Many Requests",
+			Message: validation_reason.TOO_MANY_REQUESTS.String(),
 			Data: protocol.ReasonMessage{
-				Reason: "TOO_MANY_REQUESTS",
+				Reason: validation_reason.TOO_MANY_REQUESTS.String(),
 			},
 			Code: 10028,
 		},
