@@ -112,6 +112,12 @@ func main() {
 		Store: store,
 	}
 	engine.Use(middleware.RateLimiter(limiter))
+
+	memoryDb, err := memdb.InitSchemas()
+	if err != nil {
+		logs.Log.Fatal().Err(err).Msg("failed to initialize memory schemas")
+	}
+
 	// Websocket handlers
 	_wsEngineSvc := _wsEngineSvc.NewwsEngineService(redisConn)
 
@@ -121,7 +127,7 @@ func main() {
 	rawPriceRepo := repositories.NewRawPriceRepository(mongoConn)
 	settlementPriceRepo := repositories.NewSettlementPriceRepository(mongoConn)
 
-	_authSvc := _userSvc.NewAuthService(userRepo)
+	_authSvc := _userSvc.NewAuthService(userRepo, memoryDb)
 	_wsOrderbookSvc := _wsOrderbookSvc.NewWSOrderbookService(
 		redisConn,
 		orderRepo,
@@ -134,10 +140,6 @@ func main() {
 	_wsRawPriceSvc := _wsSvc.NewWSRawPriceService(redisConn, rawPriceRepo)
 	_wsUserBalanceSvc := _wsSvc.NewWSUserBalanceService()
 
-	memoryDb, err := memdb.InitSchemas()
-	if err != nil {
-		logs.Log.Fatal().Err(err).Msg("failed to initialize memory schemas")
-	}
 	_userSvc := _userSvc.NewUserService(engine, userRepo, memoryDb)
 
 	_userSvc.SyncMemDB(context.TODO(), nil)

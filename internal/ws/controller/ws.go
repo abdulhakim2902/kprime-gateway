@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"gateway/pkg/hmac"
 	"gateway/pkg/middleware"
 	"gateway/pkg/protocol"
 	"gateway/pkg/utils"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -101,6 +103,9 @@ func NewWebsocketHandler(
 	ws.RegisterChannel("public/get_index_price", handler.GetIndexPrice)
 
 	ws.RegisterChannel("public/get_delivery_prices", handler.PublicGetDeliveryPrices)
+
+	ws.RegisterChannel("public/set_heartbeat", handler.PublicSetHeartbeat)
+	ws.RegisterChannel("public/test", handler.PublicTest)
 }
 
 func requestHelper(
@@ -146,6 +151,11 @@ func (svc wsHandler) PublicAuth(input interface{}, c *ws.Client) {
 		ClientID     string `json:"client_id"`
 		ClientSecret string `json:"client_secret"`
 		RefreshToken string `json:"refresh_token"`
+
+		Signature string `json:"signature"`
+		Timestamp string `json:"timestamp"`
+		Nonce     string `json:"nonce"`
+		Data      string `json:"data"`
 	}
 
 	var msg deribitModel.RequestDto[Params]
@@ -186,6 +196,26 @@ func (svc wsHandler) PublicAuth(input interface{}, c *ws.Client) {
 			protocol.SendErrMsg(connKey, err)
 			return
 		}
+	case "client_signature":
+		sig := hmac.Signature{
+			Ts:       msg.Params.Timestamp,
+			Sig:      msg.Params.Signature,
+			Nonce:    msg.Params.Nonce,
+			ClientId: msg.Params.ClientID,
+			Data:     msg.Params.Data,
+		}
+
+		res, user, err = svc.authSvc.LoginWithSignature(context.TODO(), sig)
+		if err != nil {
+			if strings.Contains(err.Error(), "invalid credential") {
+				protocol.SendValidationMsg(connKey, validation_reason.UNAUTHORIZED, err)
+				return
+			}
+
+			protocol.SendErrMsg(connKey, err)
+			return
+		}
+
 	case "refresh_token":
 		if msg.Params.RefreshToken == "" {
 			protocol.SendValidationMsg(connKey,
@@ -739,6 +769,14 @@ func (svc wsHandler) GetOrderBook(input interface{}, c *ws.Client) {
 		return
 	}
 
+	instruments, _ := utils.ParseInstruments(msg.Params.InstrumentName)
+
+	if instruments == nil {
+		protocol.SendValidationMsg(connKey,
+			validation_reason.INVALID_PARAMS, errors.New("instrument not found"))
+		return
+	}
+
 	result := svc.wsOBSvc.GetOrderBook(context.TODO(), deribitModel.DeribitGetOrderBookRequest{
 		InstrumentName: msg.Params.InstrumentName,
 		Depth:          msg.Params.Depth,
@@ -1008,6 +1046,61 @@ func (svc wsHandler) PublicGetDeliveryPrices(input interface{}, c *ws.Client) {
 		Offset:    msg.Params.Offset,
 		Count:     msg.Params.Count,
 	})
+
+	protocol.SendSuccessMsg(connKey, result)
+}
+
+func (svc wsHandler) PublicSetHeartbeat(input interface{}, c *ws.Client) {
+	var msg deribitModel.RequestDto[deribitModel.SetHeartbeatParams]
+	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
+		c.SendInvalidRequestMessage(err)
+		return
+	}
+
+	_, connKey, reason, err := requestHelper(msg.Id, msg.Method, nil, c)
+	if err != nil {
+		protocol.SendValidationMsg(connKey, *reason, err)
+		return
+	}
+
+	// parameter default value
+	if msg.Params.Interval < 10 {
+		protocol.SendValidationMsg(connKey,
+			validation_reason.INVALID_PARAMS, errors.New("interval must be 10 or greater"))
+		return
+	}
+	go svc.wsEngSvc.SubscribeHeartbeat(c, connKey, msg.Params.Interval)
+
+	protocol.SendSuccessMsg(connKey, "ok")
+}
+
+func (svc wsHandler) PublicTest(input interface{}, c *ws.Client) {
+	var msg deribitModel.RequestDto[deribitModel.TestParams]
+	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
+		c.SendInvalidRequestMessage(err)
+		return
+	}
+
+	_, connKey, reason, err := requestHelper(msg.Id, msg.Method, nil, c)
+	if err != nil {
+		protocol.SendValidationMsg(connKey, *reason, err)
+		return
+	}
+
+	go svc.wsEngSvc.AddHeartbeat(c)
+
+	type Version struct {
+		Version string `json:"version"`
+	}
+
+	version, exists := os.LookupEnv("APP_VERSION")
+	if !exists {
+		version = "1.0.0"
+	}
+
+	result := Version{
+		Version: version,
+	}
 
 	protocol.SendSuccessMsg(connKey, result)
 }

@@ -3,9 +3,13 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"gateway/internal/repositories"
 	"gateway/internal/user/types"
+	"gateway/pkg/hmac"
+	"gateway/pkg/memdb"
 	"gateway/pkg/ws"
+	userSchema "gateway/schema"
 	"os"
 	"strconv"
 	"strings"
@@ -13,14 +17,17 @@ import (
 
 	"git.devucc.name/dependencies/utilities/commons/logs"
 	"github.com/golang-jwt/jwt"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type AuthService struct {
 	repo *repositories.UserRepository
+
+	memDb *memdb.Schemas
 }
 
-func NewAuthService(repo *repositories.UserRepository) IAuthService {
-	return &AuthService{repo}
+func NewAuthService(repo *repositories.UserRepository, memDb *memdb.Schemas) IAuthService {
+	return &AuthService{repo, memDb}
 }
 
 func (s AuthService) Login(ctx context.Context, req types.AuthRequest) (res *types.AuthResponse, user *types.User, err error) {
@@ -36,6 +43,64 @@ func (s AuthService) Login(ctx context.Context, req types.AuthRequest) (res *typ
 	}
 
 	accessToken, refreshToken, accessTokenExp, err := GenerateToken(user.ID.Hex())
+	if err != nil {
+		err = errors.New("failed to generate token")
+		return
+	}
+
+	res = &types.AuthResponse{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+		ExpiresIn:    int64(accessTokenExp),
+		Scope:        "connection mainaccount",
+		TokenType:    "bearer",
+	}
+
+	return
+}
+
+func (s AuthService) LoginWithSignature(ctx context.Context, sig hmac.Signature) (res *types.AuthResponse, user *types.User, err error) {
+	users := s.memDb.User.Find("id")
+	if users == nil {
+		err = errors.New("no user found")
+		return
+
+	}
+
+	var userId, clientSecret string
+	for _, item := range users {
+		if usr, ok := item.(userSchema.User); ok {
+			for _, creds := range usr.ClientIds {
+				if strings.HasPrefix(creds, sig.ClientId) {
+					userId = usr.ID
+					id, err := primitive.ObjectIDFromHex(userId)
+					if err != nil {
+						logs.Log.Error().Err(err).Msg("")
+						goto VERIFY_SIGNATURE
+					}
+
+					// Set user
+					user = &types.User{ID: id}
+
+					clientSecret = strings.Split(creds, ":")[1]
+
+					goto VERIFY_SIGNATURE
+				}
+			}
+		}
+	}
+
+VERIFY_SIGNATURE:
+	// Reformat data
+	sig.Data = fmt.Sprintf("%s\n%s\n%s", sig.Ts, sig.Nonce, sig.Data)
+
+	ok := sig.Verify(clientSecret)
+	if !ok {
+		err = errors.New("invalid credential")
+		return
+	}
+
+	accessToken, refreshToken, accessTokenExp, err := GenerateToken(userId)
 	if err != nil {
 		err = errors.New("failed to generate token")
 		return

@@ -15,6 +15,7 @@ import (
 	authService "gateway/internal/user/service"
 	userType "gateway/internal/user/types"
 
+	"gateway/pkg/hmac"
 	"gateway/pkg/memdb"
 	"gateway/pkg/middleware"
 	"gateway/pkg/protocol"
@@ -34,6 +35,7 @@ type DeribitHandler struct {
 	svc      service.IDeribitService
 	authSvc  authService.IAuthService
 	userRepo *repositories.UserRepository
+	memDb    *memdb.Schemas
 
 	handlers map[string]gin.HandlerFunc
 }
@@ -49,10 +51,12 @@ func NewDeribitHandler(
 		svc:      svc,
 		authSvc:  authSvc,
 		userRepo: userRepo,
+		memDb:    memDb,
 	}
 
 	handler.RegisterHandler("public/auth", handler.auth)
 	handler.RegisterHandler("public/get_instruments", handler.getInstruments)
+	handler.RegisterHandler("public/get_order_book", handler.getOrderBook)
 	handler.RegisterHandler("public/test", handler.test)
 	handler.RegisterHandler("public/get_index_price", handler.getIndexPrice)
 	handler.RegisterHandler("public/get_last_trades_by_instrument", handler.getLastTradesByInstrument)
@@ -158,6 +162,11 @@ func (h *DeribitHandler) auth(r *gin.Context) {
 		ClientID     string `json:"client_id" form:"client_id"`
 		ClientSecret string `json:"client_secret" form:"client_secret"`
 		RefreshToken string `json:"refresh_token" form:"refresh_token"`
+
+		Signature string `json:"signature" form:"signature"`
+		Timestamp string `json:"timestamp" form:"timestamp"`
+		Nonce     string `json:"nonce" form:"nonce"`
+		Data      string `json:"data" form:"data"`
 	}
 
 	var msg deribitModel.RequestDto[Params]
@@ -186,6 +195,27 @@ func (h *DeribitHandler) auth(r *gin.Context) {
 		}
 
 		res, _, err := h.authSvc.Login(context.TODO(), payload)
+		if err != nil {
+			if strings.Contains(err.Error(), "invalid credential") {
+				protocol.SendValidationMsg(connKey, validation_reason.UNAUTHORIZED, err)
+				return
+			}
+
+			protocol.SendErrMsg(connKey, err)
+			return
+		}
+
+		protocol.SendSuccessMsg(connKey, res)
+		return
+	case "client_signature":
+		sig := hmac.Signature{
+			Ts:       msg.Params.Timestamp,
+			Sig:      msg.Params.Signature,
+			Nonce:    msg.Params.Nonce,
+			Data:     msg.Params.Data,
+			ClientId: msg.Params.ClientID,
+		}
+		res, _, err := h.authSvc.LoginWithSignature(context.TODO(), sig)
 		if err != nil {
 			if strings.Contains(err.Error(), "invalid credential") {
 				protocol.SendValidationMsg(connKey, validation_reason.UNAUTHORIZED, err)
@@ -582,13 +612,37 @@ func (h *DeribitHandler) getInstruments(r *gin.Context) {
 func (h *DeribitHandler) getOrderBook(r *gin.Context) {
 	var msg deribitModel.RequestDto[deribitModel.GetOrderBookParams]
 	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
-		r.AbortWithError(http.StatusBadRequest, err)
+		reason := validation_reason.PARSE_ERROR
+		code, _, codeStr := reason.Code()
+
+		errMsg := protocol.ErrorMessage{
+			Message: err.Error(),
+			Data: protocol.ReasonMessage{
+				Reason: codeStr,
+			},
+			Code: code,
+		}
+		m := protocol.RPCResponseMessage{
+			JSONRPC: "2.0",
+			ID:      msg.Id,
+			Error:   &errMsg,
+			Testnet: true,
+		}
+		r.AbortWithStatusJSON(http.StatusBadRequest, m)
 		return
 	}
 
 	_, connKey, reason, err := requestHelper(msg.Id, msg.Method, r)
 	if err != nil {
 		protocol.SendValidationMsg(connKey, *reason, err)
+		return
+	}
+
+	instruments, _ := utils.ParseInstruments(msg.Params.InstrumentName)
+
+	if instruments == nil {
+		protocol.SendValidationMsg(connKey,
+			validation_reason.INVALID_PARAMS, errors.New("instrument not found"))
 		return
 	}
 
