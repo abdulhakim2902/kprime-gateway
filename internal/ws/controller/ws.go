@@ -93,6 +93,8 @@ func NewWebsocketHandler(
 	ws.RegisterChannel("private/unsubscribe", handler.UnsubscribeHandlerPrivate)
 	ws.RegisterChannel("private/unsubscribe_all", handler.UnsubscribeAllHandlerPrivate)
 
+	ws.RegisterChannel("private/enable_cancel_on_disconnect", handler.EnableCancelOnDisconnect)
+
 	ws.RegisterChannel("public/get_instruments", handler.GetInstruments)
 	ws.RegisterChannel("public/get_last_trades_by_instrument", handler.GetLastTradesByInstrument)
 
@@ -261,6 +263,9 @@ func (svc wsHandler) PrivateBuy(input interface{}, c *ws.Client) {
 		return
 	}
 
+	enableCancel := c.EnableCancel
+	connId := fmt.Sprintf("%v", &c.Conn)
+
 	// Parse the Deribit BUY
 	_, validation, err := svc.deribitSvc.DeribitRequest(context.TODO(), claim.UserID, deribitModel.DeribitRequest{
 		InstrumentName: msg.Params.InstrumentName,
@@ -274,6 +279,8 @@ func (svc wsHandler) PrivateBuy(input interface{}, c *ws.Client) {
 		MaxShow:        *msg.Params.MaxShow,
 		PostOnly:       msg.Params.PostOnly,
 		ReduceOnly:     msg.Params.ReduceOnly,
+		EnableCancel:   enableCancel,
+		ConnectionId:   connId,
 	})
 	if err != nil {
 		if validation != nil {
@@ -312,6 +319,9 @@ func (svc wsHandler) PrivateSell(input interface{}, c *ws.Client) {
 		return
 	}
 
+	enableCancel := c.EnableCancel
+	connId := fmt.Sprintf("%v", &c.Conn)
+
 	// Parse the Deribit Sell
 	_, validation, err := svc.deribitSvc.DeribitRequest(context.TODO(), claim.UserID, deribitModel.DeribitRequest{
 		InstrumentName: msg.Params.InstrumentName,
@@ -325,6 +335,8 @@ func (svc wsHandler) PrivateSell(input interface{}, c *ws.Client) {
 		MaxShow:        *msg.Params.MaxShow,
 		PostOnly:       msg.Params.PostOnly,
 		ReduceOnly:     msg.Params.ReduceOnly,
+		EnableCancel:   enableCancel,
+		ConnectionId:   connId,
 	})
 	if err != nil {
 		if validation != nil {
@@ -1092,4 +1104,23 @@ func (svc wsHandler) PublicTest(input interface{}, c *ws.Client) {
 	}
 
 	protocol.SendSuccessMsg(connKey, result)
+}
+
+func (svc wsHandler) EnableCancelOnDisconnect(input interface{}, c *ws.Client) {
+	var msg deribitModel.RequestDto[deribitModel.RequestParams]
+	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
+		c.SendInvalidRequestMessage(err)
+		return
+	}
+
+	_, connKey, reason, err := requestHelper(msg.Id, msg.Method, &msg.Params.AccessToken, c)
+	if err != nil {
+		protocol.SendValidationMsg(connKey, *reason, err)
+		return
+	}
+	id := fmt.Sprintf("%v", &c.Conn)
+
+	c.EnableCancelOnDisconnect(id)
+
+	protocol.SendSuccessMsg(connKey, "ok")
 }

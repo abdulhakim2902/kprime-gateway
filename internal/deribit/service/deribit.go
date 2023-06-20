@@ -119,7 +119,9 @@ func (svc deribitService) DeribitRequest(
 		ReduceOnly:     data.ReduceOnly,
 		PostOnly:       data.PostOnly,
 	}
-
+	if data.EnableCancel {
+		payload.ConnectionId = data.ConnectionId
+	}
 	out, err := json.Marshal(payload)
 	if err != nil {
 		logs.Log.Error().Err(err).Msg("")
