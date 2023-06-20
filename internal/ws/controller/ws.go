@@ -97,7 +97,7 @@ func NewWebsocketHandler(
 	ws.RegisterChannel("private/unsubscribe_all", handler.UnsubscribeAllHandlerPrivate)
 
 	ws.RegisterChannel("public/get_instruments", handler.GetInstruments)
-	ws.RegisterChannel("public/get_last_trades_by_instrument", handler.GetLastTradesByInstrument)
+	ws.RegisterChannel("public/get_last_trades_by_instrument", middleware.MiddlewaresWrapper(handler.GetLastTradesByInstrument))
 
 	ws.RegisterChannel("public/get_order_book", handler.GetOrderBook)
 	ws.RegisterChannel("public/get_index_price", handler.GetIndexPrice)

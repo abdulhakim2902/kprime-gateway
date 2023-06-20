@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"fmt"
 	"gateway/pkg/protocol"
 	"strconv"
 
@@ -22,7 +21,6 @@ func RateLimiter(limiter *limiter.Limiter) gin.HandlerFunc {
 		Limiter: limiter,
 	}
 
-	fmt.Println("RateLimiter middleware")
 	return func(ctx *gin.Context) {
 		middleware.Handle(ctx)
 	}
