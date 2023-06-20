@@ -17,20 +17,19 @@ type MiddlewareWs struct {
 }
 
 // NewMiddleware return a new instance of a gin middleware.
-func RateLimiterWs(input interface{}, c *ws.Client) error {
+func RateLimiterWs(input interface{}, c *ws.Client) *protocol.RPCResponseMessage {
 	fmt.Println("RateLimiterWs ===>>>")
 	middleware := &MiddlewareWs{
 		Limiter: &limiter.Limiter{
 			Store: memory.NewStore(),
 			Rate: limiter.Rate{
-				Period: 1 * time.Hour,
+				Period: 1 * time.Minute,
 				Limit:  5,
 			},
 		},
 	}
 
-	middleware.Handle(c)
-	return nil
+	return middleware.Handle(c)
 }
 
 // Handle gin request.
