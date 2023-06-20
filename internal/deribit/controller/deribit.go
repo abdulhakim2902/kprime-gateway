@@ -56,6 +56,7 @@ func NewDeribitHandler(
 
 	handler.RegisterHandler("public/auth", handler.auth)
 	handler.RegisterHandler("public/get_instruments", handler.getInstruments)
+	handler.RegisterHandler("public/get_order_book", handler.getOrderBook)
 	handler.RegisterHandler("public/test", handler.test)
 	handler.RegisterHandler("public/get_index_price", handler.getIndexPrice)
 	handler.RegisterHandler("public/get_last_trades_by_instrument", handler.getLastTradesByInstrument)
@@ -611,13 +612,37 @@ func (h *DeribitHandler) getInstruments(r *gin.Context) {
 func (h *DeribitHandler) getOrderBook(r *gin.Context) {
 	var msg deribitModel.RequestDto[deribitModel.GetOrderBookParams]
 	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
-		r.AbortWithError(http.StatusBadRequest, err)
+		reason := validation_reason.PARSE_ERROR
+		code, _, codeStr := reason.Code()
+
+		errMsg := protocol.ErrorMessage{
+			Message: err.Error(),
+			Data: protocol.ReasonMessage{
+				Reason: codeStr,
+			},
+			Code: code,
+		}
+		m := protocol.RPCResponseMessage{
+			JSONRPC: "2.0",
+			ID:      msg.Id,
+			Error:   &errMsg,
+			Testnet: true,
+		}
+		r.AbortWithStatusJSON(http.StatusBadRequest, m)
 		return
 	}
 
 	_, connKey, reason, err := requestHelper(msg.Id, msg.Method, r)
 	if err != nil {
 		protocol.SendValidationMsg(connKey, *reason, err)
+		return
+	}
+
+	instruments, _ := utils.ParseInstruments(msg.Params.InstrumentName)
+
+	if instruments == nil {
+		protocol.SendValidationMsg(connKey,
+			validation_reason.INVALID_PARAMS, errors.New("instrument not found"))
 		return
 	}
 

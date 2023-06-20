@@ -766,6 +766,14 @@ func (svc wsHandler) GetOrderBook(input interface{}, c *ws.Client) {
 		return
 	}
 
+	instruments, _ := utils.ParseInstruments(msg.Params.InstrumentName)
+
+	if instruments == nil {
+		protocol.SendValidationMsg(connKey,
+			validation_reason.INVALID_PARAMS, errors.New("instrument not found"))
+		return
+	}
+
 	result := svc.wsOBSvc.GetOrderBook(context.TODO(), deribitModel.DeribitGetOrderBookRequest{
 		InstrumentName: msg.Params.InstrumentName,
 		Depth:          msg.Params.Depth,
