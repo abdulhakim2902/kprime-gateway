@@ -73,6 +73,7 @@ func NewWebsocketHandler(
 	r.Use(middleware.RateLimiter(limiter))
 	r.GET("/ws/api/v2", ws.ConnectionEndpoint)
 
+	middleware.SetupWSLimiter(limiter)
 	ws.RegisterChannel("public/auth", handler.PublicAuth)
 	ws.RegisterChannel("private/buy", handler.PrivateBuy)
 	ws.RegisterChannel("private/sell", handler.PrivateSell)
@@ -97,7 +98,7 @@ func NewWebsocketHandler(
 	ws.RegisterChannel("private/unsubscribe_all", handler.UnsubscribeAllHandlerPrivate)
 
 	ws.RegisterChannel("public/get_instruments", handler.GetInstruments)
-	ws.RegisterChannel("public/get_last_trades_by_instrument", middleware.MiddlewaresWrapper(handler.GetLastTradesByInstrument))
+	ws.RegisterChannel("public/get_last_trades_by_instrument", middleware.MiddlewaresWrapper(handler.GetLastTradesByInstrument, middleware.RateLimiterWs))
 
 	ws.RegisterChannel("public/get_order_book", handler.GetOrderBook)
 	ws.RegisterChannel("public/get_index_price", handler.GetIndexPrice)
@@ -133,7 +134,6 @@ func requestHelper(
 	claim, err = authService.ClaimJWT(c, *accessToken)
 	if err != nil {
 		connKey = key
-		fmt.Println(err)
 		validation := validation_reason.UNAUTHORIZED
 		reason = &validation
 		return
