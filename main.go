@@ -106,7 +106,7 @@ func main() {
 	store := limiterMem.NewStore()
 	limiter := &limiter.Limiter{
 		Rate: limiter.Rate{
-			Period: 1 * time.Hour,
+			Period: 1 * time.Second,
 			Limit:  5,
 		},
 		Store: store,

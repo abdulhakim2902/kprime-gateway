@@ -5,6 +5,7 @@ import (
 	"gateway/pkg/protocol"
 	"strconv"
 
+	"git.devucc.name/dependencies/utilities/types/validation_reason"
 	"github.com/gin-gonic/gin"
 
 	"github.com/ulule/limiter/v3"
@@ -53,9 +54,9 @@ func (middleware *Middleware) HandleLimitReached(c *gin.Context) {
 		JSONRPC: "2.0",
 		Result:  nil,
 		Error: &protocol.ErrorMessage{
-			Message: "Too Many Requests",
+			Message: validation_reason.TOO_MANY_REQUESTS.String(),
 			Data: protocol.ReasonMessage{
-				Reason: "TOO_MANY_REQUESTS",
+				Reason: validation_reason.TOO_MANY_REQUESTS.String(),
 			},
 			Code: 10028,
 		},
