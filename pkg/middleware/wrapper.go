@@ -5,16 +5,18 @@ import (
 	"gateway/pkg/ws"
 )
 
-type WsHandler func(input interface{}, c *ws.Client) *protocol.RPCResponseMessage
+type WsHandlerFunc func(interface{}, *ws.Client)
 
-func MiddlewaresWrapper(next WsHandler, middlewares ...WsHandler) func(input interface{}, c *ws.Client) {
-	for _, middleware := range middlewares {
+type WsMiddewareFunc func(interface{}, *ws.Client) *protocol.RPCResponseMessage
 
-		rpcResponse := middleware()
-		if rpcResponse != nil {
-			return
+func MiddlewaresWrapper(handler WsHandlerFunc, middlewares ...WsMiddewareFunc) WsHandlerFunc {
+	return func(i interface{}, c *ws.Client) {
+		for _, middleware := range middlewares {
+			if res := middleware(i, c); res != nil {
+				return
+			}
 		}
-	}
 
-	return next
+		handler(i, c)
+	}
 }
