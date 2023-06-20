@@ -9,6 +9,7 @@ import (
 	"net/http"
 
 	"gateway/pkg/memdb"
+	"gateway/pkg/middleware/api"
 	"gateway/pkg/utils"
 
 	"git.devucc.name/dependencies/utilities/commons/logs"
@@ -38,9 +39,20 @@ func NewUserService(
 }
 
 func (svc *userService) RegisterRoutes() {
-	svc.r.POST("/api/v1/order-exclusions", svc.syncMemDB)
+	internalAPI := svc.r.Group("api/internal")
+	internalAPI.Use(api.IPWhitelist(), api.BasicAuth())
+
+	internalAPI.POST("/sync/:target", svc.handleSync)
 }
 
+func (svc *userService) handleSync(c *gin.Context) {
+	switch c.Param("target") {
+	case "users":
+		svc.syncMemDB(c)
+	default:
+		c.AbortWithStatus(http.StatusNotFound)
+	}
+}
 func (svc *userService) syncMemDB(c *gin.Context) {
 
 	type Request struct {
