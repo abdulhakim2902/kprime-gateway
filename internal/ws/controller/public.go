@@ -33,7 +33,7 @@ func (handler *wsHandler) RegisterPublic() {
 	ws.RegisterChannel("public/get_tradingview_chart_data", middleware.MiddlewaresWrapper(handler.publicGetTradingviewChartData, middleware.RateLimiterWs))
 }
 
-func (svc wsHandler) auth(input interface{}, c *ws.Client) {
+func (svc *wsHandler) auth(input interface{}, c *ws.Client) {
 	type Params struct {
 		GrantType    string `json:"grant_type" validate:"required"`
 		ClientID     string `json:"client_id"`
@@ -129,7 +129,7 @@ func (svc wsHandler) auth(input interface{}, c *ws.Client) {
 	protocol.SendSuccessMsg(connKey, res)
 }
 
-func (svc wsHandler) publicSubscribe(input interface{}, c *ws.Client) {
+func (svc *wsHandler) publicSubscribe(input interface{}, c *ws.Client) {
 	var msg deribitModel.RequestDto[deribitModel.ChannelParams]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
 		c.SendInvalidRequestMessage(err)
@@ -207,7 +207,7 @@ func (svc wsHandler) publicSubscribe(input interface{}, c *ws.Client) {
 	protocol.SendSuccessMsg(connKey, msg.Params.Channels)
 }
 
-func (svc wsHandler) publicUnsubscribe(input interface{}, c *ws.Client) {
+func (svc *wsHandler) publicUnsubscribe(input interface{}, c *ws.Client) {
 	var msg deribitModel.RequestDto[deribitModel.ChannelParams]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
 		c.SendInvalidRequestMessage(err)
@@ -241,7 +241,7 @@ func (svc wsHandler) publicUnsubscribe(input interface{}, c *ws.Client) {
 	protocol.SendSuccessMsg(connKey, msg.Params.Channels)
 }
 
-func (svc wsHandler) publicUnsubscribeAll(input interface{}, c *ws.Client) {
+func (svc *wsHandler) publicUnsubscribeAll(input interface{}, c *ws.Client) {
 	var msg deribitModel.RequestDto[deribitModel.ChannelParams]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
 		c.SendInvalidRequestMessage(err)
@@ -262,7 +262,7 @@ func (svc wsHandler) publicUnsubscribeAll(input interface{}, c *ws.Client) {
 	protocol.SendSuccessMsg(connKey, "ok")
 }
 
-func (svc wsHandler) getInstruments(input interface{}, c *ws.Client) {
+func (svc *wsHandler) getInstruments(input interface{}, c *ws.Client) {
 	var msg deribitModel.RequestDto[deribitModel.GetInstrumentsParams]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
 		c.SendInvalidRequestMessage(err)
@@ -301,7 +301,7 @@ func (svc wsHandler) getInstruments(input interface{}, c *ws.Client) {
 	protocol.SendSuccessMsg(connKey, result)
 }
 
-func (svc wsHandler) getOrderBook(input interface{}, c *ws.Client) {
+func (svc *wsHandler) getOrderBook(input interface{}, c *ws.Client) {
 	var msg deribitModel.RequestDto[deribitModel.GetOrderBookParams]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
 		c.SendInvalidRequestMessage(err)
@@ -330,7 +330,7 @@ func (svc wsHandler) getOrderBook(input interface{}, c *ws.Client) {
 	protocol.SendSuccessMsg(connKey, result)
 }
 
-func (svc wsHandler) getLastTradesByInstrument(input interface{}, c *ws.Client) {
+func (svc *wsHandler) getLastTradesByInstrument(input interface{}, c *ws.Client) {
 	var msg deribitModel.RequestDto[deribitModel.GetLastTradesByInstrumentParams]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
 		c.SendInvalidRequestMessage(err)
@@ -356,7 +356,7 @@ func (svc wsHandler) getLastTradesByInstrument(input interface{}, c *ws.Client) 
 	protocol.SendSuccessMsg(connKey, result)
 }
 
-func (svc wsHandler) getIndexPrice(input interface{}, c *ws.Client) {
+func (svc *wsHandler) getIndexPrice(input interface{}, c *ws.Client) {
 	var msg deribitModel.RequestDto[deribitModel.GetIndexPriceParams]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
 		c.SendInvalidRequestMessage(err)
@@ -376,7 +376,7 @@ func (svc wsHandler) getIndexPrice(input interface{}, c *ws.Client) {
 	protocol.SendSuccessMsg(connKey, result)
 }
 
-func (svc wsHandler) getDeliveryPrices(input interface{}, c *ws.Client) {
+func (svc *wsHandler) getDeliveryPrices(input interface{}, c *ws.Client) {
 	var msg deribitModel.RequestDto[deribitModel.DeliveryPricesParams]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
 		c.SendInvalidRequestMessage(err)
@@ -398,7 +398,7 @@ func (svc wsHandler) getDeliveryPrices(input interface{}, c *ws.Client) {
 	protocol.SendSuccessMsg(connKey, result)
 }
 
-func (svc wsHandler) setHeartbeat(input interface{}, c *ws.Client) {
+func (svc *wsHandler) setHeartbeat(input interface{}, c *ws.Client) {
 	var msg deribitModel.RequestDto[deribitModel.SetHeartbeatParams]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
 		c.SendInvalidRequestMessage(err)
@@ -422,7 +422,7 @@ func (svc wsHandler) setHeartbeat(input interface{}, c *ws.Client) {
 	protocol.SendSuccessMsg(connKey, "ok")
 }
 
-func (svc wsHandler) test(input interface{}, c *ws.Client) {
+func (svc *wsHandler) test(input interface{}, c *ws.Client) {
 	var msg deribitModel.RequestDto[deribitModel.TestParams]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
 		c.SendInvalidRequestMessage(err)
@@ -453,7 +453,7 @@ func (svc wsHandler) test(input interface{}, c *ws.Client) {
 	protocol.SendSuccessMsg(connKey, result)
 }
 
-func (svc wsHandler) publicGetTradingviewChartData(input interface{}, c *ws.Client) {
+func (svc *wsHandler) publicGetTradingviewChartData(input interface{}, c *ws.Client) {
 	var msg deribitModel.RequestDto[deribitModel.GetTradingviewChartDataRequest]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
 		c.SendInvalidRequestMessage(err)

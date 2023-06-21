@@ -36,7 +36,7 @@ func (handler *wsHandler) RegisterPrivate() {
 	ws.RegisterChannel("private/unsubscribe_all", middleware.MiddlewaresWrapper(handler.privateUnsubscribeAll, middleware.RateLimiterWs))
 }
 
-func (svc wsHandler) buy(input interface{}, c *ws.Client) {
+func (svc *wsHandler) buy(input interface{}, c *ws.Client) {
 	var msg deribitModel.RequestDto[deribitModel.RequestParams]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
 		c.SendInvalidRequestMessage(err)
@@ -87,7 +87,7 @@ func (svc wsHandler) buy(input interface{}, c *ws.Client) {
 	ws.RegisterOrderConnection(connKey, c)
 }
 
-func (svc wsHandler) sell(input interface{}, c *ws.Client) {
+func (svc *wsHandler) sell(input interface{}, c *ws.Client) {
 	var msg deribitModel.RequestDto[deribitModel.RequestParams]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
 		c.SendInvalidRequestMessage(err)
@@ -138,7 +138,7 @@ func (svc wsHandler) sell(input interface{}, c *ws.Client) {
 	ws.RegisterOrderConnection(connKey, c)
 }
 
-func (svc wsHandler) edit(input interface{}, c *ws.Client) {
+func (svc *wsHandler) edit(input interface{}, c *ws.Client) {
 	var msg deribitModel.RequestDto[deribitModel.RequestParams]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
 		c.SendInvalidRequestMessage(err)
@@ -169,7 +169,7 @@ func (svc wsHandler) edit(input interface{}, c *ws.Client) {
 	ws.RegisterOrderConnection(connKey, c)
 }
 
-func (svc wsHandler) cancel(input interface{}, c *ws.Client) {
+func (svc *wsHandler) cancel(input interface{}, c *ws.Client) {
 	var msg deribitModel.RequestDto[deribitModel.RequestParams]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
 		c.SendInvalidRequestMessage(err)
@@ -198,7 +198,7 @@ func (svc wsHandler) cancel(input interface{}, c *ws.Client) {
 	ws.RegisterOrderConnection(connKey, c)
 }
 
-func (svc wsHandler) cancelByInstrument(input interface{}, c *ws.Client) {
+func (svc *wsHandler) cancelByInstrument(input interface{}, c *ws.Client) {
 	var msg deribitModel.RequestDto[deribitModel.RequestParams]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
 		c.SendInvalidRequestMessage(err)
@@ -227,7 +227,7 @@ func (svc wsHandler) cancelByInstrument(input interface{}, c *ws.Client) {
 	ws.RegisterOrderConnection(connKey, c)
 }
 
-func (svc wsHandler) cancelAll(input interface{}, c *ws.Client) {
+func (svc *wsHandler) cancelAll(input interface{}, c *ws.Client) {
 	var msg deribitModel.RequestDto[deribitModel.RequestParams]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
 		c.SendInvalidRequestMessage(err)
@@ -255,7 +255,7 @@ func (svc wsHandler) cancelAll(input interface{}, c *ws.Client) {
 	ws.RegisterOrderConnection(connKey, c)
 }
 
-func (svc wsHandler) getUserTradesByInstrument(input interface{}, c *ws.Client) {
+func (svc *wsHandler) getUserTradesByInstrument(input interface{}, c *ws.Client) {
 	var msg deribitModel.RequestDto[deribitModel.GetUserTradesByInstrumentParams]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
 		c.SendInvalidRequestMessage(err)
@@ -288,7 +288,7 @@ func (svc wsHandler) getUserTradesByInstrument(input interface{}, c *ws.Client) 
 	protocol.SendSuccessMsg(connKey, res)
 }
 
-func (svc wsHandler) getOpenOrdersByInstrument(input interface{}, c *ws.Client) {
+func (svc *wsHandler) getOpenOrdersByInstrument(input interface{}, c *ws.Client) {
 	var msg deribitModel.RequestDto[deribitModel.GetOpenOrdersByInstrumentParams]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
 		c.SendInvalidRequestMessage(err)
@@ -318,7 +318,7 @@ func (svc wsHandler) getOpenOrdersByInstrument(input interface{}, c *ws.Client) 
 	protocol.SendSuccessMsg(connKey, res)
 }
 
-func (svc wsHandler) getOrderHistoryByInstrument(input interface{}, c *ws.Client) {
+func (svc *wsHandler) getOrderHistoryByInstrument(input interface{}, c *ws.Client) {
 	var msg deribitModel.RequestDto[deribitModel.GetOrderHistoryByInstrumentParams]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
 		c.SendInvalidRequestMessage(err)
@@ -351,7 +351,7 @@ func (svc wsHandler) getOrderHistoryByInstrument(input interface{}, c *ws.Client
 	protocol.SendSuccessMsg(connKey, res)
 }
 
-func (svc wsHandler) getUserTradesByOrder(input interface{}, c *ws.Client) {
+func (svc *wsHandler) getUserTradesByOrder(input interface{}, c *ws.Client) {
 	var msg deribitModel.RequestDto[deribitModel.GetUserTradesByOrderParams]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
 		c.SendInvalidRequestMessage(err)
@@ -376,7 +376,7 @@ func (svc wsHandler) getUserTradesByOrder(input interface{}, c *ws.Client) {
 	protocol.SendSuccessMsg(connKey, res)
 }
 
-func (svc wsHandler) getOrderState(input interface{}, c *ws.Client) {
+func (svc *wsHandler) getOrderState(input interface{}, c *ws.Client) {
 	var msg deribitModel.RequestDto[deribitModel.GetOrderStateParams]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
 		c.SendInvalidRequestMessage(err)
@@ -400,7 +400,7 @@ func (svc wsHandler) getOrderState(input interface{}, c *ws.Client) {
 	protocol.SendSuccessMsg(connKey, res)
 }
 
-func (svc wsHandler) getAccountSummary(input interface{}, c *ws.Client) {
+func (svc *wsHandler) getAccountSummary(input interface{}, c *ws.Client) {
 	var msg deribitModel.RequestDto[deribitModel.GetAccountSummary]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
 		c.SendInvalidRequestMessage(err)
@@ -432,7 +432,7 @@ func (svc wsHandler) getAccountSummary(input interface{}, c *ws.Client) {
 	protocol.SendSuccessMsg(connKey, resp)
 }
 
-func (svc wsHandler) getOrderStateByLabel(input interface{}, c *ws.Client) {
+func (svc *wsHandler) getOrderStateByLabel(input interface{}, c *ws.Client) {
 	var msg deribitModel.RequestDto[deribitModel.DeribitGetOrderStateByLabelRequest]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
 		c.SendInvalidRequestMessage(err)
@@ -452,7 +452,7 @@ func (svc wsHandler) getOrderStateByLabel(input interface{}, c *ws.Client) {
 	protocol.SendSuccessMsg(connKey, res)
 }
 
-func (svc wsHandler) privateUnsubscribeAll(input interface{}, c *ws.Client) {
+func (svc *wsHandler) privateUnsubscribeAll(input interface{}, c *ws.Client) {
 	var msg deribitModel.RequestDto[deribitModel.ChannelParams]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
 		c.SendInvalidRequestMessage(err)
@@ -472,7 +472,7 @@ func (svc wsHandler) privateUnsubscribeAll(input interface{}, c *ws.Client) {
 	protocol.SendSuccessMsg(connKey, "ok")
 }
 
-func (svc wsHandler) privateSubscribe(input interface{}, c *ws.Client) {
+func (svc *wsHandler) privateSubscribe(input interface{}, c *ws.Client) {
 	var msg deribitModel.RequestDto[deribitModel.ChannelParams]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
 		c.SendInvalidRequestMessage(err)
@@ -546,7 +546,7 @@ func (svc wsHandler) privateSubscribe(input interface{}, c *ws.Client) {
 
 }
 
-func (svc wsHandler) privateUnsubscribe(input interface{}, c *ws.Client) {
+func (svc *wsHandler) privateUnsubscribe(input interface{}, c *ws.Client) {
 	var msg deribitModel.RequestDto[deribitModel.ChannelParams]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
 		c.SendInvalidRequestMessage(err)
