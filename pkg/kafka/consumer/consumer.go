@@ -68,6 +68,7 @@ func KafkaConsumer(
 					go tradeSvc.HandleConsumeInstrumentTrades(message)
 					go obSvc.HandleConsumeUserChange(message)
 					go obSvc.HandleConsumeBook(message)
+					go obSvc.HandleConsumeTicker(message)
 				case "CANCELLED_ORDER":
 					handleTopicCancelledOrders(message)
 				case "CANCELLED_ORDER_SAVED":
@@ -75,7 +76,7 @@ func KafkaConsumer(
 					go oSvc.HandleConsumeUserOrderCancel(message)
 					go obSvc.HandleConsumeBookCancel(message)
 					go engSvc.HandleConsumeQuoteCancel(message)
-
+					go obSvc.HandleConsumeTickerCancel(message)
 				case "PRICES":
 					go rawSvc.HandleConsume(message)
 				default:

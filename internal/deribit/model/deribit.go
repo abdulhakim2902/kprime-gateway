@@ -298,12 +298,12 @@ type DeribitGetOrderBookResponse struct {
 	Bids_iv         float64                   `json:"bid_iv"`
 	Asks_iv         float64                   `json:"ask_iv"`
 	InstrumentName  string                    `json:"instrument_name"`
-	Bids            []*_orderbookType.WsOrder `json:"bids"`
+	Bids            []*_orderbookType.WsOrder `json:"bids,omitempty"`
 	BestBidPrice    float64                   `json:"best_bid_price"`
 	BestBidAmount   float64                   `json:"best_bid_amount"`
 	BestAskPrice    float64                   `json:"best_ask_price"`
 	BestAskAmount   float64                   `json:"best_ask_amount"`
-	Asks            []*_orderbookType.WsOrder `json:"asks"`
+	Asks            []*_orderbookType.WsOrder `json:"asks,omitempty"`
 	IndexPrice      *float64                  `json:"index_price"`
 	SettlementPrice *float64                  `json:"settlement_price"`
 	UnderlyingIndex *float64                  `json:"underlying_index"`
