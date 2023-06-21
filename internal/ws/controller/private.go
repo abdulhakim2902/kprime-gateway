@@ -31,9 +31,9 @@ func (handler *wsHandler) RegisterPrivate() {
 	ws.RegisterChannel("private/get_order_state_by_label", middleware.MiddlewaresWrapper(handler.PrivateGetOrderStateByLabel, middleware.RateLimiterWs))
 	ws.RegisterChannel("private/get_order_state", middleware.MiddlewaresWrapper(handler.PrivateGetOrderState, middleware.RateLimiterWs))
 	ws.RegisterChannel("private/get_account_summary", middleware.MiddlewaresWrapper(handler.PrivateGetAccountSummary, middleware.RateLimiterWs))
-	ws.RegisterChannel("private/subscribe", middleware.MiddlewaresWrapper(handler.PrivateSubscribeHandler, middleware.RateLimiterWs))
-	ws.RegisterChannel("private/unsubscribe", middleware.MiddlewaresWrapper(handler.PrivateUnsubscribeHandler, middleware.RateLimiterWs))
-	ws.RegisterChannel("private/unsubscribe_all", middleware.MiddlewaresWrapper(handler.PrivateUnsubscribeAllHandler, middleware.RateLimiterWs))
+	ws.RegisterChannel("private/subscribe", middleware.MiddlewaresWrapper(handler.PrivateSubscribe, middleware.RateLimiterWs))
+	ws.RegisterChannel("private/unsubscribe", middleware.MiddlewaresWrapper(handler.PrivateUnsubscribe, middleware.RateLimiterWs))
+	ws.RegisterChannel("private/unsubscribe_all", middleware.MiddlewaresWrapper(handler.PrivateUnsubscribeAll, middleware.RateLimiterWs))
 }
 
 func (svc wsHandler) PrivateBuy(input interface{}, c *ws.Client) {
@@ -452,7 +452,7 @@ func (svc wsHandler) PrivateGetOrderStateByLabel(input interface{}, c *ws.Client
 	protocol.SendSuccessMsg(connKey, res)
 }
 
-func (svc wsHandler) PrivateUnsubscribeAllHandler(input interface{}, c *ws.Client) {
+func (svc wsHandler) PrivateUnsubscribeAll(input interface{}, c *ws.Client) {
 	var msg deribitModel.RequestDto[deribitModel.ChannelParams]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
 		c.SendInvalidRequestMessage(err)
@@ -472,7 +472,7 @@ func (svc wsHandler) PrivateUnsubscribeAllHandler(input interface{}, c *ws.Clien
 	protocol.SendSuccessMsg(connKey, "ok")
 }
 
-func (svc wsHandler) PrivateSubscribeHandler(input interface{}, c *ws.Client) {
+func (svc wsHandler) PrivateSubscribe(input interface{}, c *ws.Client) {
 	var msg deribitModel.RequestDto[deribitModel.ChannelParams]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
 		c.SendInvalidRequestMessage(err)
@@ -546,7 +546,7 @@ func (svc wsHandler) PrivateSubscribeHandler(input interface{}, c *ws.Client) {
 
 }
 
-func (svc wsHandler) PrivateUnsubscribeHandler(input interface{}, c *ws.Client) {
+func (svc wsHandler) PrivateUnsubscribe(input interface{}, c *ws.Client) {
 	var msg deribitModel.RequestDto[deribitModel.ChannelParams]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
 		c.SendInvalidRequestMessage(err)
