@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"gateway/internal/deribit/service"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 
 	"git.devucc.name/dependencies/utilities/commons/logs"
@@ -22,8 +24,6 @@ import (
 	"gateway/pkg/middleware"
 	"gateway/pkg/protocol"
 	"gateway/pkg/utils"
-	"strconv"
-	"strings"
 
 	"git.devucc.name/dependencies/utilities/types/validation_reason"
 	cors "github.com/rs/cors/wrapper/gin"
@@ -56,34 +56,15 @@ func NewDeribitHandler(
 		memDb:    memDb,
 	}
 
-	handler.RegisterHandler("public/auth", handler.auth)
-	handler.RegisterHandler("public/get_instruments", handler.getInstruments)
-	handler.RegisterHandler("public/get_order_book", handler.getOrderBook)
-	handler.RegisterHandler("public/test", handler.test)
-	handler.RegisterHandler("public/get_index_price", handler.getIndexPrice)
-	handler.RegisterHandler("public/get_last_trades_by_instrument", handler.getLastTradesByInstrument)
-	handler.RegisterHandler("public/get_delivery_prices", handler.getDeliveryPrices)
-
-	handler.RegisterHandler("private/buy", handler.buy)
-	handler.RegisterHandler("private/sell", handler.sell)
-	handler.RegisterHandler("private/edit", handler.edit)
-	handler.RegisterHandler("private/cancel", handler.cancel)
-	handler.RegisterHandler("private/cancel_all_by_instrument", handler.cancelByInstrument)
-	handler.RegisterHandler("private/cancel_all", handler.cancelAll)
-	handler.RegisterHandler("private/get_user_trades_by_instrument", handler.getUserTradeByInstrument)
-	handler.RegisterHandler("private/get_open_orders_by_instrument", handler.getOpenOrdersByInstrument)
-	handler.RegisterHandler("private/get_order_history_by_instrument", handler.getOrderHistoryByInstrument)
-	handler.RegisterHandler("private/get_order_state_by_label", handler.getOrderStateByLabel)
-	handler.RegisterHandler("private/get_order_state", handler.getOrderState)
-	handler.RegisterHandler("private/get_user_trades_by_order", handler.getUserTradesByOrder)
-	handler.RegisterHandler("private/get_account_summary", handler.getAccountSummary)
-
 	r.Use(cors.AllowAll())
 	r.Use(middleware.Authenticate(memDb))
 
 	api := r.Group("/api/v2")
 	api.POST("", handler.ApiPostHandler)
 	api.GET(":type/*action", handler.ApiGetHandler)
+
+	handler.RegisterPrivate()
+	handler.RegisterPublic()
 }
 
 func (h *DeribitHandler) RegisterHandler(method string, handler gin.HandlerFunc) {

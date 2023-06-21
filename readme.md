@@ -1,102 +1,80 @@
-<p align="center">
-    <h1 align="center">K-Prime Gateway</h1>
-</p>
+# KPrime - Gateway
 
-## Requirement
-Make sure you have Go installed and GOPATH set in your env.
-Go version: `1.20.3` <br />
-MongoDB version: Community Edition `6.0.5`
+[![dev](https://img.shields.io/badge/development-ok-brightgreen)](https://k-gateway.devucc.name/)
 
+Gateway in KPrime serves as a bridge between different systems, enabling seamless communication and integration. It acts as a central hub, facilitating the exchange of data and messages between various components within the trading ecosystem. REST API, WebSocket, and FIX protocol are used as transport layers in Gateway.
 
-### Framework
-This projects uses `Gin` and implements `Clean Architecture`
+Please see [wiki](https://git.devucc.name/groups/undercurrent-tech/k-prime/-/wikis/home) for all other important notes.
 
-* for gin related docs please visit https://gin-gonic.com/docs/
-* for clean architecture concepts you can visit the link: https://evrone.com/go-clean-template
+## Table of Contents
 
+- [Prerequisite](#prerequisite)
+- [Install](#install)
+- [Docker](#docker)
+- [Metrics](#metrics)
 
-### Setup the application
+## Prerequisite
 
-To setup the application, please copy file `.env.example` and rename it to `.env`, modify `.env` file based on your local requirement.
+Make sure you have Go installed and GOPATH set in your local.
+```
+Go version: 1.20.3 
+MongoDB version: Community Edition 6.0.5
+```
 
-Add GOPRIVATE to the go env for git.devucc.name to get private dependencies
-```bash
+And we need 2 other applications + 1 seeding (if you havent done seeding):
+- [MongoDB](https://git.devucc.name/groups/undercurrent-tech/k-prime/-/wikis/Docker-%F0%9F%90%B3#1-mongodb)
+- [Apache Kafka](https://git.devucc.name/groups/undercurrent-tech/k-prime/-/wikis/Docker-%F0%9F%90%B3#2-kafka) 
+- [Seeding](https://git.devucc.name/groups/undercurrent-tech/k-prime/-/wikis/Docker-%F0%9F%90%B3#4-user-seeding)
+
+This projects uses Gin and implements Clean Architecture
+
+- for gin related docs please visit https://gin-gonic.com/docs/
+
+- for clean architecture concepts you can visit the link: https://evrone.com/go-clean-template
+
+## Install
+
+copy file .env.example and rename it to .env, modify .env file based on your local requirement.
+```
+cp .env.example .env
+```
+
+To be able to get private dependencies, you can use this following command:
+```
 GOPRIVATE=git.devucc.name/dependencies/utilities go get git.devucc.name/dependencies/utilities@v1.0.3
 ```
 
-### Database
-We're using two databases:
-* MySQL
-* MongoDB
-
-MySQL is used only for gateway application, to store user's credentials, roles, permissions, etc. 
-
-Gateway is connected to the orderbook's MongoDB instance. In production Gateway would use replica set feature. For local development, make sure that the `orderbook app` and the `gateway app` has the same MongoDB database.
-
-### Migrate
-To run the migration, just follow the command below
-
-Migration up:
-
-```bash
-go run main.go --migrate up
+To run the application for development purposes:
 ```
-
-or, for executable binary:
-
-```bash
-./main --migrate up
-```
-
-Migration down:
-
-```bash
-go run main.go --migrate down
-```
-
-or, for executable binary:
-
-```bash
-./main --migrate down
-```
-
-### Start the application
-
-To start running the application, simply run:
-
-```bash
 go run main.go
 ```
 
-under root directory this will automatically install project dependecy.
-
-### Using docker
-
-please setup database connection first on `.env` file by copy `.env.example` file
-instead of using `localhost` or `127.0.0.1` please use `host.docker.internal` for database connection in docker
-
-if you find connection refused error make sure that your local MySQL installation is configured to allow remote connections. by default, MySQL is configured to only accept connections from the local machine. you will need to update the bind-address setting in the MySQL configuration file (`my.cnf` or `my.ini`) to allow remote connections. to update MySQL remote connection please add or update the `bind-address` section and set it to `0.0.0.0`
-
-to build the image you can run
-
-```bash
-docker build -t exchage-gateway .
+For production purpose:
+```
+go build -o main main.go
+./main
 ```
 
-and running the container by running this command
+This project uses [node](http://nodejs.org) and [npm](https://npmjs.com). Go check them out if you don't have them locally installed.
 
-```bash
-docker run --rm -p 8080:8080 exchange-gateway
+```sh
+$ npm install --global standard-readme-spec
 ```
+
+## Docker
+
+To run gateway through the docker, you can follow this following [wiki](https://git.devucc.name/groups/undercurrent-tech/k-prime/-/wikis/Docker-%F0%9F%90%B3#app-gateway)
+
+To build and push the docker image in this [wiki](https://git.devucc.name/groups/undercurrent-tech/k-prime/-/wikis/Docker-%F0%9F%90%B3#building-and-publishing-docker)
 
 ### Metrics
 
-Run in port `2112` (default), Metrics endpoint:
-
-```bash
+Run in port 2112 (default), Metrics endpoint:
+```
 <host>:2112/metrics
 ```
-
 Custom port with env variable:
+```
+METRICS_PORT="2113"
+```
 
-`METRICS_PORT="2113"`
