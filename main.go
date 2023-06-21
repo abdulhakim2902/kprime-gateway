@@ -105,8 +105,16 @@ func init() {
 func main() {
 	// qf
 	store := limiterMem.NewStore()
-	period, _ := strconv.ParseInt(os.Getenv("RATE_LIMITER_DURATION"), 10, 64)
-	limit, _ := strconv.ParseInt(os.Getenv("RATE_LIMITER_MAX_REQUESTS"), 10, 64)
+	p, ok := os.LookupEnv("RATE_LIMITER_DURATION")
+	if !ok {
+		p = "1"
+	}
+	l, ok := os.LookupEnv("RATE_LIMITER_MAX_REQUESTS")
+	if !ok {
+		l = "5"
+	}
+	period, _ := strconv.ParseInt(p, 10, 64)
+	limit, _ := strconv.ParseInt(l, 10, 64)
 
 	limiter := &limiter.Limiter{
 		Rate: limiter.Rate{
