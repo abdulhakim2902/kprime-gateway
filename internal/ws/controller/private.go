@@ -18,25 +18,25 @@ import (
 )
 
 func (handler *wsHandler) RegisterPrivate() {
-	ws.RegisterChannel("private/buy", middleware.MiddlewaresWrapper(handler.PrivateBuy, middleware.RateLimiterWs))
-	ws.RegisterChannel("private/sell", middleware.MiddlewaresWrapper(handler.PrivateSell, middleware.RateLimiterWs))
-	ws.RegisterChannel("private/edit", middleware.MiddlewaresWrapper(handler.PrivateEdit, middleware.RateLimiterWs))
-	ws.RegisterChannel("private/cancel", middleware.MiddlewaresWrapper(handler.PrivateCancel, middleware.RateLimiterWs))
-	ws.RegisterChannel("private/cancel_all_by_instrument", middleware.MiddlewaresWrapper(handler.PrivateCancelByInstrument, middleware.RateLimiterWs))
-	ws.RegisterChannel("private/cancel_all", middleware.MiddlewaresWrapper(handler.PrivateCancelAll, middleware.RateLimiterWs))
-	ws.RegisterChannel("private/get_user_trades_by_order", middleware.MiddlewaresWrapper(handler.PrivateGetUserTradesByOrder, middleware.RateLimiterWs))
-	ws.RegisterChannel("private/get_user_trades_by_instrument", middleware.MiddlewaresWrapper(handler.PrivateGetUserTradesByInstrument, middleware.RateLimiterWs))
-	ws.RegisterChannel("private/get_open_orders_by_instrument", middleware.MiddlewaresWrapper(handler.PrivateGetOpenOrdersByInstrument, middleware.RateLimiterWs))
-	ws.RegisterChannel("private/get_order_history_by_instrument", middleware.MiddlewaresWrapper(handler.PrivateGetOrderHistoryByInstrument, middleware.RateLimiterWs))
-	ws.RegisterChannel("private/get_order_state_by_label", middleware.MiddlewaresWrapper(handler.PrivateGetOrderStateByLabel, middleware.RateLimiterWs))
-	ws.RegisterChannel("private/get_order_state", middleware.MiddlewaresWrapper(handler.PrivateGetOrderState, middleware.RateLimiterWs))
-	ws.RegisterChannel("private/get_account_summary", middleware.MiddlewaresWrapper(handler.PrivateGetAccountSummary, middleware.RateLimiterWs))
-	ws.RegisterChannel("private/subscribe", middleware.MiddlewaresWrapper(handler.PrivateSubscribe, middleware.RateLimiterWs))
-	ws.RegisterChannel("private/unsubscribe", middleware.MiddlewaresWrapper(handler.PrivateUnsubscribe, middleware.RateLimiterWs))
-	ws.RegisterChannel("private/unsubscribe_all", middleware.MiddlewaresWrapper(handler.PrivateUnsubscribeAll, middleware.RateLimiterWs))
+	ws.RegisterChannel("private/buy", middleware.MiddlewaresWrapper(handler.buy, middleware.RateLimiterWs))
+	ws.RegisterChannel("private/sell", middleware.MiddlewaresWrapper(handler.sell, middleware.RateLimiterWs))
+	ws.RegisterChannel("private/edit", middleware.MiddlewaresWrapper(handler.edit, middleware.RateLimiterWs))
+	ws.RegisterChannel("private/cancel", middleware.MiddlewaresWrapper(handler.cancel, middleware.RateLimiterWs))
+	ws.RegisterChannel("private/cancel_all_by_instrument", middleware.MiddlewaresWrapper(handler.cancelByInstrument, middleware.RateLimiterWs))
+	ws.RegisterChannel("private/cancel_all", middleware.MiddlewaresWrapper(handler.cancelAll, middleware.RateLimiterWs))
+	ws.RegisterChannel("private/get_user_trades_by_order", middleware.MiddlewaresWrapper(handler.getUserTradesByOrder, middleware.RateLimiterWs))
+	ws.RegisterChannel("private/get_user_trades_by_instrument", middleware.MiddlewaresWrapper(handler.getUserTradesByInstrument, middleware.RateLimiterWs))
+	ws.RegisterChannel("private/get_open_orders_by_instrument", middleware.MiddlewaresWrapper(handler.getOpenOrdersByInstrument, middleware.RateLimiterWs))
+	ws.RegisterChannel("private/get_order_history_by_instrument", middleware.MiddlewaresWrapper(handler.getOrderHistoryByInstrument, middleware.RateLimiterWs))
+	ws.RegisterChannel("private/get_order_state_by_label", middleware.MiddlewaresWrapper(handler.getOrderStateByLabel, middleware.RateLimiterWs))
+	ws.RegisterChannel("private/get_order_state", middleware.MiddlewaresWrapper(handler.getOrderState, middleware.RateLimiterWs))
+	ws.RegisterChannel("private/get_account_summary", middleware.MiddlewaresWrapper(handler.getAccountSummary, middleware.RateLimiterWs))
+	ws.RegisterChannel("private/subscribe", middleware.MiddlewaresWrapper(handler.privateSubscribe, middleware.RateLimiterWs))
+	ws.RegisterChannel("private/unsubscribe", middleware.MiddlewaresWrapper(handler.privateUnsubscribe, middleware.RateLimiterWs))
+	ws.RegisterChannel("private/unsubscribe_all", middleware.MiddlewaresWrapper(handler.privateUnsubscribeAll, middleware.RateLimiterWs))
 }
 
-func (svc wsHandler) PrivateBuy(input interface{}, c *ws.Client) {
+func (svc wsHandler) buy(input interface{}, c *ws.Client) {
 	var msg deribitModel.RequestDto[deribitModel.RequestParams]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
 		c.SendInvalidRequestMessage(err)
@@ -87,7 +87,7 @@ func (svc wsHandler) PrivateBuy(input interface{}, c *ws.Client) {
 	ws.RegisterOrderConnection(connKey, c)
 }
 
-func (svc wsHandler) PrivateSell(input interface{}, c *ws.Client) {
+func (svc wsHandler) sell(input interface{}, c *ws.Client) {
 	var msg deribitModel.RequestDto[deribitModel.RequestParams]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
 		c.SendInvalidRequestMessage(err)
@@ -138,7 +138,7 @@ func (svc wsHandler) PrivateSell(input interface{}, c *ws.Client) {
 	ws.RegisterOrderConnection(connKey, c)
 }
 
-func (svc wsHandler) PrivateEdit(input interface{}, c *ws.Client) {
+func (svc wsHandler) edit(input interface{}, c *ws.Client) {
 	var msg deribitModel.RequestDto[deribitModel.RequestParams]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
 		c.SendInvalidRequestMessage(err)
@@ -169,7 +169,7 @@ func (svc wsHandler) PrivateEdit(input interface{}, c *ws.Client) {
 	ws.RegisterOrderConnection(connKey, c)
 }
 
-func (svc wsHandler) PrivateCancel(input interface{}, c *ws.Client) {
+func (svc wsHandler) cancel(input interface{}, c *ws.Client) {
 	var msg deribitModel.RequestDto[deribitModel.RequestParams]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
 		c.SendInvalidRequestMessage(err)
@@ -198,7 +198,7 @@ func (svc wsHandler) PrivateCancel(input interface{}, c *ws.Client) {
 	ws.RegisterOrderConnection(connKey, c)
 }
 
-func (svc wsHandler) PrivateCancelByInstrument(input interface{}, c *ws.Client) {
+func (svc wsHandler) cancelByInstrument(input interface{}, c *ws.Client) {
 	var msg deribitModel.RequestDto[deribitModel.RequestParams]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
 		c.SendInvalidRequestMessage(err)
@@ -227,7 +227,7 @@ func (svc wsHandler) PrivateCancelByInstrument(input interface{}, c *ws.Client) 
 	ws.RegisterOrderConnection(connKey, c)
 }
 
-func (svc wsHandler) PrivateCancelAll(input interface{}, c *ws.Client) {
+func (svc wsHandler) cancelAll(input interface{}, c *ws.Client) {
 	var msg deribitModel.RequestDto[deribitModel.RequestParams]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
 		c.SendInvalidRequestMessage(err)
@@ -255,7 +255,7 @@ func (svc wsHandler) PrivateCancelAll(input interface{}, c *ws.Client) {
 	ws.RegisterOrderConnection(connKey, c)
 }
 
-func (svc wsHandler) PrivateGetUserTradesByInstrument(input interface{}, c *ws.Client) {
+func (svc wsHandler) getUserTradesByInstrument(input interface{}, c *ws.Client) {
 	var msg deribitModel.RequestDto[deribitModel.GetUserTradesByInstrumentParams]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
 		c.SendInvalidRequestMessage(err)
@@ -288,7 +288,7 @@ func (svc wsHandler) PrivateGetUserTradesByInstrument(input interface{}, c *ws.C
 	protocol.SendSuccessMsg(connKey, res)
 }
 
-func (svc wsHandler) PrivateGetOpenOrdersByInstrument(input interface{}, c *ws.Client) {
+func (svc wsHandler) getOpenOrdersByInstrument(input interface{}, c *ws.Client) {
 	var msg deribitModel.RequestDto[deribitModel.GetOpenOrdersByInstrumentParams]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
 		c.SendInvalidRequestMessage(err)
@@ -318,7 +318,7 @@ func (svc wsHandler) PrivateGetOpenOrdersByInstrument(input interface{}, c *ws.C
 	protocol.SendSuccessMsg(connKey, res)
 }
 
-func (svc wsHandler) PrivateGetOrderHistoryByInstrument(input interface{}, c *ws.Client) {
+func (svc wsHandler) getOrderHistoryByInstrument(input interface{}, c *ws.Client) {
 	var msg deribitModel.RequestDto[deribitModel.GetOrderHistoryByInstrumentParams]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
 		c.SendInvalidRequestMessage(err)
@@ -351,7 +351,7 @@ func (svc wsHandler) PrivateGetOrderHistoryByInstrument(input interface{}, c *ws
 	protocol.SendSuccessMsg(connKey, res)
 }
 
-func (svc wsHandler) PrivateGetUserTradesByOrder(input interface{}, c *ws.Client) {
+func (svc wsHandler) getUserTradesByOrder(input interface{}, c *ws.Client) {
 	var msg deribitModel.RequestDto[deribitModel.GetUserTradesByOrderParams]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
 		c.SendInvalidRequestMessage(err)
@@ -376,7 +376,7 @@ func (svc wsHandler) PrivateGetUserTradesByOrder(input interface{}, c *ws.Client
 	protocol.SendSuccessMsg(connKey, res)
 }
 
-func (svc wsHandler) PrivateGetOrderState(input interface{}, c *ws.Client) {
+func (svc wsHandler) getOrderState(input interface{}, c *ws.Client) {
 	var msg deribitModel.RequestDto[deribitModel.GetOrderStateParams]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
 		c.SendInvalidRequestMessage(err)
@@ -400,7 +400,7 @@ func (svc wsHandler) PrivateGetOrderState(input interface{}, c *ws.Client) {
 	protocol.SendSuccessMsg(connKey, res)
 }
 
-func (svc wsHandler) PrivateGetAccountSummary(input interface{}, c *ws.Client) {
+func (svc wsHandler) getAccountSummary(input interface{}, c *ws.Client) {
 	var msg deribitModel.RequestDto[deribitModel.GetAccountSummary]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
 		c.SendInvalidRequestMessage(err)
@@ -432,7 +432,7 @@ func (svc wsHandler) PrivateGetAccountSummary(input interface{}, c *ws.Client) {
 	protocol.SendSuccessMsg(connKey, resp)
 }
 
-func (svc wsHandler) PrivateGetOrderStateByLabel(input interface{}, c *ws.Client) {
+func (svc wsHandler) getOrderStateByLabel(input interface{}, c *ws.Client) {
 	var msg deribitModel.RequestDto[deribitModel.DeribitGetOrderStateByLabelRequest]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
 		c.SendInvalidRequestMessage(err)
@@ -452,7 +452,7 @@ func (svc wsHandler) PrivateGetOrderStateByLabel(input interface{}, c *ws.Client
 	protocol.SendSuccessMsg(connKey, res)
 }
 
-func (svc wsHandler) PrivateUnsubscribeAll(input interface{}, c *ws.Client) {
+func (svc wsHandler) privateUnsubscribeAll(input interface{}, c *ws.Client) {
 	var msg deribitModel.RequestDto[deribitModel.ChannelParams]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
 		c.SendInvalidRequestMessage(err)
@@ -472,7 +472,7 @@ func (svc wsHandler) PrivateUnsubscribeAll(input interface{}, c *ws.Client) {
 	protocol.SendSuccessMsg(connKey, "ok")
 }
 
-func (svc wsHandler) PrivateSubscribe(input interface{}, c *ws.Client) {
+func (svc wsHandler) privateSubscribe(input interface{}, c *ws.Client) {
 	var msg deribitModel.RequestDto[deribitModel.ChannelParams]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
 		c.SendInvalidRequestMessage(err)
@@ -546,7 +546,7 @@ func (svc wsHandler) PrivateSubscribe(input interface{}, c *ws.Client) {
 
 }
 
-func (svc wsHandler) PrivateUnsubscribe(input interface{}, c *ws.Client) {
+func (svc wsHandler) privateUnsubscribe(input interface{}, c *ws.Client) {
 	var msg deribitModel.RequestDto[deribitModel.ChannelParams]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
 		c.SendInvalidRequestMessage(err)
