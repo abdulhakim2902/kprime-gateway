@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"path"
 	"runtime"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -24,13 +25,13 @@ import (
 
 	_deribitCtrl "gateway/internal/deribit/controller"
 	_deribitSvc "gateway/internal/deribit/service"
+	_engSvc "gateway/internal/engine/service"
+	_obSvc "gateway/internal/orderbook/service"
 	_userSvc "gateway/internal/user/service"
 	_wsEngineSvc "gateway/internal/ws/engine/service"
 	_wsOrderbookSvc "gateway/internal/ws/service"
 	_wsSvc "gateway/internal/ws/service"
-
-	_engSvc "gateway/internal/engine/service"
-	_obSvc "gateway/internal/orderbook/service"
+	"gateway/pkg/middleware"
 
 	_wsCtrl "gateway/internal/ws/controller"
 
@@ -43,6 +44,8 @@ import (
 	"git.devucc.name/dependencies/utilities/schema"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
+	"github.com/ulule/limiter/v3"
+	limiterMem "github.com/ulule/limiter/v3/drivers/store/memory"
 )
 
 var (
@@ -100,6 +103,28 @@ func init() {
 }
 
 func main() {
+	// qf
+	store := limiterMem.NewStore()
+	p, ok := os.LookupEnv("RATE_LIMITER_DURATION")
+	if !ok {
+		p = "1"
+	}
+	l, ok := os.LookupEnv("RATE_LIMITER_MAX_REQUESTS")
+	if !ok {
+		l = "5"
+	}
+	period, _ := strconv.ParseInt(p, 10, 64)
+	limit, _ := strconv.ParseInt(l, 10, 64)
+
+	limiter := &limiter.Limiter{
+		Rate: limiter.Rate{
+			Period: time.Duration(period) * time.Second,
+			Limit:  limit,
+		},
+		Store: store,
+	}
+	engine.Use(middleware.RateLimiter(limiter))
+
 	memoryDb, err := memdb.InitSchemas()
 	if err != nil {
 		logs.Log.Fatal().Err(err).Msg("failed to initialize memory schemas")
@@ -154,6 +179,7 @@ func main() {
 		_wsRawPriceSvc,
 		_wsUserBalanceSvc,
 		userRepo,
+		limiter,
 	)
 
 	fmt.Printf("Server is running on %s \n", os.Getenv("PORT"))

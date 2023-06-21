@@ -23,7 +23,8 @@ require (
 	github.com/quickfixgo/tag v0.1.0
 	github.com/rs/cors/wrapper/gin v0.0.0-20230301160956-5c2b877d2a03
 	github.com/shopspring/decimal v1.3.1
-	github.com/stretchr/testify v1.8.2
+	github.com/stretchr/testify v1.8.3
+	github.com/ulule/limiter/v3 v3.11.2
 	go.mongodb.org/mongo-driver v1.11.6
 )
 
