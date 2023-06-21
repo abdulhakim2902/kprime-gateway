@@ -170,7 +170,7 @@ type DeribitRequest struct {
 	PostOnly       bool              `json:"post_only"`
 	ReduceOnly     bool              `json:"reduce_only"`
 	EnableCancel   bool              `json:"enable_cancel"`
-	ConnectionId   string            `json:"connection_id"`
+	ConnectionId   string            `json:"connectionId"`
 }
 
 type DeribitCancelRequest struct {
@@ -180,7 +180,7 @@ type DeribitCancelRequest struct {
 
 type DeribitCancelAllByConnectionId struct {
 	Side         string `json:"side"`
-	ConnectionId string `json:"connection_id"`
+	ConnectionId string `json:"connectionId"`
 }
 
 type DeribitCancelAllRequest struct {
@@ -258,7 +258,7 @@ type DeribitResponse struct {
 	MaxShow        float64           `json:"maxShow,omitempty"`
 	ReduceOnly     bool              `json:"reduceOnly,omitempty"`
 	PostOnly       bool              `json:"postOnly,omitempty"`
-	ConnectionId   string            `json:"connection_id,omitempty"`
+	ConnectionId   string            `json:"connectionId,omitempty"`
 }
 
 type DeribitGetInstrumentsRequest struct {
