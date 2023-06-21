@@ -2,23 +2,20 @@ package api
 
 import (
 	"net/http"
-	"os"
-	"strings"
 
+	"git.devucc.name/dependencies/utilities/commons/middleware"
 	"github.com/gin-gonic/gin"
 )
 
 func IPWhitelist() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		whitelistIPs := make(map[string]bool)
-		if len(os.Getenv("PROTECT_IP_WHITELISTS")) > 0 {
-			ips := strings.Split(os.Getenv("PROTECT_IP_WHITELISTS"), ",")
 
-			for _, ip := range ips {
-				whitelistIPs[ip] = true
-			}
+		clientIp := c.ClientIP()
+		if gin.Mode() == gin.TestMode {
+			clientIp = c.Request.Header.Get("X-Real-IP")
 		}
-		if whitelistIPs[c.ClientIP()] {
+
+		if ok := middleware.IPWhitelist(clientIp); ok {
 			c.Next()
 			return
 		}
