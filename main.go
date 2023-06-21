@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"path"
 	"runtime"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -104,10 +105,13 @@ func init() {
 func main() {
 	// qf
 	store := limiterMem.NewStore()
+	period, _ := strconv.ParseInt(os.Getenv("RATE_LIMITER_DURATION"), 10, 64)
+	limit, _ := strconv.ParseInt(os.Getenv("RATE_LIMITER_MAX_REQUESTS"), 10, 64)
+
 	limiter := &limiter.Limiter{
 		Rate: limiter.Rate{
-			Period: 1 * time.Second,
-			Limit:  5,
+			Period: time.Duration(period) * time.Second,
+			Limit:  limit,
 		},
 		Store: store,
 	}
