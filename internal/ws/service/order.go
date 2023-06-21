@@ -143,7 +143,6 @@ func (svc wsOrderService) HandleConsumeUserOrder(msg *sarama.ConsumerMessage) {
 					Data:    order,
 				}
 				method := "subscription"
-				fmt.Println("HandleConsumeUserOrder", order.MaxShow)
 				ws.GetOrderSocket().BroadcastMessageOrder(broadcastId, method, params)
 			}
 		}
