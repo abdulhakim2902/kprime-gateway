@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"gateway/pkg/hmac"
+	"gateway/pkg/middleware"
 	"gateway/pkg/protocol"
 	"gateway/pkg/utils"
 	"os"
@@ -24,6 +25,7 @@ import (
 	"git.devucc.name/dependencies/utilities/types"
 	"git.devucc.name/dependencies/utilities/types/validation_reason"
 	cors "github.com/rs/cors/wrapper/gin"
+	"github.com/ulule/limiter/v3"
 
 	"gateway/pkg/ws"
 
@@ -54,6 +56,7 @@ func NewWebsocketHandler(
 	wsRawPriceSvc wsService.IwsRawPriceService,
 	wsUserBalanceSvc wsService.IwsUserBalanceService,
 	userRepo *repositories.UserRepository,
+	limiter *limiter.Limiter,
 ) {
 	handler := &wsHandler{
 		authSvc:          authSvc,
@@ -67,42 +70,43 @@ func NewWebsocketHandler(
 		userRepo:         userRepo,
 	}
 	r.Use(cors.AllowAll())
-
+	r.Use(middleware.RateLimiter(limiter))
 	r.GET("/ws/api/v2", ws.ConnectionEndpoint)
 
-	ws.RegisterChannel("public/auth", handler.PublicAuth)
-	ws.RegisterChannel("private/buy", handler.PrivateBuy)
-	ws.RegisterChannel("private/sell", handler.PrivateSell)
-	ws.RegisterChannel("private/edit", handler.PrivateEdit)
-	ws.RegisterChannel("private/cancel", handler.PrivateCancel)
-	ws.RegisterChannel("private/cancel_all_by_instrument", handler.PrivateCancelByInstrument)
-	ws.RegisterChannel("private/cancel_all", handler.PrivateCancelAll)
-	ws.RegisterChannel("private/get_user_trades_by_order", handler.PrivateGetUserTradesByOrder)
-	ws.RegisterChannel("private/get_user_trades_by_instrument", handler.PrivateGetUserTradesByInstrument)
-	ws.RegisterChannel("private/get_open_orders_by_instrument", handler.PrivateGetOpenOrdersByInstrument)
-	ws.RegisterChannel("private/get_order_history_by_instrument", handler.PrivateGetOrderHistoryByInstrument)
-	ws.RegisterChannel("private/get_order_state_by_label", handler.PrivateGetOrderStateByLabel)
-	ws.RegisterChannel("private/get_order_state", handler.PrivateGetOrderState)
-	ws.RegisterChannel("private/get_account_summary", handler.PrivateGetAccountSummary)
+	middleware.SetupWSLimiter(limiter)
+	ws.RegisterChannel("public/auth", middleware.MiddlewaresWrapper(handler.PublicAuth, middleware.RateLimiterWs))
+	ws.RegisterChannel("private/buy", middleware.MiddlewaresWrapper(handler.PrivateBuy, middleware.RateLimiterWs))
+	ws.RegisterChannel("private/sell", middleware.MiddlewaresWrapper(handler.PrivateSell, middleware.RateLimiterWs))
+	ws.RegisterChannel("private/edit", middleware.MiddlewaresWrapper(handler.PrivateEdit, middleware.RateLimiterWs))
+	ws.RegisterChannel("private/cancel", middleware.MiddlewaresWrapper(handler.PrivateCancel, middleware.RateLimiterWs))
+	ws.RegisterChannel("private/cancel_all_by_instrument", middleware.MiddlewaresWrapper(handler.PrivateCancelByInstrument, middleware.RateLimiterWs))
+	ws.RegisterChannel("private/cancel_all", middleware.MiddlewaresWrapper(handler.PrivateCancelAll, middleware.RateLimiterWs))
+	ws.RegisterChannel("private/get_user_trades_by_order", middleware.MiddlewaresWrapper(handler.PrivateGetUserTradesByOrder, middleware.RateLimiterWs))
+	ws.RegisterChannel("private/get_user_trades_by_instrument", middleware.MiddlewaresWrapper(handler.PrivateGetUserTradesByInstrument, middleware.RateLimiterWs))
+	ws.RegisterChannel("private/get_open_orders_by_instrument", middleware.MiddlewaresWrapper(handler.PrivateGetOpenOrdersByInstrument, middleware.RateLimiterWs))
+	ws.RegisterChannel("private/get_order_history_by_instrument", middleware.MiddlewaresWrapper(handler.PrivateGetOrderHistoryByInstrument, middleware.RateLimiterWs))
+	ws.RegisterChannel("private/get_order_state_by_label", middleware.MiddlewaresWrapper(handler.PrivateGetOrderStateByLabel, middleware.RateLimiterWs))
+	ws.RegisterChannel("private/get_order_state", middleware.MiddlewaresWrapper(handler.PrivateGetOrderState, middleware.RateLimiterWs))
+	ws.RegisterChannel("private/get_account_summary", middleware.MiddlewaresWrapper(handler.PrivateGetAccountSummary, middleware.RateLimiterWs))
 
-	ws.RegisterChannel("public/subscribe", handler.SubscribeHandler)
-	ws.RegisterChannel("public/unsubscribe", handler.UnsubscribeHandler)
-	ws.RegisterChannel("public/unsubscribe_all", handler.UnsubscribeAllHandler)
+	ws.RegisterChannel("public/subscribe", middleware.MiddlewaresWrapper(handler.SubscribeHandler, middleware.RateLimiterWs))
+	ws.RegisterChannel("public/unsubscribe", middleware.MiddlewaresWrapper(handler.UnsubscribeHandler, middleware.RateLimiterWs))
+	ws.RegisterChannel("public/unsubscribe_all", middleware.MiddlewaresWrapper(handler.UnsubscribeAllHandler, middleware.RateLimiterWs))
 
-	ws.RegisterChannel("private/subscribe", handler.SubscribeHandlerPrivate)
-	ws.RegisterChannel("private/unsubscribe", handler.UnsubscribeHandlerPrivate)
-	ws.RegisterChannel("private/unsubscribe_all", handler.UnsubscribeAllHandlerPrivate)
+	ws.RegisterChannel("private/subscribe", middleware.MiddlewaresWrapper(handler.SubscribeHandlerPrivate, middleware.RateLimiterWs))
+	ws.RegisterChannel("private/unsubscribe", middleware.MiddlewaresWrapper(handler.UnsubscribeHandlerPrivate, middleware.RateLimiterWs))
+	ws.RegisterChannel("private/unsubscribe_all", middleware.MiddlewaresWrapper(handler.UnsubscribeAllHandlerPrivate, middleware.RateLimiterWs))
 
-	ws.RegisterChannel("public/get_instruments", handler.GetInstruments)
-	ws.RegisterChannel("public/get_last_trades_by_instrument", handler.GetLastTradesByInstrument)
+	ws.RegisterChannel("public/get_instruments", middleware.MiddlewaresWrapper(handler.GetInstruments, middleware.RateLimiterWs))
+	ws.RegisterChannel("public/get_last_trades_by_instrument", middleware.MiddlewaresWrapper(handler.GetLastTradesByInstrument, middleware.RateLimiterWs))
 
-	ws.RegisterChannel("public/get_order_book", handler.GetOrderBook)
-	ws.RegisterChannel("public/get_index_price", handler.GetIndexPrice)
+	ws.RegisterChannel("public/get_order_book", middleware.MiddlewaresWrapper(handler.GetOrderBook, middleware.RateLimiterWs))
+	ws.RegisterChannel("public/get_index_price", middleware.MiddlewaresWrapper(handler.GetIndexPrice, middleware.RateLimiterWs))
 
-	ws.RegisterChannel("public/get_delivery_prices", handler.PublicGetDeliveryPrices)
+	ws.RegisterChannel("public/get_delivery_prices", middleware.MiddlewaresWrapper(handler.PublicGetDeliveryPrices, middleware.RateLimiterWs))
 
-	ws.RegisterChannel("public/set_heartbeat", handler.PublicSetHeartbeat)
-	ws.RegisterChannel("public/test", handler.PublicTest)
+	ws.RegisterChannel("public/set_heartbeat", middleware.MiddlewaresWrapper(handler.PublicSetHeartbeat, middleware.RateLimiterWs))
+	ws.RegisterChannel("public/test", middleware.MiddlewaresWrapper(handler.PublicTest, middleware.RateLimiterWs))
 }
 
 func requestHelper(
@@ -130,7 +134,6 @@ func requestHelper(
 	claim, err = authService.ClaimJWT(c, *accessToken)
 	if err != nil {
 		connKey = key
-		fmt.Println(err)
 		validation := validation_reason.UNAUTHORIZED
 		reason = &validation
 		return
