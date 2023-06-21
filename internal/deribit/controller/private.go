@@ -2,13 +2,16 @@ package controller
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"time"
 
 	"git.devucc.name/dependencies/utilities/types"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 
 	deribitModel "gateway/internal/deribit/model"
 
+	_engineType "gateway/internal/engine/types"
 	"gateway/pkg/protocol"
 	"gateway/pkg/utils"
 	"strconv"
@@ -81,7 +84,32 @@ func (h *DeribitHandler) buy(r *gin.Context) {
 		return
 	}
 
-	protocol.SendSuccessMsg(connKey, order)
+	orderId, _ := primitive.ObjectIDFromHex(order.ID)
+	response := _engineType.BuySellEditResponse{
+		Order: _engineType.BuySellEditCancelOrder{
+			OrderState:          types.OrderStatus(order.Status),
+			Usd:                 order.Price,
+			FilledAmount:        order.FilledAmount,
+			InstrumentName:      order.Underlying + "-" + order.ExpirationDate + "-" + fmt.Sprintf("%.0f", order.StrikePrice) + "-" + string(order.Contracts[0]),
+			Direction:           types.Side(order.Side),
+			LastUpdateTimestamp: utils.MakeTimestamp(order.CreatedAt),
+			Price:               order.Price,
+			Amount:              order.Amount,
+			OrderId:             orderId,
+			OrderType:           types.Type(order.Type),
+			TimeInForce:         types.TimeInForce(order.TimeInForce),
+			CreationTimestamp:   utils.MakeTimestamp(order.CreatedAt),
+			Label:               order.Label,
+			Api:                 true,
+			AveragePrice:        0,
+			MaxShow:             order.MaxShow,
+			PostOnly:            order.PostOnly,
+			ReduceOnly:          order.ReduceOnly,
+		},
+		Trades: []_engineType.BuySellEditTrade{},
+	}
+
+	protocol.SendSuccessMsg(connKey, response)
 }
 
 func (h *DeribitHandler) sell(r *gin.Context) {
@@ -131,7 +159,33 @@ func (h *DeribitHandler) sell(r *gin.Context) {
 		return
 	}
 
-	protocol.SendSuccessMsg(connKey, order)
+	orderId, _ := primitive.ObjectIDFromHex(order.ID)
+	response := _engineType.BuySellEditResponse{
+		Order: _engineType.BuySellEditCancelOrder{
+			OrderState:          types.OrderStatus(order.Status),
+			Usd:                 order.Price,
+			FilledAmount:        order.FilledAmount,
+			InstrumentName:      order.Underlying + "-" + order.ExpirationDate + "-" + fmt.Sprintf("%.0f", order.StrikePrice) + "-" + string(order.Contracts[0]),
+			Direction:           types.Side(order.Side),
+			LastUpdateTimestamp: utils.MakeTimestamp(order.CreatedAt),
+			Price:               order.Price,
+			Amount:              order.Amount,
+			OrderId:             orderId,
+			OrderType:           types.Type(order.Type),
+			TimeInForce:         types.TimeInForce(order.TimeInForce),
+			CreationTimestamp:   utils.MakeTimestamp(order.CreatedAt),
+			Label:               order.Label,
+			Api:                 true,
+			AveragePrice:        0,
+			MaxShow:             order.MaxShow,
+			PostOnly:            order.PostOnly,
+			ReduceOnly:          order.ReduceOnly,
+		},
+		Trades: []_engineType.BuySellEditTrade{},
+	}
+
+	protocol.SendSuccessMsg(connKey, response)
+
 }
 
 func (h *DeribitHandler) edit(r *gin.Context) {
