@@ -517,3 +517,21 @@ type SetHeartbeatParams struct {
 type TestParams struct {
 	ExpectedResult string `json:"expected_result"`
 }
+
+type GetTradingviewChartDataRequest struct {
+	InstrumentName string `json:"instrument_name" form:"instrument_name" validate:"required"`
+	StartTimestamp int64  `json:"start_timestamp" form:"start_timestamp" validate:"required"`
+	EndTimestamp   int64  `json:"end_timestamp" form:"end_timestamp" validate:"required"`
+	Resolution     string `json:"resolution" form:"resolution" validate:"required"`
+}
+
+type GetTradingviewChartDataResponse struct {
+	Close  []int64 `json:"close"`
+	Cost   []int64 `json:"cost"`
+	High   []int64 `json:"high"`
+	Low    []int64 `json:"low"`
+	Open   []int64 `json:"open"`
+	Tics   []int64 `json:"tics"`
+	Volume []int64 `json:"volume"`
+	Status string  `json:"status"`
+}
