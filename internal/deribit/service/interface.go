@@ -3,14 +3,15 @@ package service
 import (
 	"context"
 	"gateway/internal/deribit/model"
+	_engineType "gateway/internal/engine/types"
 
 	"git.devucc.name/dependencies/utilities/types/validation_reason"
 )
 
 type IDeribitService interface {
 	DeribitRequest(ctx context.Context, userID string, data model.DeribitRequest) (*model.DeribitResponse, *validation_reason.ValidationReason, error)
-	DeribitParseEdit(ctx context.Context, userID string, data model.DeribitEditRequest) (*model.DeribitEditResponse, error)
-	DeribitParseCancel(ctx context.Context, userID string, data model.DeribitCancelRequest) (*model.DeribitCancelResponse, error)
+	DeribitParseEdit(ctx context.Context, userID string, data model.DeribitEditRequest) (*_engineType.BuySellEditResponse, error)
+	DeribitParseCancel(ctx context.Context, userID string, data model.DeribitCancelRequest) (*_engineType.BuySellEditResponse, error)
 	DeribitCancelByInstrument(ctx context.Context, userID string, data model.DeribitCancelByInstrumentRequest) (*model.DeribitCancelByInstrumentResponse, error)
 	DeribitParseCancelAll(ctx context.Context, userID string, data model.DeribitCancelAllRequest) (*model.DeribitCancelAllResponse, error)
 
