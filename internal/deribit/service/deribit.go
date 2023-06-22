@@ -244,7 +244,7 @@ func (svc deribitService) DeribitParseCancelAll(ctx context.Context, userId stri
 	return &cancel, nil
 }
 
-func (svc *deribitService) DeribitGetLastTradesByInstrument(ctx context.Context, data model.DeribitGetLastTradesByInstrumentRequest) []*model.DeribitGetLastTradesByInstrumentResponse {
+func (svc *deribitService) DeribitGetLastTradesByInstrument(ctx context.Context, data model.DeribitGetLastTradesByInstrumentRequest) model.DeribitGetLastTradesByInstrumentResponse {
 	_filteredGets := svc.tradeRepo.FilterTradesData(data)
 
 	bsonResponse := _filteredGets
@@ -295,10 +295,8 @@ func (svc *deribitService) DeribitGetLastTradesByInstrument(ctx context.Context,
 		_getLastTradesByInstrument = append(_getLastTradesByInstrument, resultData)
 	}
 
-	results := []*model.DeribitGetLastTradesByInstrumentResponse{
-		{
-			Trades: _getLastTradesByInstrument,
-		},
+	results := model.DeribitGetLastTradesByInstrumentResponse{
+		Trades: _getLastTradesByInstrument,
 	}
 	return results
 }

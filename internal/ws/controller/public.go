@@ -343,6 +343,14 @@ func (svc *wsHandler) getLastTradesByInstrument(input interface{}, c *ws.Client)
 		return
 	}
 
+	instruments, _ := utils.ParseInstruments(msg.Params.InstrumentName)
+
+	if instruments == nil {
+		protocol.SendValidationMsg(connKey,
+			validation_reason.INVALID_PARAMS, errors.New("invalid instrument_name"))
+		return
+	}
+
 	result := svc.wsOBSvc.GetLastTradesByInstrument(context.TODO(), deribitModel.DeribitGetLastTradesByInstrumentRequest{
 		InstrumentName: msg.Params.InstrumentName,
 		StartSeq:       msg.Params.StartSeq,
