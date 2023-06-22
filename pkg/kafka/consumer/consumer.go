@@ -188,8 +188,16 @@ func handleTopicCancelledOrders(message *sarama.ConsumerMessage) {
 	}
 	dataArr := data["data"].([]interface{})
 
-	userIDStr := data["query"].(map[string]interface{})["userId"].(string)
-	ClOrdID := data["query"].(map[string]interface{})["clOrdId"].(string)
+	var userIDStr string
+	var ClOrdID string
+
+	if data["query"].(map[string]interface{})["userId"] != nil || data["query"].(map[string]interface{})["clOrdId"] != nil {
+		userIDStr = data["query"].(map[string]interface{})["userId"].(string)
+		ClOrdID = data["query"].(map[string]interface{})["clOrdId"].(string)
+	} else if len(dataArr) > 0 {
+		userIDStr = dataArr[0].(map[string]interface{})["userId"].(string)
+		ClOrdID = dataArr[0].(map[string]interface{})["clOrdId"].(string)
+	}
 
 	ID, _ := strconv.ParseUint(ClOrdID, 0, 64)
 
