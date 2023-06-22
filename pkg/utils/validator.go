@@ -96,11 +96,16 @@ func UnmarshalAndValidate[T any](r *gin.Context, data *T) (err error) {
 	if r.Request.Method == "POST" {
 		body, ok := r.Get("body")
 		if !ok {
-			err = errors.New("invalid request")
-			return
-		}
+			// Try to bind json
+			if err = r.ShouldBindJSON(data); err != nil {
+				logs.Log.Error().Err(err).Msg("")
 
-		err = json.Unmarshal(body.([]byte), data)
+				err = errors.New("invalid request")
+				return
+			}
+		} else if b, ok := body.([]byte); ok {
+			err = json.Unmarshal(b, data)
+		}
 	} else {
 		err = r.ShouldBindQuery(data)
 	}
