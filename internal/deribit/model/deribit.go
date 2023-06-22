@@ -169,11 +169,18 @@ type DeribitRequest struct {
 	MaxShow        float64           `json:"max_show"`
 	PostOnly       bool              `json:"post_only"`
 	ReduceOnly     bool              `json:"reduce_only"`
+	EnableCancel   bool              `json:"enable_cancel"`
+	ConnectionId   string            `json:"connectionId"`
 }
 
 type DeribitCancelRequest struct {
 	Id      string `json:"id" validate:"required"`
 	ClOrdID string `json:"clOrdID"`
+}
+
+type DeribitCancelAllByConnectionId struct {
+	Side         string `json:"side"`
+	ConnectionId string `json:"connectionId"`
 }
 
 type DeribitCancelAllRequest struct {
@@ -251,6 +258,7 @@ type DeribitResponse struct {
 	MaxShow        float64           `json:"maxShow,omitempty"`
 	ReduceOnly     bool              `json:"reduceOnly,omitempty"`
 	PostOnly       bool              `json:"postOnly,omitempty"`
+	ConnectionId   string            `json:"connectionId,omitempty"`
 }
 
 type DeribitGetInstrumentsRequest struct {

@@ -5,7 +5,11 @@ import (
 	"net/http"
 	"time"
 
+	"gateway/internal/deribit/model"
+	"gateway/pkg/kafka/producer"
+
 	"git.devucc.name/dependencies/utilities/commons/logs"
+	"git.devucc.name/dependencies/utilities/types"
 	"github.com/gin-gonic/gin"
 
 	"github.com/gorilla/websocket"
@@ -49,6 +53,10 @@ func ConnectionEndpoint(c *gin.Context) {
 func readHandler(c *Client) {
 	defer func() {
 		logs.Log.Warn().Msg("closing connection")
+
+		if c.EnableCancel {
+			PublishCancelAll(c.ConnectionKey)
+		}
 
 		c.closeConnection()
 	}()
@@ -148,4 +156,18 @@ func RegisterConnectionUnsubscribeHandler(c *Client, fn func(*Client)) {
 	subscriptionMutex.Lock()
 	unsubscribeHandlers[c] = append(unsubscribeHandlers[c], fn)
 	subscriptionMutex.Unlock()
+}
+
+func PublishCancelAll(connkey string) {
+	payload := model.DeribitCancelAllByConnectionId{
+		Side:         string(types.CANCEL_ALL_BY_CONNECTION_ID),
+		ConnectionId: connkey,
+	}
+	out, err := json.Marshal(payload)
+	if err != nil {
+		logs.Log.Error().Err(err).Msg("")
+
+		return
+	}
+	producer.KafkaProducer(string(out), "NEW_ORDER")
 }
