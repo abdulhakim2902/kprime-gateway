@@ -23,8 +23,10 @@ var authedConnections map[Client]AuthedClient
 
 type Client struct {
 	*websocket.Conn
-	mu   sync.Mutex
-	send chan WebsocketResponseMessage
+	mu            sync.Mutex
+	send          chan WebsocketResponseMessage
+	EnableCancel  bool
+	ConnectionKey string
 }
 
 type SendMessageParams struct {
@@ -125,7 +127,7 @@ func (c *Client) RegisterRequestRpcIDS(id string, requestedTime uint64) (bool, s
 func NewClient(c *websocket.Conn) *Client {
 	subscriptionMutex.Lock()
 	defer subscriptionMutex.Unlock()
-	conn := &Client{Conn: c, mu: sync.Mutex{}, send: make(chan WebsocketResponseMessage)}
+	conn := &Client{Conn: c, mu: sync.Mutex{}, send: make(chan WebsocketResponseMessage), EnableCancel: false}
 
 	if unsubscribeHandlers == nil {
 		unsubscribeHandlers = make(map[*Client][]func(*Client))
@@ -142,6 +144,13 @@ func (c *Client) Send(message WebsocketResponseMessage) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.send <- message
+}
+
+func (c *Client) EnableCancelOnDisconnect(connKey string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.EnableCancel = true
+	c.ConnectionKey = connKey
 }
 
 // SendMessage constructs the message with proper structure to be sent over websocket

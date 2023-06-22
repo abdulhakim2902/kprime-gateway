@@ -34,6 +34,7 @@ func (handler *wsHandler) RegisterPrivate() {
 	ws.RegisterChannel("private/subscribe", middleware.MiddlewaresWrapper(handler.privateSubscribe, middleware.RateLimiterWs))
 	ws.RegisterChannel("private/unsubscribe", middleware.MiddlewaresWrapper(handler.privateUnsubscribe, middleware.RateLimiterWs))
 	ws.RegisterChannel("private/unsubscribe_all", middleware.MiddlewaresWrapper(handler.privateUnsubscribeAll, middleware.RateLimiterWs))
+	ws.RegisterChannel("private/enable_cancel_on_disconnect", middleware.MiddlewaresWrapper(handler.EnableCancelOnDisconnect, middleware.RateLimiterWs))
 }
 
 func (svc *wsHandler) buy(input interface{}, c *ws.Client) {
@@ -59,6 +60,9 @@ func (svc *wsHandler) buy(input interface{}, c *ws.Client) {
 		return
 	}
 
+	enableCancel := c.EnableCancel
+	connId := fmt.Sprintf("%v", &c.Conn)
+
 	// Parse the Deribit BUY
 	_, validation, err := svc.deribitSvc.DeribitRequest(context.TODO(), claim.UserID, deribitModel.DeribitRequest{
 		InstrumentName: msg.Params.InstrumentName,
@@ -72,6 +76,8 @@ func (svc *wsHandler) buy(input interface{}, c *ws.Client) {
 		MaxShow:        *msg.Params.MaxShow,
 		PostOnly:       msg.Params.PostOnly,
 		ReduceOnly:     msg.Params.ReduceOnly,
+		EnableCancel:   enableCancel,
+		ConnectionId:   connId,
 	})
 	if err != nil {
 		if validation != nil {
@@ -110,6 +116,9 @@ func (svc *wsHandler) sell(input interface{}, c *ws.Client) {
 		return
 	}
 
+	enableCancel := c.EnableCancel
+	connId := fmt.Sprintf("%v", &c.Conn)
+
 	// Parse the Deribit Sell
 	_, validation, err := svc.deribitSvc.DeribitRequest(context.TODO(), claim.UserID, deribitModel.DeribitRequest{
 		InstrumentName: msg.Params.InstrumentName,
@@ -123,6 +132,8 @@ func (svc *wsHandler) sell(input interface{}, c *ws.Client) {
 		MaxShow:        *msg.Params.MaxShow,
 		PostOnly:       msg.Params.PostOnly,
 		ReduceOnly:     msg.Params.ReduceOnly,
+		EnableCancel:   enableCancel,
+		ConnectionId:   connId,
 	})
 	if err != nil {
 		if validation != nil {
@@ -574,4 +585,23 @@ func (svc *wsHandler) privateUnsubscribe(input interface{}, c *ws.Client) {
 
 	}
 
+}
+
+func (svc wsHandler) EnableCancelOnDisconnect(input interface{}, c *ws.Client) {
+	var msg deribitModel.RequestDto[deribitModel.RequestParams]
+	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
+		c.SendInvalidRequestMessage(err)
+		return
+	}
+
+	_, connKey, reason, err := requestHelper(msg.Id, msg.Method, &msg.Params.AccessToken, c)
+	if err != nil {
+		protocol.SendValidationMsg(connKey, *reason, err)
+		return
+	}
+	id := fmt.Sprintf("%v", &c.Conn)
+
+	c.EnableCancelOnDisconnect(id)
+
+	protocol.SendSuccessMsg(connKey, "ok")
 }
