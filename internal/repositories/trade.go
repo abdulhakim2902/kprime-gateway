@@ -1179,9 +1179,6 @@ func (r TradeRepository) GetTradingViewChartData(req _deribitModel.GetTradingvie
 		MaxTime: &defaultTimeout,
 	}
 
-	req.StartTimestamp = time.Date(2023, time.January, 1, 0, 0, 0, 0, time.UTC).UnixMilli()
-	req.EndTimestamp = time.Now().UnixMilli()
-
 	var instrument *utils.Instruments
 	instrument, err = utils.ParseInstruments(req.InstrumentName)
 	if err != nil {
@@ -1286,37 +1283,39 @@ func (r TradeRepository) GetTradingViewChartData(req _deribitModel.GetTradingvie
 		}
 	}
 
-	for _, reso := range resolutionsMap {
-		res.Tics = append(res.Tics, reso.Start.UnixMilli())
+	if len(trades) > 0 {
+		for _, reso := range resolutionsMap {
+			res.Tics = append(res.Tics, reso.Start.UnixMilli())
 
-		open := reso.Trade[0]
-		res.Open = append(res.Open, open.Price)
+			open := reso.Trade[0]
+			res.Open = append(res.Open, open.Price)
 
-		close := reso.Trade[len(reso.Trade)-1]
-		res.Close = append(res.Close, close.Price)
+			close := reso.Trade[len(reso.Trade)-1]
+			res.Close = append(res.Close, close.Price)
 
-		sortedByPrices := reso.Trade
+			sortedByPrices := reso.Trade
 
-		sort.Slice(sortedByPrices, func(i, j int) bool {
-			return sortedByPrices[i].Price > sortedByPrices[j].Price
-		})
+			sort.Slice(sortedByPrices, func(i, j int) bool {
+				return sortedByPrices[i].Price > sortedByPrices[j].Price
+			})
 
-		low := sortedByPrices[0]
-		res.Low = append(res.Low, low.Price)
+			low := sortedByPrices[0]
+			res.Low = append(res.Low, low.Price)
 
-		high := sortedByPrices[len(sortedByPrices)-1]
-		res.High = append(res.High, high.Price)
+			high := sortedByPrices[len(sortedByPrices)-1]
+			res.High = append(res.High, high.Price)
 
-		var cost, volume float64
-		for _, trade := range reso.Trade {
-			// Cost = (20 * 1000) + (30 * 2000) = 20000 + 60000 = 80000
-			// Volume = 20 + 30 = 50
-			cost += (trade.Amount * trade.Price)
-			volume += trade.Amount
+			var cost, volume float64
+			for _, trade := range reso.Trade {
+				// Cost = (20 * 1000) + (30 * 2000) = 20000 + 60000 = 80000
+				// Volume = 20 + 30 = 50
+				cost += (trade.Amount * trade.Price)
+				volume += trade.Amount
+			}
+
+			res.Cost = append(res.Cost, cost)
+			res.Volume = append(res.Volume, volume)
 		}
-
-		res.Cost = append(res.Cost, cost)
-		res.Volume = append(res.Volume, volume)
 	}
 
 	return
