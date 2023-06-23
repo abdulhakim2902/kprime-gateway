@@ -401,7 +401,7 @@ func (svc wsOrderbookService) SubscribeTicker(c *ws.Client, channel, instrument,
 
 	orderBookValue, indexPrice := svc.GetDataOrderBook(_order, dataQuote)
 
-	results := _deribitModel.DeribitGetOrderBookResponse{
+	results := _deribitModel.TickerSubcriptionResponse{
 		InstrumentName: orderBook.InstrumentName,
 		BestAskPrice:   dataQuote.BestAskPrice,
 		BestAskAmount:  dataQuote.BestAskAmount,
@@ -955,7 +955,7 @@ func (svc wsOrderbookService) HandleConsumeTicker(_instrument string, interval s
 	//check state
 	orderBookValue, indexPrice := svc.GetDataOrderBook(_order, dataQuote)
 
-	results := _deribitModel.DeribitGetOrderBookResponse{
+	results := _deribitModel.TickerSubcriptionResponse{
 		InstrumentName: orderBook.InstrumentName,
 		BestAskPrice:   dataQuote.BestAskPrice,
 		BestAskAmount:  dataQuote.BestAskAmount,
@@ -1053,7 +1053,7 @@ func (svc wsOrderbookService) HandleConsumeUserTicker100ms(instrument string) {
 
 					orderBookValue, indexPrice := svc.GetDataOrderBook(_order, dataQuote)
 
-					results := _deribitModel.DeribitGetOrderBookResponse{
+					results := _deribitModel.TickerSubcriptionResponse{
 						InstrumentName: orderBook.InstrumentName,
 						BestAskPrice:   dataQuote.BestAskPrice,
 						BestAskAmount:  dataQuote.BestAskAmount,
@@ -1119,6 +1119,8 @@ func (svc wsOrderbookService) GetOrderBook(ctx context.Context, data _deribitMod
 
 	results := _deribitModel.DeribitGetOrderBookResponse{
 		InstrumentName: orderBook.InstrumentName,
+		Bids:           orderBook.Bids,
+		Asks:           orderBook.Asks,
 		BestAskPrice:   dataQuote.BestAskPrice,
 		BestAskAmount:  dataQuote.BestAskAmount,
 		BestBidPrice:   dataQuote.BestBidPrice,
