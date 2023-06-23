@@ -27,6 +27,7 @@ func (handler *DeribitHandler) RegisterPublic() {
 	handler.RegisterHandler("public/get_index_price", handler.getIndexPrice)
 	handler.RegisterHandler("public/get_last_trades_by_instrument", handler.getLastTradesByInstrument)
 	handler.RegisterHandler("public/get_delivery_prices", handler.getDeliveryPrices)
+	handler.RegisterHandler("public/get_tradingview_chart_data", handler.publicGetTradingviewChartData)
 }
 
 func (h *DeribitHandler) auth(r *gin.Context) {
@@ -291,6 +292,31 @@ func (h *DeribitHandler) getDeliveryPrices(r *gin.Context) {
 		Offset:    msg.Params.Offset,
 		Count:     msg.Params.Count,
 	})
+
+	protocol.SendSuccessMsg(connKey, result)
+}
+
+func (h *DeribitHandler) publicGetTradingviewChartData(r *gin.Context) {
+	var msg deribitModel.RequestDto[deribitModel.GetTradingviewChartDataRequest]
+	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
+		r.AbortWithError(http.StatusBadRequest, err)
+		return
+	}
+
+	_, connKey, reason, err := requestHelper(msg.Id, msg.Method, r)
+	if err != nil {
+		protocol.SendValidationMsg(connKey, *reason, err)
+		return
+	}
+
+	result, err := h.svc.GetTradingViewChartData(context.TODO(), msg.Params)
+	if err != nil {
+		reason := validation_reason.OTHER
+
+		protocol.SendValidationMsg(connKey, reason, err)
+		return
+
+	}
 
 	protocol.SendSuccessMsg(connKey, result)
 }

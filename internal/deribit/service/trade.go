@@ -23,3 +23,12 @@ func (svc deribitService) DeribitGetUserTradesByInstrument(
 
 	return &trades
 }
+
+func (svc *deribitService) GetTradingViewChartData(ctx context.Context, request _deribitModel.GetTradingviewChartDataRequest) (trades _deribitModel.GetTradingviewChartDataResponse, err error) {
+	trades, err = svc.tradeRepo.GetTradingViewChartData(request)
+	if err != nil {
+		return
+	}
+
+	return
+}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -12,9 +13,12 @@ import (
 	_engineType "gateway/internal/engine/types"
 	_orderbookType "gateway/internal/orderbook/types"
 	_tradeType "gateway/internal/repositories/types"
+	"gateway/pkg/utils"
 
+	"git.devucc.name/dependencies/utilities/commons/logs"
 	Greeks "git.devucc.name/dependencies/utilities/helper/greeks"
 	IV "git.devucc.name/dependencies/utilities/helper/implied_volatility"
+	"git.devucc.name/dependencies/utilities/models/trade"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -1168,4 +1172,152 @@ func (r TradeRepository) FilterUserTradesByOrder(userId string, orderId string) 
 	result.Trades = res.Trades
 
 	return result, nil
+}
+
+func (r TradeRepository) GetTradingViewChartData(req _deribitModel.GetTradingviewChartDataRequest) (res _deribitModel.GetTradingviewChartDataResponse, err error) {
+	options := options.AggregateOptions{
+		MaxTime: &defaultTimeout,
+	}
+
+	req.StartTimestamp = time.Date(2023, time.January, 1, 0, 0, 0, 0, time.UTC).UnixMilli()
+	req.EndTimestamp = time.Now().UnixMilli()
+
+	var instrument *utils.Instruments
+	instrument, err = utils.ParseInstruments(req.InstrumentName)
+	if err != nil {
+		logs.Log.Error().Err(err).Msg("")
+		return
+	}
+
+	matchStage := bson.D{
+		{"$match",
+			bson.D{
+				{"underlying", instrument.Underlying},
+				{"strikePrice", instrument.Strike},
+				{"expiryDate", instrument.ExpDate},
+				{"contracts", instrument.Contracts},
+				{"createdAt",
+					bson.D{
+						{"$gt", time.UnixMilli(req.StartTimestamp)},
+						{"$lt", time.UnixMilli(req.EndTimestamp)},
+					},
+				},
+			},
+		},
+	}
+
+	sortStage := bson.D{
+		{"$sort", bson.D{
+			{"createdAt", -1},
+		}},
+	}
+
+	pipeline := mongo.Pipeline{matchStage, sortStage}
+
+	var cursor *mongo.Cursor
+	cursor, err = r.collection.Aggregate(context.Background(), pipeline, &options)
+	if err != nil {
+		logs.Log.Error().Err(err).Msg("")
+		return
+	}
+	defer cursor.Close(context.Background())
+
+	var trades []*trade.Trade
+	if err = cursor.All(context.TODO(), &trades); err != nil {
+		logs.Log.Error().Err(err).Msg("")
+		return
+	}
+
+	type resolution struct {
+		Start time.Time
+		End   time.Time
+		Trade []trade.Trade
+	}
+
+	// Resolution
+	// (1, 3, 5, 10, 15, 30, 60, 120, 180, 360, 720, 1D)
+	start := time.UnixMilli(req.StartTimestamp)
+	resolutionsMap := map[string]resolution{
+		"1":   {start.Add(time.Minute), time.UnixMilli(req.EndTimestamp), []trade.Trade{}},
+		"3":   {start.Add(3 * time.Minute), time.UnixMilli(req.EndTimestamp), []trade.Trade{}},
+		"5":   {start.Add(5 * time.Minute), time.UnixMilli(req.EndTimestamp), []trade.Trade{}},
+		"10":  {start.Add(10 * time.Minute), time.UnixMilli(req.EndTimestamp), []trade.Trade{}},
+		"15":  {start.Add(15 * time.Minute), time.UnixMilli(req.EndTimestamp), []trade.Trade{}},
+		"30":  {start.Add(30 * time.Minute), time.UnixMilli(req.EndTimestamp), []trade.Trade{}},
+		"60":  {start.Add(60 * time.Minute), time.UnixMilli(req.EndTimestamp), []trade.Trade{}},
+		"120": {start.Add(120 * time.Minute), time.UnixMilli(req.EndTimestamp), []trade.Trade{}},
+		"180": {start.Add(180 * time.Minute), time.UnixMilli(req.EndTimestamp), []trade.Trade{}},
+		"360": {start.Add(360 * time.Minute), time.UnixMilli(req.EndTimestamp), []trade.Trade{}},
+		"720": {start.Add(720 * time.Minute), time.UnixMilli(req.EndTimestamp), []trade.Trade{}},
+		"1D":  {start.Add(24 * time.Hour), time.UnixMilli(req.EndTimestamp), []trade.Trade{}},
+	}
+
+	res = _deribitModel.GetTradingviewChartDataResponse{
+		Close:  []float64{},
+		Cost:   []float64{},
+		High:   []float64{},
+		Low:    []float64{},
+		Open:   []float64{},
+		Tics:   []int64{},
+		Volume: []float64{},
+		Status: "no_data",
+	}
+
+	if len(trades) > 0 {
+		res.Status = "ok"
+	}
+
+	for _, item := range trades {
+		for reso := range resolutionsMap {
+			if item.CreatedAt.After(resolutionsMap[reso].Start) && item.CreatedAt.Before(resolutionsMap[reso].End) {
+				t := resolutionsMap[reso].Trade
+				t = append(t, *item)
+
+				sort.Slice(t, func(i, j int) bool {
+					return t[i].CreatedAt.After(t[j].CreatedAt)
+				})
+
+				resolutionsMap[reso] = resolution{
+					Start: resolutionsMap[reso].Start,
+					End:   resolutionsMap[reso].End,
+					Trade: t,
+				}
+			}
+		}
+	}
+
+	for _, reso := range resolutionsMap {
+		res.Tics = append(res.Tics, reso.Start.UnixMilli())
+
+		open := reso.Trade[0]
+		res.Open = append(res.Open, open.Price)
+
+		close := reso.Trade[len(reso.Trade)-1]
+		res.Close = append(res.Close, close.Price)
+
+		sortedByPrices := reso.Trade
+
+		sort.Slice(sortedByPrices, func(i, j int) bool {
+			return sortedByPrices[i].Price > sortedByPrices[j].Price
+		})
+
+		low := sortedByPrices[0]
+		res.Low = append(res.Low, low.Price)
+
+		high := sortedByPrices[len(sortedByPrices)-1]
+		res.High = append(res.High, high.Price)
+
+		var cost, volume float64
+		for _, trade := range reso.Trade {
+			// Cost = (20 * 1000) + (30 * 2000) = 20000 + 60000 = 80000
+			// Volume = 20 + 30 = 50
+			cost += (trade.Amount * trade.Price)
+			volume += trade.Amount
+		}
+
+		res.Cost = append(res.Cost, cost)
+		res.Volume = append(res.Volume, volume)
+	}
+
+	return
 }
