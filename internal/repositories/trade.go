@@ -1233,9 +1233,7 @@ func (r TradeRepository) GetTradingViewChartData(req _deribitModel.GetTradingvie
 
 	// Resolution
 	// (1, 3, 5, 10, 15, 30, 60, 120, 180, 360, 720, 1D)
-	loc, _ := time.LoadLocation("Singapore")
 	start := time.UnixMilli(req.StartTimestamp)
-	start = start.In(loc)
 
 	resolutions := []resolution{
 		{start, start.Add(time.Minute), []trade.Trade{}},
@@ -1271,7 +1269,7 @@ func (r TradeRepository) GetTradingViewChartData(req _deribitModel.GetTradingvie
 
 	for key, reso := range resolutions {
 		for _, trade := range trades {
-			created := trade.CreatedAt.In(loc)
+			created := trade.CreatedAt
 			if created.After(reso.Start) && created.Before(reso.End) {
 				t := resolutions[key].Trades
 				t = append(t, *trade)
