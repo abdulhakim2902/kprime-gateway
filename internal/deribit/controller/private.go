@@ -2,15 +2,12 @@ package controller
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"time"
 
 	"git.devucc.name/dependencies/utilities/types"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 
 	deribitModel "gateway/internal/deribit/model"
-
 	_engineType "gateway/internal/engine/types"
 	"gateway/pkg/protocol"
 	"gateway/pkg/utils"
@@ -61,7 +58,7 @@ func (h *DeribitHandler) buy(r *gin.Context) {
 	}
 
 	// Call service
-	order, validation, err := h.svc.DeribitRequest(r.Request.Context(), userID, deribitModel.DeribitRequest{
+	_, validation, err := h.svc.DeribitRequest(r.Request.Context(), userID, deribitModel.DeribitRequest{
 		InstrumentName: msg.Params.InstrumentName,
 		Amount:         msg.Params.Amount,
 		Type:           msg.Params.Type,
@@ -83,33 +80,14 @@ func (h *DeribitHandler) buy(r *gin.Context) {
 		protocol.SendErrMsg(connKey, err)
 		return
 	}
-
-	orderId, _ := primitive.ObjectIDFromHex(order.ID)
-	response := _engineType.BuySellEditResponse{
-		Order: _engineType.BuySellEditCancelOrder{
-			OrderState:          types.OrderStatus(order.Status),
-			Usd:                 order.Price,
-			FilledAmount:        order.FilledAmount,
-			InstrumentName:      order.Underlying + "-" + order.ExpirationDate + "-" + fmt.Sprintf("%.0f", order.StrikePrice) + "-" + string(order.Contracts[0]),
-			Direction:           types.Side(order.Side),
-			LastUpdateTimestamp: utils.MakeTimestamp(order.CreatedAt),
-			Price:               order.Price,
-			Amount:              order.Amount,
-			OrderId:             orderId,
-			OrderType:           types.Type(order.Type),
-			TimeInForce:         types.TimeInForce(order.TimeInForce),
-			CreationTimestamp:   utils.MakeTimestamp(order.CreatedAt),
-			Label:               order.Label,
-			Api:                 true,
-			AveragePrice:        0,
-			MaxShow:             order.MaxShow,
-			PostOnly:            order.PostOnly,
-			ReduceOnly:          order.ReduceOnly,
-		},
-		Trades: []_engineType.BuySellEditTrade{},
-	}
-
-	protocol.SendSuccessMsg(connKey, response)
+	channel := make(chan _engineType.BuySellEditResponse)
+	go protocol.RegisterChannel(connKey, channel)
+	res := <-channel
+	r.JSON(http.StatusOK, protocol.RPCResponseMessage{
+		JSONRPC: "2.0",
+		ID:      msg.Id,
+		Result:  res,
+	})
 }
 
 func (h *DeribitHandler) sell(r *gin.Context) {
@@ -136,7 +114,7 @@ func (h *DeribitHandler) sell(r *gin.Context) {
 	}
 
 	// Call service
-	order, validation, err := h.svc.DeribitRequest(r.Request.Context(), userID, deribitModel.DeribitRequest{
+	_, validation, err := h.svc.DeribitRequest(r.Request.Context(), userID, deribitModel.DeribitRequest{
 		InstrumentName: msg.Params.InstrumentName,
 		Amount:         msg.Params.Amount,
 		Type:           msg.Params.Type,
@@ -159,33 +137,14 @@ func (h *DeribitHandler) sell(r *gin.Context) {
 		return
 	}
 
-	orderId, _ := primitive.ObjectIDFromHex(order.ID)
-	response := _engineType.BuySellEditResponse{
-		Order: _engineType.BuySellEditCancelOrder{
-			OrderState:          types.OrderStatus(order.Status),
-			Usd:                 order.Price,
-			FilledAmount:        order.FilledAmount,
-			InstrumentName:      order.Underlying + "-" + order.ExpirationDate + "-" + fmt.Sprintf("%.0f", order.StrikePrice) + "-" + string(order.Contracts[0]),
-			Direction:           types.Side(order.Side),
-			LastUpdateTimestamp: utils.MakeTimestamp(order.CreatedAt),
-			Price:               order.Price,
-			Amount:              order.Amount,
-			OrderId:             orderId,
-			OrderType:           types.Type(order.Type),
-			TimeInForce:         types.TimeInForce(order.TimeInForce),
-			CreationTimestamp:   utils.MakeTimestamp(order.CreatedAt),
-			Label:               order.Label,
-			Api:                 true,
-			AveragePrice:        0,
-			MaxShow:             order.MaxShow,
-			PostOnly:            order.PostOnly,
-			ReduceOnly:          order.ReduceOnly,
-		},
-		Trades: []_engineType.BuySellEditTrade{},
-	}
-
-	protocol.SendSuccessMsg(connKey, response)
-
+	channel := make(chan _engineType.BuySellEditResponse)
+	go protocol.RegisterChannel(connKey, channel)
+	res := <-channel
+	r.JSON(http.StatusOK, protocol.RPCResponseMessage{
+		JSONRPC: "2.0",
+		ID:      msg.Id,
+		Result:  res,
+	})
 }
 
 func (h *DeribitHandler) edit(r *gin.Context) {
@@ -202,7 +161,7 @@ func (h *DeribitHandler) edit(r *gin.Context) {
 		return
 	}
 	// Call service
-	order, err := h.svc.DeribitParseEdit(r.Request.Context(), userID, deribitModel.DeribitEditRequest{
+	_, err = h.svc.DeribitParseEdit(r.Request.Context(), userID, deribitModel.DeribitEditRequest{
 		Id:      msg.Params.Id,
 		Price:   msg.Params.Price,
 		Amount:  msg.Params.Amount,
@@ -212,8 +171,14 @@ func (h *DeribitHandler) edit(r *gin.Context) {
 		protocol.SendErrMsg(connKey, err)
 		return
 	}
-
-	protocol.SendSuccessMsg(connKey, order)
+	channel := make(chan _engineType.BuySellEditResponse)
+	go protocol.RegisterChannel(connKey, channel)
+	res := <-channel
+	r.JSON(http.StatusOK, protocol.RPCResponseMessage{
+		JSONRPC: "2.0",
+		ID:      msg.Id,
+		Result:  res,
+	})
 }
 
 func (h *DeribitHandler) cancel(r *gin.Context) {
@@ -231,7 +196,7 @@ func (h *DeribitHandler) cancel(r *gin.Context) {
 	}
 
 	// Call service
-	order, err := h.svc.DeribitParseCancel(r.Request.Context(), userID, deribitModel.DeribitCancelRequest{
+	_, err = h.svc.DeribitParseCancel(r.Request.Context(), userID, deribitModel.DeribitCancelRequest{
 		Id:      msg.Params.Id,
 		ClOrdID: strconv.FormatUint(msg.Id, 10),
 	})
@@ -240,7 +205,15 @@ func (h *DeribitHandler) cancel(r *gin.Context) {
 		return
 	}
 
-	protocol.SendSuccessMsg(connKey, order)
+	channel := make(chan _engineType.BuySellEditResponse)
+	go protocol.RegisterChannel(connKey, channel)
+	res := <-channel
+	r.JSON(http.StatusOK, protocol.RPCResponseMessage{
+		JSONRPC: "2.0",
+		ID:      msg.Id,
+		Result:  res,
+	})
+
 }
 
 func (h *DeribitHandler) cancelByInstrument(r *gin.Context) {
@@ -257,7 +230,7 @@ func (h *DeribitHandler) cancelByInstrument(r *gin.Context) {
 	}
 
 	// Call service
-	order, err := h.svc.DeribitCancelByInstrument(r.Request.Context(), userID, deribitModel.DeribitCancelByInstrumentRequest{
+	_, err = h.svc.DeribitCancelByInstrument(r.Request.Context(), userID, deribitModel.DeribitCancelByInstrumentRequest{
 		InstrumentName: msg.Params.InstrumentName,
 		ClOrdID:        strconv.FormatUint(msg.Id, 10),
 	})
@@ -266,7 +239,14 @@ func (h *DeribitHandler) cancelByInstrument(r *gin.Context) {
 		return
 	}
 
-	protocol.SendSuccessMsg(connKey, order)
+	channel := make(chan _engineType.BuySellEditResponse)
+	go protocol.RegisterChannel(connKey, channel)
+	res := <-channel
+	r.JSON(http.StatusOK, protocol.RPCResponseMessage{
+		JSONRPC: "2.0",
+		ID:      msg.Id,
+		Result:  res,
+	})
 }
 
 func (h *DeribitHandler) cancelAll(r *gin.Context) {

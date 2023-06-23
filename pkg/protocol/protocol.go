@@ -9,10 +9,13 @@ import (
 	"sync"
 	"time"
 
+	_engineType "gateway/internal/engine/types"
+
 	"git.devucc.name/dependencies/utilities/commons/logs"
 	"git.devucc.name/dependencies/utilities/types/validation_reason"
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type ProtocolType int
@@ -21,6 +24,7 @@ const (
 	Websocket ProtocolType = iota
 	HTTP
 	GRPC
+	Channel
 )
 
 type RPCResponseMessage struct {
@@ -61,6 +65,8 @@ type ProtocolRequest struct {
 
 var protocolConnections map[any]ProtocolRequest
 var protocolMutex sync.RWMutex
+var channelConnections map[any]chan _engineType.BuySellEditResponse
+var channelResults map[any]_engineType.BuySellEditResponse
 
 func (p *ProtocolRequest) getcollectorProtocol() collector.Protocol {
 	var protocol collector.Protocol
@@ -81,6 +87,7 @@ func (p *ProtocolRequest) getcollectorProtocol() collector.Protocol {
 }
 
 func RegisterProtocolRequest(key string, conn ProtocolRequest) (duplicateConnection bool) {
+	fmt.Println(conn.Method, "<===== method")
 	protocolMutex.Lock()
 	if protocolConnections == nil {
 		protocolConnections = make(map[any]ProtocolRequest)
@@ -144,6 +151,7 @@ func GetProtocol(key string) (bool, ProtocolRequest) {
 
 // Responsible for constructing the message
 func SendSuccessMsg(key string, result any) bool {
+	fmt.Println("send", result)
 	return doSend(key, result, nil)
 }
 
@@ -210,7 +218,6 @@ func doSend(key string, result any, err *ErrorMessage) bool {
 	m.UsIn = conn.RequestedTime
 	m.UsOut = uint64(time.Now().UnixMicro())
 	m.UsDiff = m.UsOut - m.UsIn
-
 	switch conn.Protocol {
 	case Websocket:
 		msg := ws.WebsocketResponseMessage{
@@ -241,6 +248,12 @@ func doSend(key string, result any, err *ErrorMessage) bool {
 		break
 	case GRPC:
 		// TODO: add grpc response
+		break
+	case Channel:
+		if channelResults == nil {
+			channelResults = make(map[any]_engineType.BuySellEditResponse)
+		}
+		channelResults[key] = result.(_engineType.BuySellEditResponse)
 		break
 	}
 
@@ -277,4 +290,19 @@ func isConnExist(key string) bool {
 	defer protocolMutex.RUnlock()
 	_, ok := protocolConnections[key]
 	return ok
+}
+
+func RegisterChannel(key string, channel chan _engineType.BuySellEditResponse) {
+	if channelConnections == nil {
+		channelConnections = make(map[any]chan _engineType.BuySellEditResponse)
+	}
+	channelConnections[key] = channel
+	res := _engineType.BuySellEditResponse{}
+	for {
+		res = channelResults[key]
+		if res.Order.OrderId != primitive.NilObjectID {
+			break
+		}
+	}
+	channel <- res
 }
