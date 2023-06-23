@@ -298,7 +298,7 @@ func RegisterChannel(key string, channel chan _engineType.BuySellEditResponse) {
 	}
 	channelConnections[key] = channel
 	res := _engineType.BuySellEditResponse{}
-	for {
+	for start := time.Now(); time.Since(start).Seconds() > 3; {
 		res = channelResults[key]
 		if res.Order.OrderId != primitive.NilObjectID {
 			break
