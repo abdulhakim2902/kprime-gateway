@@ -136,3 +136,19 @@ type PriceResponse struct {
 	Channel string    `json:"channel"`
 	Data    PriceData `json:"data"`
 }
+
+type OrderBookData struct {
+	State        string
+	LastPrice    float64
+	HighestPrice float64
+	LowestPrice  float64
+	PriceChange  float64
+	ImpliedAsk   float64
+	ImpliedBid   float64
+	VolumeAmount float64
+	GreeksDelta  float64
+	GreeksVega   float64
+	GreeksGamma  float64
+	GreeksTetha  float64
+	GreeksRho    float64
+}

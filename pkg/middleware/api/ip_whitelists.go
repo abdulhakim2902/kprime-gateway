@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
 
 	"git.devucc.name/dependencies/utilities/commons/middleware"
@@ -14,6 +15,7 @@ func IPWhitelist() gin.HandlerFunc {
 		if gin.Mode() == gin.TestMode {
 			clientIp = c.Request.Header.Get("X-Real-IP")
 		}
+		fmt.Println(clientIp)
 
 		if ok := middleware.IPWhitelist(clientIp); ok {
 			c.Next()
