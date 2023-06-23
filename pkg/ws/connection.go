@@ -9,6 +9,7 @@ import (
 	"gateway/pkg/kafka/producer"
 
 	"git.devucc.name/dependencies/utilities/commons/logs"
+	"git.devucc.name/dependencies/utilities/types"
 	"github.com/gin-gonic/gin"
 
 	"github.com/gorilla/websocket"
@@ -159,7 +160,7 @@ func RegisterConnectionUnsubscribeHandler(c *Client, fn func(*Client)) {
 
 func PublishCancelAll(connkey string) {
 	payload := model.DeribitCancelAllByConnectionId{
-		Side:         "CANCEL_ALL_BY_CONNECTION_ID",
+		Side:         string(types.CANCEL_ALL_BY_CONNECTION_ID),
 		ConnectionId: connkey,
 	}
 	out, err := json.Marshal(payload)

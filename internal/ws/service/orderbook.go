@@ -49,6 +49,9 @@ var userChangesMutex sync.RWMutex
 var userChanges = make(map[string][]interface{})
 var userChangesTrades = make(map[string][]interface{})
 
+var tickerMutex sync.RWMutex
+var tickerChanges = make(map[string][]interface{})
+
 func (svc wsOrderbookService) Subscribe(c *ws.Client, instrument string) {
 	socket := ws.GetOrderBookSocket()
 
@@ -340,6 +343,221 @@ func (svc wsOrderbookService) SubscribeBook(c *ws.Client, channel, instrument, i
 	socket.SendInitMessage(c, method, params)
 }
 
+func (svc wsOrderbookService) SubscribeTicker(c *ws.Client, channel, instrument, interval string) {
+	socket := ws.GetBookSocket()
+	ins, err := utils.ParseInstruments(instrument)
+	if err != nil {
+		msg := map[string]string{"Message": fmt.Sprintf("invalid instrument '%s'", instrument)}
+		socket.SendErrorMessage(c, msg)
+		return
+	}
+
+	_order := _orderbookTypes.GetOrderBook{
+		InstrumentName: instrument,
+		Underlying:     ins.Underlying,
+		ExpiryDate:     ins.ExpDate,
+		StrikePrice:    ins.Strike,
+	}
+
+	// Subscribe
+	id := fmt.Sprintf("ticker-%s-%s", instrument, interval)
+	err = socket.Subscribe(id, c)
+	if err != nil {
+		msg := map[string]string{"Message": err.Error()}
+		socket.SendErrorMessage(c, msg)
+		return
+	}
+
+	// Prepare when user is doing unsubscribe
+	ws.RegisterConnectionUnsubscribeHandler(c, socket.UnsubscribeHandler(id))
+
+	ts := time.Now().UnixNano() / int64(time.Millisecond)
+	var changeId _orderbookTypes.Change
+	// Get change_id
+	res, err := svc.redis.GetValue("CHANGEID-" + instrument)
+	if res == "" || err != nil {
+		changeId.Timestamp = ts
+	} else {
+		err = json.Unmarshal([]byte(res), &changeId)
+		if err != nil {
+			msg := map[string]string{"Message": err.Error()}
+			socket.SendErrorMessage(c, msg)
+			return
+		}
+	}
+
+	// Get initial data from db
+	var orderBook _orderbookTypes.Orderbook
+	switch interval {
+	case "raw":
+		orderBook = svc.GetOrderLatestTimestamp(_order, changeId.Timestamp, false)
+	case "100ms":
+		orderBook = svc.GetOrderLatestTimestamp(_order, changeId.Timestamp, false)
+	case "agg2":
+		orderBook = svc.orderRepository.GetOrderBookAgg2(_order)
+	}
+
+	dataQuote := svc.GetBestPrice(orderBook, instrument)
+
+	orderBookValue, indexPrice := svc.GetDataOrderBook(_order, dataQuote)
+
+	results := _deribitModel.TickerSubcriptionResponse{
+		InstrumentName: orderBook.InstrumentName,
+		BestAskPrice:   dataQuote.BestAskPrice,
+		BestAskAmount:  dataQuote.BestAskAmount,
+		BestBidPrice:   dataQuote.BestBidPrice,
+		BestBidAmount:  dataQuote.BestBidAmount,
+		Timestamp:      time.Now().UnixNano() / int64(time.Millisecond),
+		State:          orderBookValue.State,
+		LastPrice:      orderBookValue.LastPrice,
+		Bids_iv:        orderBookValue.ImpliedBid,
+		Asks_iv:        orderBookValue.ImpliedAsk,
+		Stats: _deribitModel.OrderBookStats{
+			High:        orderBookValue.HighestPrice,
+			Low:         orderBookValue.LowestPrice,
+			PriceChange: orderBookValue.PriceChange,
+			Volume:      orderBookValue.VolumeAmount,
+		},
+		Greeks: _deribitModel.OrderBookGreek{
+			Delta: orderBookValue.GreeksDelta,
+			Vega:  orderBookValue.GreeksVega,
+			Gamma: orderBookValue.GreeksGamma,
+			Tetha: orderBookValue.GreeksTetha,
+			Rho:   orderBookValue.GreeksRho,
+		},
+	}
+
+	if len(indexPrice) > 0 {
+		results.IndexPrice = &indexPrice[0].Price
+		results.UnderlyingIndex = &indexPrice[0].Price
+	}
+
+	_getSettlementPrice := svc.settlementPriceRepository.GetLatestSettlementPrice(_order)
+	if len(_getSettlementPrice) > 0 {
+		results.SettlementPrice = &_getSettlementPrice[0].Price
+	}
+
+	params := _orderbookTypes.QuoteResponse{
+		Channel: channel,
+		Data:    results,
+	}
+	method := "subscription"
+	// Send initial data
+	socket.SendInitMessage(c, method, params)
+}
+
+func (svc wsOrderbookService) GetDataOrderBook(_order _orderbookTypes.GetOrderBook, dataQuote _orderbookTypes.QuoteMessage) (_orderbookTypes.OrderBookData, []*_engineTypes.RawPrice) {
+	//check state
+	dateString := _order.ExpiryDate
+	layout := "02Jan06"
+	date, err := time.Parse(layout, dateString)
+	if err != nil {
+		fmt.Println("Error parsing date:", err)
+	}
+	currentTime := time.Now()
+	oneDayAgo := currentTime.AddDate(0, 0, -1)
+	_state := ""
+	if date.Before(oneDayAgo) {
+		_state = "closed"
+	} else {
+		_state = "open"
+	}
+
+	//TODO query to get expires time
+	expiredDate := dateString
+	currentDate := time.Now().Format("2006-01-02 15:04:05")
+	layoutExpired := "02Jan06"
+	layoutCurrent := "2006-01-02 15:04:05"
+
+	expired, _ := time.Parse(layoutExpired, expiredDate)
+	current, _ := time.Parse(layoutCurrent, currentDate)
+	calculate := float64(expired.Day()) - float64(current.Day())
+
+	dateValue := float64(calculate / 365)
+
+	//TODO query to trades collections
+	_getLastTrades := svc.tradeRepository.GetLastTrades(_order)
+	_lastPrice := 0.0
+	if len(_getLastTrades) > 0 {
+		_lastPrice = _getLastTrades[len(_getLastTrades)-1].Price
+	}
+
+	_getHigestTrade := svc.tradeRepository.GetHighLowTrades(_order, -1)
+	_hightPrice := 0.0
+	if len(_getHigestTrade) > 0 {
+		_hightPrice = _getHigestTrade[0].Price
+	}
+
+	_getLowestTrade := svc.tradeRepository.GetHighLowTrades(_order, 1)
+	_lowestPrice := 0.0
+	_volumeAmount := 0.0
+	if len(_getLowestTrade) > 0 {
+		_lowestPrice = _getLowestTrade[0].Price
+		for _, item := range _getLowestTrade {
+			_volumeAmount += item.Amount
+		}
+	}
+
+	_get24HoursTrade := svc.tradeRepository.Get24HoursTrades(_order)
+	_priceChange := 0.0
+	if len(_get24HoursTrade) > 0 {
+		_firstTrade := _get24HoursTrade[0].Price
+		_lastTrade := _get24HoursTrade[len(_get24HoursTrade)-1].Price
+
+		//calculate price change with percentage
+		_priceChange = (_lastTrade - _firstTrade) / _firstTrade * 100
+	}
+
+	//TODO query to get Underlying Price
+	var underlyingPrice float64
+	_getIndexPrice := svc.rawPriceRepository.GetLatestIndexPrice(_order)
+	if len(_getIndexPrice) > 0 {
+		underlyingPrice = float64(_getIndexPrice[0].Price)
+	} else {
+		underlyingPrice = float64(0)
+	}
+
+	//TODO query to get Option Price
+	str := _order.InstrumentName
+	parts := strings.Split(str, "-")
+	lastPart := parts[len(parts)-1]
+	optionPrice := ""
+	if string(lastPart[0]) == "C" {
+		optionPrice = "call"
+	} else {
+		optionPrice = "put"
+	}
+
+	//TODO query to get ask_iv and bid_iv
+	_getImpliedsAsk := svc.tradeRepository.GetImpliedVolatility(float64(dataQuote.BestAskAmount), optionPrice, float64(underlyingPrice), float64(_order.StrikePrice), float64(dateValue))
+	_getImpliedsBid := svc.tradeRepository.GetImpliedVolatility(float64(dataQuote.BestBidAmount), optionPrice, float64(underlyingPrice), float64(_order.StrikePrice), float64(dateValue))
+
+	//TODO query to get all greeks
+	_getImpliedsVolatility := svc.tradeRepository.GetImpliedVolatility(float64(_lastPrice), optionPrice, float64(underlyingPrice), float64(_order.StrikePrice), float64(dateValue))
+	_getGreeksDelta := svc.tradeRepository.GetGreeks("delta", float64(_getImpliedsVolatility), optionPrice, float64(underlyingPrice), float64(_order.StrikePrice), float64(dateValue))
+	_getGreeksVega := svc.tradeRepository.GetGreeks("vega", float64(_getImpliedsVolatility), optionPrice, float64(underlyingPrice), float64(_order.StrikePrice), float64(dateValue))
+	_getGreeksGamma := svc.tradeRepository.GetGreeks("gamma", float64(_getImpliedsVolatility), optionPrice, float64(underlyingPrice), float64(_order.StrikePrice), float64(dateValue))
+	_getGreeksTetha := svc.tradeRepository.GetGreeks("tetha", float64(_getImpliedsVolatility), optionPrice, float64(underlyingPrice), float64(_order.StrikePrice), float64(dateValue))
+	_getGreeksRho := svc.tradeRepository.GetGreeks("rho", float64(_getImpliedsVolatility), optionPrice, float64(underlyingPrice), float64(_order.StrikePrice), float64(dateValue))
+
+	value := _orderbookTypes.OrderBookData{
+		State:        _state,
+		HighestPrice: _hightPrice,
+		LastPrice:    _lastPrice,
+		LowestPrice:  _lowestPrice,
+		PriceChange:  _priceChange,
+		ImpliedAsk:   _getImpliedsAsk,
+		ImpliedBid:   _getImpliedsBid,
+		VolumeAmount: _volumeAmount,
+		GreeksDelta:  _getGreeksDelta,
+		GreeksVega:   _getGreeksVega,
+		GreeksGamma:  _getGreeksGamma,
+		GreeksTetha:  _getGreeksTetha,
+		GreeksRho:    _getGreeksRho,
+	}
+	return value, _getIndexPrice
+}
+
 func (svc wsOrderbookService) GetDataQuote(order _orderbookTypes.GetOrderBook) (_orderbookTypes.QuoteMessage, _orderbookTypes.Orderbook) {
 
 	// Get initial data
@@ -405,6 +623,56 @@ func (svc wsOrderbookService) GetDataQuote(order _orderbookTypes.GetOrderBook) (
 	svc.redis.Set("QUOTE-"+order.InstrumentName, string(jsonBytes))
 
 	return initData, bidsAsksData
+}
+
+func (svc wsOrderbookService) GetBestPrice(_getOrderBook _orderbookTypes.Orderbook, instrumentName string) _orderbookTypes.QuoteMessage {
+	//count best Ask
+	maxAskPrice := 0.0
+	maxAskAmount := 0.0
+	var maxAskItem []*_orderbookTypes.WsOrder
+	for index, item := range _getOrderBook.Asks {
+		if index == 0 {
+			maxAskPrice = item.Price
+			maxAskItem = []*_orderbookTypes.WsOrder{item}
+		}
+		if item.Price < maxAskPrice {
+			maxAskPrice = item.Price
+			maxAskItem = []*_orderbookTypes.WsOrder{item}
+			maxAskAmount = item.Amount
+		} else if item.Price == maxAskPrice {
+			maxAskItem = append(maxAskItem, item)
+			maxAskAmount += item.Amount
+		}
+	}
+
+	//count best Bid
+	maxBidPrice := 0.0
+	if len(_getOrderBook.Bids) > 0 {
+		maxBidPrice = _getOrderBook.Bids[0].Price
+	}
+	maxBidAmount := 0.0
+	var maxBidItem []*_orderbookTypes.WsOrder
+	for _, item := range _getOrderBook.Bids {
+		if item.Price > maxBidPrice {
+			maxBidPrice = item.Price
+			maxBidItem = []*_orderbookTypes.WsOrder{item}
+			maxBidAmount = item.Amount
+		} else if item.Price == maxBidPrice {
+			maxBidItem = append(maxBidItem, item)
+			maxBidAmount += item.Amount
+		}
+	}
+
+	initData := _orderbookTypes.QuoteMessage{
+		Instrument:    instrumentName,
+		BestAskAmount: maxAskAmount,
+		BestAskPrice:  maxAskPrice,
+		BestBidAmount: maxBidAmount,
+		BestBidPrice:  maxBidPrice,
+		Timestamp:     time.Now().UnixNano() / int64(time.Millisecond),
+	}
+
+	return initData
 }
 
 func (svc wsOrderbookService) Unsubscribe(c *ws.Client) {
@@ -663,8 +931,179 @@ func (svc wsOrderbookService) HandleConsumeUserChange100ms(instrument string, us
 	}()
 }
 
+func (svc wsOrderbookService) HandleConsumeTicker(_instrument string, interval string) {
+	instruments, _ := utils.ParseInstruments(_instrument)
+
+	_order := _orderbookTypes.GetOrderBook{
+		InstrumentName: _instrument,
+		Underlying:     instruments.Underlying,
+		ExpiryDate:     instruments.ExpDate,
+		StrikePrice:    instruments.Strike,
+	}
+
+	ts := time.Now().UnixNano() / int64(time.Millisecond)
+	// Get latest data from db
+	var orderBook _orderbookTypes.Orderbook
+	if interval == "raw" {
+		orderBook = svc.GetOrderLatestTimestamp(_order, ts, false)
+	} else if interval == "agg2" {
+		orderBook = svc.GetOrderLatestTimestampAgg(_order, ts)
+	}
+
+	dataQuote := svc.GetBestPrice(orderBook, _instrument)
+
+	//check state
+	orderBookValue, indexPrice := svc.GetDataOrderBook(_order, dataQuote)
+
+	results := _deribitModel.TickerSubcriptionResponse{
+		InstrumentName: orderBook.InstrumentName,
+		BestAskPrice:   dataQuote.BestAskPrice,
+		BestAskAmount:  dataQuote.BestAskAmount,
+		BestBidPrice:   dataQuote.BestBidPrice,
+		BestBidAmount:  dataQuote.BestBidAmount,
+		Timestamp:      time.Now().UnixNano() / int64(time.Millisecond),
+		State:          orderBookValue.State,
+		LastPrice:      orderBookValue.LastPrice,
+		Bids_iv:        orderBookValue.ImpliedBid,
+		Asks_iv:        orderBookValue.ImpliedAsk,
+		Stats: _deribitModel.OrderBookStats{
+			High:        orderBookValue.HighestPrice,
+			Low:         orderBookValue.LowestPrice,
+			PriceChange: orderBookValue.PriceChange,
+			Volume:      orderBookValue.VolumeAmount,
+		},
+		Greeks: _deribitModel.OrderBookGreek{
+			Delta: orderBookValue.GreeksDelta,
+			Vega:  orderBookValue.GreeksVega,
+			Gamma: orderBookValue.GreeksGamma,
+			Tetha: orderBookValue.GreeksTetha,
+			Rho:   orderBookValue.GreeksRho,
+		},
+	}
+
+	if len(indexPrice) > 0 {
+		results.IndexPrice = &indexPrice[0].Price
+		results.UnderlyingIndex = &indexPrice[0].Price
+	}
+
+	_getSettlementPrice := svc.settlementPriceRepository.GetLatestSettlementPrice(_order)
+	if len(_getSettlementPrice) > 0 {
+		results.SettlementPrice = &_getSettlementPrice[0].Price
+	}
+
+	if interval == "raw" {
+		go svc.HandleConsumeTicker(_instrument, "agg2")
+
+		instrumentInterface := make([]interface{}, 0)
+		instrumentInterface = append(instrumentInterface, _instrument)
+		if _, ok := tickerChanges[_instrument]; !ok {
+			tickerMutex.Lock()
+			tickerChanges[_instrument] = instrumentInterface
+			tickerMutex.Unlock()
+			go svc.HandleConsumeUserTicker100ms(_instrument)
+		} else {
+			tickerMutex.Lock()
+			tickerChanges[_instrument] = instrumentInterface
+			tickerMutex.Unlock()
+		}
+	}
+	params := _orderbookTypes.QuoteResponse{
+		Channel: fmt.Sprintf("ticker.%s.%s", _instrument, interval),
+		Data:    results,
+	}
+	method := "subscription"
+	broadcastId := fmt.Sprintf("ticker-%s-%s", _instrument, interval)
+	ws.GetBookSocket().BroadcastMessage(broadcastId, method, params)
+}
+
+func (svc wsOrderbookService) HandleConsumeUserTicker100ms(instrument string) {
+	ticker := time.NewTicker(100 * time.Millisecond)
+
+	// Creating channel
+	tickerChan := make(chan bool)
+	go func() {
+		for {
+			select {
+			case <-tickerChan:
+				return
+			case <-ticker.C:
+				// if there is no change no need to broadcast
+				tickerMutex.RLock()
+				changes := tickerChanges[instrument]
+				tickerMutex.RUnlock()
+				if len(changes) > 0 {
+					tickerMutex.Lock()
+					tickerChanges[instrument] = make([]interface{}, 0)
+					tickerMutex.Unlock()
+
+					instruments, _ := utils.ParseInstruments(instrument)
+
+					_order := _orderbookTypes.GetOrderBook{
+						InstrumentName: instrument,
+						Underlying:     instruments.Underlying,
+						ExpiryDate:     instruments.ExpDate,
+						StrikePrice:    instruments.Strike,
+					}
+
+					// Get latest data from db
+					ts := time.Now().UnixNano() / int64(time.Millisecond)
+					orderBook := svc.GetOrderLatestTimestamp(_order, ts, false)
+
+					dataQuote := svc.GetBestPrice(orderBook, instrument)
+
+					orderBookValue, indexPrice := svc.GetDataOrderBook(_order, dataQuote)
+
+					results := _deribitModel.TickerSubcriptionResponse{
+						InstrumentName: orderBook.InstrumentName,
+						BestAskPrice:   dataQuote.BestAskPrice,
+						BestAskAmount:  dataQuote.BestAskAmount,
+						BestBidPrice:   dataQuote.BestBidPrice,
+						BestBidAmount:  dataQuote.BestBidAmount,
+						Timestamp:      time.Now().UnixNano() / int64(time.Millisecond),
+						State:          orderBookValue.State,
+						LastPrice:      orderBookValue.LastPrice,
+						Bids_iv:        orderBookValue.ImpliedBid,
+						Asks_iv:        orderBookValue.ImpliedAsk,
+						Stats: _deribitModel.OrderBookStats{
+							High:        orderBookValue.HighestPrice,
+							Low:         orderBookValue.LowestPrice,
+							PriceChange: orderBookValue.PriceChange,
+							Volume:      orderBookValue.VolumeAmount,
+						},
+						Greeks: _deribitModel.OrderBookGreek{
+							Delta: orderBookValue.GreeksDelta,
+							Vega:  orderBookValue.GreeksVega,
+							Gamma: orderBookValue.GreeksGamma,
+							Tetha: orderBookValue.GreeksTetha,
+							Rho:   orderBookValue.GreeksRho,
+						},
+					}
+
+					if len(indexPrice) > 0 {
+						results.IndexPrice = &indexPrice[0].Price
+						results.UnderlyingIndex = &indexPrice[0].Price
+					}
+
+					_getSettlementPrice := svc.settlementPriceRepository.GetLatestSettlementPrice(_order)
+					if len(_getSettlementPrice) > 0 {
+						results.SettlementPrice = &_getSettlementPrice[0].Price
+					}
+
+					broadcastId := fmt.Sprintf("ticker-%s-100ms", instrument)
+
+					params := _orderbookTypes.QuoteResponse{
+						Channel: fmt.Sprintf("ticker.%s.100ms", instrument),
+						Data:    results,
+					}
+					method := "subscription"
+					ws.GetBookSocket().BroadcastMessage(broadcastId, method, params)
+				}
+			}
+		}
+	}()
+}
+
 func (svc wsOrderbookService) GetOrderBook(ctx context.Context, data _deribitModel.DeribitGetOrderBookRequest) _deribitModel.DeribitGetOrderBookResponse {
-	var underlyingPrice float64
 	instruments, _ := utils.ParseInstruments(data.InstrumentName)
 
 	_order := _orderbookTypes.GetOrderBook{
@@ -676,97 +1115,7 @@ func (svc wsOrderbookService) GetOrderBook(ctx context.Context, data _deribitMod
 
 	dataQuote, orderBook := svc.GetDataQuote(_order)
 
-	//check state
-	dateString := instruments.ExpDate
-	layout := "02Jan06"
-	date, err := time.Parse(layout, dateString)
-	if err != nil {
-		fmt.Println("Error parsing date:", err)
-	}
-	currentTime := time.Now()
-	oneDayAgo := currentTime.AddDate(0, 0, -1)
-	_state := ""
-	if date.Before(oneDayAgo) {
-		_state = "closed"
-	} else {
-		_state = "open"
-	}
-
-	//TODO query to get expires time
-	expiredDate := dateString
-	currentDate := time.Now().Format("2006-01-02 15:04:05")
-	layoutExpired := "02Jan06"
-	layoutCurrent := "2006-01-02 15:04:05"
-
-	expired, _ := time.Parse(layoutExpired, expiredDate)
-	current, _ := time.Parse(layoutCurrent, currentDate)
-	calculate := float64(expired.Day()) - float64(current.Day())
-
-	dateValue := float64(calculate / 365)
-
-	//TODO query to trades collections
-	_getLastTrades := svc.tradeRepository.GetLastTrades(_order)
-	_lastPrice := 0.0
-	if len(_getLastTrades) > 0 {
-		_lastPrice = _getLastTrades[len(_getLastTrades)-1].Price
-	}
-
-	_getHigestTrade := svc.tradeRepository.GetHighLowTrades(_order, -1)
-	_hightPrice := 0.0
-	if len(_getHigestTrade) > 0 {
-		_hightPrice = _getHigestTrade[0].Price
-	}
-
-	_getLowestTrade := svc.tradeRepository.GetHighLowTrades(_order, 1)
-	_lowestPrice := 0.0
-	_volumeAmount := 0.0
-	if len(_getLowestTrade) > 0 {
-		_lowestPrice = _getLowestTrade[0].Price
-		for _, item := range _getLowestTrade {
-			_volumeAmount += item.Amount
-		}
-	}
-
-	_get24HoursTrade := svc.tradeRepository.Get24HoursTrades(_order)
-	_priceChange := 0.0
-	if len(_get24HoursTrade) > 0 {
-		_firstTrade := _get24HoursTrade[0].Price
-		_lastTrade := _get24HoursTrade[len(_get24HoursTrade)-1].Price
-
-		//calculate price change with percentage
-		_priceChange = (_lastTrade - _firstTrade) / _firstTrade * 100
-	}
-
-	//TODO query to get Underlying Price
-	_getIndexPrice := svc.rawPriceRepository.GetLatestIndexPrice(_order)
-	if len(_getIndexPrice) > 0 {
-		underlyingPrice = float64(_getIndexPrice[0].Price)
-	} else {
-		underlyingPrice = float64(0)
-	}
-
-	//TODO query to get Option Price
-	str := data.InstrumentName
-	parts := strings.Split(str, "-")
-	lastPart := parts[len(parts)-1]
-	optionPrice := ""
-	if string(lastPart[0]) == "C" {
-		optionPrice = "call"
-	} else {
-		optionPrice = "put"
-	}
-
-	//TODO query to get ask_iv and bid_iv
-	_getImpliedsAsk := svc.tradeRepository.GetImpliedVolatility(float64(dataQuote.BestAskAmount), optionPrice, float64(underlyingPrice), float64(_order.StrikePrice), float64(dateValue))
-	_getImpliedsBid := svc.tradeRepository.GetImpliedVolatility(float64(dataQuote.BestBidAmount), optionPrice, float64(underlyingPrice), float64(_order.StrikePrice), float64(dateValue))
-
-	//TODO query to get all greeks
-	_getImpliedsVolatility := svc.tradeRepository.GetImpliedVolatility(float64(_lastPrice), optionPrice, float64(underlyingPrice), float64(_order.StrikePrice), float64(dateValue))
-	_getGreeksDelta := svc.tradeRepository.GetGreeks("delta", float64(_getImpliedsVolatility), optionPrice, float64(underlyingPrice), float64(_order.StrikePrice), float64(dateValue))
-	_getGreeksVega := svc.tradeRepository.GetGreeks("vega", float64(_getImpliedsVolatility), optionPrice, float64(underlyingPrice), float64(_order.StrikePrice), float64(dateValue))
-	_getGreeksGamma := svc.tradeRepository.GetGreeks("gamma", float64(_getImpliedsVolatility), optionPrice, float64(underlyingPrice), float64(_order.StrikePrice), float64(dateValue))
-	_getGreeksTetha := svc.tradeRepository.GetGreeks("tetha", float64(_getImpliedsVolatility), optionPrice, float64(underlyingPrice), float64(_order.StrikePrice), float64(dateValue))
-	_getGreeksRho := svc.tradeRepository.GetGreeks("rho", float64(_getImpliedsVolatility), optionPrice, float64(underlyingPrice), float64(_order.StrikePrice), float64(dateValue))
+	orderBookValue, indexPrice := svc.GetDataOrderBook(_order, dataQuote)
 
 	results := _deribitModel.DeribitGetOrderBookResponse{
 		InstrumentName: orderBook.InstrumentName,
@@ -777,28 +1126,28 @@ func (svc wsOrderbookService) GetOrderBook(ctx context.Context, data _deribitMod
 		BestBidPrice:   dataQuote.BestBidPrice,
 		BestBidAmount:  dataQuote.BestBidAmount,
 		Timestamp:      time.Now().UnixNano() / int64(time.Millisecond),
-		State:          _state,
-		LastPrice:      _lastPrice,
-		Bids_iv:        _getImpliedsBid,
-		Asks_iv:        _getImpliedsAsk,
+		State:          orderBookValue.State,
+		LastPrice:      orderBookValue.LastPrice,
+		Bids_iv:        orderBookValue.ImpliedBid,
+		Asks_iv:        orderBookValue.ImpliedAsk,
 		Stats: _deribitModel.OrderBookStats{
-			High:        _hightPrice,
-			Low:         _lowestPrice,
-			PriceChange: _priceChange,
-			Volume:      _volumeAmount,
+			High:        orderBookValue.HighestPrice,
+			Low:         orderBookValue.LowestPrice,
+			PriceChange: orderBookValue.PriceChange,
+			Volume:      orderBookValue.VolumeAmount,
 		},
 		Greeks: _deribitModel.OrderBookGreek{
-			Delta: _getGreeksDelta,
-			Vega:  _getGreeksVega,
-			Gamma: _getGreeksGamma,
-			Tetha: _getGreeksTetha,
-			Rho:   _getGreeksRho,
+			Delta: orderBookValue.GreeksDelta,
+			Vega:  orderBookValue.GreeksVega,
+			Gamma: orderBookValue.GreeksGamma,
+			Tetha: orderBookValue.GreeksTetha,
+			Rho:   orderBookValue.GreeksRho,
 		},
 	}
 
-	if len(_getIndexPrice) > 0 {
-		results.IndexPrice = &_getIndexPrice[0].Price
-		results.UnderlyingIndex = &_getIndexPrice[0].Price
+	if len(indexPrice) > 0 {
+		results.IndexPrice = &indexPrice[0].Price
+		results.UnderlyingIndex = &indexPrice[0].Price
 	}
 
 	_getSettlementPrice := svc.settlementPriceRepository.GetLatestSettlementPrice(_order)
