@@ -87,7 +87,6 @@ func (p *ProtocolRequest) getcollectorProtocol() collector.Protocol {
 }
 
 func RegisterProtocolRequest(key string, conn ProtocolRequest) (duplicateConnection bool) {
-	fmt.Println(conn.Method, "<===== method")
 	protocolMutex.Lock()
 	if protocolConnections == nil {
 		protocolConnections = make(map[any]ProtocolRequest)
@@ -298,7 +297,7 @@ func RegisterChannel(key string, channel chan _engineType.BuySellEditResponse) {
 	}
 	channelConnections[key] = channel
 	res := _engineType.BuySellEditResponse{}
-	for start := time.Now(); time.Since(start).Seconds() > 3; {
+	for {
 		res = channelResults[key]
 		if res.Order.OrderId != primitive.NilObjectID {
 			break
