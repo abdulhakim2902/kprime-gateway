@@ -996,15 +996,15 @@ func (svc wsOrderbookService) HandleConsumeTicker(_instrument string, interval s
 
 		instrumentInterface := make([]interface{}, 0)
 		instrumentInterface = append(instrumentInterface, _instrument)
-		if _, ok := userChanges[_instrument]; !ok {
-			userChangesMutex.Lock()
-			userChanges[_instrument] = instrumentInterface
-			userChangesMutex.Unlock()
+		if _, ok := tickerChanges[_instrument]; !ok {
+			tickerMutex.Lock()
+			tickerChanges[_instrument] = instrumentInterface
+			tickerMutex.Unlock()
 			go svc.HandleConsumeUserTicker100ms(_instrument)
 		} else {
-			userChangesMutex.Lock()
-			userChanges[_instrument] = instrumentInterface
-			userChangesMutex.Unlock()
+			tickerMutex.Lock()
+			tickerChanges[_instrument] = instrumentInterface
+			tickerMutex.Unlock()
 		}
 	}
 	params := _orderbookTypes.QuoteResponse{
@@ -1096,7 +1096,7 @@ func (svc wsOrderbookService) HandleConsumeUserTicker100ms(instrument string) {
 						Data:    results,
 					}
 					method := "subscription"
-					ws.GetOrderBookSocket().BroadcastMessageSubcription(broadcastId, method, params)
+					ws.GetBookSocket().BroadcastMessage(broadcastId, method, params)
 				}
 			}
 		}
