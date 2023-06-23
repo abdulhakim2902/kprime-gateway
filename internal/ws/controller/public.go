@@ -143,7 +143,7 @@ func (svc *wsHandler) publicSubscribe(input interface{}, c *ws.Client) {
 	}
 
 	const t = true
-	method := map[string]bool{"orderbook": t, "engine": t, "order": t, "trade": t, "trades": t, "quote": false, "book": t, "deribit_price_index": false}
+	method := map[string]bool{"orderbook": t, "engine": t, "order": t, "trade": t, "trades": t, "quote": false, "book": t, "deribit_price_index": false, "ticker": t}
 	interval := map[string]bool{"raw": t, "100ms": t, "agg2": t}
 	for _, channel := range msg.Params.Channels {
 		s := strings.Split(channel, ".")
@@ -196,6 +196,8 @@ func (svc *wsHandler) publicSubscribe(input interface{}, c *ws.Client) {
 			svc.wsOBSvc.SubscribeBook(c, channel, s[1], s[2])
 		case "deribit_price_index":
 			svc.wsRawPriceSvc.Subscribe(c, s[1])
+		case "ticker":
+			svc.wsOBSvc.SubscribeTicker(c, channel, s[1], s[2])
 		default:
 			reason := validation_reason.INVALID_PARAMS
 			err := fmt.Errorf("unrecognize channel for '%s'", channel)

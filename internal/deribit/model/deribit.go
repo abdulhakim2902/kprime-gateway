@@ -317,6 +317,24 @@ type DeribitGetOrderBookResponse struct {
 	UnderlyingIndex *float64                  `json:"underlying_index"`
 }
 
+type TickerSubcriptionResponse struct {
+	Timestamp       int64          `json:"timestamp"`
+	Stats           OrderBookStats `json:"stats"`
+	Greeks          OrderBookGreek `json:"greeks"`
+	State           string         `json:"state"`
+	LastPrice       float64        `json:"last_price"`
+	Bids_iv         float64        `json:"bid_iv"`
+	Asks_iv         float64        `json:"ask_iv"`
+	InstrumentName  string         `json:"instrument_name"`
+	BestBidPrice    float64        `json:"best_bid_price"`
+	BestBidAmount   float64        `json:"best_bid_amount"`
+	BestAskPrice    float64        `json:"best_ask_price"`
+	BestAskAmount   float64        `json:"best_ask_amount"`
+	IndexPrice      *float64       `json:"index_price"`
+	SettlementPrice *float64       `json:"settlement_price"`
+	UnderlyingIndex *float64       `json:"underlying_index"`
+}
+
 type DeribitGetLastTradesByInstrumentValue struct {
 	Amount         float64   `json:"amount"`
 	Direction      string    `json:"direction"`

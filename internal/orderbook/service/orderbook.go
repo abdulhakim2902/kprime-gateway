@@ -81,6 +81,49 @@ func (svc orderbookHandler) HandleConsumeUserChangeCancel(msg *sarama.ConsumerMe
 	}
 }
 
+func (svc orderbookHandler) HandleConsumeTicker(msg *sarama.ConsumerMessage) {
+	var data _engineType.EngineResponse
+
+	err := json.Unmarshal(msg.Value, &data)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	if data.Matches == nil && len(data.Matches.TakerOrder.Contracts) > 0 {
+		return
+	}
+
+	_instrument := data.Matches.TakerOrder.Underlying + "-" + data.Matches.TakerOrder.ExpiryDate + "-" + fmt.Sprintf("%.0f", data.Matches.TakerOrder.StrikePrice) + "-" + string(data.Matches.TakerOrder.Contracts[0])
+
+	svc.wsOBSvc.HandleConsumeTicker(_instrument, "raw")
+}
+
+func (svc orderbookHandler) HandleConsumeTickerCancel(msg *sarama.ConsumerMessage) {
+	var data orderType.CancelledOrder
+
+	err := json.Unmarshal(msg.Value, &data)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	keys := make(map[interface{}]bool)
+	var instruments []string
+	for _, order := range data.Data {
+		_instrument := order.Underlying + "-" + order.ExpiryDate + "-" + fmt.Sprintf("%.0f", order.StrikePrice) + "-" + string(order.Contracts[0])
+		if _, ok := keys[_instrument]; !ok {
+			keys[_instrument] = true
+			instruments = append(instruments, _instrument)
+		} else {
+			continue
+		}
+	}
+	for _, instrument := range instruments {
+		svc.wsOBSvc.HandleConsumeTicker(instrument, "raw")
+	}
+}
+
 func (svc orderbookHandler) HandleConsumeBook(msg *sarama.ConsumerMessage) {
 	var order types.Order
 	var data _engineType.EngineResponse

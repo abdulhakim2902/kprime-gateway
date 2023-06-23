@@ -13,5 +13,7 @@ type IOrderbookService interface {
 	HandleConsumeBookAgg(instrument string, order types.Order, isCancelledAll bool, cancelledBooks map[string]types.OrderbookMap)
 	HandleConsumeUserChange(message *sarama.ConsumerMessage)
 	HandleConsumeUserChangeCancel(message *sarama.ConsumerMessage)
+	HandleConsumeTicker(message *sarama.ConsumerMessage)
+	HandleConsumeTickerCancel(message *sarama.ConsumerMessage)
 	Handle100msInterval(instrument string)
 }
