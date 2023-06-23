@@ -1226,27 +1226,30 @@ func (r TradeRepository) GetTradingViewChartData(req _deribitModel.GetTradingvie
 	}
 
 	type resolution struct {
-		Start time.Time
-		End   time.Time
-		Trade []trade.Trade
+		Start  time.Time
+		End    time.Time
+		Trades []trade.Trade
 	}
 
 	// Resolution
 	// (1, 3, 5, 10, 15, 30, 60, 120, 180, 360, 720, 1D)
+	loc, _ := time.LoadLocation("Singapore")
 	start := time.UnixMilli(req.StartTimestamp)
-	resolutionsMap := map[string]resolution{
-		"1":   {start.Add(time.Minute), time.UnixMilli(req.EndTimestamp), []trade.Trade{}},
-		"3":   {start.Add(3 * time.Minute), time.UnixMilli(req.EndTimestamp), []trade.Trade{}},
-		"5":   {start.Add(5 * time.Minute), time.UnixMilli(req.EndTimestamp), []trade.Trade{}},
-		"10":  {start.Add(10 * time.Minute), time.UnixMilli(req.EndTimestamp), []trade.Trade{}},
-		"15":  {start.Add(15 * time.Minute), time.UnixMilli(req.EndTimestamp), []trade.Trade{}},
-		"30":  {start.Add(30 * time.Minute), time.UnixMilli(req.EndTimestamp), []trade.Trade{}},
-		"60":  {start.Add(60 * time.Minute), time.UnixMilli(req.EndTimestamp), []trade.Trade{}},
-		"120": {start.Add(120 * time.Minute), time.UnixMilli(req.EndTimestamp), []trade.Trade{}},
-		"180": {start.Add(180 * time.Minute), time.UnixMilli(req.EndTimestamp), []trade.Trade{}},
-		"360": {start.Add(360 * time.Minute), time.UnixMilli(req.EndTimestamp), []trade.Trade{}},
-		"720": {start.Add(720 * time.Minute), time.UnixMilli(req.EndTimestamp), []trade.Trade{}},
-		"1D":  {start.Add(24 * time.Hour), time.UnixMilli(req.EndTimestamp), []trade.Trade{}},
+	start = start.In(loc)
+
+	resolutions := []resolution{
+		{start, start.Add(time.Minute), []trade.Trade{}},
+		{start, start.Add(3 * time.Minute), []trade.Trade{}},
+		{start, start.Add(5 * time.Minute), []trade.Trade{}},
+		{start, start.Add(10 * time.Minute), []trade.Trade{}},
+		{start, start.Add(15 * time.Minute), []trade.Trade{}},
+		{start, start.Add(30 * time.Minute), []trade.Trade{}},
+		{start, start.Add(60 * time.Minute), []trade.Trade{}},
+		{start, start.Add(120 * time.Minute), []trade.Trade{}},
+		{start, start.Add(180 * time.Minute), []trade.Trade{}},
+		{start, start.Add(360 * time.Minute), []trade.Trade{}},
+		{start, start.Add(720 * time.Minute), []trade.Trade{}},
+		{start, start.Add(24 * time.Hour), []trade.Trade{}},
 	}
 
 	res = _deribitModel.GetTradingviewChartDataResponse{
@@ -1260,62 +1263,72 @@ func (r TradeRepository) GetTradingViewChartData(req _deribitModel.GetTradingvie
 		Status: "no_data",
 	}
 
-	if len(trades) > 0 {
-		res.Status = "ok"
+	if len(trades) == 0 {
+		return
 	}
 
-	for _, item := range trades {
-		for reso := range resolutionsMap {
-			if item.CreatedAt.After(resolutionsMap[reso].Start) && item.CreatedAt.Before(resolutionsMap[reso].End) {
-				t := resolutionsMap[reso].Trade
-				t = append(t, *item)
+	res.Status = "ok"
+
+	for key, reso := range resolutions {
+		for _, trade := range trades {
+			created := trade.CreatedAt.In(loc)
+			if created.After(reso.Start) && created.Before(reso.End) {
+				t := resolutions[key].Trades
+				t = append(t, *trade)
 
 				sort.Slice(t, func(i, j int) bool {
 					return t[i].CreatedAt.After(t[j].CreatedAt)
 				})
 
-				resolutionsMap[reso] = resolution{
-					Start: resolutionsMap[reso].Start,
-					End:   resolutionsMap[reso].End,
-					Trade: t,
+				resolutions[key] = resolution{
+					Start:  reso.Start,
+					End:    reso.End,
+					Trades: t,
 				}
 			}
 		}
 	}
 
-	if len(trades) > 0 {
-		for _, reso := range resolutionsMap {
-			res.Tics = append(res.Tics, reso.Start.UnixMilli())
+	for _, reso := range resolutions {
+		res.Tics = append(res.Tics, reso.End.UnixMilli())
 
-			open := reso.Trade[0]
-			res.Open = append(res.Open, open.Price)
+		if len(reso.Trades) == 0 {
+			res.Open = append(res.Open, 0.0)
+			res.Close = append(res.Close, 0.0)
+			res.Low = append(res.Low, 0.0)
+			res.High = append(res.High, 0.0)
+			res.Cost = append(res.Cost, 0.0)
+			res.Volume = append(res.Volume, 0.0)
 
-			close := reso.Trade[len(reso.Trade)-1]
-			res.Close = append(res.Close, close.Price)
-
-			sortedByPrices := reso.Trade
-
-			sort.Slice(sortedByPrices, func(i, j int) bool {
-				return sortedByPrices[i].Price > sortedByPrices[j].Price
-			})
-
-			low := sortedByPrices[0]
-			res.Low = append(res.Low, low.Price)
-
-			high := sortedByPrices[len(sortedByPrices)-1]
-			res.High = append(res.High, high.Price)
-
-			var cost, volume float64
-			for _, trade := range reso.Trade {
-				// Cost = (20 * 1000) + (30 * 2000) = 20000 + 60000 = 80000
-				// Volume = 20 + 30 = 50
-				cost += (trade.Amount * trade.Price)
-				volume += trade.Amount
-			}
-
-			res.Cost = append(res.Cost, cost)
-			res.Volume = append(res.Volume, volume)
+			continue
 		}
+
+		open := reso.Trades[0]
+		res.Open = append(res.Open, open.Price)
+
+		close := reso.Trades[len(reso.Trades)-1]
+		res.Close = append(res.Close, close.Price)
+
+		sortedByPrices := reso.Trades
+
+		sort.Slice(sortedByPrices, func(i, j int) bool {
+			return sortedByPrices[i].Price > sortedByPrices[j].Price
+		})
+
+		low := sortedByPrices[0]
+		res.Low = append(res.Low, low.Price)
+
+		high := sortedByPrices[len(sortedByPrices)-1]
+		res.High = append(res.High, high.Price)
+
+		var cost, volume float64
+		for _, trade := range reso.Trades {
+			cost += (trade.Amount * trade.Price)
+			volume += trade.Amount
+		}
+
+		res.Cost = append(res.Cost, cost)
+		res.Volume = append(res.Volume, volume)
 	}
 
 	return
