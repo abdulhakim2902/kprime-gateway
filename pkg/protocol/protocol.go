@@ -304,5 +304,9 @@ func RegisterChannel(key string, channel chan _engineType.BuySellEditResponse) {
 			break
 		}
 	}
+
+	// Delete object from map after reading
+	delete(channelResults, key)
+	delete(channelConnections, key)
 	channel <- res
 }
