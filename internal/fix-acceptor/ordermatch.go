@@ -434,7 +434,7 @@ func (a *Application) onOrderMassCancelRequest(msg ordermasscancelrequest.OrderM
 	}
 	orderIds := []MassCancel{}
 	if symbol != "all" {
-		orders, _ := a.OrderRepository.GetOpenOrdersByInstrument(symbol, "LIMIT", userId)
+		orders, _ := a.OrderRepository.GetOpenOrdersByInstrument(symbol, "limit", userId)
 		for _, order := range orders {
 			orderIds = append(orderIds, MassCancel{
 				symbol:  order.InstrumentName,
@@ -442,7 +442,7 @@ func (a *Application) onOrderMassCancelRequest(msg ordermasscancelrequest.OrderM
 			})
 		}
 	} else {
-		orders, _ := a.OrderRepository.Find(bson.M{"userId": userId, "status": "OPEN", "type": "LIMIT"}, nil, 0, -1)
+		orders, _ := a.OrderRepository.Find(bson.M{"userId": userId, "status": "open", "type": "limit"}, nil, 0, -1)
 		for _, order := range orders {
 			orderIds = append(orderIds, MassCancel{
 				symbol:  order.Underlying + "-" + order.ExpiryDate + "-" + strconv.FormatFloat(order.StrikePrice, 'f', 0, 64) + "-" + string(order.Contracts)[0:1],
@@ -659,12 +659,13 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 				"underlying":  splits[0],
 				"expiryDate":  splits[1],
 				"strikePrice": price,
-				"status":      "SUCCESS",
+				"status":      "success",
 			}, nil, 0, -1)
 			for _, trade := range trades {
+				conversion, _ := utils.ConvertToFloat(trade.Amount)
 				response = append(response, MarketDataResponse{
 					Price:  trade.Price,
-					Amount: trade.Amount,
+					Amount: conversion,
 					Side:   trade.Side,
 					InstrumentName: trade.Underlying + "-" + trade.ExpiryDate + "-" + strconv.FormatFloat(trade.StrikePrice, 'f', 0, 64) +
 						"-" + string(trade.Contracts)[0:1],
@@ -751,13 +752,14 @@ func OnMarketDataUpdate(instrument string, book _orderbookType.BookData) {
 				"underlying":  splits[0],
 				"expiryDate":  splits[1],
 				"strikePrice": price,
-				"status":      "SUCCESS",
+				"status":      "success",
 			})
 
 			for _, trade := range trades {
+				conversion, _ := utils.ConvertToFloat(trade.Amount)
 				response = append(response, MarketDataResponse{
 					Price:          trade.Price,
-					Amount:         trade.Amount,
+					Amount:         conversion,
 					InstrumentName: instrument,
 					Type:           "TRADE",
 					UpdateType:     "change",
@@ -855,6 +857,7 @@ func OnMatchingOrder(data types.EngineResponse) {
 			return
 		}
 		order := data.Matches.TakerOrder
+		conversion, _ := utils.ConvertToFloat(order.FilledAmount)
 		msg := executionreport.New(
 			field.NewOrderID(trd.ID.String()),
 			field.NewExecID(order.ClOrdID),
@@ -862,7 +865,7 @@ func OnMatchingOrder(data types.EngineResponse) {
 			field.NewOrdStatus(enum.OrdStatus(order.Status)),
 			field.NewSide(enum.Side(trd.Side)),
 			field.NewLeavesQty(decimal.NewFromFloat(trd.Amount), 2),
-			field.NewCumQty(decimal.NewFromFloat(order.FilledAmount), 2),
+			field.NewCumQty(decimal.NewFromFloat(conversion), 2),
 			field.NewAvgPx(decimal.NewFromFloat(trd.Price), 2),
 		)
 		if trd.Amount == 0 {
@@ -1019,17 +1022,18 @@ func OrderConfirmation(userId string, order _orderbookType.Order, symbol string)
 		exec = 4
 	}
 
+	conversion, _ := utils.ConvertToFloat(order.FilledAmount)
+
 	msg := executionreport.New(
 		field.NewOrderID(order.ID.Hex()),
 		field.NewExecID(strconv.Itoa(exec)),
 		field.NewExecType(enum.ExecType(order.Status)),
 		field.NewOrdStatus(enum.OrdStatus(order.Status)),
 		field.NewSide(enum.Side(order.Side)),
-		field.NewLeavesQty(decimal.NewFromFloat(order.Amount).Sub(decimal.NewFromFloat(order.FilledAmount)), 2),
-		field.NewCumQty(decimal.NewFromFloat(order.FilledAmount), 2),
+		field.NewLeavesQty(decimal.NewFromFloat(order.Amount).Sub(decimal.NewFromFloat(conversion)), 2),
+		field.NewCumQty(decimal.NewFromFloat(conversion), 2),
 		field.NewAvgPx(decimal.NewFromFloat(order.Price), 2),
 	)
-	fmt.Println("clientorderid", order.ClOrdID, order.ClOrdID, order.ClOrdID)
 	msg.SetOrdStatus(enum.OrdStatus_NEW)
 	msg.SetClOrdID(order.ClOrdID)
 

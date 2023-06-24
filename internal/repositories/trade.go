@@ -251,7 +251,12 @@ func (r TradeRepository) FindUserTradesByInstrument(
 						"-",
 						bson.M{"$substr": bson.A{"$contracts", 0, 1}},
 					}}},
-					{"amount", "$amount"},
+					{"amount", bson.D{
+						{"$convert", bson.D{
+							{"input", "$amount"},
+							{"to", "double"},
+						}},
+					}},
 					{"direction", "$side"},
 					{"label",
 						bson.D{
@@ -474,7 +479,12 @@ func (r TradeRepository) FindUserTradesById(
 						"-",
 						bson.M{"$substr": bson.A{"$contracts", 0, 1}},
 					}}},
-					{"amount", "$amount"},
+					{"amount", bson.D{
+						{"$convert", bson.D{
+							{"input", "$amount"},
+							{"to", "double"},
+						}},
+					}},
 					{"direction", "$side"},
 					{"label",
 						bson.D{
@@ -686,7 +696,12 @@ func (r TradeRepository) FindTradesByInstrument(
 						"-",
 						bson.M{"$substr": bson.A{"$contracts", 0, 1}},
 					}}},
-					{"amount", "$amount"},
+					{"amount", bson.D{
+						{"$convert", bson.D{
+							{"input", "$amount"},
+							{"to", "double"},
+						}},
+					}},
 					{"direction", "$side"},
 					{"label",
 						bson.D{
@@ -1039,7 +1054,12 @@ func (r TradeRepository) FilterUserTradesByOrder(userId string, orderId string) 
 					"-",
 					bson.M{"$substr": bson.A{"$contracts", 0, 1}},
 				}}},
-				{"amount", "$amount"},
+				{"amount", bson.D{
+					{"$convert", bson.D{
+						{"input", "$amount"},
+						{"to", "double"},
+					}},
+				}},
 				{"direction", "$side"},
 				{"label",
 					bson.D{
