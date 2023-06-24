@@ -494,7 +494,9 @@ func (svc wsOrderbookService) GetDataOrderBook(_order _orderbookTypes.GetOrderBo
 	if len(_getLowestTrade) > 0 {
 		_lowestPrice = _getLowestTrade[0].Price
 		for _, item := range _getLowestTrade {
-			_volumeAmount += item.Amount
+			// Convert string to float
+			conversion, _ := utils.ConvertToFloat(item.Amount)
+			_volumeAmount += conversion
 		}
 	}
 
@@ -1191,8 +1193,9 @@ func (svc wsOrderbookService) GetLastTradesByInstrument(ctx context.Context, dat
 			contracts = "P"
 		}
 		tradeObjectId := jsonDoc["_id"].(primitive.ObjectID)
+		conversion, _ := utils.ConvertToFloat(jsonDoc["amount"].(string))
 		resultData := _deribitModel.DeribitGetLastTradesByInstrumentValue{
-			Amount:         jsonDoc["amount"].(float64),
+			Amount:         conversion,
 			Direction:      jsonDoc["side"].(string),
 			InstrumentName: fmt.Sprintf("%s-%s-%d-%s", underlying, expiryDate, int64(strikePrice), contracts),
 			Price:          jsonDoc["price"].(float64),

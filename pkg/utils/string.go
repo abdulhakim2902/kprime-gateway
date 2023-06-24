@@ -2,9 +2,11 @@ package utils
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 
+	"git.devucc.name/dependencies/utilities/commons/logs"
 	"git.devucc.name/dependencies/utilities/types"
 )
 
@@ -64,4 +66,19 @@ func ParseInstruments(str string) (*Instruments, error) {
 	}
 
 	return &Instruments{_underlying, _expDate, _contracts, strike}, nil
+}
+
+func ConvertToFloat(str string) (number float64, isSuccess bool) {
+	conversion, err := strconv.ParseFloat(str, 32)
+	if err != nil {
+		logs.Log.Err(err).Msg(fmt.Sprintf("String Conversion to Float64 Failed! %s", str))
+		number = 0
+		isSuccess = false
+		return
+	}
+
+	// Success
+	number = conversion
+	isSuccess = true
+	return
 }
