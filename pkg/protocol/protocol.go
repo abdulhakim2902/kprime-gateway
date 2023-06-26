@@ -9,13 +9,10 @@ import (
 	"sync"
 	"time"
 
-	_engineType "gateway/internal/engine/types"
-
 	"git.devucc.name/dependencies/utilities/commons/logs"
 	"git.devucc.name/dependencies/utilities/types/validation_reason"
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type ProtocolType int
@@ -65,8 +62,8 @@ type ProtocolRequest struct {
 
 var protocolConnections map[any]ProtocolRequest
 var protocolMutex sync.RWMutex
-var channelConnections map[any]chan _engineType.BuySellEditResponse
-var channelResults map[any]_engineType.BuySellEditResponse
+var channelConnections map[any]chan RPCResponseMessage
+var channelResults map[any]RPCResponseMessage
 
 func (p *ProtocolRequest) getcollectorProtocol() collector.Protocol {
 	var protocol collector.Protocol
@@ -250,9 +247,9 @@ func doSend(key string, result any, err *ErrorMessage) bool {
 		break
 	case Channel:
 		if channelResults == nil {
-			channelResults = make(map[any]_engineType.BuySellEditResponse)
+			channelResults = make(map[any]RPCResponseMessage)
 		}
-		channelResults[key] = result.(_engineType.BuySellEditResponse)
+		channelResults[key] = m
 		break
 	}
 
@@ -291,15 +288,15 @@ func isConnExist(key string) bool {
 	return ok
 }
 
-func RegisterChannel(key string, channel chan _engineType.BuySellEditResponse) {
+func RegisterChannel(key string, channel chan RPCResponseMessage) {
 	if channelConnections == nil {
-		channelConnections = make(map[any]chan _engineType.BuySellEditResponse)
+		channelConnections = make(map[any]chan RPCResponseMessage)
 	}
 	channelConnections[key] = channel
-	res := _engineType.BuySellEditResponse{}
+	res := RPCResponseMessage{}
 	for {
 		res = channelResults[key]
-		if res.Order.OrderId != primitive.NilObjectID {
+		if res.Result != nil {
 			break
 		}
 	}

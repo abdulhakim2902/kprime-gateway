@@ -8,7 +8,6 @@ import (
 	"git.devucc.name/dependencies/utilities/types"
 
 	deribitModel "gateway/internal/deribit/model"
-	_engineType "gateway/internal/engine/types"
 	"gateway/pkg/protocol"
 	"gateway/pkg/utils"
 	"strconv"
@@ -80,14 +79,10 @@ func (h *DeribitHandler) buy(r *gin.Context) {
 		protocol.SendErrMsg(connKey, err)
 		return
 	}
-	channel := make(chan _engineType.BuySellEditResponse)
+	channel := make(chan protocol.RPCResponseMessage)
 	go protocol.RegisterChannel(connKey, channel)
 	res := <-channel
-	r.JSON(http.StatusOK, protocol.RPCResponseMessage{
-		JSONRPC: "2.0",
-		ID:      msg.Id,
-		Result:  res,
-	})
+	r.JSON(http.StatusOK, res)
 }
 
 func (h *DeribitHandler) sell(r *gin.Context) {
@@ -137,14 +132,10 @@ func (h *DeribitHandler) sell(r *gin.Context) {
 		return
 	}
 
-	channel := make(chan _engineType.BuySellEditResponse)
+	channel := make(chan protocol.RPCResponseMessage)
 	go protocol.RegisterChannel(connKey, channel)
 	res := <-channel
-	r.JSON(http.StatusOK, protocol.RPCResponseMessage{
-		JSONRPC: "2.0",
-		ID:      msg.Id,
-		Result:  res,
-	})
+	r.JSON(http.StatusOK, res)
 }
 
 func (h *DeribitHandler) edit(r *gin.Context) {
@@ -171,14 +162,10 @@ func (h *DeribitHandler) edit(r *gin.Context) {
 		protocol.SendErrMsg(connKey, err)
 		return
 	}
-	channel := make(chan _engineType.BuySellEditResponse)
+	channel := make(chan protocol.RPCResponseMessage)
 	go protocol.RegisterChannel(connKey, channel)
 	res := <-channel
-	r.JSON(http.StatusOK, protocol.RPCResponseMessage{
-		JSONRPC: "2.0",
-		ID:      msg.Id,
-		Result:  res,
-	})
+	r.JSON(http.StatusOK, res)
 }
 
 func (h *DeribitHandler) cancel(r *gin.Context) {
@@ -205,14 +192,10 @@ func (h *DeribitHandler) cancel(r *gin.Context) {
 		return
 	}
 
-	channel := make(chan _engineType.BuySellEditResponse)
+	channel := make(chan protocol.RPCResponseMessage)
 	go protocol.RegisterChannel(connKey, channel)
 	res := <-channel
-	r.JSON(http.StatusOK, protocol.RPCResponseMessage{
-		JSONRPC: "2.0",
-		ID:      msg.Id,
-		Result:  res,
-	})
+	r.JSON(http.StatusOK, res)
 
 }
 
@@ -239,14 +222,10 @@ func (h *DeribitHandler) cancelByInstrument(r *gin.Context) {
 		return
 	}
 
-	channel := make(chan _engineType.BuySellEditResponse)
+	channel := make(chan protocol.RPCResponseMessage)
 	go protocol.RegisterChannel(connKey, channel)
 	res := <-channel
-	r.JSON(http.StatusOK, protocol.RPCResponseMessage{
-		JSONRPC: "2.0",
-		ID:      msg.Id,
-		Result:  res,
-	})
+	r.JSON(http.StatusOK, res)
 }
 
 func (h *DeribitHandler) cancelAll(r *gin.Context) {
