@@ -101,7 +101,10 @@ func (svc deribitService) GetOrderBook(ctx context.Context, data model.DeribitGe
 		results.UnderlyingIndex = &_getIndexPrice[0].Price
 	}
 
-	_getSettlementPrice := svc.settlementPriceRepo.GetLatestSettlementPrice(_order)
+	_getSettlementPrice := svc.settlementPriceRepo.GetLatestSettlementPrice(
+		_order.Underlying,
+		_order.ExpiryDate,
+	)
 	if len(_getSettlementPrice) > 0 {
 		results.SettlementPrice = &_getSettlementPrice[0].Price
 	}

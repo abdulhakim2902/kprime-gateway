@@ -8,8 +8,8 @@ import (
 
 	_deribitModel "gateway/internal/deribit/model"
 	_engineType "gateway/internal/engine/types"
-	_orderbookType "gateway/internal/orderbook/types"
 
+	"git.devucc.name/dependencies/utilities/commons/date"
 	"git.devucc.name/dependencies/utilities/commons/logs"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -63,12 +63,10 @@ func (r SettlementPriceRepository) Find(filter interface{}, sort interface{}, of
 	return SettlementPrices, nil
 }
 
-func (r SettlementPriceRepository) GetLatestSettlementPrice(o _orderbookType.GetOrderBook) []*_engineType.SettlementPrice {
-	metadataPair := fmt.Sprintf("%s_usd", strings.ToLower(o.Underlying))
+func (r SettlementPriceRepository) GetLatestSettlementPrice(underlying, expDate string) []*_engineType.SettlementPrice {
+	metadataPair := fmt.Sprintf("%s_usd", strings.ToLower(underlying))
 
-	dateString := o.ExpiryDate
-	layout := "02Jan06"
-	ts, err := time.Parse(layout, dateString)
+	ts, err := date.ExpDateToTime(expDate)
 	if err != nil {
 		logs.Log.Error().Err(err).Msg("Error parsing date")
 		return nil
