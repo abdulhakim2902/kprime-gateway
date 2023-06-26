@@ -57,7 +57,9 @@ func (svc deribitService) GetOrderBook(ctx context.Context, data model.DeribitGe
 	if len(_getLowestTrade) > 0 {
 		_lowestPrice = _getLowestTrade[0].Price
 		for _, item := range _getLowestTrade {
-			_volumeAmount += item.Amount
+			// Convert string to float
+			conversion, _ := utils.ConvertToFloat(item.Amount)
+			_volumeAmount += conversion
 		}
 	}
 

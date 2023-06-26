@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"time"
 
 	deribitModel "gateway/internal/deribit/model"
 	authService "gateway/internal/user/service"
@@ -27,6 +28,8 @@ func (handler *DeribitHandler) RegisterPublic() {
 	handler.RegisterHandler("public/get_index_price", handler.getIndexPrice)
 	handler.RegisterHandler("public/get_last_trades_by_instrument", handler.getLastTradesByInstrument)
 	handler.RegisterHandler("public/get_delivery_prices", handler.getDeliveryPrices)
+	handler.RegisterHandler("public/get_tradingview_chart_data", handler.publicGetTradingviewChartData)
+	handler.RegisterHandler("public/get_time", handler.getTime)
 }
 
 func (h *DeribitHandler) auth(r *gin.Context) {
@@ -314,6 +317,31 @@ func (h *DeribitHandler) getDeliveryPrices(r *gin.Context) {
 	protocol.SendSuccessMsg(connKey, result)
 }
 
+func (h *DeribitHandler) publicGetTradingviewChartData(r *gin.Context) {
+	var msg deribitModel.RequestDto[deribitModel.GetTradingviewChartDataRequest]
+	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
+		r.AbortWithError(http.StatusBadRequest, err)
+		return
+	}
+
+	_, connKey, reason, err := requestHelper(msg.Id, msg.Method, r)
+	if err != nil {
+		protocol.SendValidationMsg(connKey, *reason, err)
+		return
+	}
+
+	result, err := h.svc.GetTradingViewChartData(context.TODO(), msg.Params)
+	if err != nil {
+		reason := validation_reason.OTHER
+
+		protocol.SendValidationMsg(connKey, reason, err)
+		return
+
+	}
+
+	protocol.SendSuccessMsg(connKey, result)
+}
+
 func (h *DeribitHandler) test(r *gin.Context) {
 	r.JSON(http.StatusOK, gin.H{
 		"jsonrpc": "2.0",
@@ -324,5 +352,19 @@ func (h *DeribitHandler) test(r *gin.Context) {
 		"usIn":    0,
 		"usOut":   0,
 		"usDiff":  0,
+	})
+}
+
+func (h *DeribitHandler) getTime(r *gin.Context) {
+	var msg deribitModel.RequestDto[interface{}]
+	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
+		r.AbortWithError(http.StatusBadRequest, err)
+		return
+	}
+	now := time.Now().UnixMilli()
+	r.JSON(http.StatusOK, protocol.RPCResponseMessage{
+		JSONRPC: "2.0",
+		Result:  now,
+		ID:      msg.Id,
 	})
 }

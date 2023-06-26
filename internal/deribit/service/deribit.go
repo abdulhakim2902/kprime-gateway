@@ -107,7 +107,7 @@ func (svc deribitService) DeribitRequest(
 		Underlying:     instruments.Underlying,
 		ExpirationDate: instruments.ExpDate,
 		StrikePrice:    instruments.Strike,
-		Type:           types.Type(upperType),
+		Type:           types.Type(strings.ToLower(string(data.Type))),
 		Side:           data.Side,
 		ClOrdID:        data.ClOrdID,
 		Price:          data.Price,
@@ -278,8 +278,9 @@ func (svc *deribitService) DeribitGetLastTradesByInstrument(ctx context.Context,
 		}
 
 		tradeObjectId := jsonDoc["_id"].(primitive.ObjectID)
+		conversion, _ := utils.ConvertToFloat(jsonDoc["amount"].(string))
 		resultData := model.DeribitGetLastTradesByInstrumentValue{
-			Amount:         jsonDoc["amount"].(float64),
+			Amount:         conversion,
 			Direction:      jsonDoc["side"].(string),
 			InstrumentName: fmt.Sprintf("%s-%s-%d-%s", underlying, expiryDate, int64(strikePrice), contracts),
 			Price:          jsonDoc["price"].(float64),

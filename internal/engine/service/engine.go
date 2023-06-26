@@ -250,10 +250,11 @@ func (svc engineHandler) PublishOrder(data _engineType.EngineResponse) {
 		return
 	}
 
+	conversion, _ := utils.ConvertToFloat(data.Matches.TakerOrder.FilledAmount)
 	order := _engineType.BuySellEditCancelOrder{
 		OrderState:          types.OrderStatus(data.Matches.TakerOrder.Status),
 		Usd:                 data.Matches.TakerOrder.Price,
-		FilledAmount:        data.Matches.TakerOrder.FilledAmount,
+		FilledAmount:        conversion,
 		InstrumentName:      instrumentName,
 		Direction:           types.Side(data.Matches.TakerOrder.Side),
 		LastUpdateTimestamp: utils.MakeTimestamp(data.Matches.TakerOrder.UpdatedAt),
@@ -286,9 +287,10 @@ func (svc engineHandler) PublishOrder(data _engineType.EngineResponse) {
 		trades := []_engineType.BuySellEditTrade{}
 		if data.Matches != nil && data.Matches.Trades != nil && len(data.Matches.Trades) > 0 {
 			for _, element := range data.Matches.Trades {
+				conversion, _ := utils.ConvertToFloat(element.Amount)
 				trades = append(trades, _engineType.BuySellEditTrade{
 					Advanced:       "usd",
-					Amount:         element.Amount,
+					Amount:         conversion,
 					Direction:      element.Side,
 					InstrumentName: instrumentName,
 					OrderId:        data.Matches.TakerOrder.ID,

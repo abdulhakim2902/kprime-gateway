@@ -275,15 +275,20 @@ func (r OrderRepository) GetOpenOrdersByInstrument(InstrumentName string, OrderT
 				"$cond": bson.M{"if": bson.M{"$and": []interface{}{bson.M{"$eq": []interface{}{bson.M{"$type": "$amendments"}, "array"}}, bson.M{"$ne": []interface{}{"$amendments", "[]"}}}},
 					"then": true,
 					"else": false}},
-			"filledAmount": "$filledAmount",
-			"amount":       "$amount",
-			"direction":    "$side",
-			"price":        "$price",
-			"orderId":      "$_id",
-			"timeInForce":  "$timeInForce",
-			"orderType":    "$type",
-			"orderState":   "$status",
-			"userId":       "$userId",
+			"filledAmount": bson.D{
+				{"$convert", bson.D{
+					{"input", "$filledAmount"},
+					{"to", "double"},
+				}},
+			},
+			"amount":      "$amount",
+			"direction":   "$side",
+			"price":       "$price",
+			"orderId":     "$_id",
+			"timeInForce": "$timeInForce",
+			"orderType":   "$type",
+			"orderState":  "$status",
+			"userId":      "$userId",
 
 			"label":               "$label",
 			"usd":                 "$price",
@@ -378,7 +383,6 @@ func (r OrderRepository) GetMarketData(instrumentName string, side string) (res 
 		fmt.Printf("%+v\n", err)
 	}
 
-	fmt.Println("res", res)
 	return res
 }
 
@@ -417,15 +421,20 @@ func (r OrderRepository) GetOrderHistoryByInstrument(InstrumentName string, Coun
 				"$cond": bson.M{"if": bson.M{"$and": []interface{}{bson.M{"$eq": []interface{}{bson.M{"$type": "$amendments"}, "array"}}, bson.M{"$ne": []interface{}{"$amendments", "[]"}}}},
 					"then": true,
 					"else": false}},
-			"filledAmount": "$filledAmount",
-			"amount":       "$amount",
-			"direction":    "$side",
-			"price":        "$price",
-			"orderId":      "$_id",
-			"timeInForce":  "$timeInForce",
-			"orderType":    "$type",
-			"orderState":   "$status",
-			"userId":       "$userId",
+			"filledAmount": bson.D{
+				{"$convert", bson.D{
+					{"input", "$filledAmount"},
+					{"to", "double"},
+				}},
+			},
+			"amount":      "$amount",
+			"direction":   "$side",
+			"price":       "$price",
+			"orderId":     "$_id",
+			"timeInForce": "$timeInForce",
+			"orderType":   "$type",
+			"orderState":  "$status",
+			"userId":      "$userId",
 
 			"label":               "$label",
 			"usd":                 "$price",
@@ -542,7 +551,12 @@ func (r OrderRepository) GetChangeOrdersByInstrument(InstrumentName string, user
 				"$cond": bson.M{"if": bson.M{"$and": []interface{}{bson.M{"$eq": []interface{}{bson.M{"$type": "$amendments"}, "array"}}, bson.M{"$ne": []interface{}{"$amendments", "[]"}}}},
 					"then": true,
 					"else": false}},
-			"filledAmount":        "$filledAmount",
+			"filledAmount": bson.D{
+				{"$convert", bson.D{
+					{"input", "$filledAmount"},
+					{"to", "double"},
+				}},
+			},
 			"amount":              "$amount",
 			"direction":           "$side",
 			"price":               "$price",
@@ -753,7 +767,10 @@ func (r OrderRepository) GetOrderBook(o _orderbookType.GetOrderBook) *_orderbook
 			{
 				"$group": bson.D{
 					{"_id", "$price"},
-					{"amount", bson.D{{"$sum", bson.M{"$subtract": []string{"$amount", "$filledAmount"}}}}},
+					{"amount", bson.D{{"$sum", bson.M{"$subtract": bson.A{
+						"$amount",
+						bson.M{"$toDouble": "$filledAmount"},
+					}}}}},
 					{"detail", bson.D{{"$first", "$$ROOT"}}},
 				},
 			},
@@ -1078,7 +1095,12 @@ func (r OrderRepository) GetOrderState(userId string, orderId string) ([]_deribi
 				"$cond": bson.M{"if": bson.M{"$and": []interface{}{bson.M{"$eq": []interface{}{bson.M{"$type": "$amendments"}, "array"}}, bson.M{"$ne": []interface{}{"$amendments", "[]"}}}},
 					"then": true,
 					"else": false}},
-			"filledAmount":        "$filledAmount",
+			"filledAmount": bson.D{
+				{"$convert", bson.D{
+					{"input", "$filledAmount"},
+					{"to", "double"},
+				}},
+			},
 			"amount":              "$amount",
 			"direction":           "$side",
 			"price":               "$price",
@@ -1117,23 +1139,6 @@ func (r OrderRepository) GetOrderState(userId string, orderId string) ([]_deribi
 	}
 	pipelineInstruments = append(pipelineInstruments, query)
 
-	// if userId == "" {
-	// 	query := bson.M{
-	// 		"$match": bson.M{
-	// 			"_id": objectID,
-	// 		},
-	// 	}
-	// 	pipelineInstruments = append(pipelineInstruments, query)
-	// } else {
-	// 	query := bson.M{
-	// 		"$match": bson.M{
-	// 			"_id":    objectID,
-	// 			"userId": userId,
-	// 		},
-	// 	}
-	// 	pipelineInstruments = append(pipelineInstruments, query)
-	// }
-
 	sortStage := bson.M{
 		"$sort": bson.M{
 			"createdAt": -1,
@@ -1146,7 +1151,6 @@ func (r OrderRepository) GetOrderState(userId string, orderId string) ([]_deribi
 
 	cursor, err := r.collection.Aggregate(context.Background(), pipelineInstruments)
 	if err != nil {
-		fmt.Printf("__cursorError:%+v\n", err)
 		return []_deribitModel.DeribitGetOrderStateResponse{}, nil
 	}
 
@@ -1189,14 +1193,19 @@ func (r OrderRepository) GetOrderStateByLabel(ctx context.Context, req _deribitM
 				"$cond": bson.M{"if": bson.M{"$and": []interface{}{bson.M{"$eq": []interface{}{bson.M{"$type": "$amendments"}, "array"}}, bson.M{"$ne": []interface{}{"$amendments", "[]"}}}},
 					"then": true,
 					"else": false}},
-			"filledAmount": "$filledAmount",
-			"amount":       "$amount",
-			"direction":    "$side",
-			"price":        "$price",
-			"orderId":      "$_id",
-			"timeInForce":  "$timeInForce",
-			"orderType":    "$type",
-			"orderState":   "$status",
+			"filledAmount": bson.D{
+				{"$convert", bson.D{
+					{"input", "$filledAmount"},
+					{"to", "double"},
+				}},
+			},
+			"amount":      "$amount",
+			"direction":   "$side",
+			"price":       "$price",
+			"orderId":     "$_id",
+			"timeInForce": "$timeInForce",
+			"orderType":   "$type",
+			"orderState":  "$status",
 
 			"label":               "$label",
 			"usd":                 "$price",
