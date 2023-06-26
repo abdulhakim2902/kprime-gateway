@@ -41,7 +41,7 @@ cp .env.example .env
 
 To be able to get private dependencies, you can use this following command:
 ```
-GOPRIVATE=git.devucc.name/dependencies/utilities go get git.devucc.name/dependencies/utilities@v1.0.3
+GOPRIVATE=git.devucc.name/dependencies/utilities go get git.devucc.name/dependencies/utilities@v1.0.48
 ```
 
 To run the application for development purposes:

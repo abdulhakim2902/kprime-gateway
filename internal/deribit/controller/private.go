@@ -82,7 +82,11 @@ func (h *DeribitHandler) buy(r *gin.Context) {
 	channel := make(chan protocol.RPCResponseMessage)
 	go protocol.RegisterChannel(connKey, channel)
 	res := <-channel
-	r.JSON(http.StatusOK, res)
+	code := http.StatusOK
+	if res.Error != nil {
+		code = res.Error.HttpStatusCode
+	}
+	r.JSON(code, res)
 }
 
 func (h *DeribitHandler) sell(r *gin.Context) {
@@ -135,7 +139,11 @@ func (h *DeribitHandler) sell(r *gin.Context) {
 	channel := make(chan protocol.RPCResponseMessage)
 	go protocol.RegisterChannel(connKey, channel)
 	res := <-channel
-	r.JSON(http.StatusOK, res)
+	code := http.StatusOK
+	if res.Error != nil {
+		code = res.Error.HttpStatusCode
+	}
+	r.JSON(code, res)
 }
 
 func (h *DeribitHandler) edit(r *gin.Context) {
@@ -165,7 +173,11 @@ func (h *DeribitHandler) edit(r *gin.Context) {
 	channel := make(chan protocol.RPCResponseMessage)
 	go protocol.RegisterChannel(connKey, channel)
 	res := <-channel
-	r.JSON(http.StatusOK, res)
+	code := http.StatusOK
+	if res.Error != nil {
+		code = res.Error.HttpStatusCode
+	}
+	r.JSON(code, res)
 }
 
 func (h *DeribitHandler) cancel(r *gin.Context) {
@@ -195,8 +207,11 @@ func (h *DeribitHandler) cancel(r *gin.Context) {
 	channel := make(chan protocol.RPCResponseMessage)
 	go protocol.RegisterChannel(connKey, channel)
 	res := <-channel
-	r.JSON(http.StatusOK, res)
-
+	code := http.StatusOK
+	if res.Error != nil {
+		code = res.Error.HttpStatusCode
+	}
+	r.JSON(code, res)
 }
 
 func (h *DeribitHandler) cancelByInstrument(r *gin.Context) {
@@ -225,7 +240,11 @@ func (h *DeribitHandler) cancelByInstrument(r *gin.Context) {
 	channel := make(chan protocol.RPCResponseMessage)
 	go protocol.RegisterChannel(connKey, channel)
 	res := <-channel
-	r.JSON(http.StatusOK, res)
+	code := http.StatusOK
+	if res.Error != nil {
+		code = res.Error.HttpStatusCode
+	}
+	r.JSON(code, res)
 }
 
 func (h *DeribitHandler) cancelAll(r *gin.Context) {
