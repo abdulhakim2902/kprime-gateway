@@ -106,9 +106,15 @@ func requestHelper(msgID uint64, method string, c *gin.Context) (
 	reason *validation_reason.ValidationReason,
 	err error,
 ) {
+	prtcl := protocol.HTTP
+	channelMethods := []string{"private/sell", "private/buy", "private/edit"}
+	if utils.ArrContains(channelMethods, method) {
+		prtcl = protocol.Channel
+	}
+
 	key := utils.GetKeyFromIdUserID(msgID, "")
 	if isDuplicateConnection := protocol.RegisterProtocolRequest(
-		key, protocol.ProtocolRequest{Http: c, Protocol: protocol.HTTP, Method: method},
+		key, protocol.ProtocolRequest{Http: c, Protocol: prtcl, Method: method},
 	); isDuplicateConnection {
 		validation := validation_reason.DUPLICATED_REQUEST_ID
 		reason = &validation

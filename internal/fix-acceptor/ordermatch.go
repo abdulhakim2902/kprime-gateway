@@ -1002,7 +1002,6 @@ func (a *Application) updateOrder(order Order, status enum.OrdStatus) {
 }
 
 func OrderConfirmation(userId string, order _orderbookType.Order, symbol string) {
-	fmt.Println("OrderConfirmation", order.Status)
 	if userSession == nil {
 		if userSession[userId] == nil {
 			return

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"time"
 
 	deribitModel "gateway/internal/deribit/model"
 	authService "gateway/internal/user/service"
@@ -28,6 +29,7 @@ func (handler *DeribitHandler) RegisterPublic() {
 	handler.RegisterHandler("public/get_last_trades_by_instrument", handler.getLastTradesByInstrument)
 	handler.RegisterHandler("public/get_delivery_prices", handler.getDeliveryPrices)
 	handler.RegisterHandler("public/get_tradingview_chart_data", handler.publicGetTradingviewChartData)
+	handler.RegisterHandler("public/get_time", handler.getTime)
 }
 
 func (h *DeribitHandler) auth(r *gin.Context) {
@@ -350,5 +352,19 @@ func (h *DeribitHandler) test(r *gin.Context) {
 		"usIn":    0,
 		"usOut":   0,
 		"usDiff":  0,
+	})
+}
+
+func (h *DeribitHandler) getTime(r *gin.Context) {
+	var msg deribitModel.RequestDto[interface{}]
+	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
+		r.AbortWithError(http.StatusBadRequest, err)
+		return
+	}
+	now := time.Now().UnixMilli()
+	r.JSON(http.StatusOK, protocol.RPCResponseMessage{
+		JSONRPC: "2.0",
+		Result:  now,
+		ID:      msg.Id,
 	})
 }

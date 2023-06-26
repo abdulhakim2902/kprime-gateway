@@ -14,6 +14,7 @@ import (
 	"gateway/pkg/ws"
 	"os"
 	"strings"
+	"time"
 
 	"git.devucc.name/dependencies/utilities/types/validation_reason"
 )
@@ -31,6 +32,7 @@ func (handler *wsHandler) RegisterPublic() {
 	ws.RegisterChannel("public/set_heartbeat", middleware.MiddlewaresWrapper(handler.setHeartbeat, middleware.RateLimiterWs))
 	ws.RegisterChannel("public/test", middleware.MiddlewaresWrapper(handler.test, middleware.RateLimiterWs))
 	ws.RegisterChannel("public/get_tradingview_chart_data", middleware.MiddlewaresWrapper(handler.publicGetTradingviewChartData, middleware.RateLimiterWs))
+	ws.RegisterChannel("public/get_time", middleware.MiddlewaresWrapper(handler.publicGetTime, middleware.RateLimiterWs))
 }
 
 func (svc *wsHandler) auth(input interface{}, c *ws.Client) {
@@ -486,4 +488,19 @@ func (svc *wsHandler) publicGetTradingviewChartData(input interface{}, c *ws.Cli
 	}
 
 	protocol.SendSuccessMsg(connKey, result)
+}
+
+func (svc *wsHandler) publicGetTime(input interface{}, c *ws.Client) {
+	var msg deribitModel.RequestDto[interface{}]
+	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
+		c.SendInvalidRequestMessage(err)
+		return
+	}
+
+	now := time.Now().UnixMilli()
+	c.Send(ws.WebsocketResponseMessage{
+		JSONRPC: "2.0",
+		ID:      msg.Id,
+		Result:  now,
+	})
 }

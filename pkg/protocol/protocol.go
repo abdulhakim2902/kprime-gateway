@@ -21,6 +21,7 @@ const (
 	Websocket ProtocolType = iota
 	HTTP
 	GRPC
+	Channel
 )
 
 type RPCResponseMessage struct {
@@ -61,6 +62,8 @@ type ProtocolRequest struct {
 
 var protocolConnections map[any]ProtocolRequest
 var protocolMutex sync.RWMutex
+var channelConnections map[any]chan RPCResponseMessage
+var channelResults map[any]RPCResponseMessage
 
 func (p *ProtocolRequest) getcollectorProtocol() collector.Protocol {
 	var protocol collector.Protocol
@@ -144,6 +147,7 @@ func GetProtocol(key string) (bool, ProtocolRequest) {
 
 // Responsible for constructing the message
 func SendSuccessMsg(key string, result any) bool {
+	fmt.Println("send", result)
 	return doSend(key, result, nil)
 }
 
@@ -210,7 +214,6 @@ func doSend(key string, result any, err *ErrorMessage) bool {
 	m.UsIn = conn.RequestedTime
 	m.UsOut = uint64(time.Now().UnixMicro())
 	m.UsDiff = m.UsOut - m.UsIn
-
 	switch conn.Protocol {
 	case Websocket:
 		msg := ws.WebsocketResponseMessage{
@@ -241,6 +244,17 @@ func doSend(key string, result any, err *ErrorMessage) bool {
 		break
 	case GRPC:
 		// TODO: add grpc response
+		break
+	case Channel:
+		if m.Error != nil {
+			conn.Http.JSON(m.Error.HttpStatusCode, m)
+			conn.Http.Abort()
+			break
+		}
+		if channelResults == nil {
+			channelResults = make(map[any]RPCResponseMessage)
+		}
+		channelResults[key] = m
 		break
 	}
 
@@ -277,4 +291,35 @@ func isConnExist(key string) bool {
 	defer protocolMutex.RUnlock()
 	_, ok := protocolConnections[key]
 	return ok
+}
+
+func RegisterChannel(key string, channel chan RPCResponseMessage) {
+	if channelConnections == nil {
+		channelConnections = make(map[any]chan RPCResponseMessage)
+	}
+	channelConnections[key] = channel
+	res := RPCResponseMessage{}
+	for {
+		res = channelResults[key]
+		if res.Result != nil {
+			break
+		}
+		select {
+		case <-time.After(10 * time.Second):
+			res = RPCResponseMessage{
+				Error: &ErrorMessage{
+					Message: validation_reason.TIME_OUT.String(),
+					Data: ReasonMessage{
+						Reason: validation_reason.TIME_OUT.String(),
+					},
+				},
+			}
+			break
+		}
+	}
+
+	// Delete object from map after reading
+	delete(channelResults, key)
+	delete(channelConnections, key)
+	channel <- res
 }
