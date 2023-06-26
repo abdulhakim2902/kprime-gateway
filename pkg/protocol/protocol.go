@@ -294,7 +294,6 @@ func isConnExist(key string) bool {
 }
 
 func RegisterChannel(key string, channel chan RPCResponseMessage) {
-	time.Sleep(time.Second * 10)
 	if channelConnections == nil {
 		channelConnections = make(map[any]chan RPCResponseMessage)
 	}
