@@ -304,6 +304,11 @@ func RegisterChannel(key string, channel chan RPCResponseMessage) {
 		if res.Result != nil {
 			break
 		}
+		select {
+		case <-time.After(10 * time.Second):
+			return
+		}
+
 	}
 
 	// Delete object from map after reading
