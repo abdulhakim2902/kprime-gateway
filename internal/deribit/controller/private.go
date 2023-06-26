@@ -8,7 +8,6 @@ import (
 	"git.devucc.name/dependencies/utilities/types"
 
 	deribitModel "gateway/internal/deribit/model"
-
 	"gateway/pkg/protocol"
 	"gateway/pkg/utils"
 	"strconv"
@@ -58,7 +57,7 @@ func (h *DeribitHandler) buy(r *gin.Context) {
 	}
 
 	// Call service
-	order, validation, err := h.svc.DeribitRequest(r.Request.Context(), userID, deribitModel.DeribitRequest{
+	_, validation, err := h.svc.DeribitRequest(r.Request.Context(), userID, deribitModel.DeribitRequest{
 		InstrumentName: msg.Params.InstrumentName,
 		Amount:         msg.Params.Amount,
 		Type:           msg.Params.Type,
@@ -80,8 +79,10 @@ func (h *DeribitHandler) buy(r *gin.Context) {
 		protocol.SendErrMsg(connKey, err)
 		return
 	}
-
-	protocol.SendSuccessMsg(connKey, order)
+	channel := make(chan protocol.RPCResponseMessage)
+	go protocol.RegisterChannel(connKey, channel)
+	res := <-channel
+	r.JSON(http.StatusOK, res)
 }
 
 func (h *DeribitHandler) sell(r *gin.Context) {
@@ -108,7 +109,7 @@ func (h *DeribitHandler) sell(r *gin.Context) {
 	}
 
 	// Call service
-	order, validation, err := h.svc.DeribitRequest(r.Request.Context(), userID, deribitModel.DeribitRequest{
+	_, validation, err := h.svc.DeribitRequest(r.Request.Context(), userID, deribitModel.DeribitRequest{
 		InstrumentName: msg.Params.InstrumentName,
 		Amount:         msg.Params.Amount,
 		Type:           msg.Params.Type,
@@ -131,7 +132,10 @@ func (h *DeribitHandler) sell(r *gin.Context) {
 		return
 	}
 
-	protocol.SendSuccessMsg(connKey, order)
+	channel := make(chan protocol.RPCResponseMessage)
+	go protocol.RegisterChannel(connKey, channel)
+	res := <-channel
+	r.JSON(http.StatusOK, res)
 }
 
 func (h *DeribitHandler) edit(r *gin.Context) {
@@ -148,7 +152,7 @@ func (h *DeribitHandler) edit(r *gin.Context) {
 		return
 	}
 	// Call service
-	order, err := h.svc.DeribitParseEdit(r.Request.Context(), userID, deribitModel.DeribitEditRequest{
+	_, err = h.svc.DeribitParseEdit(r.Request.Context(), userID, deribitModel.DeribitEditRequest{
 		Id:      msg.Params.Id,
 		Price:   msg.Params.Price,
 		Amount:  msg.Params.Amount,
@@ -158,8 +162,10 @@ func (h *DeribitHandler) edit(r *gin.Context) {
 		protocol.SendErrMsg(connKey, err)
 		return
 	}
-
-	protocol.SendSuccessMsg(connKey, order)
+	channel := make(chan protocol.RPCResponseMessage)
+	go protocol.RegisterChannel(connKey, channel)
+	res := <-channel
+	r.JSON(http.StatusOK, res)
 }
 
 func (h *DeribitHandler) cancel(r *gin.Context) {
@@ -177,7 +183,7 @@ func (h *DeribitHandler) cancel(r *gin.Context) {
 	}
 
 	// Call service
-	order, err := h.svc.DeribitParseCancel(r.Request.Context(), userID, deribitModel.DeribitCancelRequest{
+	_, err = h.svc.DeribitParseCancel(r.Request.Context(), userID, deribitModel.DeribitCancelRequest{
 		Id:      msg.Params.Id,
 		ClOrdID: strconv.FormatUint(msg.Id, 10),
 	})
@@ -186,7 +192,11 @@ func (h *DeribitHandler) cancel(r *gin.Context) {
 		return
 	}
 
-	protocol.SendSuccessMsg(connKey, order)
+	channel := make(chan protocol.RPCResponseMessage)
+	go protocol.RegisterChannel(connKey, channel)
+	res := <-channel
+	r.JSON(http.StatusOK, res)
+
 }
 
 func (h *DeribitHandler) cancelByInstrument(r *gin.Context) {
@@ -203,7 +213,7 @@ func (h *DeribitHandler) cancelByInstrument(r *gin.Context) {
 	}
 
 	// Call service
-	order, err := h.svc.DeribitCancelByInstrument(r.Request.Context(), userID, deribitModel.DeribitCancelByInstrumentRequest{
+	_, err = h.svc.DeribitCancelByInstrument(r.Request.Context(), userID, deribitModel.DeribitCancelByInstrumentRequest{
 		InstrumentName: msg.Params.InstrumentName,
 		ClOrdID:        strconv.FormatUint(msg.Id, 10),
 	})
@@ -212,7 +222,10 @@ func (h *DeribitHandler) cancelByInstrument(r *gin.Context) {
 		return
 	}
 
-	protocol.SendSuccessMsg(connKey, order)
+	channel := make(chan protocol.RPCResponseMessage)
+	go protocol.RegisterChannel(connKey, channel)
+	res := <-channel
+	r.JSON(http.StatusOK, res)
 }
 
 func (h *DeribitHandler) cancelAll(r *gin.Context) {

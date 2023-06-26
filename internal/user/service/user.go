@@ -83,6 +83,7 @@ func (svc *userService) syncMemDB(c *gin.Context) {
 		return
 	}
 
+	fmt.Println("xasd")
 	c.JSON(http.StatusOK, gin.H{"message": "success"})
 
 }
