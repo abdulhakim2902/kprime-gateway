@@ -306,9 +306,16 @@ func RegisterChannel(key string, channel chan RPCResponseMessage) {
 		}
 		select {
 		case <-time.After(10 * time.Second):
-			return
+			res = RPCResponseMessage{
+				Error: &ErrorMessage{
+					Message: validation_reason.TIME_OUT.String(),
+					Data: ReasonMessage{
+						Reason: validation_reason.TIME_OUT.String(),
+					},
+				},
+			}
+			break
 		}
-
 	}
 
 	// Delete object from map after reading
