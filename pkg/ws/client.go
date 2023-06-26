@@ -153,6 +153,13 @@ func (c *Client) EnableCancelOnDisconnect(connKey string) {
 	c.ConnectionKey = connKey
 }
 
+func (c *Client) DisableCancelOnDisconnect(connKey string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.EnableCancel = false
+	c.ConnectionKey = connKey
+}
+
 // SendMessage constructs the message with proper structure to be sent over websocket
 func (c *Client) SendMessage(payload interface{}, params SendMessageParams) {
 	var m WebsocketResponseMessage
