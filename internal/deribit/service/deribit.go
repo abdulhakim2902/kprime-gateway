@@ -16,7 +16,6 @@ import (
 	"strings"
 	"time"
 
-	_engineType "gateway/internal/engine/types"
 	userSchema "gateway/schema"
 
 	"git.devucc.name/dependencies/utilities/commons/logs"
@@ -139,7 +138,7 @@ func (svc deribitService) DeribitRequest(
 	return &payload, nil, nil
 }
 
-func (svc deribitService) DeribitParseEdit(ctx context.Context, userId string, data model.DeribitEditRequest) (*_engineType.BuySellEditResponse, error) {
+func (svc deribitService) DeribitParseEdit(ctx context.Context, userId string, data model.DeribitEditRequest) (*model.DeribitEditResponse, error) {
 
 	edit := model.DeribitEditResponse{
 		Id:       data.Id,
@@ -160,35 +159,10 @@ func (svc deribitService) DeribitParseEdit(ctx context.Context, userId string, d
 	//send to kafka
 	producer.KafkaProducer(string(_edit), "NEW_ORDER")
 
-	order, err := svc.orderRepo.Find(bson.M{
-		"_id": data.Id,
-	}, nil, 0, 1)
-
-	if err != nil {
-		logs.Log.Error().Err(err).Msg("")
-		return nil, err
-	}
-
-	resp := _engineType.BuySellEditResponse{
-		Order: _engineType.BuySellEditCancelOrder{
-			OrderState:  types.OrderStatus(order[0].Status),
-			Usd:         order[0].Price,
-			Amount:      order[0].Amount,
-			Direction:   types.Side(order[0].Side),
-			Price:       order[0].Price,
-			OrderId:     order[0].ID,
-			OrderType:   types.Type(order[0].Type),
-			TimeInForce: types.TimeInForce(order[0].TimeInForce),
-			Api:         true,
-			MaxShow:     order[0].MaxShow,
-			PostOnly:    order[0].PostOnly,
-			ReduceOnly:  order[0].ReduceOnly,
-		},
-	}
-	return &resp, nil
+	return &edit, nil
 }
 
-func (svc deribitService) DeribitParseCancel(ctx context.Context, userId string, data model.DeribitCancelRequest) (*_engineType.BuySellEditResponse, error) {
+func (svc deribitService) DeribitParseCancel(ctx context.Context, userId string, data model.DeribitCancelRequest) (*model.DeribitCancelResponse, error) {
 	cancel := model.DeribitCancelResponse{
 		Id:       data.Id,
 		UserId:   userId,
@@ -210,36 +184,7 @@ func (svc deribitService) DeribitParseCancel(ctx context.Context, userId string,
 	//send to kafka
 	producer.KafkaProducer(string(_cancel), "NEW_ORDER")
 
-	order, err := svc.orderRepo.Find(bson.M{
-		"_id": data.Id,
-	}, nil, 0, 1)
-
-	if err != nil {
-		logs.Log.Error().Err(err).Msg("")
-		return nil, err
-	}
-
-	if len(order) == 0 {
-		return nil, errors.New("order not found")
-	}
-
-	resp := _engineType.BuySellEditResponse{
-		Order: _engineType.BuySellEditCancelOrder{
-			OrderState:  types.OrderStatus(order[0].Status),
-			Usd:         order[0].Price,
-			Amount:      order[0].Amount,
-			Direction:   types.Side(order[0].Side),
-			Price:       order[0].Price,
-			OrderId:     order[0].ID,
-			OrderType:   types.Type(order[0].Type),
-			TimeInForce: types.TimeInForce(order[0].TimeInForce),
-			Api:         true,
-			MaxShow:     order[0].MaxShow,
-			PostOnly:    order[0].PostOnly,
-			ReduceOnly:  order[0].ReduceOnly,
-		},
-	}
-	return &resp, nil
+	return &cancel, nil
 }
 
 func (svc deribitService) DeribitCancelByInstrument(ctx context.Context, userId string, data model.DeribitCancelByInstrumentRequest) (*model.DeribitCancelByInstrumentResponse, error) {
