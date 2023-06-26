@@ -19,6 +19,7 @@ import (
 	Greeks "git.devucc.name/dependencies/utilities/helper/greeks"
 	IV "git.devucc.name/dependencies/utilities/helper/implied_volatility"
 	"git.devucc.name/dependencies/utilities/models/trade"
+	"github.com/shopspring/decimal"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -1341,8 +1342,14 @@ func (r TradeRepository) GetTradingViewChartData(req _deribitModel.GetTradingvie
 
 		var cost, volume float64
 		for _, trade := range reso.Trades {
-			cost += (trade.Amount * trade.Price)
-			volume += trade.Amount
+			amount, err := decimal.NewFromString(trade.Amount)
+			if err != nil {
+				logs.Log.Error().Err(err).Msg("cannot parsed amount")
+				continue
+			}
+
+			cost += amount.Mul(decimal.NewFromFloat(trade.Price)).InexactFloat64()
+			volume += amount.InexactFloat64()
 		}
 
 		res.Cost = append(res.Cost, cost)
