@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"git.devucc.name/dependencies/utilities/commons/logs"
 	"git.devucc.name/dependencies/utilities/types"
 
 	deribitModel "gateway/internal/deribit/model"
@@ -81,8 +82,23 @@ func (h *DeribitHandler) buy(r *gin.Context) {
 	}
 	channel := make(chan protocol.RPCResponseMessage)
 	go protocol.RegisterChannel(connKey, channel)
-	res := <-channel
-	r.JSON(http.StatusOK, res)
+	select {
+	case <-time.After(11 * time.Second):
+		logs.Log.Error().Msg("Timeout")
+		r.JSON(http.StatusOK, protocol.RPCResponseMessage{
+			JSONRPC: "2.0",
+			ID:      msg.Id,
+			Error: &protocol.ErrorMessage{
+				Message:        "Timeout",
+				HttpStatusCode: http.StatusGatewayTimeout,
+				Data: protocol.ReasonMessage{
+					Reason: validation_reason.TIME_OUT.String(),
+				},
+			},
+		})
+	case res := <-channel:
+		r.JSON(http.StatusOK, res)
+	}
 }
 
 func (h *DeribitHandler) sell(r *gin.Context) {
@@ -134,8 +150,23 @@ func (h *DeribitHandler) sell(r *gin.Context) {
 
 	channel := make(chan protocol.RPCResponseMessage)
 	go protocol.RegisterChannel(connKey, channel)
-	res := <-channel
-	r.JSON(http.StatusOK, res)
+	select {
+	case <-time.After(11 * time.Second):
+		logs.Log.Error().Msg("Timeout")
+		r.JSON(http.StatusOK, protocol.RPCResponseMessage{
+			JSONRPC: "2.0",
+			ID:      msg.Id,
+			Error: &protocol.ErrorMessage{
+				Message:        "Timeout",
+				HttpStatusCode: http.StatusGatewayTimeout,
+				Data: protocol.ReasonMessage{
+					Reason: validation_reason.TIME_OUT.String(),
+				},
+			},
+		})
+	case res := <-channel:
+		r.JSON(http.StatusOK, res)
+	}
 }
 
 func (h *DeribitHandler) edit(r *gin.Context) {
@@ -164,8 +195,29 @@ func (h *DeribitHandler) edit(r *gin.Context) {
 	}
 	channel := make(chan protocol.RPCResponseMessage)
 	go protocol.RegisterChannel(connKey, channel)
-	res := <-channel
-	r.JSON(http.StatusOK, res)
+	select {
+	case <-time.After(11 * time.Second):
+		logs.Log.Error().Msg("Timeout")
+		if r.IsAborted() {
+			return
+		}
+		r.JSON(http.StatusOK, protocol.RPCResponseMessage{
+			JSONRPC: "2.0",
+			ID:      msg.Id,
+			Error: &protocol.ErrorMessage{
+				Message:        "Timeout",
+				HttpStatusCode: http.StatusGatewayTimeout,
+				Data: protocol.ReasonMessage{
+					Reason: validation_reason.TIME_OUT.String(),
+				},
+			},
+		})
+	case res := <-channel:
+		if r.IsAborted() {
+			return
+		}
+		r.JSON(http.StatusOK, res)
+	}
 }
 
 func (h *DeribitHandler) cancel(r *gin.Context) {
@@ -194,8 +246,23 @@ func (h *DeribitHandler) cancel(r *gin.Context) {
 
 	channel := make(chan protocol.RPCResponseMessage)
 	go protocol.RegisterChannel(connKey, channel)
-	res := <-channel
-	r.JSON(http.StatusOK, res)
+	select {
+	case <-time.After(11 * time.Second):
+		logs.Log.Error().Msg("Timeout")
+		r.JSON(http.StatusOK, protocol.RPCResponseMessage{
+			JSONRPC: "2.0",
+			ID:      msg.Id,
+			Error: &protocol.ErrorMessage{
+				Message:        "Timeout",
+				HttpStatusCode: http.StatusGatewayTimeout,
+				Data: protocol.ReasonMessage{
+					Reason: validation_reason.TIME_OUT.String(),
+				},
+			},
+		})
+	case res := <-channel:
+		r.JSON(http.StatusOK, res)
+	}
 
 }
 
@@ -224,8 +291,23 @@ func (h *DeribitHandler) cancelByInstrument(r *gin.Context) {
 
 	channel := make(chan protocol.RPCResponseMessage)
 	go protocol.RegisterChannel(connKey, channel)
-	res := <-channel
-	r.JSON(http.StatusOK, res)
+	select {
+	case <-time.After(11 * time.Second):
+		logs.Log.Error().Msg("Timeout")
+		r.JSON(http.StatusOK, protocol.RPCResponseMessage{
+			JSONRPC: "2.0",
+			ID:      msg.Id,
+			Error: &protocol.ErrorMessage{
+				Message:        "Timeout",
+				HttpStatusCode: http.StatusGatewayTimeout,
+				Data: protocol.ReasonMessage{
+					Reason: validation_reason.TIME_OUT.String(),
+				},
+			},
+		})
+	case res := <-channel:
+		r.JSON(http.StatusOK, res)
+	}
 }
 
 func (h *DeribitHandler) cancelAll(r *gin.Context) {
