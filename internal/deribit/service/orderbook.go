@@ -8,6 +8,8 @@ import (
 	_orderbookTypes "gateway/internal/orderbook/types"
 	"gateway/pkg/utils"
 	"time"
+
+	"git.devucc.name/dependencies/utilities/commons/logs"
 )
 
 func (svc deribitService) GetOrderBook(ctx context.Context, data model.DeribitGetOrderBookRequest) *model.DeribitGetOrderBookResponse {
@@ -27,7 +29,8 @@ func (svc deribitService) GetOrderBook(ctx context.Context, data model.DeribitGe
 	layout := "02Jan06"
 	date, err := time.Parse(layout, dateString)
 	if err != nil {
-		fmt.Println("Error parsing date:", err)
+		logs.Log.Error().Err(err).Msg("Error parsing date")
+		return nil
 	}
 	currentTime := time.Now()
 	oneDayAgo := currentTime.AddDate(0, 0, -1)

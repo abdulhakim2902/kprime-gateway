@@ -10,6 +10,7 @@ import (
 	_engineType "gateway/internal/engine/types"
 	_orderbookType "gateway/internal/orderbook/types"
 
+	"git.devucc.name/dependencies/utilities/commons/logs"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -63,12 +64,22 @@ func (r SettlementPriceRepository) Find(filter interface{}, sort interface{}, of
 }
 
 func (r SettlementPriceRepository) GetLatestSettlementPrice(o _orderbookType.GetOrderBook) []*_engineType.SettlementPrice {
-	metadataType := "index"
 	metadataPair := fmt.Sprintf("%s_usd", strings.ToLower(o.Underlying))
+
+	dateString := o.ExpiryDate
+	layout := "02Jan06"
+	ts, err := time.Parse(layout, dateString)
+	if err != nil {
+		logs.Log.Error().Err(err).Msg("Error parsing date")
+		return nil
+	}
 
 	tradesQuery := bson.M{
 		"metadata.pair": metadataPair,
-		"metadata.type": metadataType,
+		"ts": bson.M{
+			"$gte": ts,
+			"$lt":  ts.AddDate(0, 0, 1),
+		},
 	}
 	tradesSort := bson.M{
 		"ts": -1,
