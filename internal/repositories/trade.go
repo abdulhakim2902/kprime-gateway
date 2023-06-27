@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"reflect"
 	"sort"
 	"strconv"
@@ -1314,8 +1313,6 @@ func (r TradeRepository) GetTradingViewChartData(req _deribitModel.GetTradingvie
 		// Set endTs as start for the next resolution mapping
 		start = endTs
 	}
-
-	log.Println(len(resolutions))
 
 	res = _deribitModel.GetTradingviewChartDataResponse{
 		Close:  []float64{},
