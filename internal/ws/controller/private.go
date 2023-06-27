@@ -35,6 +35,8 @@ func (handler *wsHandler) RegisterPrivate() {
 	ws.RegisterChannel("private/unsubscribe", middleware.MiddlewaresWrapper(handler.privateUnsubscribe, middleware.RateLimiterWs))
 	ws.RegisterChannel("private/unsubscribe_all", middleware.MiddlewaresWrapper(handler.privateUnsubscribeAll, middleware.RateLimiterWs))
 	ws.RegisterChannel("private/enable_cancel_on_disconnect", middleware.MiddlewaresWrapper(handler.EnableCancelOnDisconnect, middleware.RateLimiterWs))
+	ws.RegisterChannel("private/disable_cancel_on_disconnect", middleware.MiddlewaresWrapper(handler.DisableCancelOnDisconnect, middleware.RateLimiterWs))
+	ws.RegisterChannel("private/get_cancel_on_disconnect", middleware.MiddlewaresWrapper(handler.GetCancelOnDisconnect, middleware.RateLimiterWs))
 }
 
 func (svc *wsHandler) buy(input interface{}, c *ws.Client) {
@@ -604,4 +606,43 @@ func (svc wsHandler) EnableCancelOnDisconnect(input interface{}, c *ws.Client) {
 	c.EnableCancelOnDisconnect(id)
 
 	protocol.SendSuccessMsg(connKey, "ok")
+}
+
+func (svc wsHandler) DisableCancelOnDisconnect(input interface{}, c *ws.Client) {
+	var msg deribitModel.RequestDto[deribitModel.RequestParams]
+	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
+		c.SendInvalidRequestMessage(err)
+		return
+	}
+
+	_, connKey, reason, err := requestHelper(msg.Id, msg.Method, &msg.Params.AccessToken, c)
+	if err != nil {
+		protocol.SendValidationMsg(connKey, *reason, err)
+		return
+	}
+	id := fmt.Sprintf("%v", &c.Conn)
+
+	c.DisableCancelOnDisconnect(id)
+
+	protocol.SendSuccessMsg(connKey, "ok")
+}
+
+func (svc wsHandler) GetCancelOnDisconnect(input interface{}, c *ws.Client) {
+	var msg deribitModel.RequestDto[deribitModel.RequestParams]
+	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
+		c.SendInvalidRequestMessage(err)
+		return
+	}
+
+	_, connKey, reason, err := requestHelper(msg.Id, msg.Method, &msg.Params.AccessToken, c)
+	if err != nil {
+		protocol.SendValidationMsg(connKey, *reason, err)
+		return
+	}
+	res := deribitModel.GetCancelOnDisconnectResponse{
+		Scope:   "connection",
+		Enabled: c.EnableCancel,
+	}
+
+	protocol.SendSuccessMsg(connKey, res)
 }
