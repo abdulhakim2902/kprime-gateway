@@ -1278,7 +1278,7 @@ func (r TradeRepository) GetTradingViewChartData(req _deribitModel.GetTradingvie
 	if !ok {
 		vr := validation_reason.INVALID_PARAMS
 		reason = &vr
-		err = errors.New("invaild resolution")
+		err = errors.New("invalid resolution")
 		return
 	}
 
