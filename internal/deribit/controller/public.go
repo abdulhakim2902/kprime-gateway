@@ -242,7 +242,7 @@ func (h *DeribitHandler) getIndexPrice(r *gin.Context) {
 		return
 	}
 
-	if types.Pair(msg.Method).IsValid() == false {
+	if types.Pair(msg.Params.IndexName).IsValid() == false {
 		protocol.SendValidationMsg(connKey,
 			validation_reason.INVALID_PARAMS, errors.New("invalid index_name"))
 		return
