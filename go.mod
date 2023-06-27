@@ -3,7 +3,7 @@ module gateway
 go 1.20
 
 require (
-	git.devucc.name/dependencies/utilities v1.0.51
+	git.devucc.name/dependencies/utilities v1.0.53
 	github.com/Shopify/sarama v1.38.1
 	github.com/gin-gonic/gin v1.9.0
 	github.com/go-playground/locales v0.14.1
@@ -27,8 +27,6 @@ require (
 	github.com/ulule/limiter/v3 v3.11.2
 	go.mongodb.org/mongo-driver v1.11.6
 )
-
-replace git.devucc.name/dependencies/utilities v1.0.49 => ../../utilities
 
 require (
 	github.com/armon/go-proxyproto v0.0.0-20210323213023-7e956b284f0a // indirect

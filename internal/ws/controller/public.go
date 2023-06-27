@@ -16,7 +16,7 @@ import (
 	"strings"
 	"time"
 
-	"git.devucc.name/dependencies/utilities/types"
+	"git.devucc.name/dependencies/utilities/config/types"
 	"git.devucc.name/dependencies/utilities/types/validation_reason"
 )
 
