@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"reflect"
 	"sort"
 	"strconv"
@@ -1293,14 +1294,15 @@ func (r TradeRepository) GetTradingViewChartData(req _deribitModel.GetTradingvie
 	}
 
 	resolutions := []resolution{}
+	endTs := end
 	for {
-		endTs := start.Add(time.Duration(resolutionRange) * time.Minute)
-
 		// If endTs Mapping is after request end timestamp
 		// stop mapped the resolution
-		if endTs.After(end) {
+		if endTs.After(end) || (endTs.Equal(end) && len(resolutions) == 1) {
 			break
 		}
+
+		endTs = start.Add(time.Duration(resolutionRange) * time.Minute)
 
 		// Add resolution
 		resolutions = append(resolutions, resolution{
@@ -1312,6 +1314,8 @@ func (r TradeRepository) GetTradingViewChartData(req _deribitModel.GetTradingvie
 		// Set endTs as start for the next resolution mapping
 		start = endTs
 	}
+
+	log.Println(len(resolutions))
 
 	res = _deribitModel.GetTradingviewChartDataResponse{
 		Close:  []float64{},
