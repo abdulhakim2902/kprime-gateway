@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 	"sort"
@@ -19,6 +20,7 @@ import (
 	Greeks "git.devucc.name/dependencies/utilities/helper/greeks"
 	IV "git.devucc.name/dependencies/utilities/helper/implied_volatility"
 	"git.devucc.name/dependencies/utilities/models/trade"
+	"git.devucc.name/dependencies/utilities/types/validation_reason"
 	"github.com/shopspring/decimal"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -1195,7 +1197,7 @@ func (r TradeRepository) FilterUserTradesByOrder(userId string, orderId string) 
 	return result, nil
 }
 
-func (r TradeRepository) GetTradingViewChartData(req _deribitModel.GetTradingviewChartDataRequest) (res _deribitModel.GetTradingviewChartDataResponse, err error) {
+func (r TradeRepository) GetTradingViewChartData(req _deribitModel.GetTradingviewChartDataRequest) (res _deribitModel.GetTradingviewChartDataResponse, reason *validation_reason.ValidationReason, err error) {
 	options := options.AggregateOptions{
 		MaxTime: &defaultTimeout,
 	}
@@ -1203,6 +1205,9 @@ func (r TradeRepository) GetTradingViewChartData(req _deribitModel.GetTradingvie
 	var instrument *utils.Instruments
 	instrument, err = utils.ParseInstruments(req.InstrumentName)
 	if err != nil {
+		vr := validation_reason.INVALID_PARAMS
+		reason = &vr
+
 		logs.Log.Error().Err(err).Msg("")
 		return
 	}
@@ -1254,21 +1259,58 @@ func (r TradeRepository) GetTradingViewChartData(req _deribitModel.GetTradingvie
 
 	// Resolution
 	// (1, 3, 5, 10, 15, 30, 60, 120, 180, 360, 720, 1D)
-	start := time.UnixMilli(req.StartTimestamp)
+	resolutionMap := map[string]uint64{
+		"1":   1,
+		"3":   3,
+		"5":   5,
+		"10":  10,
+		"15":  15,
+		"30":  30,
+		"60":  60,
+		"120": 120,
+		"180": 180,
+		"360": 360,
+		"720": 720,
+		"1D":  1440,
+	}
 
-	resolutions := []resolution{
-		{start, start.Add(time.Minute), []trade.Trade{}},
-		{start, start.Add(3 * time.Minute), []trade.Trade{}},
-		{start, start.Add(5 * time.Minute), []trade.Trade{}},
-		{start, start.Add(10 * time.Minute), []trade.Trade{}},
-		{start, start.Add(15 * time.Minute), []trade.Trade{}},
-		{start, start.Add(30 * time.Minute), []trade.Trade{}},
-		{start, start.Add(60 * time.Minute), []trade.Trade{}},
-		{start, start.Add(120 * time.Minute), []trade.Trade{}},
-		{start, start.Add(180 * time.Minute), []trade.Trade{}},
-		{start, start.Add(360 * time.Minute), []trade.Trade{}},
-		{start, start.Add(720 * time.Minute), []trade.Trade{}},
-		{start, start.Add(24 * time.Hour), []trade.Trade{}},
+	resolutionRange, ok := resolutionMap[req.Resolution]
+	if !ok {
+		vr := validation_reason.INVALID_PARAMS
+		reason = &vr
+		err = errors.New("invaild resolution")
+		return
+	}
+
+	start := time.UnixMilli(req.StartTimestamp)
+	end := time.UnixMilli(req.EndTimestamp)
+
+	if end.Before(start) || start.Equal(end) {
+		vr := validation_reason.INVALID_PARAMS
+		reason = &vr
+		err = errors.New("end timestamp must greater than start timestamp")
+		return
+	}
+
+	resolutions := []resolution{}
+	for {
+		endTs := start.Add(time.Duration(resolutionRange) * time.Minute)
+
+		// If endTs Mapping is after request end timestamp
+		// stop mapped the resolution
+		if endTs.After(end) {
+			break
+		}
+
+		// Add resolution
+		resolutions = append(resolutions, resolution{
+			start,
+			endTs,
+			[]trade.Trade{},
+		})
+
+		// Set endTs as start for the next resolution mapping
+		start = endTs
 	}
 
 	res = _deribitModel.GetTradingviewChartDataResponse{

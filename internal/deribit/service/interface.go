@@ -23,7 +23,7 @@ type IDeribitService interface {
 	GetOrderBook(ctx context.Context, data model.DeribitGetOrderBookRequest) *model.DeribitGetOrderBookResponse
 	GetIndexPrice(ctx context.Context, data model.DeribitGetIndexPriceRequest) model.DeribitGetIndexPriceResponse
 	GetDeliveryPrices(ctx context.Context, request model.DeliveryPricesRequest) model.DeliveryPricesResponse
-	GetTradingViewChartData(ctx context.Context, request model.GetTradingviewChartDataRequest) (model.GetTradingviewChartDataResponse, error)
+	GetTradingViewChartData(ctx context.Context, request model.GetTradingviewChartDataRequest) (model.GetTradingviewChartDataResponse, *validation_reason.ValidationReason, error)
 
 	FetchUserBalance(currency string, userID string) model.GetAccountSummaryResult
 
