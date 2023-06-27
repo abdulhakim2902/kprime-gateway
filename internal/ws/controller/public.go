@@ -16,6 +16,7 @@ import (
 	"strings"
 	"time"
 
+	"git.devucc.name/dependencies/utilities/types"
 	"git.devucc.name/dependencies/utilities/types/validation_reason"
 )
 
@@ -378,6 +379,12 @@ func (svc *wsHandler) getIndexPrice(input interface{}, c *ws.Client) {
 	_, connKey, reason, err := requestHelper(msg.Id, msg.Method, nil, c)
 	if err != nil {
 		protocol.SendValidationMsg(connKey, *reason, err)
+		return
+	}
+
+	if types.Pair(msg.Params.IndexName).IsValid() == false {
+		protocol.SendValidationMsg(connKey,
+			validation_reason.INVALID_PARAMS, errors.New("invalid index_name"))
 		return
 	}
 

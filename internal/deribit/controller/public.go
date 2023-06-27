@@ -15,6 +15,7 @@ import (
 	"gateway/pkg/utils"
 	"strings"
 
+	"git.devucc.name/dependencies/utilities/types"
 	"git.devucc.name/dependencies/utilities/types/validation_reason"
 
 	"github.com/gin-gonic/gin"
@@ -241,6 +242,11 @@ func (h *DeribitHandler) getIndexPrice(r *gin.Context) {
 		return
 	}
 
+	if types.Pair(msg.Params.IndexName).IsValid() == false {
+		protocol.SendValidationMsg(connKey,
+			validation_reason.INVALID_PARAMS, errors.New("invalid index_name"))
+		return
+	}
 	// Call service
 	result := h.svc.GetIndexPrice(context.TODO(), deribitModel.DeribitGetIndexPriceRequest{
 		IndexName: msg.Params.IndexName,
