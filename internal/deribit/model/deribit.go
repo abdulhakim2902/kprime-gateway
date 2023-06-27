@@ -561,3 +561,8 @@ type GetTradingviewChartDataResponse struct {
 	Volume []float64 `json:"volume"`
 	Status string    `json:"status"`
 }
+
+type GetCancelOnDisconnectResponse struct {
+	Scope   string `json:"scope"`
+	Enabled bool   `json:"enabled"`
+}
