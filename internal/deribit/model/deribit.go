@@ -22,9 +22,9 @@ type RequestParams struct {
 	Id             string            `json:"id" form:"id"`
 	AccessToken    string            `json:"access_token" form:"access_token"`
 	InstrumentName string            `json:"instrument_name" form:"instrument_name"`
-	Amount         float64           `json:"amount" form:"amount"`
+	Amount         float64           `json:"amount" validate:"required" form:"amount"`
 	Type           types.Type        `json:"type" form:"type"`
-	Price          float64           `json:"price" form:"price"`
+	Price          float64           `json:"price" validate:"required" form:"price"`
 	MaxShow        *float64          `json:"max_show,omitempty" form:"max_show,omitempty"`
 	PostOnly       bool              `json:"post_only,omitempty" form:"post_only,omitempty"`
 	ReduceOnly     bool              `json:"reduce_only,omitempty" form:"reduce_only,omitempty"`
