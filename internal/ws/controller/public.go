@@ -16,6 +16,7 @@ import (
 	"strings"
 	"time"
 
+	"git.devucc.name/dependencies/utilities/config/types"
 	"git.devucc.name/dependencies/utilities/types/validation_reason"
 )
 
@@ -381,6 +382,12 @@ func (svc *wsHandler) getIndexPrice(input interface{}, c *ws.Client) {
 		return
 	}
 
+	if types.Pair(msg.Params.IndexName).IsValid() == false {
+		protocol.SendValidationMsg(connKey,
+			validation_reason.INVALID_PARAMS, errors.New("invalid index_name"))
+		return
+	}
+
 	result := svc.wsOBSvc.GetIndexPrice(context.TODO(), deribitModel.DeribitGetIndexPriceRequest{
 		IndexName: msg.Params.IndexName,
 	})
@@ -478,13 +485,17 @@ func (svc *wsHandler) publicGetTradingviewChartData(input interface{}, c *ws.Cli
 		return
 	}
 
-	result, err := svc.deribitSvc.GetTradingViewChartData(context.TODO(), msg.Params)
+	result, reason, err := svc.deribitSvc.GetTradingViewChartData(context.TODO(), msg.Params)
 	if err != nil {
-		reason := validation_reason.OTHER
+		if reason != nil {
+			reason := validation_reason.OTHER
 
-		protocol.SendValidationMsg(connKey, reason, err)
+			protocol.SendValidationMsg(connKey, reason, err)
+			return
+		}
+
+		protocol.SendErrMsg(connKey, err)
 		return
-
 	}
 
 	protocol.SendSuccessMsg(connKey, result)

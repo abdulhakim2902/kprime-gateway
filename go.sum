@@ -2,6 +2,10 @@ git.devucc.name/dependencies/utilities v1.0.48 h1:IFGxTH7gQvYtHZqXoQWMb567VYCOR3
 git.devucc.name/dependencies/utilities v1.0.48/go.mod h1:r0MWNTFkdEbDqawaKg0o2fECHThv7cLB2ATpo8E8yko=
 git.devucc.name/dependencies/utilities v1.0.51 h1:J9VYauz9Tyt3298NbqZITX1BYbjNzAuyltU/54TgkGU=
 git.devucc.name/dependencies/utilities v1.0.51/go.mod h1:r0MWNTFkdEbDqawaKg0o2fECHThv7cLB2ATpo8E8yko=
+git.devucc.name/dependencies/utilities v1.0.53 h1:ymQ7Eky7GUr/ykJYCp+PMpzfo/O2VgAHbX/Nb0VdjWE=
+git.devucc.name/dependencies/utilities v1.0.53/go.mod h1:r0MWNTFkdEbDqawaKg0o2fECHThv7cLB2ATpo8E8yko=
+git.devucc.name/dependencies/utilities v1.0.54 h1:n98fNWOZ89GJuU8bYy77/0Y/h0Acb3NbG3tTRz3OCJQ=
+git.devucc.name/dependencies/utilities v1.0.54/go.mod h1:r0MWNTFkdEbDqawaKg0o2fECHThv7cLB2ATpo8E8yko=
 github.com/Shopify/sarama v1.38.1 h1:lqqPUPQZ7zPqYlWpTh+LQ9bhYNu2xJL6k1SJN4WVe2A=
 github.com/Shopify/sarama v1.38.1/go.mod h1:iwv9a67Ha8VNa+TifujYoWGxWnu2kNVAQdSdZ4X2o5g=
 github.com/Shopify/toxiproxy/v2 v2.5.0 h1:i4LPT+qrSlKNtQf5QliVjdP08GyAH8+BUIc9gT0eahc=

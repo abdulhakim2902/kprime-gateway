@@ -259,6 +259,7 @@ type DeribitResponse struct {
 	ReduceOnly     bool              `json:"reduceOnly,omitempty"`
 	PostOnly       bool              `json:"postOnly,omitempty"`
 	ConnectionId   string            `json:"connectionId,omitempty"`
+	UserRole       types.UserRole    `json:"userRole"`
 }
 
 type DeribitGetInstrumentsRequest struct {
@@ -560,4 +561,9 @@ type GetTradingviewChartDataResponse struct {
 	Tics   []int64   `json:"tics"`
 	Volume []float64 `json:"volume"`
 	Status string    `json:"status"`
+}
+
+type GetCancelOnDisconnectResponse struct {
+	Scope   string `json:"scope"`
+	Enabled bool   `json:"enabled"`
 }
