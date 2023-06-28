@@ -1,0 +1,20 @@
+basePath: /api/v2
+info:
+  contact: {}
+paths:
+  /sync/:target:
+    get:
+      consumes:
+      - application/json
+      description: do sync
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      summary: Sync memdb with mongodb
+      tags:
+      - internal
+swagger: "2.0"

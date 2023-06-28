@@ -45,6 +45,17 @@ func (svc *userService) RegisterRoutes() {
 	internalAPI.POST("/sync/:target", svc.handleSync)
 }
 
+// @BasePath /api/internal
+
+// Sync memdb with mongodb godoc
+// @Summary Sync memdb with mongodb
+// @Schemes
+// @Description do sync
+// @Tags internal
+// @Accept json
+// @Produce json
+// @Success 200 {string} ok
+// @Router /sync/:target [post]
 func (svc *userService) handleSync(c *gin.Context) {
 	switch c.Param("target") {
 	case "users":
@@ -53,6 +64,7 @@ func (svc *userService) handleSync(c *gin.Context) {
 		c.AbortWithStatus(http.StatusNotFound)
 	}
 }
+
 func (svc *userService) syncMemDB(c *gin.Context) {
 
 	type Request struct {
@@ -83,7 +95,6 @@ func (svc *userService) syncMemDB(c *gin.Context) {
 		return
 	}
 
-	fmt.Println("xasd")
 	c.JSON(http.StatusOK, gin.H{"message": "success"})
 
 }
