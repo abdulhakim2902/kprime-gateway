@@ -147,7 +147,6 @@ func GetProtocol(key string) (bool, ProtocolRequest) {
 
 // Responsible for constructing the message
 func SendSuccessMsg(key string, result any) bool {
-	fmt.Println("send", result)
 	return doSend(key, result, nil)
 }
 

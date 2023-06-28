@@ -336,11 +336,16 @@ func (h *DeribitHandler) publicGetTradingviewChartData(r *gin.Context) {
 		return
 	}
 
-	result, err := h.svc.GetTradingViewChartData(context.TODO(), msg.Params)
+	result, reason, err := h.svc.GetTradingViewChartData(context.TODO(), msg.Params)
 	if err != nil {
-		reason := validation_reason.OTHER
+		if reason != nil {
+			reason := validation_reason.OTHER
 
-		protocol.SendValidationMsg(connKey, reason, err)
+			protocol.SendValidationMsg(connKey, reason, err)
+			return
+		}
+
+		protocol.SendErrMsg(connKey, err)
 		return
 
 	}
