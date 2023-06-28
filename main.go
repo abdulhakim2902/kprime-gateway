@@ -46,6 +46,9 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/ulule/limiter/v3"
 	limiterMem "github.com/ulule/limiter/v3/drivers/store/memory"
+
+	swaggerFiles "github.com/swaggo/files"     // swagger embed files
+	ginSwagger "github.com/swaggo/gin-swagger" // gin-swagger middleware
 )
 
 var (
@@ -102,6 +105,14 @@ func init() {
 	server.InitializeData(mongoRepo, memRepo)
 }
 
+// @title           Gateway Internal API
+// @version         2.0
+// @description     This is used for internal service
+
+// @host      localhost:8080
+// @BasePath  /api/v2
+
+// @securityDefinitions.basic  BasicAuth
 func main() {
 	// qf
 	store := limiterMem.NewStore()
@@ -183,7 +194,7 @@ func main() {
 	)
 
 	fmt.Printf("Server is running on %s \n", os.Getenv("PORT"))
-
+	engine.GET("/docs/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	srv := &http.Server{
 		Addr:    ":" + os.Getenv("PORT"),
 		Handler: engine,
