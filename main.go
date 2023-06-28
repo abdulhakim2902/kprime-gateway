@@ -194,7 +194,7 @@ func main() {
 	)
 
 	fmt.Printf("Server is running on %s \n", os.Getenv("PORT"))
-	engine.GET("/docs/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	engine.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	srv := &http.Server{
 		Addr:    ":" + os.Getenv("PORT"),
 		Handler: engine,
