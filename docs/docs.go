@@ -31,9 +31,9 @@ const docTemplate = `{
                 "summary": "Sync memdb with mongodb",
                 "responses": {
                     "200": {
-                        "description": "message\"\t: \"success\"}",
+                        "description": "OK",
                         "schema": {
-                            "type": "any"
+                            "type": "string"
                         }
                     }
                 }

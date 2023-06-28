@@ -61,7 +61,12 @@ This project uses [node](http://nodejs.org) and [npm](https://npmjs.com). Go che
 $ npm install --global standard-readme-spec
 ```
 
-Swagger Documentation. 
+## Swagger Documentation. 
+
+```
+go install github.com/swaggo/swag/cmd/swag@latest
+```
+
 To start generating documentation for an endpoint, you can start with decorating the controller/handler with annotations. You can do this by adding commented text before the handler func. 
 ```// @BasePath /api/internal
 

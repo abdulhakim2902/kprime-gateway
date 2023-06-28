@@ -11,9 +11,9 @@ paths:
       - application/json
       responses:
         "200":
-          description: "message\"\t: \"success\"}"
+          description: OK
           schema:
-            type: any
+            type: string
       summary: Sync memdb with mongodb
       tags:
       - internal

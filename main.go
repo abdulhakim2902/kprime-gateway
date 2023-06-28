@@ -65,7 +65,7 @@ func init() {
 	_, b, _, _ := runtime.Caller(0)
 	rootDir = path.Join(b, "../")
 	fmt.Println(rootDir)
-	docs.SwaggerInfo.BasePath = "/api/v2"
+	docs.SwaggerInfo.BasePath = "/api/internal"
 	if err = godotenv.Load(path.Join(rootDir, ".env")); err != nil {
 		panic(err)
 	}
@@ -110,7 +110,7 @@ func init() {
 // @description     This is used for internal service
 
 // @host      localhost:8080
-// @BasePath  /api/v2
+// @BasePath  /api/internal
 
 // @securityDefinitions.basic  BasicAuth
 func main() {
