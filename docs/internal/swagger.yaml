@@ -1,9 +1,9 @@
-basePath: /api/v2
+basePath: /api/internal
 info:
   contact: {}
 paths:
   /sync/:target:
-    get:
+    post:
       consumes:
       - application/json
       description: do sync

@@ -3,10 +3,10 @@
     "info": {
         "contact": {}
     },
-    "basePath": "/api/v2",
+    "basePath": "/api/internal",
     "paths": {
         "/sync/:target": {
-            "get": {
+            "post": {
                 "description": "do sync",
                 "consumes": [
                     "application/json"

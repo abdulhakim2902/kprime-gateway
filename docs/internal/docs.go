@@ -17,7 +17,7 @@ const docTemplate = `{
     "basePath": "{{.BasePath}}",
     "paths": {
         "/sync/:target": {
-            "get": {
+            "post": {
                 "description": "do sync",
                 "consumes": [
                     "application/json"
@@ -46,7 +46,7 @@ const docTemplate = `{
 var SwaggerInfo = &swag.Spec{
 	Version:          "",
 	Host:             "",
-	BasePath:         "/api/v2",
+	BasePath:         "/api/internal",
 	Schemes:          []string{},
 	Title:            "",
 	Description:      "",

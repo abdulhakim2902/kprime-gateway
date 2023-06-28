@@ -81,7 +81,7 @@ when you've done the decorating, you can then generate the actual yaml and json 
 swag init -g path/to/handler-file.go --output docs/internal
 ```
 
-the docs can be accessed in {{url}}/docs/index.html
+the docs can be accessed in {{url}}/swagger/index.html
 ## Docker
 
 To run gateway through the docker, you can follow this following [wiki](https://git.devucc.name/groups/undercurrent-tech/k-prime/-/wikis/Docker-%F0%9F%90%B3#app-gateway)
