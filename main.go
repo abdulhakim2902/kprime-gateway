@@ -31,11 +31,11 @@ import (
 	_wsEngineSvc "gateway/internal/ws/engine/service"
 	_wsOrderbookSvc "gateway/internal/ws/service"
 	_wsSvc "gateway/internal/ws/service"
-	"gateway/pkg/middleware"
 
 	_wsCtrl "gateway/internal/ws/controller"
 
 	memory "gateway/datasources/memdb"
+	docs "gateway/docs"
 
 	"git.devucc.name/dependencies/utilities/commons/logs"
 	"git.devucc.name/dependencies/utilities/commons/metrics"
@@ -65,7 +65,7 @@ func init() {
 	_, b, _, _ := runtime.Caller(0)
 	rootDir = path.Join(b, "../")
 	fmt.Println(rootDir)
-
+	docs.SwaggerInfo.BasePath = "/api/v2"
 	if err = godotenv.Load(path.Join(rootDir, ".env")); err != nil {
 		panic(err)
 	}
@@ -134,7 +134,7 @@ func main() {
 		},
 		Store: store,
 	}
-	engine.Use(middleware.RateLimiter(limiter))
+	// engine.Use(middleware.RateLimiter(limiter))
 
 	memoryDb, err := memdb.InitSchemas()
 	if err != nil {

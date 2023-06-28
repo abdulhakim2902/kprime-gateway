@@ -54,7 +54,7 @@ func (svc *userService) RegisterRoutes() {
 // @Tags internal
 // @Accept json
 // @Produce json
-// @Success 200 {string} ok
+// @Success 200 {any} struct{"message"	: "success"}
 // @Router /sync/:target [post]
 func (svc *userService) handleSync(c *gin.Context) {
 	switch c.Param("target") {
