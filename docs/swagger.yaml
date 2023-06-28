@@ -1,4 +1,14 @@
 basePath: /api/internal
+definitions:
+  service.Request:
+    properties:
+      user_ids:
+        items:
+          type: string
+        type: array
+    required:
+    - user_ids
+    type: object
 info:
   contact: {}
 paths:
@@ -8,7 +18,13 @@ paths:
       - application/json
       description: do sync
       parameters:
-      - description: target
+      - description: request body
+        in: body
+        name: Request
+        required: true
+        schema:
+          $ref: '#/definitions/service.Request'
+      - description: target entity to sync, users
         in: path
         name: target
         required: true

@@ -31,8 +31,17 @@ const docTemplate = `{
                 "summary": "Sync memdb with mongodb",
                 "parameters": [
                     {
+                        "description": "request body",
+                        "name": "Request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/service.Request"
+                        }
+                    },
+                    {
                         "type": "string",
-                        "description": "target",
+                        "description": "target entity to sync, users",
                         "name": "target",
                         "in": "path",
                         "required": true
@@ -44,6 +53,22 @@ const docTemplate = `{
                         "schema": {
                             "type": "string"
                         }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "service.Request": {
+            "type": "object",
+            "required": [
+                "user_ids"
+            ],
+            "properties": {
+                "user_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
                     }
                 }
             }

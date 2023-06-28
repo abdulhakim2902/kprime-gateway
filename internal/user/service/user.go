@@ -27,6 +27,10 @@ type userService struct {
 	memDb *memdb.Schemas
 }
 
+type Request struct {
+	UserIds []string `json:"user_ids" validate:"required"`
+}
+
 func NewUserService(
 	r *gin.Engine,
 
@@ -56,7 +60,8 @@ func (svc *userService) RegisterRoutes() {
 // @Accept json
 // @Produce json
 // @Success 200 {string} success
-// @Param target path string true "target"
+// @Param Request body Request true "request body"
+// @Param target path string true "target entity to sync, users"
 // @Router /sync/{target} [post]
 func (svc *userService) handleSync(c *gin.Context) {
 	switch c.Param("target") {
@@ -68,11 +73,6 @@ func (svc *userService) handleSync(c *gin.Context) {
 }
 
 func (svc *userService) syncMemDB(c *gin.Context) {
-
-	type Request struct {
-		UserIds []string `json:"user_ids" validate:"required"`
-	}
-
 	var req Request
 	if err := utils.UnmarshalAndValidate(c, &req); err != nil {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
