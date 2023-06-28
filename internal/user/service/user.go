@@ -14,6 +14,7 @@ import (
 
 	"git.devucc.name/dependencies/utilities/commons/logs"
 	"git.devucc.name/dependencies/utilities/models/order"
+	utilType "git.devucc.name/dependencies/utilities/types"
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -136,6 +137,7 @@ func (svc *userService) SyncMemDB(ctx context.Context, filter interface{}) (err 
 			OrderExclusions: orderExclusions,
 			TypeInclusions:  typeInclusions,
 			ClientIds:       clientIds,
+			Role:            utilType.UserRole(user.Role.Name),
 		}); err != nil {
 			logs.Log.Error().Err(err).Msg("")
 		}

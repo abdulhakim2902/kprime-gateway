@@ -3,6 +3,8 @@ package service
 import (
 	"context"
 	_deribitModel "gateway/internal/deribit/model"
+
+	"git.devucc.name/dependencies/utilities/types/validation_reason"
 )
 
 func (svc deribitService) DeribitGetUserTradesByInstrument(
@@ -24,11 +26,8 @@ func (svc deribitService) DeribitGetUserTradesByInstrument(
 	return &trades
 }
 
-func (svc *deribitService) GetTradingViewChartData(ctx context.Context, request _deribitModel.GetTradingviewChartDataRequest) (trades _deribitModel.GetTradingviewChartDataResponse, err error) {
-	trades, err = svc.tradeRepo.GetTradingViewChartData(request)
-	if err != nil {
-		return
-	}
+func (svc *deribitService) GetTradingViewChartData(ctx context.Context, request _deribitModel.GetTradingviewChartDataRequest) (trades _deribitModel.GetTradingviewChartDataResponse, reason *validation_reason.ValidationReason, err error) {
+	trades, reason, err = svc.tradeRepo.GetTradingViewChartData(request)
 
 	return
 }

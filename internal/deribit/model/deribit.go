@@ -259,6 +259,7 @@ type DeribitResponse struct {
 	ReduceOnly     bool              `json:"reduceOnly,omitempty"`
 	PostOnly       bool              `json:"postOnly,omitempty"`
 	ConnectionId   string            `json:"connectionId,omitempty"`
+	UserRole       types.UserRole    `json:"userRole"`
 }
 
 type DeribitGetInstrumentsRequest struct {

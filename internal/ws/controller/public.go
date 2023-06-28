@@ -485,13 +485,17 @@ func (svc *wsHandler) publicGetTradingviewChartData(input interface{}, c *ws.Cli
 		return
 	}
 
-	result, err := svc.deribitSvc.GetTradingViewChartData(context.TODO(), msg.Params)
+	result, reason, err := svc.deribitSvc.GetTradingViewChartData(context.TODO(), msg.Params)
 	if err != nil {
-		reason := validation_reason.OTHER
+		if reason != nil {
+			reason := validation_reason.OTHER
 
-		protocol.SendValidationMsg(connKey, reason, err)
+			protocol.SendValidationMsg(connKey, reason, err)
+			return
+		}
+
+		protocol.SendErrMsg(connKey, err)
 		return
-
 	}
 
 	protocol.SendSuccessMsg(connKey, result)
