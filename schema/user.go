@@ -2,6 +2,7 @@ package schema
 
 import (
 	"git.devucc.name/dependencies/utilities/models/order"
+	"git.devucc.name/dependencies/utilities/types"
 	"github.com/hashicorp/go-memdb"
 )
 
@@ -10,6 +11,7 @@ type User struct {
 	OrderExclusions []order.OrderExclusion `json:"order_exclusions"`
 	TypeInclusions  []order.TypeInclusions `json:"type_inclustion"`
 	ClientIds       []string               `json:"client_ids"`
+	Role            types.UserRole         `json:"role"`
 }
 
 var UserSchema = &memdb.DBSchema{
@@ -36,6 +38,11 @@ var UserSchema = &memdb.DBSchema{
 					Name:    "client_ids",
 					Unique:  false,
 					Indexer: &memdb.StringFieldIndex{Field: "ClientIds"},
+				},
+				"role": {
+					Name:    "role",
+					Unique:  false,
+					Indexer: &memdb.StringFieldIndex{Field: "Role"},
 				},
 			},
 		},

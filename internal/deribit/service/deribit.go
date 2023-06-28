@@ -118,6 +118,7 @@ func (svc deribitService) DeribitRequest(
 		MaxShow:        data.MaxShow,
 		ReduceOnly:     data.ReduceOnly,
 		PostOnly:       data.PostOnly,
+		UserRole:       userCast.Role,
 	}
 	if data.EnableCancel {
 		payload.ConnectionId = data.ConnectionId
