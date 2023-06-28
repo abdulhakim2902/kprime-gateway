@@ -56,7 +56,8 @@ func (svc *userService) RegisterRoutes() {
 // @Accept json
 // @Produce json
 // @Success 200 {string} success
-// @Router /sync/:target [post]
+// @Param target path string true "target"
+// @Router /sync/{target} [post]
 func (svc *userService) handleSync(c *gin.Context) {
 	switch c.Param("target") {
 	case "users":

@@ -2,11 +2,17 @@ basePath: /api/internal
 info:
   contact: {}
 paths:
-  /sync/:target:
+  /sync/{target}:
     post:
       consumes:
       - application/json
       description: do sync
+      parameters:
+      - description: target
+        in: path
+        name: target
+        required: true
+        type: string
       produces:
       - application/json
       responses:

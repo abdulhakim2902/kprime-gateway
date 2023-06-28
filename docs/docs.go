@@ -16,7 +16,7 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/sync/:target": {
+        "/sync/{target}": {
             "post": {
                 "description": "do sync",
                 "consumes": [
@@ -29,6 +29,15 @@ const docTemplate = `{
                     "internal"
                 ],
                 "summary": "Sync memdb with mongodb",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "target",
+                        "name": "target",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
