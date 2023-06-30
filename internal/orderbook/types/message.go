@@ -66,10 +66,12 @@ type CancelledOrder struct {
 }
 
 type GetOrderBook struct {
-	InstrumentName string  `json:"instrument_name"`
-	Underlying     string  `json:"underlying"`
-	ExpiryDate     string  `json:"expiryDate"`
-	StrikePrice    float64 `json:"strikePrice"`
+	InstrumentName      string   `json:"instrument_name"`
+	Underlying          string   `json:"underlying"`
+	ExpiryDate          string   `json:"expiryDate"`
+	StrikePrice         float64  `json:"strikePrice"`
+	UserRole            string   `json:"-"`
+	UserOrderExclusions []string `json:"-"`
 }
 
 type QuoteResponse struct {

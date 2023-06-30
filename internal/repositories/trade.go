@@ -16,7 +16,6 @@ import (
 	_tradeType "gateway/internal/repositories/types"
 	"gateway/pkg/memdb"
 	"gateway/pkg/utils"
-	userSchema "gateway/schema"
 
 	"git.devucc.name/dependencies/utilities/commons/logs"
 	Greeks "git.devucc.name/dependencies/utilities/helper/greeks"
@@ -867,6 +866,12 @@ func (r TradeRepository) GetLastTrades(o _orderbookType.GetOrderBook) []*_engine
 		"strikePrice": o.StrikePrice,
 		"expiryDate":  o.ExpiryDate,
 	}
+
+	if o.UserRole == types.CLIENT.String() {
+		tradesQuery["userRole"] = types.MARKET_MAKER.String()
+		tradesQuery["userId"] = bson.M{"$nin": o.UserOrderExclusions}
+	}
+
 	tradesSort := bson.M{
 		"createdAt": 1,
 	}
@@ -891,6 +896,12 @@ func (r TradeRepository) GetHighLowTrades(o _orderbookType.GetOrderBook, t int) 
 			"$gte": oneDayAgo,
 		},
 	}
+
+	if o.UserRole == types.CLIENT.String() {
+		tradesQuery["userRole"] = types.MARKET_MAKER.String()
+		tradesQuery["userId"] = bson.M{"$nin": o.UserOrderExclusions}
+	}
+
 	tradesSort := bson.M{
 		"price": t,
 	}
@@ -915,6 +926,12 @@ func (r TradeRepository) Get24HoursTrades(o _orderbookType.GetOrderBook) []*_eng
 			"$gte": oneDayAgo,
 		},
 	}
+
+	if o.UserRole == types.CLIENT.String() {
+		tradesQuery["userRole"] = types.MARKET_MAKER.String()
+		tradesQuery["userId"] = bson.M{"$nin": o.UserOrderExclusions}
+	}
+
 	tradesSort := bson.M{
 		"createdAt": 1,
 	}
@@ -1201,29 +1218,12 @@ func (r TradeRepository) FilterUserTradesByOrder(userId string, orderId string) 
 }
 
 func (r TradeRepository) GetTradingViewChartData(req _deribitModel.GetTradingviewChartDataRequest) (res _deribitModel.GetTradingviewChartDataResponse, reason *validation_reason.ValidationReason, err error) {
-	user, err := memdb.Schemas.User.FindOne("id", req.UserId)
-	if err != nil {
-		vr := validation_reason.OTHER
+	user, vr, er := memdb.MDBFindUserById(req.UserId)
+	if er != nil {
+		logs.Log.Error().Err(err).Msg("")
+		err = er
 		reason = &vr
 
-		logs.Log.Error().Err(err).Msg("")
-		return
-	}
-
-	if user == nil {
-		vr := validation_reason.UNAUTHORIZED
-		reason = &vr
-
-		logs.Log.Error().Err(err).Msg("")
-		return
-	}
-
-	userCast, ok := user.(userSchema.User)
-	if !ok {
-		vr := validation_reason.UNAUTHORIZED
-		reason = &vr
-
-		logs.Log.Error().Err(err).Msg("")
 		return
 	}
 
@@ -1254,10 +1254,10 @@ func (r TradeRepository) GetTradingViewChartData(req _deribitModel.GetTradingvie
 		},
 	}
 
-	if userCast.Role == types.CLIENT {
+	if user.Role == types.CLIENT {
 		excludeUserId := []string{}
 
-		for _, userCast := range userCast.OrderExclusions {
+		for _, userCast := range user.OrderExclusions {
 			excludeUserId = append(excludeUserId, userCast.UserID)
 		}
 

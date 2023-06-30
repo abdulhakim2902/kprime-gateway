@@ -6,14 +6,23 @@ import (
 	"fmt"
 	"gateway/internal/deribit/model"
 	_orderbookTypes "gateway/internal/orderbook/types"
+	"gateway/pkg/memdb"
 	"gateway/pkg/utils"
 	"time"
 
+	"git.devucc.name/dependencies/utilities/commons/date"
 	"git.devucc.name/dependencies/utilities/commons/logs"
 )
 
 func (svc deribitService) GetOrderBook(ctx context.Context, data model.DeribitGetOrderBookRequest) *model.DeribitGetOrderBookResponse {
 	instruments, _ := utils.ParseInstruments(data.InstrumentName)
+
+	user, _, err := memdb.MDBFindUserById(data.UserId)
+	if err != nil {
+		logs.Log.Error().Err(err).Msg("")
+
+		return nil
+	}
 
 	_order := _orderbookTypes.GetOrderBook{
 		InstrumentName: data.InstrumentName,
@@ -22,12 +31,18 @@ func (svc deribitService) GetOrderBook(ctx context.Context, data model.DeribitGe
 		StrikePrice:    instruments.Strike,
 	}
 
+	ordExclusions := []string{}
+	for _, userCast := range user.OrderExclusions {
+		ordExclusions = append(ordExclusions, userCast.UserID)
+	}
+
+	_order.UserRole = user.Role.String()
+	_order.UserOrderExclusions = ordExclusions
+
 	dataQuote, orderBook := svc.GetDataQuote(_order)
 
 	//check state
-	dateString := instruments.ExpDate
-	layout := "02Jan06"
-	date, err := time.Parse(layout, dateString)
+	date, err := date.ExpDateToTime(instruments.ExpDate)
 	if err != nil {
 		logs.Log.Error().Err(err).Msg("Error parsing date")
 		return nil

@@ -252,7 +252,7 @@ type DeribitResponse struct {
 	TimeInForce    types.TimeInForce `json:"timeInForce,omitempty"`
 	ClOrdID        string            `json:"clOrdID,omitempty"`
 	CreatedAt      time.Time         `json:"createdAt,omitempty"`
-	Label          string            `json:"label,omitempty,omitempty"`
+	Label          string            `json:"label,omitempty"`
 	FilledAmount   float64           `json:"filledAmount,omitempty"`
 	Status         string            `json:"status,omitempty"`
 	MaxShow        float64           `json:"maxShow,omitempty"`
@@ -265,7 +265,7 @@ type DeribitResponse struct {
 type DeribitGetInstrumentsRequest struct {
 	Currency string `json:"currency" validate:"required"`
 	Expired  bool   `json:"expired"`
-	UserId   string
+	UserId   string `json:"-"`
 }
 
 type DeribitGetInstrumentsResponse struct {
@@ -287,7 +287,7 @@ type DeribitGetInstrumentsResponse struct {
 type DeribitGetOrderBookRequest struct {
 	InstrumentName string `json:"instrument_name"`
 	Depth          int64  `json:"depth"`
-	UserId         string
+	UserId         string `json:"-"`
 }
 
 type DeribitGetLastTradesByInstrumentRequest struct {
@@ -493,7 +493,7 @@ type DeribitGetOrderStateByLabelRequest struct {
 	AccessToken string `json:"access_token" form:"access_token"`
 	Currency    string `json:"currency" form:"currency" validate:"required"`
 	Label       string `json:"label" form:"label"`
-	UserId      string
+	UserId      string `json:"-"`
 }
 
 type DeribitGetOrderStateByLabelResponse struct {
@@ -552,7 +552,7 @@ type GetTradingviewChartDataRequest struct {
 	StartTimestamp int64  `json:"start_timestamp" form:"start_timestamp" validate:"required"`
 	EndTimestamp   int64  `json:"end_timestamp" form:"end_timestamp" validate:"required"`
 	Resolution     string `json:"resolution" form:"resolution" validate:"required"`
-	UserId         string /*  */
+	UserId         string `json:"-"`
 }
 
 type GetTradingviewChartDataResponse struct {
