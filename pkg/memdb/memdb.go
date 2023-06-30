@@ -6,22 +6,28 @@ import (
 	"github.com/hashicorp/go-memdb"
 )
 
+var (
+	Schemas *Schema
+)
+
 type MemDB struct {
 	Name string
 	Db   *memdb.MemDB
 }
 
-type Schemas struct {
+type Schema struct {
 	User *MemDB
 }
 
-func InitSchemas() (*Schemas, error) {
+func InitSchemas() error {
 	user, err := InitSchema("user", schema.UserSchema)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return &Schemas{user}, nil
+	Schemas = &Schema{user}
+
+	return nil
 }
 
 func InitSchema(name string, schema *memdb.DBSchema) (*MemDB, error) {

@@ -46,8 +46,8 @@ type GetInstrumentsParams struct {
 }
 
 type GetOrderBookParams struct {
-	InstrumentName string `json:"instrument_name" validate:"required" form:"instrument_name"`
-	Depth          int64  `json:"depth" form:"depth"`
+	BaseParams
+	Depth int64 `json:"depth" form:"depth"`
 }
 
 type GetLastTradesByInstrumentParams struct {
@@ -265,6 +265,7 @@ type DeribitResponse struct {
 type DeribitGetInstrumentsRequest struct {
 	Currency string `json:"currency" validate:"required"`
 	Expired  bool   `json:"expired"`
+	UserId   string
 }
 
 type DeribitGetInstrumentsResponse struct {
@@ -286,6 +287,7 @@ type DeribitGetInstrumentsResponse struct {
 type DeribitGetOrderBookRequest struct {
 	InstrumentName string `json:"instrument_name"`
 	Depth          int64  `json:"depth"`
+	UserId         string
 }
 
 type DeribitGetLastTradesByInstrumentRequest struct {
@@ -546,10 +548,11 @@ type TestParams struct {
 }
 
 type GetTradingviewChartDataRequest struct {
-	InstrumentName string `json:"instrument_name" form:"instrument_name" validate:"required"`
+	BaseParams
 	StartTimestamp int64  `json:"start_timestamp" form:"start_timestamp" validate:"required"`
 	EndTimestamp   int64  `json:"end_timestamp" form:"end_timestamp" validate:"required"`
 	Resolution     string `json:"resolution" form:"resolution" validate:"required"`
+	UserId         string /*  */
 }
 
 type GetTradingviewChartDataResponse struct {

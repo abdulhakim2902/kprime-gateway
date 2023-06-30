@@ -25,14 +25,14 @@ func (handler *wsHandler) RegisterPublic() {
 	ws.RegisterChannel("public/subscribe", middleware.MiddlewaresWrapper(handler.publicSubscribe, middleware.RateLimiterWs))
 	ws.RegisterChannel("public/unsubscribe", middleware.MiddlewaresWrapper(handler.publicUnsubscribe, middleware.RateLimiterWs))
 	ws.RegisterChannel("public/unsubscribe_all", middleware.MiddlewaresWrapper(handler.publicUnsubscribeAll, middleware.RateLimiterWs))
-	ws.RegisterChannel("public/get_instruments", middleware.MiddlewaresWrapper(handler.getInstruments, middleware.RateLimiterWs))
+	// ws.RegisterChannel("public/get_instruments", middleware.MiddlewaresWrapper(handler.getInstruments, middleware.RateLimiterWs))
 	ws.RegisterChannel("public/get_last_trades_by_instrument", middleware.MiddlewaresWrapper(handler.getLastTradesByInstrument, middleware.RateLimiterWs))
-	ws.RegisterChannel("public/get_order_book", middleware.MiddlewaresWrapper(handler.getOrderBook, middleware.RateLimiterWs))
+	// ws.RegisterChannel("public/get_order_book", middleware.MiddlewaresWrapper(handler.getOrderBook, middleware.RateLimiterWs))
 	ws.RegisterChannel("public/get_index_price", middleware.MiddlewaresWrapper(handler.getIndexPrice, middleware.RateLimiterWs))
 	ws.RegisterChannel("public/get_delivery_prices", middleware.MiddlewaresWrapper(handler.getDeliveryPrices, middleware.RateLimiterWs))
 	ws.RegisterChannel("public/set_heartbeat", middleware.MiddlewaresWrapper(handler.setHeartbeat, middleware.RateLimiterWs))
 	ws.RegisterChannel("public/test", middleware.MiddlewaresWrapper(handler.test, middleware.RateLimiterWs))
-	ws.RegisterChannel("public/get_tradingview_chart_data", middleware.MiddlewaresWrapper(handler.publicGetTradingviewChartData, middleware.RateLimiterWs))
+	// ws.RegisterChannel("public/get_tradingview_chart_data", middleware.MiddlewaresWrapper(handler.getTradingviewChartData, middleware.RateLimiterWs))
 	ws.RegisterChannel("public/get_time", middleware.MiddlewaresWrapper(handler.publicGetTime, middleware.RateLimiterWs))
 }
 
@@ -472,7 +472,7 @@ func (svc *wsHandler) test(input interface{}, c *ws.Client) {
 	protocol.SendSuccessMsg(connKey, result)
 }
 
-func (svc *wsHandler) publicGetTradingviewChartData(input interface{}, c *ws.Client) {
+func (svc *wsHandler) getTradingviewChartData(input interface{}, c *ws.Client) {
 	var msg deribitModel.RequestDto[deribitModel.GetTradingviewChartDataRequest]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
 		c.SendInvalidRequestMessage(err)

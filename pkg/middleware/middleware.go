@@ -16,7 +16,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func Authenticate(memDb *memdb.Schemas) gin.HandlerFunc {
+func Authenticate() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		isPrivateMethod := false
 
@@ -61,7 +61,7 @@ func Authenticate(memDb *memdb.Schemas) gin.HandlerFunc {
 				return
 			}
 
-			var userId, clientSecret string
+			var userId, clientSecret, userRole string
 			switch authorization[0] {
 			case "Bearer":
 				claim, err := authSvc.ClaimJWT(nil, authorization[1])
@@ -73,6 +73,7 @@ func Authenticate(memDb *memdb.Schemas) gin.HandlerFunc {
 				}
 
 				userId = claim.UserID
+				userRole = claim.UserRole
 			case "deri-hmac-sha256":
 				hmac := hmac.New()
 				sig, err := hmac.DecodeSignature(authorization[1], c)
@@ -81,7 +82,7 @@ func Authenticate(memDb *memdb.Schemas) gin.HandlerFunc {
 					return
 				}
 
-				users := memDb.User.Find("id")
+				users := memdb.Schemas.User.Find("id")
 				if users == nil {
 					c.AbortWithStatus(http.StatusInternalServerError)
 					return
@@ -93,6 +94,7 @@ func Authenticate(memDb *memdb.Schemas) gin.HandlerFunc {
 						for _, key := range usr.ClientIds {
 							if strings.HasPrefix(key, sig.ClientId) {
 								userId = usr.ID
+								userRole = usr.Role.String()
 								clientSecret = strings.Split(key, ":")[1]
 								goto VERIFY_SIGNATURE
 							}
@@ -113,7 +115,7 @@ func Authenticate(memDb *memdb.Schemas) gin.HandlerFunc {
 					return
 				}
 
-				users := memDb.User.Find("id")
+				users := memdb.Schemas.User.Find("id")
 				if users == nil {
 					c.AbortWithStatus(http.StatusInternalServerError)
 					return
@@ -125,6 +127,7 @@ func Authenticate(memDb *memdb.Schemas) gin.HandlerFunc {
 						for _, key := range usr.ClientIds {
 							if strings.EqualFold(key, string(decoded)) {
 								userId = usr.ID
+								userRole = usr.Role.String()
 								goto SET_USERID
 							}
 						}
@@ -141,6 +144,7 @@ func Authenticate(memDb *memdb.Schemas) gin.HandlerFunc {
 				return
 			}
 			c.Set("userID", userId)
+			c.Set("userRole", userRole)
 		}
 
 		c.Next()

@@ -14,12 +14,15 @@ import (
 	_engineType "gateway/internal/engine/types"
 	_orderbookType "gateway/internal/orderbook/types"
 	_tradeType "gateway/internal/repositories/types"
+	"gateway/pkg/memdb"
 	"gateway/pkg/utils"
+	userSchema "gateway/schema"
 
 	"git.devucc.name/dependencies/utilities/commons/logs"
 	Greeks "git.devucc.name/dependencies/utilities/helper/greeks"
 	IV "git.devucc.name/dependencies/utilities/helper/implied_volatility"
 	"git.devucc.name/dependencies/utilities/models/trade"
+	"git.devucc.name/dependencies/utilities/types"
 	"git.devucc.name/dependencies/utilities/types/validation_reason"
 	"github.com/shopspring/decimal"
 
@@ -1198,6 +1201,32 @@ func (r TradeRepository) FilterUserTradesByOrder(userId string, orderId string) 
 }
 
 func (r TradeRepository) GetTradingViewChartData(req _deribitModel.GetTradingviewChartDataRequest) (res _deribitModel.GetTradingviewChartDataResponse, reason *validation_reason.ValidationReason, err error) {
+	user, err := memdb.Schemas.User.FindOne("id", req.UserId)
+	if err != nil {
+		vr := validation_reason.OTHER
+		reason = &vr
+
+		logs.Log.Error().Err(err).Msg("")
+		return
+	}
+
+	if user == nil {
+		vr := validation_reason.UNAUTHORIZED
+		reason = &vr
+
+		logs.Log.Error().Err(err).Msg("")
+		return
+	}
+
+	userCast, ok := user.(userSchema.User)
+	if !ok {
+		vr := validation_reason.UNAUTHORIZED
+		reason = &vr
+
+		logs.Log.Error().Err(err).Msg("")
+		return
+	}
+
 	options := options.AggregateOptions{
 		MaxTime: &defaultTimeout,
 	}
@@ -1212,22 +1241,31 @@ func (r TradeRepository) GetTradingViewChartData(req _deribitModel.GetTradingvie
 		return
 	}
 
-	matchStage := bson.D{
-		{"$match",
+	match := bson.D{
+		{"underlying", instrument.Underlying},
+		{"strikePrice", instrument.Strike},
+		{"expiryDate", instrument.ExpDate},
+		{"contracts", instrument.Contracts},
+		{"createdAt",
 			bson.D{
-				{"underlying", instrument.Underlying},
-				{"strikePrice", instrument.Strike},
-				{"expiryDate", instrument.ExpDate},
-				{"contracts", instrument.Contracts},
-				{"createdAt",
-					bson.D{
-						{"$gt", time.UnixMilli(req.StartTimestamp)},
-						{"$lt", time.UnixMilli(req.EndTimestamp)},
-					},
-				},
+				{"$gt", time.UnixMilli(req.StartTimestamp)},
+				{"$lt", time.UnixMilli(req.EndTimestamp)},
 			},
 		},
 	}
+
+	if userCast.Role == types.CLIENT {
+		excludeUserId := []string{}
+
+		for _, userCast := range userCast.OrderExclusions {
+			excludeUserId = append(excludeUserId, userCast.UserID)
+		}
+
+		match = append(match, bson.E{"userRole", types.MARKET_MAKER.String()})
+		match = append(match, bson.E{"userId", bson.E{"$nin", excludeUserId}})
+	}
+
+	matchStage := bson.D{{"$match", match}}
 
 	sortStage := bson.D{
 		{"$sort", bson.D{

@@ -23,13 +23,13 @@ import (
 
 func (handler *DeribitHandler) RegisterPublic() {
 	handler.RegisterHandler("public/auth", handler.auth)
-	handler.RegisterHandler("public/get_instruments", handler.getInstruments)
-	handler.RegisterHandler("public/get_order_book", handler.getOrderBook)
+	// handler.RegisterHandler("public/get_instruments", handler.getInstruments)
+	// handler.RegisterHandler("public/get_order_book", handler.getOrderBook)
 	handler.RegisterHandler("public/test", handler.test)
 	handler.RegisterHandler("public/get_index_price", handler.getIndexPrice)
 	handler.RegisterHandler("public/get_last_trades_by_instrument", handler.getLastTradesByInstrument)
 	handler.RegisterHandler("public/get_delivery_prices", handler.getDeliveryPrices)
-	handler.RegisterHandler("public/get_tradingview_chart_data", handler.publicGetTradingviewChartData)
+	// handler.RegisterHandler("public/get_tradingview_chart_data", handler.getTradingviewChartData)
 	handler.RegisterHandler("public/get_time", handler.getTime)
 }
 
@@ -323,7 +323,7 @@ func (h *DeribitHandler) getDeliveryPrices(r *gin.Context) {
 	protocol.SendSuccessMsg(connKey, result)
 }
 
-func (h *DeribitHandler) publicGetTradingviewChartData(r *gin.Context) {
+func (h *DeribitHandler) getTradingviewChartData(r *gin.Context) {
 	var msg deribitModel.RequestDto[deribitModel.GetTradingviewChartDataRequest]
 	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
 		r.AbortWithError(http.StatusBadRequest, err)

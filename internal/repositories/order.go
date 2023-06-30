@@ -2,18 +2,23 @@ package repositories
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
 
+	"git.devucc.name/dependencies/utilities/commons/logs"
 	"git.devucc.name/dependencies/utilities/types"
+	"git.devucc.name/dependencies/utilities/types/validation_reason"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 
 	_deribitModel "gateway/internal/deribit/model"
 	_orderbookType "gateway/internal/orderbook/types"
+	"gateway/pkg/memdb"
+	userSchema "gateway/schema"
 
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -92,7 +97,25 @@ func (r OrderRepository) GetAvailableInstruments(currency string) ([]_deribitMod
 	return orders, nil
 }
 
-func (r OrderRepository) GetInstruments(currency string, expired bool) ([]*_deribitModel.DeribitGetInstrumentsResponse, error) {
+func (r OrderRepository) GetInstruments(userId, currency string, expired bool) ([]*_deribitModel.DeribitGetInstrumentsResponse, error) {
+	user, err := memdb.Schemas.User.FindOne("id", userId)
+	if err != nil {
+		logs.Log.Error().Err(err).Msg("")
+
+		return []*_deribitModel.DeribitGetInstrumentsResponse{}, err
+	}
+
+	if user == nil {
+		reason := validation_reason.UNAUTHORIZED
+		return []*_deribitModel.DeribitGetInstrumentsResponse{}, errors.New(reason.String())
+	}
+
+	userCast, ok := user.(userSchema.User)
+	if !ok {
+		reason := validation_reason.UNAUTHORIZED
+		return []*_deribitModel.DeribitGetInstrumentsResponse{}, errors.New(reason.String())
+	}
+
 	now := time.Now()
 	loc, _ := time.LoadLocation("Singapore")
 	if loc != nil {
@@ -160,14 +183,27 @@ func (r OrderRepository) GetInstruments(currency string, expired bool) ([]*_deri
 			"Strike":             "$strikePrice",
 			"OptionType":         bson.M{"$toLower": "$contracts"},
 			"underlying":         "$underlying",
+			"userId":             "$userId",
+			"userRole":           "$userRole",
 		}}
 
-	matchesStage := bson.M{
-		"$match": bson.M{
-			"underlying": currency,
-			"IsActive":   !expired,
-		},
+	match := bson.M{
+		"underlying": currency,
+		"IsActive":   !expired,
 	}
+
+	if userCast.Role == types.CLIENT {
+		excludeUserId := []string{}
+
+		for _, userCast := range userCast.OrderExclusions {
+			excludeUserId = append(excludeUserId, userCast.UserID)
+		}
+
+		match["userRole"] = types.MARKET_MAKER.String()
+		match["userId"] = bson.M{"$nin": excludeUserId}
+	}
+
+	matchesStage := bson.M{"$match": match}
 
 	groupStage := bson.M{
 		"$group": bson.M{

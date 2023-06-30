@@ -66,6 +66,10 @@ func (svc wsOrderService) HandleConsume(msg *sarama.ConsumerMessage, userId stri
 
 	// Get specific order for userId, and save it to the redis
 	orders, err = svc.repo.Find(bson.M{"userId": userId}, nil, 0, -1)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 	jsonBytes, err = json.Marshal(orders)
 	if err != nil {
 		fmt.Println(err)
@@ -314,7 +318,6 @@ func (svc wsOrderService) SubscribeUserOrder(c *ws.Client, channel string, userI
 
 	// Prepare when user is doing unsubscribe
 	ws.RegisterConnectionUnsubscribeHandler(c, socket.UnsubscribeHandler(id))
-	return
 }
 
 func (svc wsOrderService) Unsubscribe(c *ws.Client) {
@@ -332,7 +335,7 @@ func (svc wsOrderService) GetInstruments(ctx context.Context, request deribitMod
 	// Handle the initial data
 	if res == "" || err != nil {
 		// Get All Orders, and Save it to the redis
-		orders, err := svc.repo.GetInstruments(request.Currency, request.Expired)
+		orders, err := svc.repo.GetInstruments(request.UserId, request.Currency, request.Expired)
 		if err != nil {
 			fmt.Println(err)
 		}

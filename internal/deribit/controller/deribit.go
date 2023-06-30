@@ -11,7 +11,6 @@ import (
 	deribitModel "gateway/internal/deribit/model"
 	authService "gateway/internal/user/service"
 
-	"gateway/pkg/memdb"
 	"gateway/pkg/middleware"
 	"gateway/pkg/protocol"
 	"gateway/pkg/utils"
@@ -28,7 +27,6 @@ type DeribitHandler struct {
 	svc      service.IDeribitService
 	authSvc  authService.IAuthService
 	userRepo *repositories.UserRepository
-	memDb    *memdb.Schemas
 
 	handlers map[string]gin.HandlerFunc
 }
@@ -38,17 +36,15 @@ func NewDeribitHandler(
 	svc service.IDeribitService,
 	authSvc authService.IAuthService,
 	userRepo *repositories.UserRepository,
-	memDb *memdb.Schemas,
 ) {
 	handler := DeribitHandler{
 		svc:      svc,
 		authSvc:  authSvc,
 		userRepo: userRepo,
-		memDb:    memDb,
 	}
 
 	r.Use(cors.AllowAll())
-	r.Use(middleware.Authenticate(memDb))
+	r.Use(middleware.Authenticate())
 
 	api := r.Group("/api/v2")
 	api.POST("", handler.ApiPostHandler)

@@ -81,7 +81,7 @@ func (svc deribitService) DeribitGetInstruments(ctx context.Context, data model.
 		logs.Log.Error().Err(err).Msg("")
 
 		// Get All Orders, and Save it to the redis
-		orders, err := svc.orderRepo.GetInstruments(data.Currency, data.Expired)
+		orders, err := svc.orderRepo.GetInstruments(data.UserId, data.Currency, data.Expired)
 		if err != nil {
 			logs.Log.Error().Err(err).Msg("")
 		}

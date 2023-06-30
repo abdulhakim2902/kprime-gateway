@@ -24,7 +24,6 @@ import (
 	_deribitSvc "gateway/internal/deribit/service"
 	"gateway/internal/engine/types"
 	"gateway/internal/repositories"
-	"gateway/pkg/memdb"
 	"gateway/pkg/redis"
 	"gateway/pkg/utils"
 	"io"
@@ -138,7 +137,6 @@ type Application struct {
 	*repositories.TradeRepository
 	DeribitService _deribitSvc.IDeribitService
 	redis          *redis.RedisConnectionPool
-	memDb          *memdb.Schemas
 }
 
 func newApplication(deribit _deribitSvc.IDeribitService) *Application {
