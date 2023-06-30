@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Shopify/sarama"
@@ -27,6 +28,7 @@ type orderbookHandler struct {
 }
 
 var changeId100ms = make(map[string]types.ChangeStruct)
+var changeIdMutex sync.RWMutex
 
 func NewOrderbookHandler(r *gin.Engine, redis *redis.RedisConnectionPool, wsOBSvc wsService.IwsOrderbookService) IOrderbookService {
 	return &orderbookHandler{redis, wsOBSvc}
@@ -343,6 +345,7 @@ func (svc orderbookHandler) HandleConsumeBook(msg *sarama.ConsumerMessage) {
 
 	go svc.HandleConsumeBookAgg(_instrument, order, false, nil)
 
+	changeIdMutex.Lock()
 	if _, ok := changeId100ms[_instrument]; !ok {
 		changeId100ms[_instrument] = types.ChangeStruct{
 			Id:         changeIdNew.Id,
@@ -365,6 +368,7 @@ func (svc orderbookHandler) HandleConsumeBook(msg *sarama.ConsumerMessage) {
 			Amendments: order.Amendments,
 		}
 	}
+	changeIdMutex.Unlock()
 
 	bookData := types.BookData{
 		Type:           "change",
@@ -625,6 +629,7 @@ func (svc orderbookHandler) HandleConsumeBookCancel(msg *sarama.ConsumerMessage)
 
 		go svc.HandleConsumeBookAgg(_instrument, *order, true, books)
 
+		changeIdMutex.Lock()
 		if _, ok := changeId100ms[_instrument]; !ok {
 			changeId100ms[_instrument] = types.ChangeStruct{
 				Id:             changeIdNew.Id,
@@ -649,6 +654,7 @@ func (svc orderbookHandler) HandleConsumeBookCancel(msg *sarama.ConsumerMessage)
 				CancelledBooks: books,
 			}
 		}
+		changeIdMutex.Unlock()
 
 		bookData := types.BookData{
 			Type:           "change",
@@ -944,19 +950,22 @@ func (svc orderbookHandler) Handle100msInterval(instrument string) {
 				return
 			case <-ticker.C:
 				// if there is no change no need to broadcast
-				if changeIdLocalVar.Id != changeId100ms[instrument].Id {
+				changeIdMutex.RLock()
+				changeId100msLocal := changeId100ms[instrument]
+				changeIdMutex.RUnlock()
+				if changeIdLocalVar.Id != changeId100msLocal.Id {
 					var prevId int
 					if changeIdLocalVar.Id == 0 {
 						res, err := svc.redis.GetValue("SNAPSHOTID-" + instrument)
 						if res == "" || err != nil {
-							changeIdLocalVar = changeId100ms[instrument]
+							changeIdLocalVar = changeId100msLocal
 						} else {
 							prevId, _ = strconv.Atoi(res)
 						}
 					} else {
 						prevId = changeIdLocalVar.Id
 					}
-					changeIdLocalVar = changeId100ms[instrument]
+					changeIdLocalVar = changeId100msLocal
 
 					substring := strings.Split(instrument, "-")
 					_strikePrice, err := strconv.ParseFloat(substring[2], 64)
