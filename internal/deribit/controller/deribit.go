@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"gateway/internal/deribit/service"
 	"net/http"
+	"strings"
 
 	"git.devucc.name/dependencies/utilities/commons/logs"
 
@@ -108,7 +109,13 @@ func requestHelper(msgID uint64, method string, c *gin.Context) (
 ) {
 	prtcl := protocol.HTTP
 	channelMethods := []string{"private/sell", "private/buy", "private/edit"}
-	if utils.ArrContains(channelMethods, method) {
+
+	// Defining method for get requests
+	url := c.Request.URL.Path
+	strs := strings.Split(url, "/")
+	getMethod := strs[len(strs)-2] + "/" + strs[len(strs)-1]
+
+	if utils.ArrContains(channelMethods, method) || utils.ArrContains(channelMethods, getMethod) {
 		prtcl = protocol.Channel
 	}
 
