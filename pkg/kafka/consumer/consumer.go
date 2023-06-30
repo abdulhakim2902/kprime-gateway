@@ -57,8 +57,8 @@ func KafkaConsumer(
 			for message := range partitionConsumer.Messages() {
 				switch topic {
 				case "ENGINE":
-					handleTopicOrder(oSvc, message)
-					engSvc.HandleConsume(message)
+					go handleTopicOrder(oSvc, message)
+					go engSvc.HandleConsume(message)
 				case "ENGINE_SAVED":
 					go engSvc.HandleConsumeQuote(message)
 					go oSvc.HandleConsumeUserOrder(message)
@@ -101,17 +101,13 @@ func handleTopicOrder(oSvc oInt.IwsOrderService, message *sarama.ConsumerMessage
 	// Send message to websocket
 	userIDStr := fmt.Sprintf("%v", data.Matches.TakerOrder.UserID)
 	var order ordermatch.Order
-	err = json.Unmarshal([]byte(str), &data.Matches.TakerOrder.Order)
-	if err != nil {
-		fmt.Println("Error parsing order JSON:", err)
-		return
-	}
 
 	symbol := strings.Split(order.InstrumentName, "-")[0]
-	ordermatch.OrderConfirmation(userIDStr, *data.Matches.TakerOrder, symbol)
+	go ordermatch.OrderConfirmation(userIDStr, *data.Matches.TakerOrder, symbol)
 
-	userId := data.Matches.TakerOrder.UserID
-	oSvc.HandleConsume(message, userId)
+	// no need to use HandleConsume
+	// userId := data.Matches.TakerOrder.UserID
+	// oSvc.HandleConsume(message, userId)
 
 	// Metrics
 	clOrdID := fmt.Sprintf("%v", data.Matches.TakerOrder.ClOrdID)
