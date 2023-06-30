@@ -246,11 +246,6 @@ func doSend(key string, result any, err *ErrorMessage) bool {
 		// TODO: add grpc response
 		break
 	case Channel:
-		if m.Error != nil {
-			conn.Http.JSON(m.Error.HttpStatusCode, m)
-			conn.Http.Abort()
-			break
-		}
 		if channelResults == nil {
 			channelResults = make(map[any]RPCResponseMessage)
 		}
@@ -301,7 +296,7 @@ func RegisterChannel(key string, channel chan RPCResponseMessage) {
 	res := RPCResponseMessage{}
 	for {
 		res = channelResults[key]
-		if res.Result != nil {
+		if res.Result != nil || res.Error != nil {
 			break
 		}
 		select {
