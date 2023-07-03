@@ -89,6 +89,21 @@ func ValidateDeribitRequestParam(request model.RequestParams) (err error) {
 		return err
 	}
 
+	if request.Price == 0 {
+		err = errors.New(validation_reason.PRICE_IS_REQUIRED.String())
+		return err
+	}
+
+	if request.Type == "" {
+		err = errors.New(validation_reason.ORDER_TYPE_IS_REQUIRED.String())
+		return err
+	}
+
+	if request.Amount == 0 {
+		err = errors.New(validation_reason.AMOUNT_IS_REQUIRED.String())
+		return err
+	}
+
 	return
 }
 
