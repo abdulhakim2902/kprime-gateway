@@ -81,17 +81,16 @@ func (h *DeribitHandler) buy(r *gin.Context) {
 		ReduceOnly:     msg.Params.ReduceOnly,
 		PostOnly:       msg.Params.PostOnly,
 	})
+	channel := make(chan protocol.RPCResponseMessage)
+	go protocol.RegisterChannel(connKey, channel)
 	if err != nil {
 		if validation != nil {
 			protocol.SendValidationMsg(connKey, *validation, err)
-			return
 		}
 
 		protocol.SendErrMsg(connKey, err)
-		return
 	}
-	channel := make(chan protocol.RPCResponseMessage)
-	go protocol.RegisterChannel(connKey, channel)
+
 	res := <-channel
 	code := http.StatusOK
 	if res.Error != nil {
@@ -137,18 +136,14 @@ func (h *DeribitHandler) sell(r *gin.Context) {
 		ReduceOnly:     msg.Params.ReduceOnly,
 		PostOnly:       msg.Params.PostOnly,
 	})
+	channel := make(chan protocol.RPCResponseMessage)
+	go protocol.RegisterChannel(connKey, channel)
 	if err != nil {
 		if validation != nil {
 			protocol.SendValidationMsg(connKey, *validation, err)
-			return
 		}
-
 		protocol.SendErrMsg(connKey, err)
-		return
 	}
-
-	channel := make(chan protocol.RPCResponseMessage)
-	go protocol.RegisterChannel(connKey, channel)
 	res := <-channel
 	code := http.StatusOK
 	if res.Error != nil {
