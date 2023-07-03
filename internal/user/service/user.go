@@ -26,6 +26,10 @@ type userService struct {
 	repo *repositories.UserRepository
 }
 
+type Request struct {
+	UserIds []string `json:"user_ids" validate:"required"`
+}
+
 func NewUserService(
 	r *gin.Engine,
 
@@ -44,6 +48,19 @@ func (svc *userService) RegisterRoutes() {
 	internalAPI.POST("/sync/:target", svc.handleSync)
 }
 
+// @BasePath /api/internal
+
+// Sync memdb with mongodb godoc
+// @Summary Sync memdb with mongodb
+// @Schemes
+// @Description do sync
+// @Tags internal
+// @Accept json
+// @Produce json
+// @Success 200 {string} success
+// @Param Request body Request true "request body"
+// @Param target path string true "target entity to sync, users"
+// @Router /sync/{target} [post]
 func (svc *userService) handleSync(c *gin.Context) {
 	switch c.Param("target") {
 	case "users":
@@ -52,12 +69,8 @@ func (svc *userService) handleSync(c *gin.Context) {
 		c.AbortWithStatus(http.StatusNotFound)
 	}
 }
+
 func (svc *userService) syncMemDB(c *gin.Context) {
-
-	type Request struct {
-		UserIds []string `json:"user_ids" validate:"required"`
-	}
-
 	var req Request
 	if err := utils.UnmarshalAndValidate(c, &req); err != nil {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -82,7 +95,6 @@ func (svc *userService) syncMemDB(c *gin.Context) {
 		return
 	}
 
-	fmt.Println("xasd")
 	c.JSON(http.StatusOK, gin.H{"message": "success"})
 
 }

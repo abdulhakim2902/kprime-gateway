@@ -61,6 +61,34 @@ This project uses [node](http://nodejs.org) and [npm](https://npmjs.com). Go che
 $ npm install --global standard-readme-spec
 ```
 
+## Swagger Documentation. 
+
+```
+go install github.com/swaggo/swag/cmd/swag@latest
+```
+
+To start generating documentation for an endpoint, you can start with decorating the controller/handler with annotations. You can do this by adding commented text before the handler func. 
+```// @BasePath /api/internal
+
+// Sync memdb with mongodb godoc
+// @Summary Sync memdb with mongodb
+// @Schemes
+// @Description do sync
+// @Tags internal
+// @Accept json
+// @Produce json
+// @Success 200 {string} ok
+// @Router /sync/:target [post]
+```
+
+when you've done the decorating, you can then generate the actual yaml and json swagger by running this command 
+```
+swag init -g path/to/handler-file.go --output docs/internal
+```
+
+the docs can be accessed in {{url}}/swagger/index.html
+
+For authentication related for using this API, please refer to [API Internal Protection](https://git.devucc.name/groups/undercurrent-tech/k-prime/-/wikis/API-Internal-Protection-%F0%9F%9B%A1)
 ## Docker
 
 To run gateway through the docker, you can follow this following [wiki](https://git.devucc.name/groups/undercurrent-tech/k-prime/-/wikis/Docker-%F0%9F%90%B3#app-gateway)

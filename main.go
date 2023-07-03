@@ -31,11 +31,11 @@ import (
 	_wsEngineSvc "gateway/internal/ws/engine/service"
 	_wsOrderbookSvc "gateway/internal/ws/service"
 	_wsSvc "gateway/internal/ws/service"
-	"gateway/pkg/middleware"
 
 	_wsCtrl "gateway/internal/ws/controller"
 
 	memory "gateway/datasources/memdb"
+	docs "gateway/docs"
 
 	"git.devucc.name/dependencies/utilities/commons/logs"
 	"git.devucc.name/dependencies/utilities/commons/metrics"
@@ -46,6 +46,9 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/ulule/limiter/v3"
 	limiterMem "github.com/ulule/limiter/v3/drivers/store/memory"
+
+	swaggerFiles "github.com/swaggo/files"     // swagger embed files
+	ginSwagger "github.com/swaggo/gin-swagger" // gin-swagger middleware
 )
 
 var (
@@ -61,7 +64,7 @@ func init() {
 	_, b, _, _ := runtime.Caller(0)
 	rootDir = path.Join(b, "../")
 	fmt.Println(rootDir)
-
+	docs.SwaggerInfo.BasePath = "/api/internal"
 	if err = godotenv.Load(path.Join(rootDir, ".env")); err != nil {
 		panic(err)
 	}
@@ -101,6 +104,14 @@ func init() {
 	server.InitializeData(mongoRepo, memRepo)
 }
 
+// @title           Gateway Internal API
+// @version         2.0
+// @description     This is used for internal service
+
+// @host      localhost:8080
+// @BasePath  /api/internal
+
+// @securityDefinitions.basic  BasicAuth
 func main() {
 	// qf
 	store := limiterMem.NewStore()
@@ -122,7 +133,7 @@ func main() {
 		},
 		Store: store,
 	}
-	engine.Use(middleware.RateLimiter(limiter))
+	// engine.Use(middleware.RateLimiter(limiter))
 
 	if err := memdb.InitSchemas(); err != nil {
 		logs.Log.Fatal().Err(err).Msg("failed to initialize memory schemas")
@@ -180,7 +191,7 @@ func main() {
 	)
 
 	fmt.Printf("Server is running on %s \n", os.Getenv("PORT"))
-
+	engine.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	srv := &http.Server{
 		Addr:    ":" + os.Getenv("PORT"),
 		Handler: engine,

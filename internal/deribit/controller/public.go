@@ -33,19 +33,24 @@ func (handler *DeribitHandler) RegisterPublic() {
 	handler.RegisterHandler("public/get_time", handler.getTime)
 }
 
+type Params struct {
+	GrantType    string `json:"grant_type" form:"grant_type"`
+	ClientID     string `json:"client_id" form:"client_id"`
+	ClientSecret string `json:"client_secret" form:"client_secret"`
+	RefreshToken string `json:"refresh_token" form:"refresh_token"`
+
+	Signature string `json:"signature" form:"signature"`
+	Timestamp string `json:"timestamp" form:"timestamp"`
+	Nonce     string `json:"nonce" form:"nonce"`
+	Data      string `json:"data" form:"data"`
+}
+
+// auth asyncApi
+// @summary authenticate user
+// @description authenticate user with client_key and client_secrets
+// @payload deribitModel.RequestDto[Params]
+// @contentType application/json
 func (h *DeribitHandler) auth(r *gin.Context) {
-	type Params struct {
-		GrantType    string `json:"grant_type" form:"grant_type"`
-		ClientID     string `json:"client_id" form:"client_id"`
-		ClientSecret string `json:"client_secret" form:"client_secret"`
-		RefreshToken string `json:"refresh_token" form:"refresh_token"`
-
-		Signature string `json:"signature" form:"signature"`
-		Timestamp string `json:"timestamp" form:"timestamp"`
-		Nonce     string `json:"nonce" form:"nonce"`
-		Data      string `json:"data" form:"data"`
-	}
-
 	var msg deribitModel.RequestDto[Params]
 	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
 		r.AbortWithError(http.StatusBadRequest, err)
