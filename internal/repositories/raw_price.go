@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	_engineType "gateway/internal/engine/types"
 	_orderbookType "gateway/internal/orderbook/types"
@@ -64,9 +65,15 @@ func (r RawPriceRepository) GetLatestIndexPrice(o _orderbookType.GetOrderBook) [
 	metadataType := "index"
 	metadataPair := fmt.Sprintf("%s_usd", strings.ToLower(o.Underlying))
 
+	gteDate := 60
+	gteTs := time.Now().Add(-1 * (time.Second * time.Duration(gteDate)))
+
 	tradesQuery := bson.M{
 		"metadata.pair": metadataPair,
 		"metadata.type": metadataType,
+		"ts": bson.M{
+			"$gte": gteTs,
+		},
 	}
 	tradesSort := bson.M{
 		"ts": -1,

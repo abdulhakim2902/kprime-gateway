@@ -72,8 +72,8 @@ func genKafkaDurationKey(userId, clOrdID string) string {
 }
 
 func cleanUpDuration(key string) {
-	kafkaDurationsMutex.RLock()
-	defer kafkaDurationsMutex.RUnlock()
+	kafkaDurationsMutex.Lock()
+	defer kafkaDurationsMutex.Unlock()
 
 	delete(kafkaDurations, key)
 }
@@ -87,8 +87,8 @@ func StartKafkaDuration(userId, clOrdID string) {
 	start := uint64(time.Now().UnixMicro())
 
 	// Add duration
-	kafkaDurationsMutex.RLock()
-	defer kafkaDurationsMutex.RUnlock()
+	kafkaDurationsMutex.Lock()
+	defer kafkaDurationsMutex.Unlock()
 
 	kafkaDurations[key] = start
 }
