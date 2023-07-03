@@ -868,8 +868,7 @@ func (r TradeRepository) GetLastTrades(o _orderbookType.GetOrderBook) []*_engine
 	}
 
 	if o.UserRole == types.CLIENT.String() {
-		tradesQuery["userRole"] = types.MARKET_MAKER.String()
-		tradesQuery["userId"] = bson.M{"$nin": o.UserOrderExclusions}
+		tradesQuery["maker.userId"] = bson.M{"$nin": o.UserOrderExclusions}
 	}
 
 	tradesSort := bson.M{
@@ -898,8 +897,7 @@ func (r TradeRepository) GetHighLowTrades(o _orderbookType.GetOrderBook, t int) 
 	}
 
 	if o.UserRole == types.CLIENT.String() {
-		tradesQuery["userRole"] = types.MARKET_MAKER.String()
-		tradesQuery["userId"] = bson.M{"$nin": o.UserOrderExclusions}
+		tradesQuery["maker.userId"] = bson.M{"$nin": o.UserOrderExclusions}
 	}
 
 	tradesSort := bson.M{
@@ -928,8 +926,7 @@ func (r TradeRepository) Get24HoursTrades(o _orderbookType.GetOrderBook) []*_eng
 	}
 
 	if o.UserRole == types.CLIENT.String() {
-		tradesQuery["userRole"] = types.MARKET_MAKER.String()
-		tradesQuery["userId"] = bson.M{"$nin": o.UserOrderExclusions}
+		tradesQuery["maker.userId"] = bson.M{"$nin": o.UserOrderExclusions}
 	}
 
 	tradesSort := bson.M{
@@ -1261,8 +1258,7 @@ func (r TradeRepository) GetTradingViewChartData(req _deribitModel.GetTradingvie
 			excludeUserId = append(excludeUserId, userCast.UserID)
 		}
 
-		match = append(match, bson.E{"userRole", types.MARKET_MAKER.String()})
-		match = append(match, bson.E{"userId", bson.E{"$nin", excludeUserId}})
+		match = append(match, bson.E{"maker.userId", bson.E{"$nin", excludeUserId}})
 	}
 
 	matchStage := bson.D{{"$match", match}}
