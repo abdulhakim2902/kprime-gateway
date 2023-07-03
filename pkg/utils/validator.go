@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"git.devucc.name/dependencies/utilities/commons/logs"
+	"git.devucc.name/dependencies/utilities/types"
 	"git.devucc.name/dependencies/utilities/types/validation_reason"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/locales/en"
@@ -89,9 +90,11 @@ func ValidateDeribitRequestParam(request model.RequestParams) (err error) {
 		return err
 	}
 
-	if request.Price == 0 {
-		err = errors.New(validation_reason.PRICE_IS_REQUIRED.String())
-		return err
+	if request.Type == types.LIMIT {
+		if request.Price == 0 {
+			err = errors.New(validation_reason.PRICE_IS_REQUIRED.String())
+			return err
+		}
 	}
 
 	if request.Type == "" {
