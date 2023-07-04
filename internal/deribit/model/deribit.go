@@ -37,6 +37,11 @@ type ChannelParams struct {
 	Channels    []string `json:"channels" form:"channels"`
 }
 
+type CancelParams struct {
+	OrderId     string `json:"order_id" form:"order_id"`
+	AccessToken string `json:"access_token" form:"access_token"`
+}
+
 type GetInstrumentsParams struct {
 	AccessToken  string `json:"access_token" form:"access_token"`
 	Currency     string `json:"currency" validate:"required" form:"currency"`

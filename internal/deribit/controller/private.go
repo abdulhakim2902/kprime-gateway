@@ -187,10 +187,20 @@ func (h *DeribitHandler) edit(r *gin.Context) {
 }
 
 func (h *DeribitHandler) cancel(r *gin.Context) {
-
-	var msg deribitModel.RequestDto[deribitModel.RequestParams]
+	var msg deribitModel.RequestDto[deribitModel.CancelParams]
 	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
-		r.AbortWithError(http.StatusBadRequest, err)
+		errMsg := protocol.ErrorMessage{
+			Message:        err.Error(),
+			Data:           protocol.ReasonMessage{},
+			HttpStatusCode: http.StatusBadRequest,
+		}
+		m := protocol.RPCResponseMessage{
+			JSONRPC: "2.0",
+			ID:      msg.Id,
+			Error:   &errMsg,
+			Testnet: true,
+		}
+		r.AbortWithStatusJSON(http.StatusBadRequest, m)
 		return
 	}
 
@@ -202,7 +212,7 @@ func (h *DeribitHandler) cancel(r *gin.Context) {
 
 	// Call service
 	_, err = h.svc.DeribitParseCancel(r.Request.Context(), userID, deribitModel.DeribitCancelRequest{
-		Id:      msg.Params.Id,
+		Id:      msg.Params.OrderId,
 		ClOrdID: strconv.FormatUint(msg.Id, 10),
 	})
 	if err != nil {

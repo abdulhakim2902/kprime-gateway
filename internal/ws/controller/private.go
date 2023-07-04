@@ -183,7 +183,7 @@ func (svc *wsHandler) edit(input interface{}, c *ws.Client) {
 }
 
 func (svc *wsHandler) cancel(input interface{}, c *ws.Client) {
-	var msg deribitModel.RequestDto[deribitModel.RequestParams]
+	var msg deribitModel.RequestDto[deribitModel.CancelParams]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
 		c.SendInvalidRequestMessage(err)
 		return
@@ -199,7 +199,7 @@ func (svc *wsHandler) cancel(input interface{}, c *ws.Client) {
 
 	// Parse the Deribit Sell
 	_, err = svc.deribitSvc.DeribitParseCancel(context.TODO(), claim.UserID, deribitModel.DeribitCancelRequest{
-		Id:      msg.Params.Id,
+		Id:      msg.Params.OrderId,
 		ClOrdID: strconv.FormatUint(msg.Id, 10),
 	})
 	if err != nil {
