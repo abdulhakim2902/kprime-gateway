@@ -869,6 +869,7 @@ func (r TradeRepository) GetLastTrades(o _orderbookType.GetOrderBook) []*_engine
 
 	if o.UserRole == types.CLIENT.String() {
 		tradesQuery["maker.userId"] = bson.M{"$nin": o.UserOrderExclusions}
+		tradesQuery["taker.userId"] = bson.M{"$nin": o.UserOrderExclusions}
 	}
 
 	tradesSort := bson.M{
@@ -898,6 +899,7 @@ func (r TradeRepository) GetHighLowTrades(o _orderbookType.GetOrderBook, t int) 
 
 	if o.UserRole == types.CLIENT.String() {
 		tradesQuery["maker.userId"] = bson.M{"$nin": o.UserOrderExclusions}
+		tradesQuery["taker.userId"] = bson.M{"$nin": o.UserOrderExclusions}
 	}
 
 	tradesSort := bson.M{
@@ -927,6 +929,7 @@ func (r TradeRepository) Get24HoursTrades(o _orderbookType.GetOrderBook) []*_eng
 
 	if o.UserRole == types.CLIENT.String() {
 		tradesQuery["maker.userId"] = bson.M{"$nin": o.UserOrderExclusions}
+		tradesQuery["taker.userId"] = bson.M{"$nin": o.UserOrderExclusions}
 	}
 
 	tradesSort := bson.M{
@@ -1238,6 +1241,13 @@ func (r TradeRepository) GetTradingViewChartData(req _deribitModel.GetTradingvie
 		return
 	}
 
+	excludeUserId := []string{}
+	if user.Role == types.CLIENT {
+		for _, userCast := range user.OrderExclusions {
+			excludeUserId = append(excludeUserId, userCast.UserID)
+		}
+	}
+
 	match := bson.D{
 		{"underlying", instrument.Underlying},
 		{"strikePrice", instrument.Strike},
@@ -1249,16 +1259,8 @@ func (r TradeRepository) GetTradingViewChartData(req _deribitModel.GetTradingvie
 				{"$lt", time.UnixMilli(req.EndTimestamp)},
 			},
 		},
-	}
-
-	if user.Role == types.CLIENT {
-		excludeUserId := []string{}
-
-		for _, userCast := range user.OrderExclusions {
-			excludeUserId = append(excludeUserId, userCast.UserID)
-		}
-
-		match = append(match, bson.E{"maker.userId", bson.E{"$nin", excludeUserId}})
+		{"maker.userId", bson.D{{"$nin", excludeUserId}}},
+		{"taker.userId", bson.D{{"$nin", excludeUserId}}},
 	}
 
 	matchStage := bson.D{{"$match", match}}

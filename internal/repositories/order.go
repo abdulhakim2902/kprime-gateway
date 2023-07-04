@@ -182,8 +182,8 @@ func (r OrderRepository) GetInstruments(userId, currency string, expired bool) (
 	if user.Role == types.CLIENT {
 		excludeUserId := []string{}
 
-		for _, userCast := range user.OrderExclusions {
-			excludeUserId = append(excludeUserId, userCast.UserID)
+		for _, exclude := range user.OrderExclusions {
+			excludeUserId = append(excludeUserId, exclude.UserID)
 		}
 
 		match["userRole"] = types.MARKET_MAKER.String()
