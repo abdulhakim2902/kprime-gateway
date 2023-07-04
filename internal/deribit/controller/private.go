@@ -62,9 +62,10 @@ func (h *DeribitHandler) buy(r *gin.Context) {
 		return
 	}
 
+	channel := make(chan protocol.RPCResponseMessage)
+	go protocol.RegisterChannel(connKey, channel)
 	if err := utils.ValidateDeribitRequestParam(msg.Params); err != nil {
 		protocol.SendValidationMsg(connKey, validation_reason.INVALID_PARAMS, err)
-		return
 	}
 
 	// Call service
@@ -81,8 +82,7 @@ func (h *DeribitHandler) buy(r *gin.Context) {
 		ReduceOnly:     msg.Params.ReduceOnly,
 		PostOnly:       msg.Params.PostOnly,
 	})
-	channel := make(chan protocol.RPCResponseMessage)
-	go protocol.RegisterChannel(connKey, channel)
+
 	if err != nil {
 		if validation != nil {
 			protocol.SendValidationMsg(connKey, *validation, err)
@@ -102,7 +102,18 @@ func (h *DeribitHandler) buy(r *gin.Context) {
 func (h *DeribitHandler) sell(r *gin.Context) {
 	var msg deribitModel.RequestDto[deribitModel.RequestParams]
 	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
-		r.AbortWithError(http.StatusBadRequest, err)
+		errMsg := protocol.ErrorMessage{
+			Message:        err.Error(),
+			Data:           protocol.ReasonMessage{},
+			HttpStatusCode: http.StatusBadRequest,
+		}
+		m := protocol.RPCResponseMessage{
+			JSONRPC: "2.0",
+			ID:      msg.Id,
+			Error:   &errMsg,
+			Testnet: true,
+		}
+		r.AbortWithStatusJSON(http.StatusBadRequest, m)
 		return
 	}
 
@@ -117,9 +128,10 @@ func (h *DeribitHandler) sell(r *gin.Context) {
 		return
 	}
 
+	channel := make(chan protocol.RPCResponseMessage)
+	go protocol.RegisterChannel(connKey, channel)
 	if err := utils.ValidateDeribitRequestParam(msg.Params); err != nil {
 		protocol.SendValidationMsg(connKey, validation_reason.INVALID_PARAMS, err)
-		return
 	}
 
 	// Call service
@@ -136,8 +148,6 @@ func (h *DeribitHandler) sell(r *gin.Context) {
 		ReduceOnly:     msg.Params.ReduceOnly,
 		PostOnly:       msg.Params.PostOnly,
 	})
-	channel := make(chan protocol.RPCResponseMessage)
-	go protocol.RegisterChannel(connKey, channel)
 	if err != nil {
 		if validation != nil {
 			protocol.SendValidationMsg(connKey, *validation, err)
