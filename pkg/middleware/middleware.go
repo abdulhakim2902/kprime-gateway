@@ -6,6 +6,7 @@ import (
 	authSvc "gateway/internal/user/service"
 	"gateway/pkg/hmac"
 	"gateway/pkg/memdb"
+	"gateway/pkg/protocol"
 	"io"
 	"net/http"
 	"strings"
@@ -67,8 +68,17 @@ func Authenticate() gin.HandlerFunc {
 				claim, err := authSvc.ClaimJWT(nil, authorization[1])
 				if err != nil {
 					logs.Log.Error().Err(err).Msg("")
-
-					c.AbortWithError(http.StatusUnauthorized, err)
+					errMsg := protocol.ErrorMessage{
+						Message:        err.Error(),
+						Data:           protocol.ReasonMessage{},
+						HttpStatusCode: http.StatusBadRequest,
+					}
+					m := protocol.RPCResponseMessage{
+						JSONRPC: "2.0",
+						Error:   &errMsg,
+						Testnet: true,
+					}
+					c.AbortWithStatusJSON(http.StatusUnauthorized, m)
 					return
 				}
 

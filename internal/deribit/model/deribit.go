@@ -37,6 +37,27 @@ type ChannelParams struct {
 	Channels    []string `json:"channels" form:"channels"`
 }
 
+type CancelParams struct {
+	OrderId     string `json:"order_id" validate:"required" form:"order_id"`
+	AccessToken string `json:"access_token" form:"access_token"`
+}
+
+type CancelByInstrumentParams struct {
+	AccessToken    string `json:"access_token" form:"access_token"`
+	InstrumentName string `json:"instrument_name" form:"instrument_name"`
+}
+
+type CancelOnDisconnectParams struct {
+	AccessToken string `json:"access_token" form:"access_token"`
+}
+
+type EditParams struct {
+	OrderId     string  `json:"order_id" validate:"required" form:"order_id"`
+	AccessToken string  `json:"access_token" form:"access_token"`
+	Price       float64 `json:"price" form:"price"`
+	Amount      float64 `json:"amount" validate:"required" form:"amount"`
+}
+
 type GetInstrumentsParams struct {
 	AccessToken  string `json:"access_token" form:"access_token"`
 	Currency     string `json:"currency" validate:"required" form:"currency"`

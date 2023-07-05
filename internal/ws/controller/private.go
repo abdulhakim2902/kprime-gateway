@@ -157,7 +157,7 @@ func (svc *wsHandler) sell(input interface{}, c *ws.Client) {
 }
 
 func (svc *wsHandler) edit(input interface{}, c *ws.Client) {
-	var msg deribitModel.RequestDto[deribitModel.RequestParams]
+	var msg deribitModel.RequestDto[deribitModel.EditParams]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
 		c.SendInvalidRequestMessage(err)
 		return
@@ -173,7 +173,7 @@ func (svc *wsHandler) edit(input interface{}, c *ws.Client) {
 
 	// Parse the Deribit Sell
 	_, err = svc.deribitSvc.DeribitParseEdit(context.TODO(), claim.UserID, deribitModel.DeribitEditRequest{
-		Id:      msg.Params.Id,
+		Id:      msg.Params.OrderId,
 		Price:   msg.Params.Price,
 		Amount:  msg.Params.Amount,
 		ClOrdID: strconv.FormatUint(msg.Id, 10),
@@ -188,7 +188,7 @@ func (svc *wsHandler) edit(input interface{}, c *ws.Client) {
 }
 
 func (svc *wsHandler) cancel(input interface{}, c *ws.Client) {
-	var msg deribitModel.RequestDto[deribitModel.RequestParams]
+	var msg deribitModel.RequestDto[deribitModel.CancelParams]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
 		c.SendInvalidRequestMessage(err)
 		return
@@ -204,7 +204,7 @@ func (svc *wsHandler) cancel(input interface{}, c *ws.Client) {
 
 	// Parse the Deribit Sell
 	_, err = svc.deribitSvc.DeribitParseCancel(context.TODO(), claim.UserID, deribitModel.DeribitCancelRequest{
-		Id:      msg.Params.Id,
+		Id:      msg.Params.OrderId,
 		ClOrdID: strconv.FormatUint(msg.Id, 10),
 	})
 	if err != nil {
@@ -217,7 +217,7 @@ func (svc *wsHandler) cancel(input interface{}, c *ws.Client) {
 }
 
 func (svc *wsHandler) cancelByInstrument(input interface{}, c *ws.Client) {
-	var msg deribitModel.RequestDto[deribitModel.RequestParams]
+	var msg deribitModel.RequestDto[deribitModel.CancelByInstrumentParams]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
 		c.SendInvalidRequestMessage(err)
 		return
@@ -246,7 +246,7 @@ func (svc *wsHandler) cancelByInstrument(input interface{}, c *ws.Client) {
 }
 
 func (svc *wsHandler) cancelAll(input interface{}, c *ws.Client) {
-	var msg deribitModel.RequestDto[deribitModel.RequestParams]
+	var msg deribitModel.RequestDto[deribitModel.CancelOnDisconnectParams]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
 		c.SendInvalidRequestMessage(err)
 		return
@@ -595,7 +595,7 @@ func (svc *wsHandler) privateUnsubscribe(input interface{}, c *ws.Client) {
 }
 
 func (svc wsHandler) EnableCancelOnDisconnect(input interface{}, c *ws.Client) {
-	var msg deribitModel.RequestDto[deribitModel.RequestParams]
+	var msg deribitModel.RequestDto[deribitModel.CancelOnDisconnectParams]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
 		c.SendInvalidRequestMessage(err)
 		return
@@ -614,7 +614,7 @@ func (svc wsHandler) EnableCancelOnDisconnect(input interface{}, c *ws.Client) {
 }
 
 func (svc wsHandler) DisableCancelOnDisconnect(input interface{}, c *ws.Client) {
-	var msg deribitModel.RequestDto[deribitModel.RequestParams]
+	var msg deribitModel.RequestDto[deribitModel.CancelOnDisconnectParams]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
 		c.SendInvalidRequestMessage(err)
 		return
@@ -633,7 +633,7 @@ func (svc wsHandler) DisableCancelOnDisconnect(input interface{}, c *ws.Client) 
 }
 
 func (svc wsHandler) GetCancelOnDisconnect(input interface{}, c *ws.Client) {
-	var msg deribitModel.RequestDto[deribitModel.RequestParams]
+	var msg deribitModel.RequestDto[deribitModel.CancelOnDisconnectParams]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
 		c.SendInvalidRequestMessage(err)
 		return

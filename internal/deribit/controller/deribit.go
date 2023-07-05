@@ -104,7 +104,7 @@ func requestHelper(msgID uint64, method string, c *gin.Context) (
 	err error,
 ) {
 	prtcl := protocol.HTTP
-	channelMethods := []string{"private/sell", "private/buy", "private/edit"}
+	channelMethods := []string{"private/sell", "private/buy", "private/edit", "private/cancel"}
 
 	// Defining method for get requests
 	url := c.Request.URL.Path
