@@ -23,13 +23,10 @@ import (
 
 func (handler *DeribitHandler) RegisterPublic() {
 	handler.RegisterHandler("public/auth", handler.auth)
-	// handler.RegisterHandler("public/get_instruments", handler.getInstruments)
-	// handler.RegisterHandler("public/get_order_book", handler.getOrderBook)
 	handler.RegisterHandler("public/test", handler.test)
 	handler.RegisterHandler("public/get_index_price", handler.getIndexPrice)
 	handler.RegisterHandler("public/get_last_trades_by_instrument", handler.getLastTradesByInstrument)
 	handler.RegisterHandler("public/get_delivery_prices", handler.getDeliveryPrices)
-	// handler.RegisterHandler("public/get_tradingview_chart_data", handler.getTradingviewChartData)
 	handler.RegisterHandler("public/get_time", handler.getTime)
 }
 
@@ -138,102 +135,6 @@ func (h *DeribitHandler) auth(r *gin.Context) {
 
 }
 
-func (h *DeribitHandler) getInstruments(r *gin.Context) {
-	var msg deribitModel.RequestDto[deribitModel.GetInstrumentsParams]
-	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
-		errMsg := protocol.ErrorMessage{
-			Message:        err.Error(),
-			Data:           protocol.ReasonMessage{},
-			HttpStatusCode: http.StatusBadRequest,
-		}
-		m := protocol.RPCResponseMessage{
-			JSONRPC: "2.0",
-			ID:      msg.Id,
-			Error:   &errMsg,
-			Testnet: true,
-		}
-		r.AbortWithStatusJSON(http.StatusBadRequest, m)
-		return
-	}
-
-	_, connKey, reason, err := requestHelper(msg.Id, msg.Method, r)
-	if err != nil {
-		protocol.SendValidationMsg(connKey, *reason, err)
-		return
-	}
-
-	currency := map[string]bool{"BTC": true, "ETH": true, "USDC": true}
-	if _, ok := currency[strings.ToUpper(msg.Params.Currency)]; !ok {
-		protocol.SendValidationMsg(connKey,
-			validation_reason.INVALID_PARAMS, errors.New("invalid currency"))
-		return
-	}
-
-	if msg.Params.Kind != "" && strings.ToLower(msg.Params.Kind) != "option" {
-		protocol.SendValidationMsg(connKey,
-			validation_reason.INVALID_PARAMS, errors.New("invalid value of kind"))
-		return
-	}
-
-	if msg.Params.IncludeSpots {
-		protocol.SendValidationMsg(connKey,
-			validation_reason.INVALID_PARAMS, errors.New("invalid value of include_spots"))
-		return
-	}
-
-	result := h.svc.DeribitGetInstruments(context.TODO(), deribitModel.DeribitGetInstrumentsRequest{
-		Currency: msg.Params.Currency,
-		Expired:  msg.Params.Expired,
-	})
-
-	protocol.SendSuccessMsg(connKey, result)
-}
-
-func (h *DeribitHandler) getOrderBook(r *gin.Context) {
-	var msg deribitModel.RequestDto[deribitModel.GetOrderBookParams]
-	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
-		reason := validation_reason.PARSE_ERROR
-		code, _, codeStr := reason.Code()
-
-		errMsg := protocol.ErrorMessage{
-			Message: err.Error(),
-			Data: protocol.ReasonMessage{
-				Reason: codeStr,
-			},
-			Code: code,
-		}
-		m := protocol.RPCResponseMessage{
-			JSONRPC: "2.0",
-			ID:      msg.Id,
-			Error:   &errMsg,
-			Testnet: true,
-		}
-		r.AbortWithStatusJSON(http.StatusBadRequest, m)
-		return
-	}
-
-	_, connKey, reason, err := requestHelper(msg.Id, msg.Method, r)
-	if err != nil {
-		protocol.SendValidationMsg(connKey, *reason, err)
-		return
-	}
-
-	instruments, _ := utils.ParseInstruments(msg.Params.InstrumentName)
-
-	if instruments == nil {
-		protocol.SendValidationMsg(connKey,
-			validation_reason.INVALID_PARAMS, errors.New("instrument not found"))
-		return
-	}
-
-	result := h.svc.GetOrderBook(context.TODO(), deribitModel.DeribitGetOrderBookRequest{
-		InstrumentName: msg.Params.InstrumentName,
-		Depth:          msg.Params.Depth,
-	})
-
-	protocol.SendSuccessMsg(connKey, result)
-}
-
 func (h *DeribitHandler) getIndexPrice(r *gin.Context) {
 	var msg deribitModel.RequestDto[deribitModel.GetIndexPriceParams]
 	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
@@ -324,36 +225,6 @@ func (h *DeribitHandler) getDeliveryPrices(r *gin.Context) {
 		Offset:    msg.Params.Offset,
 		Count:     msg.Params.Count,
 	})
-
-	protocol.SendSuccessMsg(connKey, result)
-}
-
-func (h *DeribitHandler) getTradingviewChartData(r *gin.Context) {
-	var msg deribitModel.RequestDto[deribitModel.GetTradingviewChartDataRequest]
-	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
-		r.AbortWithError(http.StatusBadRequest, err)
-		return
-	}
-
-	_, connKey, reason, err := requestHelper(msg.Id, msg.Method, r)
-	if err != nil {
-		protocol.SendValidationMsg(connKey, *reason, err)
-		return
-	}
-
-	result, reason, err := h.svc.GetTradingViewChartData(context.TODO(), msg.Params)
-	if err != nil {
-		if reason != nil {
-			reason := validation_reason.OTHER
-
-			protocol.SendValidationMsg(connKey, reason, err)
-			return
-		}
-
-		protocol.SendErrMsg(connKey, err)
-		return
-
-	}
 
 	protocol.SendSuccessMsg(connKey, result)
 }

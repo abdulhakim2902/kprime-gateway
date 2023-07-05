@@ -326,14 +326,6 @@ func (svc wsOrderService) Unsubscribe(c *ws.Client) {
 
 func (svc wsOrderService) GetInstruments(ctx context.Context, request deribitModel.DeribitGetInstrumentsRequest) []deribitModel.DeribitGetInstrumentsResponse {
 
-	// key := "INSTRUMENTS-" + request.Currency + "" + strconv.FormatBool(request.Expired)
-
-	// // Get initial data from the redis
-	// res, err := svc.redis.GetValue(key)
-
-	// // Handle the initial data
-	// if res == "" || err != nil {
-	// Get All Orders, and Save it to the redis
 	orders, err := svc.repo.GetInstruments(request.UserId, request.Currency, request.Expired)
 	if err != nil {
 		fmt.Println(err)
@@ -343,11 +335,6 @@ func (svc wsOrderService) GetInstruments(ctx context.Context, request deribitMod
 	if err != nil {
 		fmt.Println(err)
 	}
-	// 	// Expire in seconds
-	// 	svc.redis.SetEx(key, string(jsonBytes), 3)
-
-	// 	res, _ = svc.redis.GetValue(key)
-	// }
 
 	var instrumentData []deribitModel.DeribitGetInstrumentsResponse
 	err = json.Unmarshal(jsonBytes, &instrumentData)

@@ -1375,7 +1375,7 @@ func (r TradeRepository) GetTradingViewChartData(req _deribitModel.GetTradingvie
 				t = append(t, *trade)
 
 				sort.Slice(t, func(i, j int) bool {
-					return t[i].CreatedAt.After(t[j].CreatedAt)
+					return t[i].CreatedAt.Before(t[j].CreatedAt)
 				})
 
 				resolutions[key] = resolution{
@@ -1410,7 +1410,7 @@ func (r TradeRepository) GetTradingViewChartData(req _deribitModel.GetTradingvie
 		sortedByPrices := reso.Trades
 
 		sort.Slice(sortedByPrices, func(i, j int) bool {
-			return sortedByPrices[i].Price > sortedByPrices[j].Price
+			return sortedByPrices[i].Price < sortedByPrices[j].Price
 		})
 
 		low := sortedByPrices[0]

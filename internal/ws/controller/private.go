@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	confType "git.devucc.name/dependencies/utilities/config/types"
 	"git.devucc.name/dependencies/utilities/types"
 	"git.devucc.name/dependencies/utilities/types/validation_reason"
 )
@@ -38,9 +39,9 @@ func (handler *wsHandler) RegisterPrivate() {
 	ws.RegisterChannel("private/disable_cancel_on_disconnect", middleware.MiddlewaresWrapper(handler.DisableCancelOnDisconnect, middleware.RateLimiterWs))
 	ws.RegisterChannel("private/get_cancel_on_disconnect", middleware.MiddlewaresWrapper(handler.GetCancelOnDisconnect, middleware.RateLimiterWs))
 
-	ws.RegisterChannel("private/get_instruments", middleware.MiddlewaresWrapper(handler.privateGetInstruments, middleware.RateLimiterWs))
-	ws.RegisterChannel("private/get_order_book", middleware.MiddlewaresWrapper(handler.privateGetOrderBook, middleware.RateLimiterWs))
-	ws.RegisterChannel("private/get_tradingview_chart_data", middleware.MiddlewaresWrapper(handler.privateGetTradingviewChartData, middleware.RateLimiterWs))
+	ws.RegisterChannel("private/get_instruments", middleware.MiddlewaresWrapper(handler.getInstruments, middleware.RateLimiterWs))
+	ws.RegisterChannel("private/get_order_book", middleware.MiddlewaresWrapper(handler.getOrderBook, middleware.RateLimiterWs))
+	ws.RegisterChannel("private/get_tradingview_chart_data", middleware.MiddlewaresWrapper(handler.getTradingviewChartData, middleware.RateLimiterWs))
 }
 
 func (svc *wsHandler) buy(input interface{}, c *ws.Client) {
@@ -651,7 +652,7 @@ func (svc wsHandler) GetCancelOnDisconnect(input interface{}, c *ws.Client) {
 	protocol.SendSuccessMsg(connKey, res)
 }
 
-func (svc *wsHandler) privateGetInstruments(input interface{}, c *ws.Client) {
+func (svc *wsHandler) getInstruments(input interface{}, c *ws.Client) {
 	var msg deribitModel.RequestDto[deribitModel.GetInstrumentsParams]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
 		c.SendInvalidRequestMessage(err)
@@ -663,8 +664,8 @@ func (svc *wsHandler) privateGetInstruments(input interface{}, c *ws.Client) {
 		protocol.SendValidationMsg(connKey, *reason, err)
 	}
 
-	currency := map[string]bool{"BTC": true, "ETH": true, "USDC": true}
-	if _, ok := currency[strings.ToUpper(msg.Params.Currency)]; !ok {
+	currency, ok := confType.Pair(msg.Params.Currency).CurrencyCheck()
+	if !ok {
 		protocol.SendValidationMsg(connKey,
 			validation_reason.INVALID_PARAMS, errors.New("invalid currency"))
 		return
@@ -683,7 +684,7 @@ func (svc *wsHandler) privateGetInstruments(input interface{}, c *ws.Client) {
 	}
 
 	result := svc.wsOSvc.GetInstruments(context.TODO(), deribitModel.DeribitGetInstrumentsRequest{
-		Currency: msg.Params.Currency,
+		Currency: currency,
 		Expired:  msg.Params.Expired,
 		UserId:   claim.UserID,
 	})
@@ -691,7 +692,7 @@ func (svc *wsHandler) privateGetInstruments(input interface{}, c *ws.Client) {
 	protocol.SendSuccessMsg(connKey, result)
 }
 
-func (svc *wsHandler) privateGetOrderBook(input interface{}, c *ws.Client) {
+func (svc *wsHandler) getOrderBook(input interface{}, c *ws.Client) {
 	var msg deribitModel.RequestDto[deribitModel.GetOrderBookParams]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
 		c.SendInvalidRequestMessage(err)
@@ -721,7 +722,7 @@ func (svc *wsHandler) privateGetOrderBook(input interface{}, c *ws.Client) {
 	protocol.SendSuccessMsg(connKey, result)
 }
 
-func (svc *wsHandler) privateGetTradingviewChartData(input interface{}, c *ws.Client) {
+func (svc *wsHandler) getTradingviewChartData(input interface{}, c *ws.Client) {
 	var msg deribitModel.RequestDto[deribitModel.GetTradingviewChartDataRequest]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
 		c.SendInvalidRequestMessage(err)

@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	confType "git.devucc.name/dependencies/utilities/config/types"
 	"git.devucc.name/dependencies/utilities/types"
 
 	deribitModel "gateway/internal/deribit/model"
@@ -34,9 +35,9 @@ func (handler *DeribitHandler) RegisterPrivate() {
 	handler.RegisterHandler("private/get_user_trades_by_order", handler.getUserTradesByOrder)
 	handler.RegisterHandler("private/get_account_summary", handler.getAccountSummary)
 
-	handler.RegisterHandler("private/get_instruments", handler.privateGetInstruments)
-	handler.RegisterHandler("private/get_order_book", handler.privateGetOrderBook)
-	handler.RegisterHandler("private/get_tradingview_chart_data", handler.privateGetTradingviewChartData)
+	handler.RegisterHandler("private/get_instruments", handler.getInstruments)
+	handler.RegisterHandler("private/get_order_book", handler.getOrderBook)
+	handler.RegisterHandler("private/get_tradingview_chart_data", handler.getTradingviewChartData)
 }
 
 func (h *DeribitHandler) buy(r *gin.Context) {
@@ -489,7 +490,7 @@ func (h *DeribitHandler) getAccountSummary(r *gin.Context) {
 	protocol.SendSuccessMsg(connKey, resp)
 }
 
-func (h *DeribitHandler) privateGetInstruments(r *gin.Context) {
+func (h *DeribitHandler) getInstruments(r *gin.Context) {
 	var msg deribitModel.RequestDto[deribitModel.GetInstrumentsParams]
 	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
 		errMsg := protocol.ErrorMessage{
@@ -513,8 +514,8 @@ func (h *DeribitHandler) privateGetInstruments(r *gin.Context) {
 		return
 	}
 
-	currency := map[string]bool{"BTC": true, "ETH": true, "USDC": true}
-	if _, ok := currency[strings.ToUpper(msg.Params.Currency)]; !ok {
+	currency, ok := confType.Pair(msg.Params.Currency).CurrencyCheck()
+	if !ok {
 		protocol.SendValidationMsg(connKey,
 			validation_reason.INVALID_PARAMS, errors.New("invalid currency"))
 		return
@@ -533,7 +534,7 @@ func (h *DeribitHandler) privateGetInstruments(r *gin.Context) {
 	}
 
 	result := h.svc.DeribitGetInstruments(context.TODO(), deribitModel.DeribitGetInstrumentsRequest{
-		Currency: msg.Params.Currency,
+		Currency: currency,
 		Expired:  msg.Params.Expired,
 		UserId:   userId,
 	})
@@ -541,7 +542,7 @@ func (h *DeribitHandler) privateGetInstruments(r *gin.Context) {
 	protocol.SendSuccessMsg(connKey, result)
 }
 
-func (h *DeribitHandler) privateGetOrderBook(r *gin.Context) {
+func (h *DeribitHandler) getOrderBook(r *gin.Context) {
 	var msg deribitModel.RequestDto[deribitModel.GetOrderBookParams]
 	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
 		reason := validation_reason.PARSE_ERROR
@@ -587,7 +588,7 @@ func (h *DeribitHandler) privateGetOrderBook(r *gin.Context) {
 	protocol.SendSuccessMsg(connKey, result)
 }
 
-func (h *DeribitHandler) privateGetTradingviewChartData(r *gin.Context) {
+func (h *DeribitHandler) getTradingviewChartData(r *gin.Context) {
 	var msg deribitModel.RequestDto[deribitModel.GetTradingviewChartDataRequest]
 	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
 		r.AbortWithError(http.StatusBadRequest, err)
