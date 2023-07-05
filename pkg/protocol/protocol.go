@@ -1,6 +1,7 @@
 package protocol
 
 import (
+	"context"
 	"fmt"
 	"gateway/pkg/collector"
 	"gateway/pkg/utils"
@@ -287,7 +288,7 @@ func isConnExist(key string) bool {
 	return ok
 }
 
-func RegisterChannel(key string, channel chan RPCResponseMessage) {
+func RegisterChannel(key string, channel chan RPCResponseMessage, ctx context.Context) {
 	if channelConnections == nil {
 		channelConnections = make(map[any]chan RPCResponseMessage)
 	}
@@ -298,8 +299,9 @@ func RegisterChannel(key string, channel chan RPCResponseMessage) {
 		if res.Result != nil || res.Error != nil {
 			break
 		}
+
 		select {
-		case <-time.After(10 * time.Second):
+		case <-ctx.Done():
 			res = RPCResponseMessage{
 				Error: &ErrorMessage{
 					Message: validation_reason.TIME_OUT.String(),
@@ -309,6 +311,8 @@ func RegisterChannel(key string, channel chan RPCResponseMessage) {
 				},
 			}
 			break
+		default:
+			continue
 		}
 	}
 
