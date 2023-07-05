@@ -18,6 +18,7 @@ import (
 	orderType "git.devucc.name/dependencies/utilities/models/order"
 
 	"gateway/internal/repositories"
+	"gateway/pkg/memdb"
 	"gateway/pkg/redis"
 	"gateway/pkg/utils"
 	"gateway/pkg/ws"
@@ -1117,12 +1118,25 @@ func (svc wsOrderbookService) HandleConsumeUserTicker100ms(instrument string) {
 func (svc wsOrderbookService) GetOrderBook(ctx context.Context, data _deribitModel.DeribitGetOrderBookRequest) _deribitModel.DeribitGetOrderBookResponse {
 	instruments, _ := utils.ParseInstruments(data.InstrumentName)
 
+	user, _, err := memdb.MDBFindUserById(data.UserId)
+	if err != nil {
+		logs.Log.Error().Err(err).Msg("")
+	}
+
 	_order := _orderbookTypes.GetOrderBook{
 		InstrumentName: data.InstrumentName,
 		Underlying:     instruments.Underlying,
 		ExpiryDate:     instruments.ExpDate,
 		StrikePrice:    instruments.Strike,
 	}
+
+	ordExclusions := []string{}
+	for _, userCast := range user.OrderExclusions {
+		ordExclusions = append(ordExclusions, userCast.UserID)
+	}
+
+	_order.UserRole = user.Role.String()
+	_order.UserOrderExclusions = ordExclusions
 
 	dataQuote, orderBook := svc.GetDataQuote(_order)
 

@@ -14,12 +14,14 @@ import (
 	_engineType "gateway/internal/engine/types"
 	_orderbookType "gateway/internal/orderbook/types"
 	_tradeType "gateway/internal/repositories/types"
+	"gateway/pkg/memdb"
 	"gateway/pkg/utils"
 
 	"git.devucc.name/dependencies/utilities/commons/logs"
 	Greeks "git.devucc.name/dependencies/utilities/helper/greeks"
 	IV "git.devucc.name/dependencies/utilities/helper/implied_volatility"
 	"git.devucc.name/dependencies/utilities/models/trade"
+	"git.devucc.name/dependencies/utilities/types"
 	"git.devucc.name/dependencies/utilities/types/validation_reason"
 	"github.com/shopspring/decimal"
 
@@ -864,6 +866,12 @@ func (r TradeRepository) GetLastTrades(o _orderbookType.GetOrderBook) []*_engine
 		"strikePrice": o.StrikePrice,
 		"expiryDate":  o.ExpiryDate,
 	}
+
+	if o.UserRole == types.CLIENT.String() {
+		tradesQuery["maker.userId"] = bson.M{"$nin": o.UserOrderExclusions}
+		tradesQuery["taker.userId"] = bson.M{"$nin": o.UserOrderExclusions}
+	}
+
 	tradesSort := bson.M{
 		"createdAt": 1,
 	}
@@ -888,6 +896,12 @@ func (r TradeRepository) GetHighLowTrades(o _orderbookType.GetOrderBook, t int) 
 			"$gte": oneDayAgo,
 		},
 	}
+
+	if o.UserRole == types.CLIENT.String() {
+		tradesQuery["maker.userId"] = bson.M{"$nin": o.UserOrderExclusions}
+		tradesQuery["taker.userId"] = bson.M{"$nin": o.UserOrderExclusions}
+	}
+
 	tradesSort := bson.M{
 		"price": t,
 	}
@@ -912,6 +926,12 @@ func (r TradeRepository) Get24HoursTrades(o _orderbookType.GetOrderBook) []*_eng
 			"$gte": oneDayAgo,
 		},
 	}
+
+	if o.UserRole == types.CLIENT.String() {
+		tradesQuery["maker.userId"] = bson.M{"$nin": o.UserOrderExclusions}
+		tradesQuery["taker.userId"] = bson.M{"$nin": o.UserOrderExclusions}
+	}
+
 	tradesSort := bson.M{
 		"createdAt": 1,
 	}
@@ -1198,6 +1218,15 @@ func (r TradeRepository) FilterUserTradesByOrder(userId string, orderId string) 
 }
 
 func (r TradeRepository) GetTradingViewChartData(req _deribitModel.GetTradingviewChartDataRequest) (res _deribitModel.GetTradingviewChartDataResponse, reason *validation_reason.ValidationReason, err error) {
+	user, vr, er := memdb.MDBFindUserById(req.UserId)
+	if er != nil {
+		logs.Log.Error().Err(err).Msg("")
+		err = er
+		reason = &vr
+
+		return
+	}
+
 	options := options.AggregateOptions{
 		MaxTime: &defaultTimeout,
 	}
@@ -1212,22 +1241,29 @@ func (r TradeRepository) GetTradingViewChartData(req _deribitModel.GetTradingvie
 		return
 	}
 
-	matchStage := bson.D{
-		{"$match",
+	excludeUserId := []string{}
+	if user.Role == types.CLIENT {
+		for _, userCast := range user.OrderExclusions {
+			excludeUserId = append(excludeUserId, userCast.UserID)
+		}
+	}
+
+	match := bson.D{
+		{"underlying", instrument.Underlying},
+		{"strikePrice", instrument.Strike},
+		{"expiryDate", instrument.ExpDate},
+		{"contracts", instrument.Contracts},
+		{"createdAt",
 			bson.D{
-				{"underlying", instrument.Underlying},
-				{"strikePrice", instrument.Strike},
-				{"expiryDate", instrument.ExpDate},
-				{"contracts", instrument.Contracts},
-				{"createdAt",
-					bson.D{
-						{"$gt", time.UnixMilli(req.StartTimestamp)},
-						{"$lt", time.UnixMilli(req.EndTimestamp)},
-					},
-				},
+				{"$gt", time.UnixMilli(req.StartTimestamp)},
+				{"$lt", time.UnixMilli(req.EndTimestamp)},
 			},
 		},
+		{"maker.userId", bson.D{{"$nin", excludeUserId}}},
+		{"taker.userId", bson.D{{"$nin", excludeUserId}}},
 	}
+
+	matchStage := bson.D{{"$match", match}}
 
 	sortStage := bson.D{
 		{"$sort", bson.D{
@@ -1339,7 +1375,7 @@ func (r TradeRepository) GetTradingViewChartData(req _deribitModel.GetTradingvie
 				t = append(t, *trade)
 
 				sort.Slice(t, func(i, j int) bool {
-					return t[i].CreatedAt.After(t[j].CreatedAt)
+					return t[i].CreatedAt.Before(t[j].CreatedAt)
 				})
 
 				resolutions[key] = resolution{
@@ -1374,7 +1410,7 @@ func (r TradeRepository) GetTradingViewChartData(req _deribitModel.GetTradingvie
 		sortedByPrices := reso.Trades
 
 		sort.Slice(sortedByPrices, func(i, j int) bool {
-			return sortedByPrices[i].Price > sortedByPrices[j].Price
+			return sortedByPrices[i].Price < sortedByPrices[j].Price
 		})
 
 		low := sortedByPrices[0]

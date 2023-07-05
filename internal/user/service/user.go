@@ -23,8 +23,7 @@ import (
 type userService struct {
 	r *gin.Engine
 
-	repo  *repositories.UserRepository
-	memDb *memdb.Schemas
+	repo *repositories.UserRepository
 }
 
 type Request struct {
@@ -35,9 +34,8 @@ func NewUserService(
 	r *gin.Engine,
 
 	repo *repositories.UserRepository,
-	memDb *memdb.Schemas,
 ) IUserService {
-	svc := userService{r, repo, memDb}
+	svc := userService{r, repo}
 	svc.RegisterRoutes()
 
 	return &svc
@@ -133,7 +131,7 @@ func (svc *userService) SyncMemDB(ctx context.Context, filter interface{}) (err 
 			clientIds = append(clientIds, fmt.Sprintf("%s:%s", client.APIKey, client.APISecret))
 		}
 
-		if err = svc.memDb.User.Create(schema.User{
+		if err = memdb.Schemas.User.Create(schema.User{
 			ID:              user.ID.Hex(),
 			OrderExclusions: orderExclusions,
 			TypeInclusions:  typeInclusions,

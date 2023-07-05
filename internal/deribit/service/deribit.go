@@ -32,12 +32,10 @@ type deribitService struct {
 	settlementPriceRepo *repositories.SettlementPriceRepository
 
 	redis *redis.RedisConnectionPool
-	memDb *memdb.Schemas
 }
 
 func NewDeribitService(
 	redis *redis.RedisConnectionPool,
-	memDb *memdb.Schemas,
 
 	tradeRepo *repositories.TradeRepository,
 	orderRepo *repositories.OrderRepository,
@@ -50,7 +48,6 @@ func NewDeribitService(
 		rawPriceRepo,
 		settlementPriceRepo,
 		redis,
-		memDb,
 	}
 }
 
@@ -66,7 +63,7 @@ func (svc deribitService) DeribitRequest(
 		return nil, &reason, err
 	}
 
-	user, err := svc.memDb.User.FindOne("id", userId)
+	user, err := memdb.Schemas.User.FindOne("id", userId)
 	if err != nil {
 		logs.Log.Error().Err(err).Msg("")
 

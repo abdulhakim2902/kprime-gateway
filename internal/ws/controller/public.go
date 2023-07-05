@@ -25,14 +25,11 @@ func (handler *wsHandler) RegisterPublic() {
 	ws.RegisterChannel("public/subscribe", middleware.MiddlewaresWrapper(handler.publicSubscribe, middleware.RateLimiterWs))
 	ws.RegisterChannel("public/unsubscribe", middleware.MiddlewaresWrapper(handler.publicUnsubscribe, middleware.RateLimiterWs))
 	ws.RegisterChannel("public/unsubscribe_all", middleware.MiddlewaresWrapper(handler.publicUnsubscribeAll, middleware.RateLimiterWs))
-	ws.RegisterChannel("public/get_instruments", middleware.MiddlewaresWrapper(handler.getInstruments, middleware.RateLimiterWs))
 	ws.RegisterChannel("public/get_last_trades_by_instrument", middleware.MiddlewaresWrapper(handler.getLastTradesByInstrument, middleware.RateLimiterWs))
-	ws.RegisterChannel("public/get_order_book", middleware.MiddlewaresWrapper(handler.getOrderBook, middleware.RateLimiterWs))
 	ws.RegisterChannel("public/get_index_price", middleware.MiddlewaresWrapper(handler.getIndexPrice, middleware.RateLimiterWs))
 	ws.RegisterChannel("public/get_delivery_prices", middleware.MiddlewaresWrapper(handler.getDeliveryPrices, middleware.RateLimiterWs))
 	ws.RegisterChannel("public/set_heartbeat", middleware.MiddlewaresWrapper(handler.setHeartbeat, middleware.RateLimiterWs))
 	ws.RegisterChannel("public/test", middleware.MiddlewaresWrapper(handler.test, middleware.RateLimiterWs))
-	ws.RegisterChannel("public/get_tradingview_chart_data", middleware.MiddlewaresWrapper(handler.publicGetTradingviewChartData, middleware.RateLimiterWs))
 	ws.RegisterChannel("public/get_time", middleware.MiddlewaresWrapper(handler.publicGetTime, middleware.RateLimiterWs))
 }
 
@@ -267,74 +264,6 @@ func (svc *wsHandler) publicUnsubscribeAll(input interface{}, c *ws.Client) {
 	protocol.SendSuccessMsg(connKey, "ok")
 }
 
-func (svc *wsHandler) getInstruments(input interface{}, c *ws.Client) {
-	var msg deribitModel.RequestDto[deribitModel.GetInstrumentsParams]
-	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
-		c.SendInvalidRequestMessage(err)
-		return
-	}
-
-	_, connKey, reason, err := requestHelper(msg.Id, msg.Method, nil, c)
-	if err != nil {
-		protocol.SendValidationMsg(connKey, *reason, err)
-	}
-
-	currency := map[string]bool{"BTC": true, "ETH": true, "USDC": true}
-	if _, ok := currency[strings.ToUpper(msg.Params.Currency)]; !ok {
-		protocol.SendValidationMsg(connKey,
-			validation_reason.INVALID_PARAMS, errors.New("invalid currency"))
-		return
-	}
-
-	if msg.Params.Kind != "" && strings.ToLower(msg.Params.Kind) != "option" {
-		protocol.SendValidationMsg(connKey,
-			validation_reason.INVALID_PARAMS, errors.New("invalid value of kind"))
-		return
-	}
-
-	if msg.Params.IncludeSpots {
-		protocol.SendValidationMsg(connKey,
-			validation_reason.INVALID_PARAMS, errors.New("invalid value of include_spots"))
-		return
-	}
-
-	result := svc.wsOSvc.GetInstruments(context.TODO(), deribitModel.DeribitGetInstrumentsRequest{
-		Currency: msg.Params.Currency,
-		Expired:  msg.Params.Expired,
-	})
-
-	protocol.SendSuccessMsg(connKey, result)
-}
-
-func (svc *wsHandler) getOrderBook(input interface{}, c *ws.Client) {
-	var msg deribitModel.RequestDto[deribitModel.GetOrderBookParams]
-	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
-		c.SendInvalidRequestMessage(err)
-		return
-	}
-
-	_, connKey, reason, err := requestHelper(msg.Id, msg.Method, nil, c)
-	if err != nil {
-		protocol.SendValidationMsg(connKey, *reason, err)
-		return
-	}
-
-	instruments, _ := utils.ParseInstruments(msg.Params.InstrumentName)
-
-	if instruments == nil {
-		protocol.SendValidationMsg(connKey,
-			validation_reason.INVALID_PARAMS, errors.New("instrument not found"))
-		return
-	}
-
-	result := svc.wsOBSvc.GetOrderBook(context.TODO(), deribitModel.DeribitGetOrderBookRequest{
-		InstrumentName: msg.Params.InstrumentName,
-		Depth:          msg.Params.Depth,
-	})
-
-	protocol.SendSuccessMsg(connKey, result)
-}
-
 func (svc *wsHandler) getLastTradesByInstrument(input interface{}, c *ws.Client) {
 	var msg deribitModel.RequestDto[deribitModel.GetLastTradesByInstrumentParams]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
@@ -467,35 +396,6 @@ func (svc *wsHandler) test(input interface{}, c *ws.Client) {
 
 	result := Version{
 		Version: version,
-	}
-
-	protocol.SendSuccessMsg(connKey, result)
-}
-
-func (svc *wsHandler) publicGetTradingviewChartData(input interface{}, c *ws.Client) {
-	var msg deribitModel.RequestDto[deribitModel.GetTradingviewChartDataRequest]
-	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
-		c.SendInvalidRequestMessage(err)
-		return
-	}
-
-	_, connKey, reason, err := requestHelper(msg.Id, msg.Method, nil, c)
-	if err != nil {
-		protocol.SendValidationMsg(connKey, *reason, err)
-		return
-	}
-
-	result, reason, err := svc.deribitSvc.GetTradingViewChartData(context.TODO(), msg.Params)
-	if err != nil {
-		if reason != nil {
-			reason := validation_reason.OTHER
-
-			protocol.SendValidationMsg(connKey, reason, err)
-			return
-		}
-
-		protocol.SendErrMsg(connKey, err)
-		return
 	}
 
 	protocol.SendSuccessMsg(connKey, result)

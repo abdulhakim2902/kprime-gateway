@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	confType "git.devucc.name/dependencies/utilities/config/types"
 	"git.devucc.name/dependencies/utilities/types"
 	"git.devucc.name/dependencies/utilities/types/validation_reason"
 )
@@ -37,6 +38,10 @@ func (handler *wsHandler) RegisterPrivate() {
 	ws.RegisterChannel("private/enable_cancel_on_disconnect", middleware.MiddlewaresWrapper(handler.EnableCancelOnDisconnect, middleware.RateLimiterWs))
 	ws.RegisterChannel("private/disable_cancel_on_disconnect", middleware.MiddlewaresWrapper(handler.DisableCancelOnDisconnect, middleware.RateLimiterWs))
 	ws.RegisterChannel("private/get_cancel_on_disconnect", middleware.MiddlewaresWrapper(handler.GetCancelOnDisconnect, middleware.RateLimiterWs))
+
+	ws.RegisterChannel("private/get_instruments", middleware.MiddlewaresWrapper(handler.getInstruments, middleware.RateLimiterWs))
+	ws.RegisterChannel("private/get_order_book", middleware.MiddlewaresWrapper(handler.getOrderBook, middleware.RateLimiterWs))
+	ws.RegisterChannel("private/get_tradingview_chart_data", middleware.MiddlewaresWrapper(handler.getTradingviewChartData, middleware.RateLimiterWs))
 }
 
 func (svc *wsHandler) buy(input interface{}, c *ws.Client) {
@@ -645,4 +650,105 @@ func (svc wsHandler) GetCancelOnDisconnect(input interface{}, c *ws.Client) {
 	}
 
 	protocol.SendSuccessMsg(connKey, res)
+}
+
+func (svc *wsHandler) getInstruments(input interface{}, c *ws.Client) {
+	var msg deribitModel.RequestDto[deribitModel.GetInstrumentsParams]
+	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
+		c.SendInvalidRequestMessage(err)
+		return
+	}
+
+	claim, connKey, reason, err := requestHelper(msg.Id, msg.Method, &msg.Params.AccessToken, c)
+	if err != nil {
+		protocol.SendValidationMsg(connKey, *reason, err)
+	}
+
+	currency, ok := confType.Pair(msg.Params.Currency).CurrencyCheck()
+	if !ok {
+		protocol.SendValidationMsg(connKey,
+			validation_reason.INVALID_PARAMS, errors.New("invalid currency"))
+		return
+	}
+
+	if msg.Params.Kind != "" && strings.ToLower(msg.Params.Kind) != "option" {
+		protocol.SendValidationMsg(connKey,
+			validation_reason.INVALID_PARAMS, errors.New("invalid value of kind"))
+		return
+	}
+
+	if msg.Params.IncludeSpots {
+		protocol.SendValidationMsg(connKey,
+			validation_reason.INVALID_PARAMS, errors.New("invalid value of include_spots"))
+		return
+	}
+
+	result := svc.wsOSvc.GetInstruments(context.TODO(), deribitModel.DeribitGetInstrumentsRequest{
+		Currency: currency,
+		Expired:  msg.Params.Expired,
+		UserId:   claim.UserID,
+	})
+
+	protocol.SendSuccessMsg(connKey, result)
+}
+
+func (svc *wsHandler) getOrderBook(input interface{}, c *ws.Client) {
+	var msg deribitModel.RequestDto[deribitModel.GetOrderBookParams]
+	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
+		c.SendInvalidRequestMessage(err)
+		return
+	}
+
+	claim, connKey, reason, err := requestHelper(msg.Id, msg.Method, &msg.Params.AccessToken, c)
+	if err != nil {
+		protocol.SendValidationMsg(connKey, *reason, err)
+		return
+	}
+
+	instruments, _ := utils.ParseInstruments(msg.Params.InstrumentName)
+
+	if instruments == nil {
+		protocol.SendValidationMsg(connKey,
+			validation_reason.INVALID_PARAMS, errors.New("instrument not found"))
+		return
+	}
+
+	result := svc.wsOBSvc.GetOrderBook(context.TODO(), deribitModel.DeribitGetOrderBookRequest{
+		InstrumentName: msg.Params.InstrumentName,
+		Depth:          msg.Params.Depth,
+		UserId:         claim.UserID,
+	})
+
+	protocol.SendSuccessMsg(connKey, result)
+}
+
+func (svc *wsHandler) getTradingviewChartData(input interface{}, c *ws.Client) {
+	var msg deribitModel.RequestDto[deribitModel.GetTradingviewChartDataRequest]
+	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
+		c.SendInvalidRequestMessage(err)
+		return
+	}
+
+	claim, connKey, reason, err := requestHelper(msg.Id, msg.Method, &msg.Params.AccessToken, c)
+	if err != nil {
+		protocol.SendValidationMsg(connKey, *reason, err)
+		return
+	}
+
+	msg.Params.UserId = claim.UserID
+
+	result, reason, err := svc.deribitSvc.GetTradingViewChartData(context.TODO(), msg.Params)
+	if err != nil {
+		if reason != nil {
+			reason := validation_reason.OTHER
+
+			protocol.SendValidationMsg(connKey, reason, err)
+			return
+		}
+
+		protocol.SendErrMsg(connKey, err)
+		return
+	}
+
+	protocol.SendSuccessMsg(connKey, result)
 }

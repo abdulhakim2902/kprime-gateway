@@ -55,7 +55,6 @@ var (
 	engine    *gin.Engine
 	mongoConn *mongo.Database
 	redisConn *redis.RedisConnectionPool
-	memDb     *memdb.Schemas
 
 	err     error
 	rootDir string
@@ -136,8 +135,7 @@ func main() {
 	}
 	// engine.Use(middleware.RateLimiter(limiter))
 
-	memoryDb, err := memdb.InitSchemas()
-	if err != nil {
+	if err := memdb.InitSchemas(); err != nil {
 		logs.Log.Fatal().Err(err).Msg("failed to initialize memory schemas")
 	}
 
@@ -150,7 +148,7 @@ func main() {
 	rawPriceRepo := repositories.NewRawPriceRepository(mongoConn)
 	settlementPriceRepo := repositories.NewSettlementPriceRepository(mongoConn)
 
-	_authSvc := _userSvc.NewAuthService(userRepo, memoryDb)
+	_authSvc := _userSvc.NewAuthService(userRepo)
 	_wsOrderbookSvc := _wsOrderbookSvc.NewWSOrderbookService(
 		redisConn,
 		orderRepo,
@@ -163,13 +161,12 @@ func main() {
 	_wsRawPriceSvc := _wsSvc.NewWSRawPriceService(redisConn, rawPriceRepo)
 	_wsUserBalanceSvc := _wsSvc.NewWSUserBalanceService()
 
-	_userSvc := _userSvc.NewUserService(engine, userRepo, memoryDb)
+	_userSvc := _userSvc.NewUserService(engine, userRepo)
 
 	_userSvc.SyncMemDB(context.TODO(), nil)
 
 	_deribitSvc := _deribitSvc.NewDeribitService(
 		redisConn,
-		memoryDb,
 		tradeRepo,
 		orderRepo,
 		rawPriceRepo,
@@ -178,7 +175,7 @@ func main() {
 
 	go ordermatch.Execute(_deribitSvc)
 
-	_deribitCtrl.NewDeribitHandler(engine, _deribitSvc, _authSvc, userRepo, memoryDb)
+	_deribitCtrl.NewDeribitHandler(engine, _deribitSvc, _authSvc, userRepo)
 	_wsCtrl.NewWebsocketHandler(
 		engine,
 		_authSvc,

@@ -2,18 +2,21 @@ package repositories
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
 
+	"git.devucc.name/dependencies/utilities/commons/logs"
 	"git.devucc.name/dependencies/utilities/types"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 
 	_deribitModel "gateway/internal/deribit/model"
 	_orderbookType "gateway/internal/orderbook/types"
+	"gateway/pkg/memdb"
 
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -92,7 +95,14 @@ func (r OrderRepository) GetAvailableInstruments(currency string) ([]_deribitMod
 	return orders, nil
 }
 
-func (r OrderRepository) GetInstruments(currency string, expired bool) ([]*_deribitModel.DeribitGetInstrumentsResponse, error) {
+func (r OrderRepository) GetInstruments(userId, currency string, expired bool) ([]*_deribitModel.DeribitGetInstrumentsResponse, error) {
+	user, reason, err := memdb.MDBFindUserById(userId)
+	if err != nil {
+		logs.Log.Error().Err(err).Msg("")
+
+		return []*_deribitModel.DeribitGetInstrumentsResponse{}, errors.New(reason.String())
+	}
+
 	now := time.Now()
 	loc, _ := time.LoadLocation("Singapore")
 	if loc != nil {
@@ -160,14 +170,27 @@ func (r OrderRepository) GetInstruments(currency string, expired bool) ([]*_deri
 			"Strike":             "$strikePrice",
 			"OptionType":         bson.M{"$toLower": "$contracts"},
 			"underlying":         "$underlying",
+			"userId":             "$userId",
+			"userRole":           "$userRole",
 		}}
 
-	matchesStage := bson.M{
-		"$match": bson.M{
-			"underlying": currency,
-			"IsActive":   !expired,
-		},
+	match := bson.M{
+		"underlying": currency,
+		"IsActive":   !expired,
 	}
+
+	if user.Role == types.CLIENT {
+		excludeUserId := []string{}
+
+		for _, exclude := range user.OrderExclusions {
+			excludeUserId = append(excludeUserId, exclude.UserID)
+		}
+
+		match["userRole"] = types.MARKET_MAKER.String()
+		match["userId"] = bson.M{"$nin": excludeUserId}
+	}
+
+	matchesStage := bson.M{"$match": match}
 
 	groupStage := bson.M{
 		"$group": bson.M{
@@ -753,16 +776,24 @@ func tradePriceAvgQuery(instrument string) (query bson.A, err error) {
 }
 
 func (r OrderRepository) GetOrderBook(o _orderbookType.GetOrderBook) *_orderbookType.Orderbook {
+
 	queryBuilder := func(side types.Side, priceOrder int) interface{} {
+		match := bson.M{
+			"status":      bson.M{"$in": []types.OrderStatus{types.OPEN, types.PARTIAL_FILLED}},
+			"underlying":  o.Underlying,
+			"strikePrice": o.StrikePrice,
+			"expiryDate":  o.ExpiryDate,
+			"side":        side,
+		}
+
+		if o.UserRole == types.CLIENT.String() {
+			match["userRole"] = types.MARKET_MAKER.String()
+			match["userId"] = bson.M{"$nin": o.UserOrderExclusions}
+		}
+
 		return []bson.M{
 			{
-				"$match": bson.M{
-					"status":      bson.M{"$in": []types.OrderStatus{types.OPEN, types.PARTIAL_FILLED}},
-					"underlying":  o.Underlying,
-					"strikePrice": o.StrikePrice,
-					"expiryDate":  o.ExpiryDate,
-					"side":        side,
-				},
+				"$match": match,
 			},
 			{
 				"$group": bson.D{

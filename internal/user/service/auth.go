@@ -22,12 +22,10 @@ import (
 
 type AuthService struct {
 	repo *repositories.UserRepository
-
-	memDb *memdb.Schemas
 }
 
-func NewAuthService(repo *repositories.UserRepository, memDb *memdb.Schemas) IAuthService {
-	return &AuthService{repo, memDb}
+func NewAuthService(repo *repositories.UserRepository) IAuthService {
+	return &AuthService{repo}
 }
 
 func (s AuthService) Login(ctx context.Context, req types.AuthRequest) (res *types.AuthResponse, user *types.User, err error) {
@@ -42,7 +40,7 @@ func (s AuthService) Login(ctx context.Context, req types.AuthRequest) (res *typ
 		return
 	}
 
-	accessToken, refreshToken, accessTokenExp, err := GenerateToken(user.ID.Hex())
+	accessToken, refreshToken, accessTokenExp, err := GenerateToken(user.ID.Hex(), user.Role.Name)
 	if err != nil {
 		err = errors.New("failed to generate token")
 		return
@@ -60,19 +58,20 @@ func (s AuthService) Login(ctx context.Context, req types.AuthRequest) (res *typ
 }
 
 func (s AuthService) LoginWithSignature(ctx context.Context, sig hmac.Signature) (res *types.AuthResponse, user *types.User, err error) {
-	users := s.memDb.User.Find("id")
+	users := memdb.Schemas.User.Find("id")
 	if users == nil {
 		err = errors.New("no user found")
 		return
 
 	}
 
-	var userId, clientSecret string
+	var userId, clientSecret, userRole string
 	for _, item := range users {
 		if usr, ok := item.(userSchema.User); ok {
 			for _, creds := range usr.ClientIds {
 				if strings.HasPrefix(creds, sig.ClientId) {
 					userId = usr.ID
+					userRole = usr.Role.String()
 					id, err := primitive.ObjectIDFromHex(userId)
 					if err != nil {
 						logs.Log.Error().Err(err).Msg("")
@@ -100,7 +99,7 @@ VERIFY_SIGNATURE:
 		return
 	}
 
-	accessToken, refreshToken, accessTokenExp, err := GenerateToken(userId)
+	accessToken, refreshToken, accessTokenExp, err := GenerateToken(userId, userRole)
 	if err != nil {
 		err = errors.New("failed to generate token")
 		return
@@ -129,7 +128,7 @@ func (s AuthService) RefreshToken(ctx context.Context, claim types.JwtClaim) (re
 		return
 	}
 
-	accessToken, refreshToken, accessTokenExp, err := GenerateToken(user.ID.Hex())
+	accessToken, refreshToken, accessTokenExp, err := GenerateToken(user.ID.Hex(), user.Role.Name)
 	if err != nil {
 		err = errors.New("failed to generate token")
 		return
@@ -181,24 +180,35 @@ func ClaimJWT(c *ws.Client, jwtToken string) (types.JwtClaim, error) {
 			return types.JwtClaim{}, errors.New("invalid token")
 		}
 
+		userRole, ok := claims["userRole"].(string)
+		if !ok {
+			return types.JwtClaim{}, errors.New("invalid token")
+		}
+
 		return types.JwtClaim{
-			UserID: userId,
+			UserID:   userId,
+			UserRole: userRole,
 		}, nil
 	}
 
 	return types.JwtClaim{}, errors.New("invalid token")
 }
 
-func GenerateToken(userId string) (accessToken, refreshToken string, accessTokenExp int, err error) {
+func GenerateToken(userId, userRole string) (accessToken, refreshToken string, accessTokenExp int, err error) {
 	// JWT Secret
 	jwtKey := os.Getenv("JWT_KEY")
 
 	// Access Token
 	accessTokenExp, err = strconv.Atoi(os.Getenv("JWT_REMEMBER_TOKEN_EXPIRE"))
+	if err != nil {
+		logs.Log.Fatal().Err(err).Msg("JWT_REMEMBER_TOKEN_EXPIRE is invalid")
+		return
+	}
 	accessTokenClaim := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"exp":    time.Now().Add(time.Second * time.Duration(accessTokenExp)).Unix(),
-		"iat":    time.Now().Unix(),
-		"userID": userId,
+		"exp":      time.Now().Add(time.Second * time.Duration(accessTokenExp)).Unix(),
+		"iat":      time.Now().Unix(),
+		"userID":   userId,
+		"userRole": userRole,
 	})
 
 	accessToken, err = accessTokenClaim.SignedString([]byte(jwtKey))
@@ -210,10 +220,15 @@ func GenerateToken(userId string) (accessToken, refreshToken string, accessToken
 	// Refresh Token
 	var refreshTokenExp int
 	refreshTokenExp, err = strconv.Atoi(os.Getenv("JWT_REMEMBER_REFRESH_TOKEN_EXPIRE"))
+	if err != nil {
+		logs.Log.Fatal().Err(err).Msg("JWT_REMEMBER_REFRESH_TOKEN_EXPIRE is invalid")
+		return
+	}
 	refreshTokenClaim := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"exp":    time.Now().Add(time.Second * time.Duration(refreshTokenExp)).Unix(),
-		"iat":    time.Now().Unix(),
-		"userID": userId,
+		"exp":      time.Now().Add(time.Second * time.Duration(refreshTokenExp)).Unix(),
+		"iat":      time.Now().Unix(),
+		"userID":   userId,
+		"userRole": userRole,
 	})
 
 	refreshToken, err = refreshTokenClaim.SignedString([]byte(jwtKey))

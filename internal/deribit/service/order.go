@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"gateway/internal/deribit/model"
-	"strconv"
 
 	"git.devucc.name/dependencies/utilities/commons/logs"
 )
@@ -71,38 +70,12 @@ func (svc deribitService) DeribitGetOrderHistoryByInstrument(ctx context.Context
 }
 
 func (svc deribitService) DeribitGetInstruments(ctx context.Context, data model.DeribitGetInstrumentsRequest) []*model.DeribitGetInstrumentsResponse {
-	key := "INSTRUMENTS-" + data.Currency + "" + strconv.FormatBool(data.Expired)
-
-	// Get initial data from the redis
-	res, err := svc.redis.GetValue(key)
-
-	// Handle the initial data
-	if res == "" || err != nil {
+	orders, err := svc.orderRepo.GetInstruments(data.UserId, data.Currency, data.Expired)
+	if err != nil {
 		logs.Log.Error().Err(err).Msg("")
-
-		// Get All Orders, and Save it to the redis
-		orders, err := svc.orderRepo.GetInstruments(data.Currency, data.Expired)
-		if err != nil {
-			logs.Log.Error().Err(err).Msg("")
-		}
-
-		jsonBytes, err := json.Marshal(orders)
-		if err != nil {
-			logs.Log.Error().Err(err).Msg("")
-		}
-		// Expire in seconds
-		svc.redis.SetEx(key, string(jsonBytes), 3)
-
-		res, _ = svc.redis.GetValue(key)
 	}
 
-	var instrumentData []*model.DeribitGetInstrumentsResponse
-	if err = json.Unmarshal([]byte(res), &instrumentData); err != nil {
-		logs.Log.Error().Err(err).Msg("")
-		return nil
-	}
-
-	return instrumentData
+	return orders
 }
 
 func (svc deribitService) DeribitGetOrderState(ctx context.Context, userId string, request model.DeribitGetOrderStateRequest) []model.DeribitGetOrderStateResponse {

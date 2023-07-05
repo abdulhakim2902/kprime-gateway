@@ -12,7 +12,6 @@ import (
 	"gateway/internal/repositories"
 	"gateway/pkg/redis"
 	"gateway/pkg/ws"
-	"strconv"
 
 	engineType "gateway/internal/engine/types"
 	_types "gateway/internal/orderbook/types"
@@ -66,6 +65,10 @@ func (svc wsOrderService) HandleConsume(msg *sarama.ConsumerMessage, userId stri
 
 	// Get specific order for userId, and save it to the redis
 	orders, err = svc.repo.Find(bson.M{"userId": userId}, nil, 0, -1)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 	jsonBytes, err = json.Marshal(orders)
 	if err != nil {
 		fmt.Println(err)
@@ -314,7 +317,6 @@ func (svc wsOrderService) SubscribeUserOrder(c *ws.Client, channel string, userI
 
 	// Prepare when user is doing unsubscribe
 	ws.RegisterConnectionUnsubscribeHandler(c, socket.UnsubscribeHandler(id))
-	return
 }
 
 func (svc wsOrderService) Unsubscribe(c *ws.Client) {
@@ -324,31 +326,18 @@ func (svc wsOrderService) Unsubscribe(c *ws.Client) {
 
 func (svc wsOrderService) GetInstruments(ctx context.Context, request deribitModel.DeribitGetInstrumentsRequest) []deribitModel.DeribitGetInstrumentsResponse {
 
-	key := "INSTRUMENTS-" + request.Currency + "" + strconv.FormatBool(request.Expired)
+	orders, err := svc.repo.GetInstruments(request.UserId, request.Currency, request.Expired)
+	if err != nil {
+		fmt.Println(err)
+	}
 
-	// Get initial data from the redis
-	res, err := svc.redis.GetValue(key)
-
-	// Handle the initial data
-	if res == "" || err != nil {
-		// Get All Orders, and Save it to the redis
-		orders, err := svc.repo.GetInstruments(request.Currency, request.Expired)
-		if err != nil {
-			fmt.Println(err)
-		}
-
-		jsonBytes, err := json.Marshal(orders)
-		if err != nil {
-			fmt.Println(err)
-		}
-		// Expire in seconds
-		svc.redis.SetEx(key, string(jsonBytes), 3)
-
-		res, _ = svc.redis.GetValue(key)
+	jsonBytes, err := json.Marshal(orders)
+	if err != nil {
+		fmt.Println(err)
 	}
 
 	var instrumentData []deribitModel.DeribitGetInstrumentsResponse
-	err = json.Unmarshal([]byte(res), &instrumentData)
+	err = json.Unmarshal(jsonBytes, &instrumentData)
 	if err != nil {
 		fmt.Println(err)
 		return nil

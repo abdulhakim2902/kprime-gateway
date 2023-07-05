@@ -14,5 +14,6 @@ type AuthResponse struct {
 }
 
 type JwtClaim struct {
-	UserID string `json:"user_id"`
+	UserID   string `json:"user_id"`
+	UserRole string `json:"user_role"`
 }
