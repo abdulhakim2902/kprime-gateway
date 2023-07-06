@@ -10,6 +10,8 @@ git.devucc.name/dependencies/utilities v1.0.57 h1:XUVB7QSUxEecDPcJ5Q6wbeHDj5QFIp
 git.devucc.name/dependencies/utilities v1.0.57/go.mod h1:r0MWNTFkdEbDqawaKg0o2fECHThv7cLB2ATpo8E8yko=
 git.devucc.name/dependencies/utilities v1.0.58 h1:rFfcsMPb5MTclNZu+DJH1sphZbH0JtsedoKl9t5E4G8=
 git.devucc.name/dependencies/utilities v1.0.58/go.mod h1:r0MWNTFkdEbDqawaKg0o2fECHThv7cLB2ATpo8E8yko=
+git.devucc.name/dependencies/utilities v1.0.59 h1:+ANK/WGkR57sIrFgb3smwc6piW416rvc/x9tBCIdADw=
+git.devucc.name/dependencies/utilities v1.0.59/go.mod h1:r0MWNTFkdEbDqawaKg0o2fECHThv7cLB2ATpo8E8yko=
 github.com/KyleBanks/depth v1.2.1/go.mod h1:jzSb9d0L43HxTQfT+oSA1EEp2q+ne2uh6XgeJcm8brE=
 github.com/PuerkitoBio/purell v1.2.0/go.mod h1:OhLRTaaIzhvIyofkJfB24gokC7tM42Px5UhoT32THBk=
 github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578/go.mod h1:uGdkoq3SwY9Y+13GIhn11/XLaGBb4BfwItxLd5jeuXE=
