@@ -70,7 +70,8 @@ func (h *DeribitHandler) buy(r *gin.Context) {
 	}
 
 	channel := make(chan protocol.RPCResponseMessage)
-	go protocol.RegisterChannel(connKey, channel)
+	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	go protocol.RegisterChannel(connKey, channel, ctx)
 	if err := utils.ValidateDeribitRequestParam(msg.Params); err != nil {
 		protocol.SendValidationMsg(connKey, validation_reason.INVALID_PARAMS, err)
 	}
@@ -136,7 +137,8 @@ func (h *DeribitHandler) sell(r *gin.Context) {
 	}
 
 	channel := make(chan protocol.RPCResponseMessage)
-	go protocol.RegisterChannel(connKey, channel)
+	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	go protocol.RegisterChannel(connKey, channel, ctx)
 	if err := utils.ValidateDeribitRequestParam(msg.Params); err != nil {
 		protocol.SendValidationMsg(connKey, validation_reason.INVALID_PARAMS, err)
 	}
@@ -170,7 +172,6 @@ func (h *DeribitHandler) sell(r *gin.Context) {
 }
 
 func (h *DeribitHandler) edit(r *gin.Context) {
-
 	var msg deribitModel.RequestDto[deribitModel.EditParams]
 	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
 		errMsg := protocol.ErrorMessage{
@@ -193,6 +194,9 @@ func (h *DeribitHandler) edit(r *gin.Context) {
 		protocol.SendValidationMsg(connKey, *reason, err)
 		return
 	}
+	channel := make(chan protocol.RPCResponseMessage)
+	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	go protocol.RegisterChannel(connKey, channel, ctx)
 	// Call service
 	_, err = h.svc.DeribitParseEdit(r.Request.Context(), userID, deribitModel.DeribitEditRequest{
 		Id:      msg.Params.OrderId,
@@ -204,8 +208,7 @@ func (h *DeribitHandler) edit(r *gin.Context) {
 		protocol.SendErrMsg(connKey, err)
 		return
 	}
-	channel := make(chan protocol.RPCResponseMessage)
-	go protocol.RegisterChannel(connKey, channel)
+
 	res := <-channel
 	code := http.StatusOK
 	if res.Error != nil {
@@ -237,7 +240,9 @@ func (h *DeribitHandler) cancel(r *gin.Context) {
 		protocol.SendValidationMsg(connKey, *reason, err)
 		return
 	}
-
+	channel := make(chan protocol.RPCResponseMessage)
+	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	go protocol.RegisterChannel(connKey, channel, ctx)
 	// Call service
 	_, err = h.svc.DeribitParseCancel(r.Request.Context(), userID, deribitModel.DeribitCancelRequest{
 		Id:      msg.Params.OrderId,
@@ -248,8 +253,6 @@ func (h *DeribitHandler) cancel(r *gin.Context) {
 		return
 	}
 
-	channel := make(chan protocol.RPCResponseMessage)
-	go protocol.RegisterChannel(connKey, channel)
 	res := <-channel
 	code := http.StatusOK
 	if res.Error != nil {
@@ -282,7 +285,8 @@ func (h *DeribitHandler) cancelByInstrument(r *gin.Context) {
 	}
 
 	channel := make(chan protocol.RPCResponseMessage)
-	go protocol.RegisterChannel(connKey, channel)
+	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	go protocol.RegisterChannel(connKey, channel, ctx)
 	res := <-channel
 	code := http.StatusOK
 	if res.Error != nil {
