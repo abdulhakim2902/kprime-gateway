@@ -56,7 +56,7 @@ func (svc deribitService) DeribitRequest(
 	userId string,
 	data model.DeribitRequest,
 ) (*model.DeribitResponse, *validation_reason.ValidationReason, error) {
-
+	fmt.Println("debug DeribitRequest", userId);
 	instruments, err := utils.ParseInstruments(data.InstrumentName)
 	if err != nil {
 		reason := validation_reason.INVALID_PARAMS
