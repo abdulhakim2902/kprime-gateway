@@ -331,7 +331,7 @@ func (r OrderRepository) GetOpenOrdersByInstrument(InstrumentName string, OrderT
 
 	query := bson.M{
 		"$match": bson.M{
-			"orderState": bson.M{"$in": []types.OrderStatus{types.OPEN, types.PARTIAL_FILLED}},
+			"orderState": bson.M{"$in": []types.OrderStatus{types.OPEN, types.PARTIALLY_FILLED}},
 			"userId":     userId,
 		},
 	}
@@ -474,7 +474,7 @@ func (r OrderRepository) GetOrderHistoryByInstrument(InstrumentName string, Coun
 			},
 		}}
 
-	orderState := []types.OrderStatus{types.FILLED, types.PARTIAL_FILLED}
+	orderState := []types.OrderStatus{types.FILLED, types.PARTIALLY_FILLED}
 	if IncludeUnfilled {
 		orderState = append(orderState, types.CANCELLED)
 	}
@@ -779,7 +779,7 @@ func (r OrderRepository) GetOrderBook(o _orderbookType.GetOrderBook) *_orderbook
 
 	queryBuilder := func(side types.Side, priceOrder int) interface{} {
 		match := bson.M{
-			"status":      bson.M{"$in": []types.OrderStatus{types.OPEN, types.PARTIAL_FILLED}},
+			"status":      bson.M{"$in": []types.OrderStatus{types.OPEN, types.PARTIALLY_FILLED}},
 			"underlying":  o.Underlying,
 			"strikePrice": o.StrikePrice,
 			"expiryDate":  o.ExpiryDate,
@@ -843,7 +843,7 @@ func (r OrderRepository) GetOrderBookAgg2(o _orderbookType.GetOrderBook) _orderb
 		return []bson.M{
 			{
 				"$match": bson.M{
-					"status":      bson.M{"$in": []types.OrderStatus{types.OPEN, types.PARTIAL_FILLED}},
+					"status":      bson.M{"$in": []types.OrderStatus{types.OPEN, types.PARTIALLY_FILLED}},
 					"underlying":  o.Underlying,
 					"strikePrice": o.StrikePrice,
 					"expiryDate":  o.ExpiryDate,
@@ -866,7 +866,7 @@ func (r OrderRepository) GetOrderBookAgg2(o _orderbookType.GetOrderBook) _orderb
 		return []bson.M{
 			{
 				"$match": bson.M{
-					"status":      bson.M{"$in": []types.OrderStatus{types.OPEN, types.PARTIAL_FILLED}},
+					"status":      bson.M{"$in": []types.OrderStatus{types.OPEN, types.PARTIALLY_FILLED}},
 					"underlying":  o.Underlying,
 					"strikePrice": o.StrikePrice,
 					"expiryDate":  o.ExpiryDate,
@@ -940,7 +940,7 @@ func (r OrderRepository) GetOrderBookAgg2(o _orderbookType.GetOrderBook) _orderb
 
 func (r OrderRepository) GetOrderLatestTimestamp(o _orderbookType.GetOrderBook, after int64, isFilled bool) _orderbookType.Orderbook {
 	timeAfter := time.UnixMilli(after)
-	status := []types.OrderStatus{types.OPEN, types.PARTIAL_FILLED}
+	status := []types.OrderStatus{types.OPEN, types.PARTIALLY_FILLED}
 	if isFilled {
 		status = append(status, types.FILLED)
 	}
@@ -1002,7 +1002,7 @@ func (r OrderRepository) GetOrderLatestTimestampAgg(o _orderbookType.GetOrderBoo
 		return []bson.M{
 			{
 				"$match": bson.M{
-					"status":      bson.M{"$in": []types.OrderStatus{types.OPEN, types.PARTIAL_FILLED}},
+					"status":      bson.M{"$in": []types.OrderStatus{types.OPEN, types.PARTIALLY_FILLED}},
 					"underlying":  o.Underlying,
 					"strikePrice": o.StrikePrice,
 					"expiryDate":  o.ExpiryDate,
@@ -1026,7 +1026,7 @@ func (r OrderRepository) GetOrderLatestTimestampAgg(o _orderbookType.GetOrderBoo
 		return []bson.M{
 			{
 				"$match": bson.M{
-					"status":      bson.M{"$in": []types.OrderStatus{types.OPEN, types.PARTIAL_FILLED}},
+					"status":      bson.M{"$in": []types.OrderStatus{types.OPEN, types.PARTIALLY_FILLED}},
 					"underlying":  o.Underlying,
 					"strikePrice": o.StrikePrice,
 					"expiryDate":  o.ExpiryDate,
