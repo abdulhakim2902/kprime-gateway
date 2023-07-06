@@ -64,7 +64,9 @@ type ProtocolRequest struct {
 var protocolConnections map[any]ProtocolRequest
 var protocolMutex sync.RWMutex
 var channelConnections map[any]chan RPCResponseMessage
+var channelMutex sync.RWMutex
 var channelResults map[any]RPCResponseMessage
+var resultMutex sync.RWMutex
 
 func (p *ProtocolRequest) getcollectorProtocol() collector.Protocol {
 	var protocol collector.Protocol
@@ -246,10 +248,12 @@ func doSend(key string, result any, err *ErrorMessage) bool {
 		// TODO: add grpc response
 		break
 	case Channel:
+		resultMutex.Lock()
 		if channelResults == nil {
 			channelResults = make(map[any]RPCResponseMessage)
 		}
 		channelResults[key] = m
+		resultMutex.Unlock()
 		break
 	}
 
@@ -289,13 +293,17 @@ func isConnExist(key string) bool {
 }
 
 func RegisterChannel(key string, channel chan RPCResponseMessage, ctx context.Context) {
+	channelMutex.Lock()
 	if channelConnections == nil {
 		channelConnections = make(map[any]chan RPCResponseMessage)
 	}
 	channelConnections[key] = channel
+	channelMutex.Unlock()
 	res := RPCResponseMessage{}
 	for {
+		resultMutex.Lock()
 		res = channelResults[key]
+		resultMutex.Unlock()
 		if res.Result != nil || res.Error != nil {
 			break
 		}
@@ -317,7 +325,11 @@ func RegisterChannel(key string, channel chan RPCResponseMessage, ctx context.Co
 	}
 
 	// Delete object from map after reading
+	resultMutex.Lock()
 	delete(channelResults, key)
+	resultMutex.Unlock()
+	channelMutex.Lock()
 	delete(channelConnections, key)
+	channelMutex.Unlock()
 	channel <- res
 }
