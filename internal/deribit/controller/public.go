@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -50,7 +51,19 @@ type Params struct {
 func (h *DeribitHandler) auth(r *gin.Context) {
 	var msg deribitModel.RequestDto[Params]
 	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
-		r.AbortWithError(http.StatusBadRequest, err)
+		errMsg := protocol.ErrorMessage{
+			Message:        err.Error(),
+			Data:           protocol.ReasonMessage{},
+			HttpStatusCode: http.StatusBadRequest,
+		}
+		m := protocol.RPCResponseMessage{
+			JSONRPC: "2.0",
+			ID:      msg.Id,
+			Error:   &errMsg,
+			Testnet: true,
+		}
+		fmt.Println(m)
+		r.AbortWithStatusJSON(http.StatusBadRequest, m)
 		return
 	}
 
@@ -87,6 +100,7 @@ func (h *DeribitHandler) auth(r *gin.Context) {
 		protocol.SendSuccessMsg(connKey, res)
 		return
 	case "client_signature":
+		validateSignatureAuth(msg.Params, connKey)
 		sig := hmac.Signature{
 			Ts:       msg.Params.Timestamp,
 			Sig:      msg.Params.Signature,
@@ -94,6 +108,7 @@ func (h *DeribitHandler) auth(r *gin.Context) {
 			Data:     msg.Params.Data,
 			ClientId: msg.Params.ClientID,
 		}
+
 		res, _, err := h.authSvc.LoginWithSignature(context.TODO(), sig)
 		if err != nil {
 			if strings.Contains(err.Error(), "invalid credential") {
@@ -129,10 +144,41 @@ func (h *DeribitHandler) auth(r *gin.Context) {
 		protocol.SendSuccessMsg(connKey, res)
 		return
 	default:
+		if msg.Params.GrantType == "" {
+			protocol.SendValidationMsg(connKey,
+				validation_reason.INVALID_PARAMS, errors.New("grant_type is a required field"))
+			return
+		}
 		protocol.SendValidationMsg(connKey, validation_reason.INVALID_PARAMS, nil)
 		return
 	}
 
+}
+
+func validateSignatureAuth(params Params, connKey string) {
+	if params.ClientID == "" {
+		protocol.SendValidationMsg(connKey,
+			validation_reason.INVALID_PARAMS, errors.New("client_id is a required field"))
+		return
+	}
+
+	if params.Signature == "" {
+		protocol.SendValidationMsg(connKey,
+			validation_reason.INVALID_PARAMS, errors.New("signature is a required field"))
+		return
+	}
+
+	if params.Timestamp == "" {
+		protocol.SendValidationMsg(connKey,
+			validation_reason.INVALID_PARAMS, errors.New("timestamp is a required field"))
+		return
+	}
+
+	if params.GrantType == "" {
+		protocol.SendValidationMsg(connKey,
+			validation_reason.INVALID_PARAMS, errors.New("grant_type is a required field"))
+		return
+	}
 }
 
 func (h *DeribitHandler) getIndexPrice(r *gin.Context) {

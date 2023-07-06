@@ -33,19 +33,45 @@ func (handler *wsHandler) RegisterPublic() {
 	ws.RegisterChannel("public/get_time", middleware.MiddlewaresWrapper(handler.publicGetTime, middleware.RateLimiterWs))
 }
 
-func (svc *wsHandler) auth(input interface{}, c *ws.Client) {
-	type Params struct {
-		GrantType    string `json:"grant_type" validate:"required"`
-		ClientID     string `json:"client_id"`
-		ClientSecret string `json:"client_secret"`
-		RefreshToken string `json:"refresh_token"`
+type Params struct {
+	GrantType    string `json:"grant_type" validate:"required"`
+	ClientID     string `json:"client_id"`
+	ClientSecret string `json:"client_secret"`
+	RefreshToken string `json:"refresh_token"`
 
-		Signature string `json:"signature"`
-		Timestamp string `json:"timestamp"`
-		Nonce     string `json:"nonce"`
-		Data      string `json:"data"`
+	Signature string `json:"signature"`
+	Timestamp string `json:"timestamp"`
+	Nonce     string `json:"nonce"`
+	Data      string `json:"data"`
+}
+
+func validateSignatureAuth(params Params, connKey string) {
+	if params.ClientID == "" {
+		protocol.SendValidationMsg(connKey,
+			validation_reason.INVALID_PARAMS, errors.New("client_id is a required field"))
+		return
 	}
 
+	if params.Signature == "" {
+		protocol.SendValidationMsg(connKey,
+			validation_reason.INVALID_PARAMS, errors.New("signature is a required field"))
+		return
+	}
+
+	if params.Timestamp == "" {
+		protocol.SendValidationMsg(connKey,
+			validation_reason.INVALID_PARAMS, errors.New("timestamp is a required field"))
+		return
+	}
+
+	if params.GrantType == "" {
+		protocol.SendValidationMsg(connKey,
+			validation_reason.INVALID_PARAMS, errors.New("grant_type is a required field"))
+		return
+	}
+}
+
+func (svc *wsHandler) auth(input interface{}, c *ws.Client) {
 	var msg deribitModel.RequestDto[Params]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
 		c.SendInvalidRequestMessage(err)
@@ -85,6 +111,7 @@ func (svc *wsHandler) auth(input interface{}, c *ws.Client) {
 			return
 		}
 	case "client_signature":
+		validateSignatureAuth(msg.Params, connKey)
 		sig := hmac.Signature{
 			Ts:       msg.Params.Timestamp,
 			Sig:      msg.Params.Signature,
