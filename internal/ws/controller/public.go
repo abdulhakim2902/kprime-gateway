@@ -364,6 +364,12 @@ func (svc *wsHandler) getDeliveryPrices(input interface{}, c *ws.Client) {
 		return
 	}
 
+	if types.Pair(msg.Params.IndexName).IsValid() == false {
+		protocol.SendValidationMsg(connKey,
+			validation_reason.INVALID_PARAMS, errors.New("invalid index_name"))
+		return
+	}
+
 	result := svc.wsOBSvc.GetDeliveryPrices(context.TODO(), deribitModel.DeliveryPricesRequest{
 		IndexName: msg.Params.IndexName,
 		Offset:    msg.Params.Offset,

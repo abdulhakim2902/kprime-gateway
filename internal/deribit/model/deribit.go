@@ -539,7 +539,7 @@ type DeribitGetOrderStateByLabelResponse struct {
 }
 
 type DeliveryPricesParams struct {
-	IndexName string `json:"index_name"`
+	IndexName string `json:"index_name" validate:"required" form:"index_name"`
 	Offset    int    `json:"offset"`
 	Count     int    `json:"count"`
 }
