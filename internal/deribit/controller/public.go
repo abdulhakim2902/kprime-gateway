@@ -3,7 +3,6 @@ package controller
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -62,7 +61,6 @@ func (h *DeribitHandler) auth(r *gin.Context) {
 			Error:   &errMsg,
 			Testnet: true,
 		}
-		fmt.Println(m)
 		r.AbortWithStatusJSON(http.StatusBadRequest, m)
 		return
 	}
