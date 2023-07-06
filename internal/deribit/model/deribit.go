@@ -582,7 +582,7 @@ type GetTradingviewChartDataResponse struct {
 	High   []float64 `json:"high"`
 	Low    []float64 `json:"low"`
 	Open   []float64 `json:"open"`
-	Tics   []int64   `json:"tics"`
+	Ticks  []int64   `json:"ticks"`
 	Volume []float64 `json:"volume"`
 	Status string    `json:"status"`
 }

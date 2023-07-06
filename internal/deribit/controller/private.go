@@ -617,7 +617,7 @@ func (h *DeribitHandler) getOrderBook(r *gin.Context) {
 func (h *DeribitHandler) getTradingviewChartData(r *gin.Context) {
 	var msg deribitModel.RequestDto[deribitModel.GetTradingviewChartDataRequest]
 	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
-		r.AbortWithError(http.StatusBadRequest, err)
+		r.AbortWithStatusJSON(http.StatusBadRequest, map[string]map[string]any{"error": {"message": err.Error()}})
 		return
 	}
 
@@ -632,9 +632,7 @@ func (h *DeribitHandler) getTradingviewChartData(r *gin.Context) {
 	result, reason, err := h.svc.GetTradingViewChartData(context.TODO(), msg.Params)
 	if err != nil {
 		if reason != nil {
-			reason := validation_reason.OTHER
-
-			protocol.SendValidationMsg(connKey, reason, err)
+			protocol.SendValidationMsg(connKey, *reason, err)
 			return
 		}
 

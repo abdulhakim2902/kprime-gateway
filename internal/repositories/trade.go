@@ -1314,7 +1314,7 @@ func (r TradeRepository) GetTradingViewChartData(req _deribitModel.GetTradingvie
 	if !ok {
 		vr := validation_reason.INVALID_PARAMS
 		reason = &vr
-		err = errors.New("invalid resolution")
+		err = errors.New("unsupported resolution")
 		return
 	}
 
@@ -1356,7 +1356,7 @@ func (r TradeRepository) GetTradingViewChartData(req _deribitModel.GetTradingvie
 		High:   []float64{},
 		Low:    []float64{},
 		Open:   []float64{},
-		Tics:   []int64{},
+		Ticks:  []int64{},
 		Volume: []float64{},
 		Status: "no_data",
 	}
@@ -1388,13 +1388,37 @@ func (r TradeRepository) GetTradingViewChartData(req _deribitModel.GetTradingvie
 	}
 
 	for _, reso := range resolutions {
-		res.Tics = append(res.Tics, reso.End.UnixMilli())
+		res.Ticks = append(res.Ticks, reso.End.UnixMilli())
 
 		if len(reso.Trades) == 0 {
-			res.Open = append(res.Open, 0.0)
-			res.Close = append(res.Close, 0.0)
-			res.Low = append(res.Low, 0.0)
-			res.High = append(res.High, 0.0)
+			// Get prev trades open
+			open := 0.0
+			if len(res.Open) > 0 {
+				open = res.Open[len(res.Open)-1]
+			}
+			res.Open = append(res.Open, open)
+
+			// Get prev trades close
+			close := 0.0
+			if len(res.Close) > 0 {
+				close = res.Close[len(res.Close)-1]
+			}
+			res.Close = append(res.Close, close)
+
+			// Get prev trades low
+			low := 0.0
+			if len(res.Low) > 0 {
+				low = res.Low[len(res.Low)-1]
+			}
+			res.Low = append(res.Low, low)
+
+			// Get prev trades high
+			high := 0.0
+			if len(res.High) > 0 {
+				high = res.High[len(res.High)-1]
+			}
+			res.High = append(res.High, high)
+
 			res.Cost = append(res.Cost, 0.0)
 			res.Volume = append(res.Volume, 0.0)
 
