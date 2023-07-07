@@ -254,13 +254,30 @@ func (h *DeribitHandler) getLastTradesByInstrument(r *gin.Context) {
 func (h *DeribitHandler) getDeliveryPrices(r *gin.Context) {
 	var msg deribitModel.RequestDto[deribitModel.DeliveryPricesParams]
 	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
-		r.AbortWithError(http.StatusBadRequest, err)
+		errMsg := protocol.ErrorMessage{
+			Message:        err.Error(),
+			Data:           protocol.ReasonMessage{},
+			HttpStatusCode: http.StatusBadRequest,
+		}
+		m := protocol.RPCResponseMessage{
+			JSONRPC: "2.0",
+			ID:      msg.Id,
+			Error:   &errMsg,
+			Testnet: true,
+		}
+		r.AbortWithStatusJSON(http.StatusBadRequest, m)
 		return
 	}
 
 	_, connKey, reason, err := requestHelper(msg.Id, msg.Method, r)
 	if err != nil {
 		protocol.SendValidationMsg(connKey, *reason, err)
+		return
+	}
+
+	if types.Pair(msg.Params.IndexName).IsValid() == false {
+		protocol.SendValidationMsg(connKey,
+			validation_reason.INVALID_PARAMS, errors.New("invalid index_name"))
 		return
 	}
 
