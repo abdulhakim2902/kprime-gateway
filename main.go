@@ -19,6 +19,7 @@ import (
 	"gateway/pkg/collector"
 	"gateway/pkg/kafka/consumer"
 	"gateway/pkg/memdb"
+	"gateway/pkg/middleware"
 	"gateway/pkg/mongo"
 	"gateway/pkg/redis"
 	"gateway/pkg/utils"
@@ -133,7 +134,7 @@ func main() {
 		},
 		Store: store,
 	}
-	// engine.Use(middleware.RateLimiter(limiter))
+	engine.Use(middleware.RateLimiter(limiter))
 
 	if err := memdb.InitSchemas(); err != nil {
 		logs.Log.Fatal().Err(err).Msg("failed to initialize memory schemas")
