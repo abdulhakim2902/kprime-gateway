@@ -35,6 +35,7 @@ func Authenticate() gin.HandlerFunc {
 
 			var data gin.H
 			if err := json.Unmarshal(body, &data); err != nil {
+				logs.Log.Err(err).Msg("")
 				c.AbortWithStatus(http.StatusBadRequest)
 				return
 			}

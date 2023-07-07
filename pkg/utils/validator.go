@@ -130,6 +130,8 @@ func UnmarshalAndValidate[T any](r *gin.Context, data *T) (err error) {
 
 	if err != nil {
 		logs.Log.Error().Err(err).Msg("")
+
+		err = errors.New("invalid request")
 		return
 	}
 
@@ -145,11 +147,15 @@ func UnmarshalAndValidateWS[T any](input interface{}, data *T) error {
 	bytes, err := json.Marshal(input)
 	if err != nil {
 		logs.Log.Error().Err(err).Msg("")
+
+		err = errors.New("invalid request")
 		return err
 	}
 
 	if err := json.Unmarshal(bytes, data); err != nil {
 		logs.Log.Error().Err(err).Msg("")
+
+		err = errors.New("invalid request")
 		return err
 	}
 
