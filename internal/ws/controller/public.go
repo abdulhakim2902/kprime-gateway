@@ -20,6 +20,10 @@ import (
 	"git.devucc.name/dependencies/utilities/types/validation_reason"
 )
 
+// @title K-Prime Gateway API Documentation
+// @version API Version 2
+// @description Welcome to the K-Prime API Documentation! You can use our API to access K-Prime API endpoints, which can get informationin our database. We have language bindings in Shell! You can view code examples in the dark area to the right
+
 func (handler *wsHandler) RegisterPublic() {
 	ws.RegisterChannel("public/auth", middleware.MiddlewaresWrapper(handler.auth, middleware.RateLimiterWs))
 	ws.RegisterChannel("public/subscribe", middleware.MiddlewaresWrapper(handler.publicSubscribe, middleware.RateLimiterWs))
@@ -34,15 +38,15 @@ func (handler *wsHandler) RegisterPublic() {
 }
 
 type Params struct {
-	GrantType    string `json:"grant_type" validate:"required"`
-	ClientID     string `json:"client_id"`
-	ClientSecret string `json:"client_secret"`
-	RefreshToken string `json:"refresh_token"`
+	GrantType    string `json:"grant_type" validate:"required, oneof=client_credentials client_signature refresh_token" description:"Method of authentication"`
+	ClientID     string `json:"client_id" description:"Required for grant type client_credentials and client_signature"`
+	ClientSecret string `json:"client_secret" description:"Required for grant type client_credentials"`
+	RefreshToken string `json:"refresh_token" description:"Required for grant type refresh_token"`
 
-	Signature string `json:"signature"`
-	Timestamp string `json:"timestamp"`
-	Nonce     string `json:"nonce"`
-	Data      string `json:"data"`
+	Signature string `json:"signature" description:"Required for grant type client_signature, it's a cryptographic signature calculated over provided fields using user secret key."`
+	Timestamp string `json:"timestamp" description:"Required for grant type client_signature, provides time when request has been generated"`
+	Nonce     string `json:"nonce" description:"Optional for grant type client_signature; delivers user generated initialization vector for the server token"`
+	Data      string `json:"data" description:"Optional for grant type client_signature; contains any user specific value"`
 }
 
 func validateSignatureAuth(params Params, connKey string) {
@@ -71,6 +75,14 @@ func validateSignatureAuth(params Params, connKey string) {
 	}
 }
 
+// auth asyncApi
+// @summary This endpoint is use for login and get the access_token.
+// @description endpoint: `ws://localhost:8080/ws/api/v2` with method public/auth
+// @payload controller.Params
+// @x-response types.AuthResponse
+// @queue auth
+// @tags auth
+// @contentType application/json
 func (svc *wsHandler) auth(input interface{}, c *ws.Client) {
 	var msg deribitModel.RequestDto[Params]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
