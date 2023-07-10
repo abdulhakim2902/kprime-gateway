@@ -70,6 +70,7 @@ type GetOrderBook struct {
 	Underlying          string   `json:"underlying"`
 	ExpiryDate          string   `json:"expiryDate"`
 	StrikePrice         float64  `json:"strikePrice"`
+	UserId              string   `json:"-"`
 	UserRole            string   `json:"-"`
 	UserOrderExclusions []string `json:"-"`
 }

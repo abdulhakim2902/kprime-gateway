@@ -29,6 +29,7 @@ func (svc deribitService) GetOrderBook(ctx context.Context, data model.DeribitGe
 		Underlying:     instruments.Underlying,
 		ExpiryDate:     instruments.ExpDate,
 		StrikePrice:    instruments.Strike,
+		UserId:         data.UserId,
 	}
 
 	ordExclusions := []string{}
