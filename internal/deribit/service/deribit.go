@@ -56,7 +56,7 @@ func (svc deribitService) DeribitRequest(
 	userId string,
 	data model.DeribitRequest,
 ) (*model.DeribitResponse, *validation_reason.ValidationReason, error) {
-	fmt.Println("debug DeribitRequest", userId);
+	fmt.Println("debug DeribitRequest", userId)
 	instruments, err := utils.ParseInstruments(data.InstrumentName)
 	if err != nil {
 		reason := validation_reason.INVALID_PARAMS
@@ -75,13 +75,18 @@ func (svc deribitService) DeribitRequest(
 		return nil, &reason, errors.New(reason.String())
 	}
 
-	userCast := user.(userSchema.User)
+	userCast, ok := user.(userSchema.User)
+	if !ok {
+		reason := validation_reason.UNAUTHORIZED
+		return nil, &reason, errors.New(reason.String())
+	}
 	upperType := strings.ToUpper(string(data.Type))
 	userHasOrderType := false
 
 	for _, orderType := range userCast.TypeInclusions {
-		if strings.ToLower(orderType.Name) == strings.ToLower(upperType) {
+		if strings.EqualFold(strings.ToLower(orderType.Name), strings.ToLower(upperType)) {
 			userHasOrderType = true
+			break
 		}
 	}
 
@@ -98,24 +103,26 @@ func (svc deribitService) DeribitRequest(
 	}
 
 	payload := model.DeribitResponse{
-		ID:             data.ID,
-		UserId:         userId,
-		ClientId:       data.ClientId,
-		Underlying:     instruments.Underlying,
-		ExpirationDate: instruments.ExpDate,
-		StrikePrice:    instruments.Strike,
-		Type:           types.Type(strings.ToLower(string(data.Type))),
-		Side:           data.Side,
-		ClOrdID:        data.ClOrdID,
-		Price:          data.Price,
-		Amount:         data.Amount,
-		Contracts:      instruments.Contracts,
-		TimeInForce:    _timeInForce,
-		Label:          data.Label,
-		MaxShow:        data.MaxShow,
-		ReduceOnly:     data.ReduceOnly,
-		PostOnly:       data.PostOnly,
-		UserRole:       userCast.Role,
+		ID:              data.ID,
+		UserId:          userId,
+		ClientId:        data.ClientId,
+		Underlying:      instruments.Underlying,
+		ExpirationDate:  instruments.ExpDate,
+		StrikePrice:     instruments.Strike,
+		Type:            types.Type(strings.ToLower(string(data.Type))),
+		Side:            data.Side,
+		ClOrdID:         data.ClOrdID,
+		Price:           data.Price,
+		Amount:          data.Amount,
+		Contracts:       instruments.Contracts,
+		TimeInForce:     _timeInForce,
+		Label:           data.Label,
+		MaxShow:         data.MaxShow,
+		ReduceOnly:      data.ReduceOnly,
+		PostOnly:        data.PostOnly,
+		UserRole:        userCast.Role,
+		OrderExclusions: userCast.OrderExclusions,
+		TypeInclusions:  userCast.TypeInclusions,
 	}
 	if data.EnableCancel {
 		payload.ConnectionId = data.ConnectionId
@@ -136,28 +143,50 @@ func (svc deribitService) DeribitRequest(
 	return &payload, nil, nil
 }
 
-func (svc deribitService) DeribitParseEdit(ctx context.Context, userId string, data model.DeribitEditRequest) (*model.DeribitEditResponse, error) {
+func (svc deribitService) DeribitParseEdit(ctx context.Context, userId string, data model.DeribitEditRequest) (*model.DeribitEditResponse, *validation_reason.ValidationReason, error) {
+
+	user, err := memdb.Schemas.User.FindOne("id", userId)
+	if err != nil {
+		logs.Log.Error().Err(err).Msg("")
+		reason := validation_reason.OTHER
+
+		return nil, &reason, err
+	}
+
+	if user == nil {
+		reason := validation_reason.UNAUTHORIZED
+		return nil, &reason, errors.New(reason.String())
+	}
+
+	userCast, ok := user.(userSchema.User)
+	if !ok {
+		reason := validation_reason.UNAUTHORIZED
+		return nil, &reason, errors.New(reason.String())
+	}
 
 	edit := model.DeribitEditResponse{
-		Id:       data.Id,
-		UserId:   userId,
-		ClientId: "",
-		Side:     string(types.EDIT),
-		ClOrdID:  data.ClOrdID,
-		Price:    data.Price,
-		Amount:   data.Amount,
+		Id:              data.Id,
+		UserId:          userId,
+		ClientId:        "",
+		Side:            string(types.EDIT),
+		ClOrdID:         data.ClOrdID,
+		Price:           data.Price,
+		Amount:          data.Amount,
+		OrderExclusions: userCast.OrderExclusions,
+		TypeInclusions:  userCast.TypeInclusions,
 	}
 
 	_edit, err := json.Marshal(edit)
 	if err != nil {
 		logs.Log.Error().Err(err).Msg("")
 
-		return nil, err
+		reason := validation_reason.OTHER
+		return nil, &reason, errors.New(reason.String())
 	}
 	//send to kafka
 	producer.KafkaProducer(string(_edit), "NEW_ORDER")
 
-	return &edit, nil
+	return &edit, nil, err
 }
 
 func (svc deribitService) DeribitParseCancel(ctx context.Context, userId string, data model.DeribitCancelRequest) (*model.DeribitCancelResponse, error) {

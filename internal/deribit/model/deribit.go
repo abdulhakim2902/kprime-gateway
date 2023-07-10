@@ -5,6 +5,7 @@ import (
 
 	"time"
 
+	"git.devucc.name/dependencies/utilities/models/order"
 	"git.devucc.name/dependencies/utilities/types"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -249,38 +250,42 @@ type DeribitEditRequest struct {
 }
 
 type DeribitEditResponse struct {
-	Id       string  `json:"id"`
-	UserId   string  `json:"userId"`
-	ClientId string  `json:"clientId"`
-	Side     string  `json:"side"`
-	Price    float64 `json:"price"`
-	Amount   float64 `json:"amount"`
-	ClOrdID  string  `json:"clOrdID"`
+	Id              string                 `json:"id"`
+	UserId          string                 `json:"userId"`
+	ClientId        string                 `json:"clientId"`
+	Side            string                 `json:"side"`
+	Price           float64                `json:"price"`
+	Amount          float64                `json:"amount"`
+	ClOrdID         string                 `json:"clOrdID"`
+	OrderExclusions []order.OrderExclusion `json:"orderExclusions,omitempty"`
+	TypeInclusions  []order.TypeInclusions `json:"typeInclusions,omitempty"`
 }
 
 type DeribitResponse struct {
-	ID             string            `json:"id,omitempty"`
-	UserId         string            `json:"userId,omitempty"`
-	ClientId       string            `json:"clientId,omitempty"`
-	Underlying     string            `json:"underlying,omitempty"`
-	ExpirationDate string            `json:"expiryDate,omitempty" bson:"expiryDate"`
-	StrikePrice    float64           `json:"strikePrice,omitempty"`
-	Type           types.Type        `json:"type,omitempty"`
-	Side           types.Side        `json:"side,omitempty"`
-	Price          float64           `json:"price,omitempty"`
-	Amount         float64           `json:"amount,omitempty"`
-	Contracts      types.Contracts   `json:"contracts,omitempty"`
-	TimeInForce    types.TimeInForce `json:"timeInForce,omitempty"`
-	ClOrdID        string            `json:"clOrdID,omitempty"`
-	CreatedAt      time.Time         `json:"createdAt,omitempty"`
-	Label          string            `json:"label,omitempty"`
-	FilledAmount   float64           `json:"filledAmount,omitempty"`
-	Status         string            `json:"status,omitempty"`
-	MaxShow        float64           `json:"maxShow,omitempty"`
-	ReduceOnly     bool              `json:"reduceOnly,omitempty"`
-	PostOnly       bool              `json:"postOnly,omitempty"`
-	ConnectionId   string            `json:"connectionId,omitempty"`
-	UserRole       types.UserRole    `json:"userRole"`
+	ID              string                 `json:"id,omitempty"`
+	UserId          string                 `json:"userId,omitempty"`
+	ClientId        string                 `json:"clientId,omitempty"`
+	Underlying      string                 `json:"underlying,omitempty"`
+	ExpirationDate  string                 `json:"expiryDate,omitempty" bson:"expiryDate"`
+	StrikePrice     float64                `json:"strikePrice,omitempty"`
+	Type            types.Type             `json:"type,omitempty"`
+	Side            types.Side             `json:"side,omitempty"`
+	Price           float64                `json:"price,omitempty"`
+	Amount          float64                `json:"amount,omitempty"`
+	Contracts       types.Contracts        `json:"contracts,omitempty"`
+	TimeInForce     types.TimeInForce      `json:"timeInForce,omitempty"`
+	ClOrdID         string                 `json:"clOrdID,omitempty"`
+	CreatedAt       time.Time              `json:"createdAt,omitempty"`
+	Label           string                 `json:"label,omitempty"`
+	FilledAmount    float64                `json:"filledAmount,omitempty"`
+	Status          string                 `json:"status,omitempty"`
+	MaxShow         float64                `json:"maxShow,omitempty"`
+	ReduceOnly      bool                   `json:"reduceOnly,omitempty"`
+	PostOnly        bool                   `json:"postOnly,omitempty"`
+	ConnectionId    string                 `json:"connectionId,omitempty"`
+	UserRole        types.UserRole         `json:"userRole"`
+	OrderExclusions []order.OrderExclusion `json:"orderExclusions,omitempty"`
+	TypeInclusions  []order.TypeInclusions `json:"typeInclusions,omitempty"`
 }
 
 type DeribitGetInstrumentsRequest struct {

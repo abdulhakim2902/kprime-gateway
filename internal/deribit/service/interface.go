@@ -9,7 +9,7 @@ import (
 
 type IDeribitService interface {
 	DeribitRequest(ctx context.Context, userID string, data model.DeribitRequest) (*model.DeribitResponse, *validation_reason.ValidationReason, error)
-	DeribitParseEdit(ctx context.Context, userID string, data model.DeribitEditRequest) (*model.DeribitEditResponse, error)
+	DeribitParseEdit(ctx context.Context, userID string, data model.DeribitEditRequest) (*model.DeribitEditResponse, *validation_reason.ValidationReason, error)
 	DeribitParseCancel(ctx context.Context, userID string, data model.DeribitCancelRequest) (*model.DeribitCancelResponse, error)
 	DeribitCancelByInstrument(ctx context.Context, userID string, data model.DeribitCancelByInstrumentRequest) (*model.DeribitCancelByInstrumentResponse, error)
 	DeribitParseCancelAll(ctx context.Context, userID string, data model.DeribitCancelAllRequest) (*model.DeribitCancelAllResponse, error)
