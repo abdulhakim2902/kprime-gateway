@@ -3,8 +3,6 @@ package service
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
-
 	"gateway/internal/repositories"
 	"gateway/internal/user/types"
 	"gateway/schema"
@@ -67,9 +65,6 @@ func (svc *userService) handleSync(c *gin.Context) {
 	switch c.Param("target") {
 	
 	case "users":
-		body, _ := ioutil.ReadAll(c.Request.Body)
-		println(string(body))
-		fmt.Println("body", string(body))
 		svc.syncMemDB(c)
 	default:
 		c.AbortWithStatus(http.StatusNotFound)
