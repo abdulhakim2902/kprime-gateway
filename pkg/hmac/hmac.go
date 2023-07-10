@@ -56,23 +56,14 @@ func (h *Hmac) DecodeSignature(signature string, c *gin.Context) (sign Signature
 	}
 
 	// Data
-	path := c.Request.URL.Path
-	querys := c.Request.URL.Query()
-	if len(querys) > 0 {
-		path = fmt.Sprintf("%s?%s", path, querys.Encode())
-	}
-
 	body, _ := c.Get("body")
 	bodyStr := ""
 	if b, ok := body.([]byte); ok {
 		bodyStr = string(b)
 	}
 
-	data := fmt.Sprintf("%s\n%s\n%s",
-		ts,
-		nonce,
-		fmt.Sprintf("%s\n%s\n%s\n", c.Request.Method, path, bodyStr),
-	)
+	data := fmt.Sprintf("%s\n%s\n%s\n", c.Request.Method, c.Request.RequestURI, bodyStr)
+	data = fmt.Sprintf("%s\n%s\n%s", ts, nonce, data)
 
 	sign = Signature{
 		ClientId: clientId,
