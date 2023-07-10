@@ -111,6 +111,7 @@ func (svc *userService) SyncMemDB(ctx context.Context, filter interface{}) (err 
 	}
 
 	for _, user := range users {
+		fmt.Println("sync user", user.ID.Hex())
 
 		var typeInclusions []order.TypeInclusions
 		for _, orderType := range user.OrderTypes {
