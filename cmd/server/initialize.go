@@ -1,9 +1,9 @@
 package server
 
 import (
-	i "git.devucc.name/dependencies/utilities/helper/initialize"
-	"git.devucc.name/dependencies/utilities/repository/memdb"
-	"git.devucc.name/dependencies/utilities/repository/mongodb"
+	i "github.com/Undercurrent-Technologies/kprime-utilities/helper/initialize"
+	"github.com/Undercurrent-Technologies/kprime-utilities/repository/memdb"
+	"github.com/Undercurrent-Technologies/kprime-utilities/repository/mongodb"
 )
 
 var groupID = "gateway-group"

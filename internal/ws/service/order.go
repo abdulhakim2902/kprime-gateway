@@ -16,10 +16,10 @@ import (
 	engineType "gateway/internal/engine/types"
 	_types "gateway/internal/orderbook/types"
 
-	orderType "git.devucc.name/dependencies/utilities/models/order"
+	orderType "github.com/Undercurrent-Technologies/kprime-utilities/models/order"
 
-	"git.devucc.name/dependencies/utilities/commons/logs"
 	"github.com/Shopify/sarama"
+	"github.com/Undercurrent-Technologies/kprime-utilities/commons/logs"
 
 	"go.mongodb.org/mongo-driver/bson"
 )

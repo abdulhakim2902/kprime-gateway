@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"git.devucc.name/dependencies/utilities/types/validation_reason"
+	"github.com/Undercurrent-Technologies/kprime-utilities/types/validation_reason"
 	"github.com/gorilla/websocket"
 )
 

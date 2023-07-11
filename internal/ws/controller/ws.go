@@ -14,7 +14,7 @@ import (
 	engService "gateway/internal/ws/engine/service"
 	wsService "gateway/internal/ws/service"
 
-	"git.devucc.name/dependencies/utilities/types/validation_reason"
+	"github.com/Undercurrent-Technologies/kprime-utilities/types/validation_reason"
 	cors "github.com/rs/cors/wrapper/gin"
 	"github.com/ulule/limiter/v3"
 

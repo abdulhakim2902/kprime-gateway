@@ -9,7 +9,7 @@ import (
 
 	deribitModel "gateway/internal/deribit/model"
 
-	"git.devucc.name/dependencies/utilities/commons/logs"
+	"github.com/Undercurrent-Technologies/kprime-utilities/commons/logs"
 )
 
 func (svc deribitService) FetchUserBalance(currency string, userID string) deribitModel.GetAccountSummaryResult {

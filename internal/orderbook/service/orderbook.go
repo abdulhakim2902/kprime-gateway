@@ -11,7 +11,7 @@ import (
 	"github.com/Shopify/sarama"
 	"github.com/gin-gonic/gin"
 
-	orderType "git.devucc.name/dependencies/utilities/models/order"
+	orderType "github.com/Undercurrent-Technologies/kprime-utilities/models/order"
 
 	_engineType "gateway/internal/engine/types"
 	ordermatch "gateway/internal/fix-acceptor"

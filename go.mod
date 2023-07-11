@@ -3,8 +3,8 @@ module gateway
 go 1.20
 
 require (
-	git.devucc.name/dependencies/utilities v1.0.60
 	github.com/Shopify/sarama v1.38.1
+	github.com/Undercurrent-Technologies/kprime-utilities v1.1.0
 	github.com/gin-gonic/gin v1.9.1
 	github.com/go-playground/locales v0.14.1
 	github.com/go-playground/universal-translator v0.18.1

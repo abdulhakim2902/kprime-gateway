@@ -5,8 +5,8 @@ import (
 
 	"time"
 
-	"git.devucc.name/dependencies/utilities/models/order"
-	"git.devucc.name/dependencies/utilities/types"
+	"github.com/Undercurrent-Technologies/kprime-utilities/models/order"
+	"github.com/Undercurrent-Technologies/kprime-utilities/types"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 

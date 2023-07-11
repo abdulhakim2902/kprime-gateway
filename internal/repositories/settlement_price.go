@@ -9,8 +9,8 @@ import (
 	_deribitModel "gateway/internal/deribit/model"
 	_engineType "gateway/internal/engine/types"
 
-	"git.devucc.name/dependencies/utilities/commons/date"
-	"git.devucc.name/dependencies/utilities/commons/logs"
+	"github.com/Undercurrent-Technologies/kprime-utilities/commons/date"
+	"github.com/Undercurrent-Technologies/kprime-utilities/commons/logs"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"

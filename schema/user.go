@@ -1,8 +1,8 @@
 package schema
 
 import (
-	"git.devucc.name/dependencies/utilities/models/order"
-	"git.devucc.name/dependencies/utilities/types"
+	"github.com/Undercurrent-Technologies/kprime-utilities/models/order"
+	"github.com/Undercurrent-Technologies/kprime-utilities/types"
 	"github.com/hashicorp/go-memdb"
 )
 

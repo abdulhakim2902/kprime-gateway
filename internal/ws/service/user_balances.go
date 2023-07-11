@@ -9,7 +9,7 @@ import (
 
 	deribitModel "gateway/internal/deribit/model"
 
-	"git.devucc.name/dependencies/utilities/commons/logs"
+	"github.com/Undercurrent-Technologies/kprime-utilities/commons/logs"
 )
 
 type wsUserBalanceService struct {

@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"strings"
 
-	"git.devucc.name/dependencies/utilities/commons/logs"
-	"git.devucc.name/dependencies/utilities/types"
+	"github.com/Undercurrent-Technologies/kprime-utilities/commons/logs"
+	"github.com/Undercurrent-Technologies/kprime-utilities/types"
 )
 
 func GetKeyFromIdUserID(id uint64, userID string) string {

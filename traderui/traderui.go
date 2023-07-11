@@ -13,7 +13,7 @@ import (
 	"text/template"
 	"time"
 
-	"git.devucc.name/dependencies/utilities/commons/logs"
+	"github.com/Undercurrent-Technologies/kprime-utilities/commons/logs"
 	"github.com/gorilla/mux"
 	"github.com/quickfixgo/enum"
 	"github.com/quickfixgo/field"

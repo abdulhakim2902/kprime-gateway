@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"git.devucc.name/dependencies/utilities/commons/log"
+	"github.com/Undercurrent-Technologies/kprime-utilities/commons/log"
 	"github.com/gomodule/redigo/redis"
 )
 
