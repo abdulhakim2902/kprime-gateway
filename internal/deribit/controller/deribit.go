@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"strings"
 
-	"git.devucc.name/dependencies/utilities/commons/logs"
+	"github.com/Undercurrent-Technologies/kprime-utilities/commons/logs"
 
 	deribitModel "gateway/internal/deribit/model"
 	authService "gateway/internal/user/service"
@@ -16,7 +16,7 @@ import (
 	"gateway/pkg/protocol"
 	"gateway/pkg/utils"
 
-	"git.devucc.name/dependencies/utilities/types/validation_reason"
+	"github.com/Undercurrent-Technologies/kprime-utilities/types/validation_reason"
 	cors "github.com/rs/cors/wrapper/gin"
 
 	"gateway/internal/repositories"

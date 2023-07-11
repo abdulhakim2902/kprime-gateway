@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"git.devucc.name/dependencies/utilities/commons/middleware"
+	"github.com/Undercurrent-Technologies/kprime-utilities/commons/middleware"
 	"github.com/gin-gonic/gin"
 )
 

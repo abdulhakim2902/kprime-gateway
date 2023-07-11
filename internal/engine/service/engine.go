@@ -8,10 +8,10 @@ import (
 	"strconv"
 	"time"
 
-	"git.devucc.name/dependencies/utilities/commons/logs"
-	"git.devucc.name/dependencies/utilities/types"
-	"git.devucc.name/dependencies/utilities/types/validation_reason"
 	"github.com/Shopify/sarama"
+	"github.com/Undercurrent-Technologies/kprime-utilities/commons/logs"
+	"github.com/Undercurrent-Technologies/kprime-utilities/types"
+	"github.com/Undercurrent-Technologies/kprime-utilities/types/validation_reason"
 	"github.com/gin-gonic/gin"
 
 	_engineType "gateway/internal/engine/types"
@@ -19,7 +19,7 @@ import (
 	_orderbookTypes "gateway/internal/orderbook/types"
 	wsService "gateway/internal/ws/service"
 
-	orderType "git.devucc.name/dependencies/utilities/models/order"
+	orderType "github.com/Undercurrent-Technologies/kprime-utilities/models/order"
 
 	"gateway/internal/repositories"
 

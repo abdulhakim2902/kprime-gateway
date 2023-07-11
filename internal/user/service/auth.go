@@ -15,7 +15,7 @@ import (
 	"strings"
 	"time"
 
-	"git.devucc.name/dependencies/utilities/commons/logs"
+	"github.com/Undercurrent-Technologies/kprime-utilities/commons/logs"
 	"github.com/golang-jwt/jwt"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )

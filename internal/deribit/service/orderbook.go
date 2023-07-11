@@ -10,8 +10,8 @@ import (
 	"gateway/pkg/utils"
 	"time"
 
-	"git.devucc.name/dependencies/utilities/commons/date"
-	"git.devucc.name/dependencies/utilities/commons/logs"
+	"github.com/Undercurrent-Technologies/kprime-utilities/commons/date"
+	"github.com/Undercurrent-Technologies/kprime-utilities/commons/logs"
 )
 
 func (svc deribitService) GetOrderBook(ctx context.Context, data model.DeribitGetOrderBookRequest) *model.DeribitGetOrderBookResponse {

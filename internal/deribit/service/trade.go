@@ -4,7 +4,7 @@ import (
 	"context"
 	_deribitModel "gateway/internal/deribit/model"
 
-	"git.devucc.name/dependencies/utilities/types/validation_reason"
+	"github.com/Undercurrent-Technologies/kprime-utilities/types/validation_reason"
 )
 
 func (svc deribitService) DeribitGetUserTradesByInstrument(

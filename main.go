@@ -38,11 +38,11 @@ import (
 	memory "gateway/datasources/memdb"
 	docs "gateway/docs"
 
-	"git.devucc.name/dependencies/utilities/commons/logs"
-	"git.devucc.name/dependencies/utilities/commons/metrics"
-	memoryDb "git.devucc.name/dependencies/utilities/repository/memdb"
-	"git.devucc.name/dependencies/utilities/repository/mongodb"
-	"git.devucc.name/dependencies/utilities/schema"
+	"github.com/Undercurrent-Technologies/kprime-utilities/commons/logs"
+	"github.com/Undercurrent-Technologies/kprime-utilities/commons/metrics"
+	memoryDb "github.com/Undercurrent-Technologies/kprime-utilities/repository/memdb"
+	"github.com/Undercurrent-Technologies/kprime-utilities/repository/mongodb"
+	"github.com/Undercurrent-Technologies/kprime-utilities/schema"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"github.com/rs/zerolog"
@@ -64,7 +64,7 @@ var (
 
 func init() {
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
-
+	logs.WithPaperTrail()
 	_, b, _, _ := runtime.Caller(0)
 	rootDir = path.Join(b, "../")
 	docs.SwaggerInfo.BasePath = "/api/internal"

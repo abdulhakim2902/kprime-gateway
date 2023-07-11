@@ -5,7 +5,7 @@ import (
 	"gateway/pkg/protocol"
 	"gateway/pkg/ws"
 
-	"git.devucc.name/dependencies/utilities/types/validation_reason"
+	"github.com/Undercurrent-Technologies/kprime-utilities/types/validation_reason"
 	"github.com/ulule/limiter/v3"
 )
 

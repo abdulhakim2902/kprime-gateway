@@ -3,9 +3,9 @@ package types
 import (
 	"time"
 
-	"git.devucc.name/dependencies/utilities/types"
+	"github.com/Undercurrent-Technologies/kprime-utilities/types"
 
-	"git.devucc.name/dependencies/utilities/models/order"
+	"github.com/Undercurrent-Technologies/kprime-utilities/models/order"
 	"github.com/shopspring/decimal"
 )
 

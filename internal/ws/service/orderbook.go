@@ -15,7 +15,7 @@ import (
 	_orderbookTypes "gateway/internal/orderbook/types"
 	_tradeType "gateway/internal/repositories/types"
 
-	orderType "git.devucc.name/dependencies/utilities/models/order"
+	orderType "github.com/Undercurrent-Technologies/kprime-utilities/models/order"
 
 	"gateway/internal/repositories"
 	"gateway/pkg/memdb"
@@ -23,8 +23,8 @@ import (
 	"gateway/pkg/utils"
 	"gateway/pkg/ws"
 
-	"git.devucc.name/dependencies/utilities/commons/logs"
 	"github.com/Shopify/sarama"
+	"github.com/Undercurrent-Technologies/kprime-utilities/commons/logs"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )

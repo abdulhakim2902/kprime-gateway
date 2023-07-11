@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"gateway/internal/deribit/model"
 
-	"git.devucc.name/dependencies/utilities/commons/logs"
+	"github.com/Undercurrent-Technologies/kprime-utilities/commons/logs"
 )
 
 func (svc deribitService) DeribitGetOpenOrdersByInstrument(ctx context.Context, userID string, data model.DeribitGetOpenOrdersByInstrumentRequest) []*model.DeribitGetOpenOrdersByInstrumentResponse {

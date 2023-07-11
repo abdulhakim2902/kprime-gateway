@@ -16,8 +16,8 @@ import (
 	"strings"
 	"time"
 
-	"git.devucc.name/dependencies/utilities/config/types"
-	"git.devucc.name/dependencies/utilities/types/validation_reason"
+	"github.com/Undercurrent-Technologies/kprime-utilities/config/types"
+	"github.com/Undercurrent-Technologies/kprime-utilities/types/validation_reason"
 )
 
 func (handler *wsHandler) RegisterPublic() {
