@@ -63,6 +63,23 @@ func (h *DeribitHandler) buy(r *gin.Context) {
 		msg.Params.MaxShow = &maxShow
 	}
 
+	if strings.ToLower(string(msg.Params.Type)) == string(types.LIMIT) && msg.Params.Price == 0 {
+		err := errors.New(validation_reason.PRICE_IS_REQUIRED.String())
+		errMsg := protocol.ErrorMessage{
+			Message:        err.Error(),
+			Data:           protocol.ReasonMessage{},
+			HttpStatusCode: http.StatusBadRequest,
+		}
+		m := protocol.RPCResponseMessage{
+			JSONRPC: "2.0",
+			ID:      msg.Id,
+			Error:   &errMsg,
+			Testnet: true,
+		}
+		r.AbortWithStatusJSON(http.StatusBadRequest, m)
+		return
+	}
+
 	userID, connKey, reason, err := requestHelper(msg.Id, msg.Method, r)
 	if err != nil {
 		protocol.SendValidationMsg(connKey, *reason, err)
@@ -128,6 +145,23 @@ func (h *DeribitHandler) sell(r *gin.Context) {
 	maxShow := 0.1
 	if msg.Params.MaxShow == nil {
 		msg.Params.MaxShow = &maxShow
+	}
+
+	if strings.ToLower(string(msg.Params.Type)) == string(types.LIMIT) && msg.Params.Price == 0 {
+		err := errors.New(validation_reason.PRICE_IS_REQUIRED.String())
+		errMsg := protocol.ErrorMessage{
+			Message:        err.Error(),
+			Data:           protocol.ReasonMessage{},
+			HttpStatusCode: http.StatusBadRequest,
+		}
+		m := protocol.RPCResponseMessage{
+			JSONRPC: "2.0",
+			ID:      msg.Id,
+			Error:   &errMsg,
+			Testnet: true,
+		}
+		r.AbortWithStatusJSON(http.StatusBadRequest, m)
+		return
 	}
 
 	userID, connKey, reason, err := requestHelper(msg.Id, msg.Method, r)

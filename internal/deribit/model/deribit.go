@@ -25,7 +25,7 @@ type RequestParams struct {
 	InstrumentName string            `json:"instrument_name" form:"instrument_name"`
 	Amount         float64           `json:"amount" validate:"required" form:"amount"`
 	Type           types.Type        `json:"type" form:"type"`
-	Price          float64           `json:"price" validate:"required" form:"price"`
+	Price          float64           `json:"price" form:"price"`
 	MaxShow        *float64          `json:"max_show,omitempty" form:"max_show,omitempty"`
 	PostOnly       bool              `json:"post_only,omitempty" form:"post_only,omitempty"`
 	ReduceOnly     bool              `json:"reduce_only,omitempty" form:"reduce_only,omitempty"`
