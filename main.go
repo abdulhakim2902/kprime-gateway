@@ -45,7 +45,6 @@ import (
 	"github.com/Undercurrent-Technologies/kprime-utilities/schema"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
-	"github.com/rs/zerolog"
 	"github.com/ulule/limiter/v3"
 	limiterMem "github.com/ulule/limiter/v3/drivers/store/memory"
 
@@ -62,9 +61,17 @@ var (
 	rootDir string
 )
 
+func validatePapertrailEnv() {
+	if os.Getenv("PAPERTRAIL_HOST") == "" {
+		logs.Log.Fatal().Msg("PAPERTRAIL_HOST is not set")
+	}
+	if os.Getenv("PAPERTRAIL_PORT") == "" {
+		logs.Log.Fatal().Msg("PAPERTRAIL_PORT is not set")
+	}
+}
+
 func init() {
-	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
-	logs.WithPaperTrail()
+
 	_, b, _, _ := runtime.Caller(0)
 	rootDir = path.Join(b, "../")
 	docs.SwaggerInfo.BasePath = "/api/internal"
@@ -72,6 +79,10 @@ func init() {
 		log.Panic("Error loading .env file", err)
 	}
 
+	if os.Getenv("LOG_WITH_PAPERTRAIL") == "true" {
+		validatePapertrailEnv()
+		logs.WithPaperTrail()
+	}
 	// Gin Engine
 	engine = gin.New()
 
