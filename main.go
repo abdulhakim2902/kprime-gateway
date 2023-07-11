@@ -81,8 +81,10 @@ func init() {
 
 	if os.Getenv("LOG_WITH_PAPERTRAIL") == "true" {
 		validatePapertrailEnv()
+		utils.InitLogger()
 		logs.WithPaperTrail()
 	}
+	logs.Log.Info().Msg("Starting Gateway Internal API")
 	// Gin Engine
 	engine = gin.New()
 
