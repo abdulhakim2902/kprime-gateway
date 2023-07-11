@@ -17,9 +17,9 @@ import (
 	_deribitModel "gateway/internal/deribit/model"
 	_engineType "gateway/internal/engine/types"
 
-	"git.devucc.name/dependencies/utilities/commons/logs"
-	"git.devucc.name/dependencies/utilities/types"
 	"github.com/Shopify/sarama"
+	"github.com/Undercurrent-Technologies/kprime-utilities/commons/logs"
+	"github.com/Undercurrent-Technologies/kprime-utilities/types"
 )
 
 type wsTradeService struct {

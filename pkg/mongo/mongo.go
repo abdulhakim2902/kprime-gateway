@@ -5,7 +5,7 @@ import (
 	"os"
 	"time"
 
-	"git.devucc.name/dependencies/utilities/commons/log"
+	"github.com/Undercurrent-Technologies/kprime-utilities/commons/log"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"

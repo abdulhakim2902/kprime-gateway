@@ -5,10 +5,10 @@ import (
 
 	_orderbookType "gateway/internal/orderbook/types"
 
-	"git.devucc.name/dependencies/utilities/models/price"
-	"git.devucc.name/dependencies/utilities/models/trade"
-	"git.devucc.name/dependencies/utilities/types"
-	"git.devucc.name/dependencies/utilities/types/validation_reason"
+	"github.com/Undercurrent-Technologies/kprime-utilities/models/price"
+	"github.com/Undercurrent-Technologies/kprime-utilities/models/trade"
+	"github.com/Undercurrent-Technologies/kprime-utilities/types"
+	"github.com/Undercurrent-Technologies/kprime-utilities/types/validation_reason"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 

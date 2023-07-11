@@ -18,9 +18,9 @@ import (
 
 	userSchema "gateway/schema"
 
-	"git.devucc.name/dependencies/utilities/commons/logs"
-	"git.devucc.name/dependencies/utilities/types"
-	"git.devucc.name/dependencies/utilities/types/validation_reason"
+	"github.com/Undercurrent-Technologies/kprime-utilities/commons/logs"
+	"github.com/Undercurrent-Technologies/kprime-utilities/types"
+	"github.com/Undercurrent-Technologies/kprime-utilities/types/validation_reason"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -135,10 +135,10 @@ func (svc deribitService) DeribitRequest(
 	}
 
 	// collector
-	collector.StartKafkaDuration(payload.UserId, payload.ClOrdID)
+	go collector.StartKafkaDuration(payload.UserId, payload.ClOrdID)
 
 	//send to kafka
-	producer.KafkaProducer(string(out), "NEW_ORDER")
+	go producer.KafkaProducer(string(out), types.NEW_ORDER.String())
 
 	return &payload, nil, nil
 }

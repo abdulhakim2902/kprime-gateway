@@ -41,9 +41,9 @@ import (
 
 	_orderbookType "gateway/internal/orderbook/types"
 
-	"git.devucc.name/dependencies/utilities/commons/log"
-	"git.devucc.name/dependencies/utilities/commons/logs"
-	_utilitiesType "git.devucc.name/dependencies/utilities/types"
+	"github.com/Undercurrent-Technologies/kprime-utilities/commons/log"
+	"github.com/Undercurrent-Technologies/kprime-utilities/commons/logs"
+	_utilitiesType "github.com/Undercurrent-Technologies/kprime-utilities/types"
 	"github.com/quickfixgo/enum"
 	"github.com/quickfixgo/field"
 	"github.com/quickfixgo/fix43/ordermasscancelreport"

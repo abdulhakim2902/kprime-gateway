@@ -6,7 +6,7 @@ import (
 	deribitModel "gateway/internal/deribit/model"
 	_orderbookTypes "gateway/internal/orderbook/types"
 
-	orderType "git.devucc.name/dependencies/utilities/models/order"
+	orderType "github.com/Undercurrent-Technologies/kprime-utilities/models/order"
 
 	"gateway/pkg/ws"
 

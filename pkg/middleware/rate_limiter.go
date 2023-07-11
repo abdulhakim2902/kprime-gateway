@@ -4,7 +4,7 @@ import (
 	"gateway/pkg/protocol"
 	"strconv"
 
-	"git.devucc.name/dependencies/utilities/types/validation_reason"
+	"github.com/Undercurrent-Technologies/kprime-utilities/types/validation_reason"
 	"github.com/gin-gonic/gin"
 
 	"github.com/ulule/limiter/v3"

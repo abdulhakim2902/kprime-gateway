@@ -17,12 +17,12 @@ import (
 	"gateway/pkg/memdb"
 	"gateway/pkg/utils"
 
-	"git.devucc.name/dependencies/utilities/commons/logs"
-	Greeks "git.devucc.name/dependencies/utilities/helper/greeks"
-	IV "git.devucc.name/dependencies/utilities/helper/implied_volatility"
-	"git.devucc.name/dependencies/utilities/models/trade"
-	"git.devucc.name/dependencies/utilities/types"
-	"git.devucc.name/dependencies/utilities/types/validation_reason"
+	"github.com/Undercurrent-Technologies/kprime-utilities/commons/logs"
+	Greeks "github.com/Undercurrent-Technologies/kprime-utilities/helper/greeks"
+	IV "github.com/Undercurrent-Technologies/kprime-utilities/helper/implied_volatility"
+	"github.com/Undercurrent-Technologies/kprime-utilities/models/trade"
+	"github.com/Undercurrent-Technologies/kprime-utilities/types"
+	"github.com/Undercurrent-Technologies/kprime-utilities/types/validation_reason"
 	"github.com/shopspring/decimal"
 
 	"go.mongodb.org/mongo-driver/bson"

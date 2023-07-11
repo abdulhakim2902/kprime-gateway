@@ -3,7 +3,7 @@ package utils
 import (
 	"os"
 
-	"git.devucc.name/dependencies/utilities/commons/logs"
+	"github.com/Undercurrent-Technologies/kprime-utilities/commons/logs"
 )
 
 const (

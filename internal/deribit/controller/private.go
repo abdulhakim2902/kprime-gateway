@@ -7,15 +7,15 @@ import (
 	"strings"
 	"time"
 
-	confType "git.devucc.name/dependencies/utilities/config/types"
-	"git.devucc.name/dependencies/utilities/types"
+	confType "github.com/Undercurrent-Technologies/kprime-utilities/config/types"
+	"github.com/Undercurrent-Technologies/kprime-utilities/types"
 
 	deribitModel "gateway/internal/deribit/model"
 	"gateway/pkg/protocol"
 	"gateway/pkg/utils"
 	"strconv"
 
-	"git.devucc.name/dependencies/utilities/types/validation_reason"
+	"github.com/Undercurrent-Technologies/kprime-utilities/types/validation_reason"
 
 	"github.com/gin-gonic/gin"
 )

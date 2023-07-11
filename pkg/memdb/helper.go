@@ -5,8 +5,8 @@ import (
 
 	"gateway/schema"
 
-	"git.devucc.name/dependencies/utilities/commons/logs"
-	"git.devucc.name/dependencies/utilities/types/validation_reason"
+	"github.com/Undercurrent-Technologies/kprime-utilities/commons/logs"
+	"github.com/Undercurrent-Technologies/kprime-utilities/types/validation_reason"
 )
 
 func MDBFindUserById(id string) (user schema.User, reason validation_reason.ValidationReason, err error) {

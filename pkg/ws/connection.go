@@ -8,8 +8,8 @@ import (
 	"gateway/internal/deribit/model"
 	"gateway/pkg/kafka/producer"
 
-	"git.devucc.name/dependencies/utilities/commons/logs"
-	"git.devucc.name/dependencies/utilities/types"
+	"github.com/Undercurrent-Technologies/kprime-utilities/commons/logs"
+	"github.com/Undercurrent-Technologies/kprime-utilities/types"
 	"github.com/gin-gonic/gin"
 
 	"github.com/gorilla/websocket"
