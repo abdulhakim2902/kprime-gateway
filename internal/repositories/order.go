@@ -186,8 +186,17 @@ func (r OrderRepository) GetInstruments(userId, currency string, expired bool) (
 			excludeUserId = append(excludeUserId, exclude.UserID)
 		}
 
-		match["userRole"] = types.MARKET_MAKER.String()
-		match["userId"] = bson.M{"$nin": excludeUserId}
+		match["$or"] = bson.A{
+			bson.D{
+				{"$and",
+					bson.A{
+						bson.D{{"userRole", types.MARKET_MAKER.String()}},
+						bson.D{{"userId", bson.D{{"$in", excludeUserId}}}},
+					},
+				},
+			},
+			bson.D{{"userId", userId}},
+		}
 	}
 
 	matchesStage := bson.M{"$match": match}
@@ -790,8 +799,17 @@ func (r OrderRepository) GetOrderBook(o _orderbookType.GetOrderBook) *_orderbook
 		}
 
 		if o.UserRole == types.CLIENT.String() {
-			match["userRole"] = types.MARKET_MAKER.String()
-			match["userId"] = bson.M{"$nin": o.UserOrderExclusions}
+			match["$or"] = bson.A{
+				bson.D{
+					{"$and",
+						bson.A{
+							bson.D{{"userRole", types.MARKET_MAKER.String()}},
+							bson.D{{"userId", bson.D{{"$in", o.UserOrderExclusions}}}},
+						},
+					},
+				},
+				bson.D{{"userId", o.UserId}},
+			}
 		}
 
 		return []bson.M{

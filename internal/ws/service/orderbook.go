@@ -1128,6 +1128,7 @@ func (svc wsOrderbookService) GetOrderBook(ctx context.Context, data _deribitMod
 		Underlying:     instruments.Underlying,
 		ExpiryDate:     instruments.ExpDate,
 		StrikePrice:    instruments.Strike,
+		UserId:         data.UserId,
 	}
 
 	ordExclusions := []string{}

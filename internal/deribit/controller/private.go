@@ -198,13 +198,18 @@ func (h *DeribitHandler) edit(r *gin.Context) {
 	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 	go protocol.RegisterChannel(connKey, channel, ctx)
 	// Call service
-	_, err = h.svc.DeribitParseEdit(r.Request.Context(), userID, deribitModel.DeribitEditRequest{
+	_, reason, err = h.svc.DeribitParseEdit(r.Request.Context(), userID, deribitModel.DeribitEditRequest{
 		Id:      msg.Params.OrderId,
 		Price:   msg.Params.Price,
 		Amount:  msg.Params.Amount,
 		ClOrdID: strconv.FormatUint(msg.Id, 10),
 	})
 	if err != nil {
+		if reason != nil {
+			protocol.SendValidationMsg(connKey, *reason, err)
+			return
+		}
+
 		protocol.SendErrMsg(connKey, err)
 		return
 	}

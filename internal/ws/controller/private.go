@@ -172,13 +172,17 @@ func (svc *wsHandler) edit(input interface{}, c *ws.Client) {
 	// TODO: Validation
 
 	// Parse the Deribit Sell
-	_, err = svc.deribitSvc.DeribitParseEdit(context.TODO(), claim.UserID, deribitModel.DeribitEditRequest{
+	_, reason, err = svc.deribitSvc.DeribitParseEdit(context.TODO(), claim.UserID, deribitModel.DeribitEditRequest{
 		Id:      msg.Params.OrderId,
 		Price:   msg.Params.Price,
 		Amount:  msg.Params.Amount,
 		ClOrdID: strconv.FormatUint(msg.Id, 10),
 	})
 	if err != nil {
+		if reason != nil {
+			protocol.SendValidationMsg(connKey, *reason, err)
+			return
+		}
 		protocol.SendErrMsg(connKey, err)
 		return
 	}
