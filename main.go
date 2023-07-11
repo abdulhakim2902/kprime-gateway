@@ -45,6 +45,7 @@ import (
 	"git.devucc.name/dependencies/utilities/schema"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
+	"github.com/rs/zerolog"
 	"github.com/ulule/limiter/v3"
 	limiterMem "github.com/ulule/limiter/v3/drivers/store/memory"
 
@@ -62,12 +63,13 @@ var (
 )
 
 func init() {
+	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
+
 	_, b, _, _ := runtime.Caller(0)
 	rootDir = path.Join(b, "../")
-	fmt.Println(rootDir)
 	docs.SwaggerInfo.BasePath = "/api/internal"
 	if err = godotenv.Load(path.Join(rootDir, ".env")); err != nil {
-		panic(err)
+		log.Panic("Error loading .env file", err)
 	}
 
 	// Gin Engine
