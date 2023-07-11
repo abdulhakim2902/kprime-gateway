@@ -37,19 +37,7 @@ func (handler *wsHandler) RegisterPublic() {
 	ws.RegisterChannel("public/get_time", middleware.MiddlewaresWrapper(handler.publicGetTime, middleware.RateLimiterWs))
 }
 
-type Params struct {
-	GrantType    string `json:"grant_type" validate:"required, oneof=client_credentials client_signature refresh_token" description:"Method of authentication"`
-	ClientID     string `json:"client_id" description:"Required for grant type client_credentials and client_signature"`
-	ClientSecret string `json:"client_secret" description:"Required for grant type client_credentials"`
-	RefreshToken string `json:"refresh_token" description:"Required for grant type refresh_token"`
-
-	Signature string `json:"signature" description:"Required for grant type client_signature, it's a cryptographic signature calculated over provided fields using user secret key."`
-	Timestamp string `json:"timestamp" description:"Required for grant type client_signature, provides time when request has been generated"`
-	Nonce     string `json:"nonce" description:"Optional for grant type client_signature; delivers user generated initialization vector for the server token"`
-	Data      string `json:"data" description:"Optional for grant type client_signature; contains any user specific value"`
-}
-
-func validateSignatureAuth(params Params, connKey string) {
+func validateSignatureAuth(params userType.AuthParams, connKey string) {
 	if params.ClientID == "" {
 		protocol.SendValidationMsg(connKey,
 			validation_reason.INVALID_PARAMS, errors.New("client_id is a required field"))
@@ -78,13 +66,13 @@ func validateSignatureAuth(params Params, connKey string) {
 // auth asyncApi
 // @summary This endpoint is use for login and get the access_token.
 // @description endpoint: `ws://localhost:8080/ws/api/v2` with method public/auth
-// @payload controller.Params
+// @payload types.AuthParams
 // @x-response types.AuthResponse
 // @queue auth
 // @tags auth
 // @contentType application/json
 func (svc *wsHandler) auth(input interface{}, c *ws.Client) {
-	var msg deribitModel.RequestDto[Params]
+	var msg deribitModel.RequestDto[userType.AuthParams]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
 		c.SendInvalidRequestMessage(err)
 		return

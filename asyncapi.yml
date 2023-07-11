@@ -15,13 +15,13 @@ components:
             tags:
                 - name: auth
             payload:
-                $ref: '#/components/schemas/controller.Params'
+                $ref: '#/components/schemas/types.AuthParams'
             x-response:
                 $ref: '#/components/schemas/types.AuthResponse'
             summary: This endpoint is use for login and get the access_token.
             description: 'endpoint: `ws://localhost:8080/ws/api/v2` with method public/auth'
     schemas:
-        controller.Params:
+        types.AuthParams:
             type: object
             required:
                 - grant_type
