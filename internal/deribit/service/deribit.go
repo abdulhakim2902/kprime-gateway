@@ -135,10 +135,10 @@ func (svc deribitService) DeribitRequest(
 	}
 
 	// collector
-	collector.StartKafkaDuration(payload.UserId, payload.ClOrdID)
+	go collector.StartKafkaDuration(payload.UserId, payload.ClOrdID)
 
 	//send to kafka
-	producer.KafkaProducer(string(out), "NEW_ORDER")
+	go producer.KafkaProducer(string(out), types.NEW_ORDER.String())
 
 	return &payload, nil, nil
 }

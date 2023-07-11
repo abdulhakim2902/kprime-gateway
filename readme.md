@@ -41,7 +41,7 @@ cp .env.example .env
 
 To be able to get private dependencies, you can use this following command:
 ```
-GOPRIVATE=github.com/Undercurrent-Technologies/kprime-utilities go get github.com/Undercurrent-Technologies/kprime-utilities@v1.0.60
+GOPRIVATE=github.com/Undercurrent-Technologies/kprime-utilities go get github.com/Undercurrent-Technologies/kprime-utilities@v1.0.53
 ```
 
 To run the application for development purposes:
