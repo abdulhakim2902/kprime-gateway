@@ -61,6 +61,12 @@ func (svc *wsHandler) buy(input interface{}, c *ws.Client) {
 		return
 	}
 
+	if strings.ToLower(string(msg.Params.Type)) == string(types.LIMIT) && msg.Params.Price == 0 {
+		err := errors.New(validation_reason.PRICE_IS_REQUIRED.String())
+		c.SendInvalidRequestMessage(err)
+		return
+	}
+
 	claim, connKey, reason, err := requestHelper(msg.Id, msg.Method, &msg.Params.AccessToken, c)
 	if err != nil {
 		protocol.SendValidationMsg(connKey, *reason, err)
@@ -113,6 +119,12 @@ func (svc *wsHandler) sell(input interface{}, c *ws.Client) {
 	}
 
 	if err := utils.ValidateDeribitRequestParam(msg.Params); err != nil {
+		c.SendInvalidRequestMessage(err)
+		return
+	}
+
+	if strings.ToLower(string(msg.Params.Type)) == string(types.LIMIT) && msg.Params.Price == 0 {
+		err := errors.New(validation_reason.PRICE_IS_REQUIRED.String())
 		c.SendInvalidRequestMessage(err)
 		return
 	}
