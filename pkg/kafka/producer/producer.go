@@ -11,6 +11,9 @@ import (
 func KafkaProducer(obj string, topic string) {
 	config := sarama.NewConfig()
 	config.Producer.Return.Successes = true
+	config.Producer.Compression = sarama.CompressionLZ4
+	config.Producer.RequiredAcks = sarama.WaitForAll
+	config.Producer.Flush.Frequency = 1000
 
 	producer, err := sarama.NewSyncProducer([]string{os.Getenv("KAFKA_BROKER")}, config)
 	if err != nil {
