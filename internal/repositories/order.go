@@ -667,7 +667,6 @@ func (r OrderRepository) WsAggregate(pipeline interface{}) []*_orderbookType.WsO
 	opt := options.AggregateOptions{
 		MaxTime: &defaultTimeout,
 	}
-
 	cursor, err := r.collection.Aggregate(context.Background(), pipeline, &opt)
 	if err != nil {
 		return []*_orderbookType.WsOrder{}
@@ -679,7 +678,6 @@ func (r OrderRepository) WsAggregate(pipeline interface{}) []*_orderbookType.WsO
 	}
 
 	orders := []*_orderbookType.WsOrder{}
-
 	cursor.All(context.Background(), &orders)
 
 	//sort orders by price
@@ -978,9 +976,20 @@ func (r OrderRepository) GetOrderLatestTimestamp(o _orderbookType.GetOrderBook, 
 				},
 			},
 			{
+				"$addFields": bson.D{
+					{"openAmount", bson.D{
+						{"$subtract", bson.A{
+							"$amount",
+							bson.M{"$toDouble": "$filledAmount"},
+						}},
+					},
+					},
+				},
+			},
+			{
 				"$group": bson.D{
 					{"_id", "$price"},
-					{"amount", bson.D{{"$sum", bson.M{"$subtract": []string{"$amount", "$filledAmount"}}}}},
+					{"amount", bson.D{{"$sum", "$openAmount"}}},
 					{"detail", bson.D{{"$first", "$$ROOT"}}},
 				},
 			},
