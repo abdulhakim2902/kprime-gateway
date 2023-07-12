@@ -3,6 +3,7 @@ package middleware
 import (
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	authSvc "gateway/internal/user/service"
 	"gateway/pkg/hmac"
 	"gateway/pkg/memdb"
@@ -10,8 +11,6 @@ import (
 	"io"
 	"net/http"
 	"strings"
-
-	userSchema "gateway/schema"
 
 	"github.com/Undercurrent-Technologies/kprime-utilities/commons/logs"
 	"github.com/gin-gonic/gin"
@@ -63,7 +62,7 @@ func Authenticate() gin.HandlerFunc {
 				return
 			}
 
-			var userId, clientSecret, userRole string
+			var userId, userRole string
 			switch authorization[0] {
 			case "Bearer":
 				claim, err := authSvc.ClaimJWT(nil, authorization[1])
@@ -89,36 +88,28 @@ func Authenticate() gin.HandlerFunc {
 				hmac := hmac.New()
 				sig, err := hmac.DecodeSignature(authorization[1], c)
 				if err != nil {
-					c.AbortWithError(http.StatusUnauthorized, err)
+					logs.Log.Error().Err(err).Msg("")
+
+					c.AbortWithStatus(http.StatusUnauthorized)
 					return
 				}
 
-				users := memdb.Schemas.User.Find("id")
-				if users == nil {
-					c.AbortWithStatus(http.StatusInternalServerError)
+				user, credential, reason := memdb.MDBFindUserAndCredentialWithKey(sig.ClientId)
+				if reason != nil {
+					_, status, msg := reason.Code()
+
+					c.AbortWithError(status, errors.New(msg))
 					return
-
 				}
 
-				for _, user := range users {
-					if usr, ok := user.(userSchema.User); ok {
-						for _, key := range usr.ClientIds {
-							if strings.HasPrefix(key, sig.ClientId) {
-								userId = usr.ID
-								userRole = usr.Role.String()
-								clientSecret = strings.Split(key, ":")[1]
-								goto VERIFY_SIGNATURE
-							}
-						}
-					}
-				}
-
-			VERIFY_SIGNATURE:
-				ok := sig.Verify(clientSecret)
+				ok := sig.Verify(credential.Secret)
 				if !ok {
 					c.AbortWithStatus(http.StatusUnauthorized)
 					return
 				}
+
+				userId = user.ID
+				userRole = user.Role.String()
 			case "Basic":
 				decoded, err := base64.StdEncoding.DecodeString(authorization[1])
 				if err != nil {
@@ -126,30 +117,21 @@ func Authenticate() gin.HandlerFunc {
 					return
 				}
 
-				users := memdb.Schemas.User.Find("id")
-				if users == nil {
-					c.AbortWithStatus(http.StatusInternalServerError)
+				user, _, reason := memdb.MDBFindUserAndCredentialWithKey(strings.Split(string(decoded), ":")[0])
+				if reason != nil {
+					_, status, msg := reason.Code()
+
+					c.AbortWithError(status, errors.New(msg))
 					return
-
 				}
 
-				for _, user := range users {
-					if usr, ok := user.(userSchema.User); ok {
-						for _, key := range usr.ClientIds {
-							if strings.EqualFold(key, string(decoded)) {
-								userId = usr.ID
-								userRole = usr.Role.String()
-								goto SET_USERID
-							}
-						}
-					}
-				}
+				userId = user.ID
+				userRole = user.Role.String()
 			default:
 				c.AbortWithStatus(http.StatusUnauthorized)
 				return
 			}
 
-		SET_USERID:
 			if userId == "" {
 				c.AbortWithStatus(http.StatusUnauthorized)
 				return

@@ -9,7 +9,6 @@ import (
 	"gateway/pkg/hmac"
 	"gateway/pkg/memdb"
 	"gateway/pkg/ws"
-	userSchema "gateway/schema"
 	"os"
 	"strconv"
 	"strings"
@@ -58,48 +57,32 @@ func (s AuthService) Login(ctx context.Context, req types.AuthRequest) (res *typ
 }
 
 func (s AuthService) LoginWithSignature(ctx context.Context, sig hmac.Signature) (res *types.AuthResponse, user *types.User, err error) {
-	users := memdb.Schemas.User.Find("id")
-	if users == nil {
-		err = errors.New("no user found")
+	usr, credential, reason := memdb.MDBFindUserAndCredentialWithKey(sig.ClientId)
+	if reason != nil {
+		err = errors.New(reason.String())
 		return
+	}
+
+	var id primitive.ObjectID
+	id, err = primitive.ObjectIDFromHex(usr.ID)
+	if err != nil {
+		logs.Log.Error().Err(err).Msg("")
 
 	}
 
-	var userId, clientSecret, userRole string
-	for _, item := range users {
-		if usr, ok := item.(userSchema.User); ok {
-			for _, creds := range usr.ClientIds {
-				if strings.HasPrefix(creds, sig.ClientId) {
-					userId = usr.ID
-					userRole = usr.Role.String()
-					id, err := primitive.ObjectIDFromHex(userId)
-					if err != nil {
-						logs.Log.Error().Err(err).Msg("")
-						goto VERIFY_SIGNATURE
-					}
+	// Set user
+	user = &types.User{ID: id}
 
-					// Set user
-					user = &types.User{ID: id}
-
-					clientSecret = strings.Split(creds, ":")[1]
-
-					goto VERIFY_SIGNATURE
-				}
-			}
-		}
-	}
-
-VERIFY_SIGNATURE:
 	// Reformat data
 	sig.Data = fmt.Sprintf("%s\n%s\n%s", sig.Ts, sig.Nonce, sig.Data)
 
-	ok := sig.Verify(clientSecret)
+	ok := sig.Verify(credential.Secret)
 	if !ok {
 		err = errors.New("invalid credential")
 		return
 	}
 
-	accessToken, refreshToken, accessTokenExp, err := GenerateToken(userId, userRole)
+	accessToken, refreshToken, accessTokenExp, err := GenerateToken(user.ID.Hex(), usr.Role.String())
 	if err != nil {
 		err = errors.New("failed to generate token")
 		return

@@ -8,6 +8,7 @@ import (
 	"gateway/schema"
 	"net/http"
 	"os"
+	"time"
 
 	"gateway/pkg/memdb"
 	"gateway/pkg/middleware/api"
@@ -17,6 +18,7 @@ import (
 	"github.com/Undercurrent-Technologies/kprime-utilities/models/order"
 	utilType "github.com/Undercurrent-Technologies/kprime-utilities/types"
 	"github.com/gin-gonic/gin"
+	"github.com/hashicorp/go-uuid"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -130,6 +132,7 @@ func (svc *userService) syncMemDB(c *gin.Context) {
 
 func (svc *userService) SyncMemDB(ctx context.Context, filter interface{}) (err error) {
 	logs.Log.Info().Msg("Sync user to memdb...")
+	start := time.Now()
 
 	var users []*types.User
 
@@ -154,23 +157,33 @@ func (svc *userService) SyncMemDB(ctx context.Context, filter interface{}) (err 
 			})
 		}
 
-		var clientIds []string
-		for _, client := range user.APICredentials {
-			clientIds = append(clientIds, fmt.Sprintf("%s:%s", client.APIKey, client.APISecret))
-		}
-
 		if err = memdb.Schemas.User.Create(schema.User{
 			ID:              user.ID.Hex(),
 			OrderExclusions: orderExclusions,
 			TypeInclusions:  typeInclusions,
-			ClientIds:       clientIds,
 			Role:            utilType.UserRole(user.Role.Name),
 		}); err != nil {
 			logs.Log.Error().Err(err).Msg("")
+			return
+		}
+
+		for _, client := range user.APICredentials {
+			go func(cred *types.APICredentials, userId string) {
+				id, _ := uuid.GenerateUUID()
+				if err = memdb.Schemas.UserCredential.Create(schema.UserCredential{
+					ID:     id,
+					UserID: userId,
+					Key:    cred.APIKey,
+					Secret: cred.APISecret,
+				}); err != nil {
+					logs.Log.Error().Err(err).Msg("")
+					return
+				}
+			}(client, user.ID.Hex())
 		}
 	}
 
-	logs.Log.Info().Msg(fmt.Sprintf("Sync %v user has finish...", len(users)))
+	logs.Log.Info().Msg(fmt.Sprintf("Sync %d user has finished, took %v", len(users), time.Since(start)))
 
 	return
 }
