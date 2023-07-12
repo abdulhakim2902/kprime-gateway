@@ -10,14 +10,20 @@ type User struct {
 	ID              string                 `json:"id"`
 	OrderExclusions []order.OrderExclusion `json:"order_exclusions"`
 	TypeInclusions  []order.TypeInclusions `json:"type_inclustion"`
-	ClientIds       []string               `json:"client_ids"`
 	Role            types.UserRole         `json:"role"`
+}
+
+type UserCredential struct {
+	ID     string `json:"id"`
+	UserID string `json:"user_id"`
+	Key    string `json:"key"`
+	Secret string `json:"secret"`
 }
 
 var UserSchema = &memdb.DBSchema{
 	Tables: map[string]*memdb.TableSchema{
-		"user": {
-			Name: "user",
+		"users": {
+			Name: "users",
 			Indexes: map[string]*memdb.IndexSchema{
 				"id": {
 					Name:    "id",
@@ -34,15 +40,40 @@ var UserSchema = &memdb.DBSchema{
 					Unique:  false,
 					Indexer: &memdb.StringFieldIndex{Field: "TypeInclusions"},
 				},
-				"client_ids": {
-					Name:    "client_ids",
-					Unique:  false,
-					Indexer: &memdb.StringFieldIndex{Field: "ClientIds"},
-				},
 				"role": {
 					Name:    "role",
 					Unique:  false,
 					Indexer: &memdb.StringFieldIndex{Field: "Role"},
+				},
+			},
+		},
+	},
+}
+
+var UserCredentialSchema = &memdb.DBSchema{
+	Tables: map[string]*memdb.TableSchema{
+		"user_credentials": {
+			Name: "user_credentials",
+			Indexes: map[string]*memdb.IndexSchema{
+				"id": {
+					Name:    "id",
+					Unique:  true,
+					Indexer: &memdb.StringFieldIndex{Field: "ID"},
+				},
+				"user_id": {
+					Name:    "user_id",
+					Unique:  false,
+					Indexer: &memdb.StringFieldIndex{Field: "UserID"},
+				},
+				"key": {
+					Name:    "key",
+					Unique:  false,
+					Indexer: &memdb.StringFieldIndex{Field: "Key"},
+				},
+				"secret": {
+					Name:    "secret",
+					Unique:  false,
+					Indexer: &memdb.StringFieldIndex{Field: "Secret"},
 				},
 			},
 		},

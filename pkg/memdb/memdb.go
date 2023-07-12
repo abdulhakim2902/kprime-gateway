@@ -16,16 +16,22 @@ type MemDB struct {
 }
 
 type Schema struct {
-	User *MemDB
+	User           *MemDB
+	UserCredential *MemDB
 }
 
 func InitSchemas() error {
-	user, err := InitSchema("user", schema.UserSchema)
+	user, err := InitSchema("users", schema.UserSchema)
 	if err != nil {
 		return err
 	}
 
-	Schemas = &Schema{user}
+	userCredential, err := InitSchema("user_credentials", schema.UserCredentialSchema)
+	if err != nil {
+		return err
+	}
+
+	Schemas = &Schema{user, userCredential}
 
 	return nil
 }
