@@ -32,7 +32,6 @@ require (
 	go.mongodb.org/mongo-driver v1.11.6
 )
 
-replace github.com/Undercurrent-Technologies/kprime-utilities v1.1.0 => ../kprime-utilities
 
 require (
 	github.com/KyleBanks/depth v1.2.1 // indirect
