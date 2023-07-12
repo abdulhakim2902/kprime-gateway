@@ -61,15 +61,30 @@ var (
 	rootDir string
 )
 
+func validatePapertrailEnv() {
+	if os.Getenv("PAPERTRAIL_HOST") == "" {
+		logs.Log.Fatal().Msg("PAPERTRAIL_HOST is not set")
+	}
+	if os.Getenv("PAPERTRAIL_PORT") == "" {
+		logs.Log.Fatal().Msg("PAPERTRAIL_PORT is not set")
+	}
+}
+
 func init() {
+
 	_, b, _, _ := runtime.Caller(0)
 	rootDir = path.Join(b, "../")
-	fmt.Println(rootDir)
 	docs.SwaggerInfo.BasePath = "/api/internal"
 	if err = godotenv.Load(path.Join(rootDir, ".env")); err != nil {
-		panic(err)
+		log.Panic("Error loading .env file", err)
 	}
 
+	if os.Getenv("LOG_WITH_PAPERTRAIL") == "true" {
+		validatePapertrailEnv()
+		utils.InitLogger()
+		logs.WithPaperTrail()
+	}
+	logs.Log.Info().Msg("Starting Gateway Internal API")
 	// Gin Engine
 	engine = gin.New()
 
