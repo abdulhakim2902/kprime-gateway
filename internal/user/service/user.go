@@ -7,6 +7,7 @@ import (
 	"gateway/internal/user/types"
 	"gateway/schema"
 	"net/http"
+	"os"
 
 	"gateway/pkg/memdb"
 	"gateway/pkg/middleware/api"
@@ -79,6 +80,7 @@ func (svc *userService) syncMemDB(c *gin.Context) {
 	}
 
 	ids := make([]primitive.ObjectID, 0)
+	matchingEngineUrl := os.Getenv("MATCHING_ENGINE_URL")
 	for _, id := range req.UserIds {
 		objId, err := primitive.ObjectIDFromHex(id)
 		if err != nil {
@@ -86,6 +88,15 @@ func (svc *userService) syncMemDB(c *gin.Context) {
 			return
 		}
 		ids = append(ids, objId)
+		res, err := http.Get(fmt.Sprintf(`%v/api/v1/sync/user/%v`, matchingEngineUrl, id))
+		if err != nil || res.Status != "200 OK" {
+			if err != nil {
+				logs.Log.Error().Err(err).Msg(err.Error())
+			}
+			logs.Log.Error().Msg(fmt.Sprintf("%s id failed to sync to engine", id))
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("%s id failed to sync to engine", id)})
+			return
+		}
 	}
 
 	if err := svc.SyncMemDB(
