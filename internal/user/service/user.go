@@ -80,7 +80,11 @@ func (svc *userService) syncMemDB(c *gin.Context) {
 	}
 
 	ids := make([]primitive.ObjectID, 0)
-	matchingEngineUrl := os.Getenv("MATCHING_ENGINE_URL")
+	matchingEngineUrl, ok := os.LookupEnv("MATCHING_ENGINE_URL")
+	if !ok {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "MATCHING_ENGINE_URL is not set"})
+		return
+	}
 	for _, id := range req.UserIds {
 		objId, err := primitive.ObjectIDFromHex(id)
 		if err != nil {
@@ -88,7 +92,20 @@ func (svc *userService) syncMemDB(c *gin.Context) {
 			return
 		}
 		ids = append(ids, objId)
-		res, err := http.Get(fmt.Sprintf(`%v/api/v1/sync/user/%v`, matchingEngineUrl, id))
+		client := &http.Client{}
+		url := fmt.Sprintf(`%v/api/v1/sync/user/%v`, matchingEngineUrl, id)
+		req, err := http.NewRequest("GET", url, nil)
+		if err != nil {
+			logs.Log.Err(err).Msg("Error creating HTTP request!")
+			return
+		}
+
+		token, _ := os.LookupEnv("PROTECT_BASIC_ENGINE")
+		if token != "*" {
+			auth := fmt.Sprintf("Basic %s", token)
+			req.Header.Add("Authorization", auth)
+		}
+		res, err := client.Do(req)
 		if err != nil || res.Status != "200 OK" {
 			if err != nil {
 				logs.Log.Error().Err(err).Msg(err.Error())
