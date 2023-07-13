@@ -76,7 +76,7 @@ func isExpired(expDate string) bool {
 	return false
 }
 
-func ParseInstruments(str string) (*Instruments, error) {
+func ParseInstruments(str string, checkExpired bool) (*Instruments, error) {
 	substring := strings.Split(str, "-")
 	if len(substring) != 4 {
 		return nil, errors.New(constant.INVALID_INSTRUMENT)
@@ -90,8 +90,11 @@ func ParseInstruments(str string) (*Instruments, error) {
 
 	// Validate Expiry Date, invalid/expired
 	_expDate := strings.ToUpper(substring[1])
-	if isExpired(_expDate) {
-		return nil, errors.New(constant.EXPIRED_INSTRUMENT)
+
+	if checkExpired {
+		if isExpired(_expDate) {
+			return nil, errors.New(constant.EXPIRED_INSTRUMENT)
+		}
 	}
 
 	// Validate strike price

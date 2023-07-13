@@ -96,7 +96,7 @@ func (svc wsOrderbookService) Subscribe(c *ws.Client, instrument string) {
 
 func (svc wsOrderbookService) SubscribeQuote(c *ws.Client, instrument string) {
 	socket := ws.GetQuoteSocket()
-	ins, err := utils.ParseInstruments(instrument)
+	ins, err := utils.ParseInstruments(instrument, false)
 	if err != nil {
 		msg := map[string]string{"Message": fmt.Sprintf("invalid instrument '%s'", instrument)}
 		socket.SendErrorMessage(c, msg)
@@ -148,7 +148,7 @@ func (svc wsOrderbookService) SubscribeQuote(c *ws.Client, instrument string) {
 
 func (svc wsOrderbookService) SubscribeBook(c *ws.Client, channel, instrument, interval string) {
 	socket := ws.GetBookSocket()
-	ins, err := utils.ParseInstruments(instrument)
+	ins, err := utils.ParseInstruments(instrument, false)
 	if err != nil {
 		msg := map[string]string{"Message": fmt.Sprintf("invalid instrument '%s'", instrument)}
 		socket.SendErrorMessage(c, msg)
@@ -346,7 +346,7 @@ func (svc wsOrderbookService) SubscribeBook(c *ws.Client, channel, instrument, i
 
 func (svc wsOrderbookService) SubscribeTicker(c *ws.Client, channel, instrument, interval string) {
 	socket := ws.GetBookSocket()
-	ins, err := utils.ParseInstruments(instrument)
+	ins, err := utils.ParseInstruments(instrument, false)
 	if err != nil {
 		msg := map[string]string{"Message": fmt.Sprintf("invalid instrument '%s'", instrument)}
 		socket.SendErrorMessage(c, msg)
@@ -938,7 +938,7 @@ func (svc wsOrderbookService) HandleConsumeUserChange100ms(instrument string, us
 }
 
 func (svc wsOrderbookService) HandleConsumeTicker(_instrument string, interval string) {
-	instruments, _ := utils.ParseInstruments(_instrument)
+	instruments, _ := utils.ParseInstruments(_instrument, false)
 
 	_order := _orderbookTypes.GetOrderBook{
 		InstrumentName: _instrument,
@@ -1045,7 +1045,7 @@ func (svc wsOrderbookService) HandleConsumeUserTicker100ms(instrument string) {
 					tickerChanges[instrument] = make([]interface{}, 0)
 					tickerMutex.Unlock()
 
-					instruments, _ := utils.ParseInstruments(instrument)
+					instruments, _ := utils.ParseInstruments(instrument, false)
 
 					_order := _orderbookTypes.GetOrderBook{
 						InstrumentName: instrument,
@@ -1116,7 +1116,7 @@ func (svc wsOrderbookService) HandleConsumeUserTicker100ms(instrument string) {
 }
 
 func (svc wsOrderbookService) GetOrderBook(ctx context.Context, data _deribitModel.DeribitGetOrderBookRequest) _deribitModel.DeribitGetOrderBookResponse {
-	instruments, _ := utils.ParseInstruments(data.InstrumentName)
+	instruments, _ := utils.ParseInstruments(data.InstrumentName, false)
 
 	user, _, err := memdb.MDBFindUserById(data.UserId)
 	if err != nil {

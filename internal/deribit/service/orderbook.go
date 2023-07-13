@@ -15,7 +15,7 @@ import (
 )
 
 func (svc deribitService) GetOrderBook(ctx context.Context, data model.DeribitGetOrderBookRequest) *model.DeribitGetOrderBookResponse {
-	instruments, _ := utils.ParseInstruments(data.InstrumentName)
+	instruments, _ := utils.ParseInstruments(data.InstrumentName, false)
 
 	user, _, err := memdb.MDBFindUserById(data.UserId)
 	if err != nil {

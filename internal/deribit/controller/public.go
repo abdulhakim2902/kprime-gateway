@@ -241,7 +241,7 @@ func (h *DeribitHandler) getLastTradesByInstrument(r *gin.Context) {
 		return
 	}
 
-	instruments, _ := utils.ParseInstruments(msg.Params.InstrumentName)
+	instruments, _ := utils.ParseInstruments(msg.Params.InstrumentName, false)
 
 	if instruments == nil {
 		protocol.SendValidationMsg(connKey,

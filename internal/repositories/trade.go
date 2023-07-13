@@ -1232,7 +1232,7 @@ func (r TradeRepository) GetTradingViewChartData(req _deribitModel.GetTradingvie
 	}
 
 	var instrument *utils.Instruments
-	instrument, err = utils.ParseInstruments(req.InstrumentName)
+	instrument, err = utils.ParseInstruments(req.InstrumentName, false)
 	if err != nil {
 		vr := validation_reason.INVALID_PARAMS
 		reason = &vr
