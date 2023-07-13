@@ -5,8 +5,11 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
+	"github.com/Undercurrent-Technologies/kprime-utilities/commons/date"
 	"github.com/Undercurrent-Technologies/kprime-utilities/commons/logs"
+	_instrumentTypes "github.com/Undercurrent-Technologies/kprime-utilities/config/types"
 	"github.com/Undercurrent-Technologies/kprime-utilities/types"
 )
 
@@ -44,25 +47,71 @@ type Instruments struct {
 	Strike              float64
 }
 
+func isExpired(expDate string) bool {
+	now := time.Now()
+	loc, _ := time.LoadLocation("Singapore")
+	if loc != nil {
+		now = now.In(loc)
+	}
+
+	cy, cm, cd := now.Date()
+	ey, em, ed := date.ParseDate(expDate)
+	if ey < cy {
+		return true
+	}
+
+	if ey == cy {
+		if em < cm {
+			return true
+		}
+
+		if em == cm {
+			if ed < cd {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
 func ParseInstruments(str string) (*Instruments, error) {
 	substring := strings.Split(str, "-")
 	if len(substring) != 4 {
 		return nil, errors.New("invalid instruments")
 	}
 
+	// Validate Underlying Currencies
 	_underlying := substring[0]
-	_expDate := strings.ToUpper(substring[1])
+	if _instrumentTypes.Underlying(_underlying).IsValidUnderlying() == false {
+		return nil, errors.New("unsupported_currency")
+	}
 
+	// Validate Expiry Date, invalid/expired
+	_expDate := strings.ToUpper(substring[1])
+	if isExpired(_expDate) {
+		return nil, errors.New("expired_instrument")
+	}
+
+	// Validate strike price
+	if _, err := strconv.Atoi(substring[2]); err != nil {
+		return nil, errors.New("invalid_strike_price")
+	}
 	strike, err := strconv.ParseFloat(substring[2], 64)
 	if err != nil {
 		return nil, errors.New("invalid instruments")
 	}
 
+	// Validate strategy, only P and C allowed.
+	substring[3] = strings.ToUpper(substring[3])
 	var _contracts types.Contracts
-	if substring[3] == "P" {
-		_contracts = types.PUT
-	} else {
+	switch substring[3] {
+	case "C":
 		_contracts = types.CALL
+	case "P":
+		_contracts = types.PUT
+	default:
+		return nil, errors.New("invalid_instrument_strategy")
 	}
 
 	return &Instruments{_underlying, _expDate, _contracts, strike}, nil
