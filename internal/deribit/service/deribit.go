@@ -56,8 +56,7 @@ func (svc deribitService) DeribitRequest(
 	userId string,
 	data model.DeribitRequest,
 ) (*model.DeribitResponse, *validation_reason.ValidationReason, error) {
-	fmt.Println("debug DeribitRequest", userId)
-	instruments, err := utils.ParseInstruments(data.InstrumentName)
+	instruments, err := utils.ParseInstruments(data.InstrumentName, true)
 	if err != nil {
 		reason := validation_reason.INVALID_PARAMS
 		return nil, &reason, err
@@ -215,7 +214,7 @@ func (svc deribitService) DeribitParseCancel(ctx context.Context, userId string,
 }
 
 func (svc deribitService) DeribitCancelByInstrument(ctx context.Context, userId string, data model.DeribitCancelByInstrumentRequest) (*model.DeribitCancelByInstrumentResponse, error) {
-	instruments, err := utils.ParseInstruments(data.InstrumentName)
+	instruments, err := utils.ParseInstruments(data.InstrumentName, true)
 	if err != nil {
 		return nil, err
 	}
