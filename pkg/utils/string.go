@@ -3,6 +3,7 @@ package utils
 import (
 	"errors"
 	"fmt"
+	"gateway/pkg/constant"
 	"strconv"
 	"strings"
 	"time"
@@ -78,28 +79,28 @@ func isExpired(expDate string) bool {
 func ParseInstruments(str string) (*Instruments, error) {
 	substring := strings.Split(str, "-")
 	if len(substring) != 4 {
-		return nil, errors.New("invalid instruments")
+		return nil, errors.New(constant.INVALID_INSTRUMENT)
 	}
 
 	// Validate Underlying Currencies
-	_underlying := substring[0]
+	_underlying := strings.ToUpper(substring[0])
 	if _instrumentTypes.Underlying(_underlying).IsValidUnderlying() == false {
-		return nil, errors.New("unsupported_currency")
+		return nil, errors.New(constant.UNSUPPORTED_CURRENCY)
 	}
 
 	// Validate Expiry Date, invalid/expired
 	_expDate := strings.ToUpper(substring[1])
 	if isExpired(_expDate) {
-		return nil, errors.New("expired_instrument")
+		return nil, errors.New(constant.EXPIRED_INSTRUMENT)
 	}
 
 	// Validate strike price
 	if _, err := strconv.Atoi(substring[2]); err != nil {
-		return nil, errors.New("invalid_strike_price")
+		return nil, errors.New(constant.INVALID_STRIKE_PRICE)
 	}
 	strike, err := strconv.ParseFloat(substring[2], 64)
 	if err != nil {
-		return nil, errors.New("invalid instruments")
+		return nil, errors.New(constant.INVALID_STRIKE_PRICE)
 	}
 
 	// Validate strategy, only P and C allowed.
@@ -111,7 +112,7 @@ func ParseInstruments(str string) (*Instruments, error) {
 	case "P":
 		_contracts = types.PUT
 	default:
-		return nil, errors.New("invalid_instrument_strategy")
+		return nil, errors.New(constant.INVALID_INSTRUMENT_STRATEGY)
 	}
 
 	return &Instruments{_underlying, _expDate, _contracts, strike}, nil
