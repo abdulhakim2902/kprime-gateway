@@ -200,6 +200,15 @@ func (svc *wsHandler) publicSubscribe(input interface{}, c *ws.Client) {
 		}
 	}
 
+	for _, channel := range msg.Params.Channels {
+		_, err = utils.ParseInstruments(channel, false)
+		if err != nil {
+			protocol.SendValidationMsg(connKey,
+				validation_reason.INVALID_PARAMS, err)
+			return
+		}
+	}
+
 	protocol.SendSuccessMsg(connKey, msg.Params.Channels)
 
 	for _, channel := range msg.Params.Channels {
@@ -304,7 +313,12 @@ func (svc *wsHandler) getLastTradesByInstrument(input interface{}, c *ws.Client)
 		return
 	}
 
-	instruments, _ := utils.ParseInstruments(msg.Params.InstrumentName, false)
+	instruments, err := utils.ParseInstruments(msg.Params.InstrumentName, false)
+	if err != nil {
+		protocol.SendValidationMsg(connKey,
+			validation_reason.INVALID_PARAMS, err)
+		return
+	}
 
 	if instruments == nil {
 		protocol.SendValidationMsg(connKey,

@@ -245,7 +245,12 @@ func (svc *wsHandler) cancelByInstrument(input interface{}, c *ws.Client) {
 		return
 	}
 
-	// TODO: Validation
+	_, err = utils.ParseInstruments(msg.Params.InstrumentName, false)
+	if err != nil {
+		protocol.SendValidationMsg(connKey,
+			validation_reason.INVALID_PARAMS, err)
+		return
+	}
 
 	// Parse the Deribit Sell
 	_, err = svc.deribitSvc.DeribitCancelByInstrument(context.TODO(), claim.UserID, deribitModel.DeribitCancelByInstrumentRequest{
@@ -307,6 +312,13 @@ func (svc *wsHandler) getUserTradesByInstrument(input interface{}, c *ws.Client)
 		msg.Params.Count = 10
 	}
 
+	_, err = utils.ParseInstruments(msg.Params.InstrumentName, false)
+	if err != nil {
+		protocol.SendValidationMsg(connKey,
+			validation_reason.INVALID_PARAMS, err)
+		return
+	}
+
 	res := svc.wsTradeSvc.GetUserTradesByInstrument(
 		context.TODO(),
 		claim.UserID,
@@ -340,6 +352,13 @@ func (svc *wsHandler) getOpenOrdersByInstrument(input interface{}, c *ws.Client)
 		msg.Params.Type = "all"
 	}
 
+	_, err = utils.ParseInstruments(msg.Params.InstrumentName, false)
+	if err != nil {
+		protocol.SendValidationMsg(connKey,
+			validation_reason.INVALID_PARAMS, err)
+		return
+	}
+
 	res := svc.wsOSvc.GetOpenOrdersByInstrument(
 		context.TODO(),
 		claim.UserID,
@@ -368,6 +387,13 @@ func (svc *wsHandler) getOrderHistoryByInstrument(input interface{}, c *ws.Clien
 	// parameter default value
 	if msg.Params.Count <= 0 {
 		msg.Params.Count = 20
+	}
+
+	_, err = utils.ParseInstruments(msg.Params.InstrumentName, false)
+	if err != nil {
+		protocol.SendValidationMsg(connKey,
+			validation_reason.INVALID_PARAMS, err)
+		return
 	}
 
 	res := svc.wsOSvc.GetGetOrderHistoryByInstrument(
@@ -748,6 +774,13 @@ func (svc *wsHandler) getTradingviewChartData(input interface{}, c *ws.Client) {
 	claim, connKey, reason, err := requestHelper(msg.Id, msg.Method, &msg.Params.AccessToken, c)
 	if err != nil {
 		protocol.SendValidationMsg(connKey, *reason, err)
+		return
+	}
+
+	_, err = utils.ParseInstruments(msg.Params.InstrumentName, false)
+	if err != nil {
+		protocol.SendValidationMsg(connKey,
+			validation_reason.INVALID_PARAMS, err)
 		return
 	}
 
