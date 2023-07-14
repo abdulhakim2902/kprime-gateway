@@ -1,3 +1,5 @@
+github.com/Undercurrent-Technologies/kprime-utilities v1.1.2 h1:JckEm1/y9BoKaaE2PQBjplohkoqV2U7ZsXMzIGjcKgg=
+github.com/Undercurrent-Technologies/kprime-utilities v1.1.2/go.mod h1:726hW05V8VXH4JgR+qRjyrN2XaphDocq9X8WsCj8DAI=
 github.com/google/go-cmp v0.5.9/go.mod h1:17dUlkBOakJ0+DkrSSNjCkIjxS6bF9zb3elmeNGIjoY=
 github.com/kr/pretty v0.3.1/go.mod h1:hoEshYVHaxMs3cyo3Yncou5ZscifuDolrwPKZanG3xk=
 github.com/pkg/diff v0.0.0-20210226163009-20ebb0f2a09e/go.mod h1:pJLUxLENpZxwdsKMEsNbx1VGcRFpLqf3715MtcvvzbA=
