@@ -13,6 +13,7 @@ require (
 	github.com/gomodule/redigo v1.8.9
 	github.com/gorilla/websocket v1.5.0
 	github.com/hashicorp/go-memdb v1.3.4
+	github.com/hashicorp/go-uuid v1.0.3
 	github.com/joho/godotenv v1.5.1
 	github.com/prometheus/client_golang v1.15.1
 	github.com/quickfixgo/enum v0.1.0
@@ -22,7 +23,6 @@ require (
 	github.com/quickfixgo/quickfix v0.7.0
 	github.com/quickfixgo/tag v0.1.0
 	github.com/rs/cors/wrapper/gin v0.0.0-20230301160956-5c2b877d2a03
-	github.com/rs/zerolog v1.29.1
 	github.com/shopspring/decimal v1.3.1
 	github.com/stretchr/testify v1.8.3
 	github.com/swaggo/files v1.0.1
@@ -31,7 +31,6 @@ require (
 	github.com/ulule/limiter/v3 v3.11.2
 	go.mongodb.org/mongo-driver v1.11.6
 )
-
 
 require (
 	github.com/KyleBanks/depth v1.2.1 // indirect
@@ -59,7 +58,6 @@ require (
 	github.com/hashicorp/errwrap v1.0.0 // indirect
 	github.com/hashicorp/go-immutable-radix v1.3.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
-	github.com/hashicorp/go-uuid v1.0.3 // indirect
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/jcmturner/aescts/v2 v2.0.0 // indirect
 	github.com/jcmturner/dnsutils/v2 v2.0.0 // indirect
