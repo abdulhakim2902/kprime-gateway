@@ -191,7 +191,7 @@ func (r OrderRepository) GetInstruments(userId, currency string, expired bool) (
 				{"$and",
 					bson.A{
 						bson.D{{"userRole", types.MARKET_MAKER.String()}},
-						bson.D{{"userId", bson.D{{"$in", excludeUserId}}}},
+						bson.D{{"userId", bson.D{{"$nin", excludeUserId}}}},
 					},
 				},
 			},
@@ -802,7 +802,7 @@ func (r OrderRepository) GetOrderBook(o _orderbookType.GetOrderBook) *_orderbook
 					{"$and",
 						bson.A{
 							bson.D{{"userRole", types.MARKET_MAKER.String()}},
-							bson.D{{"userId", bson.D{{"$in", o.UserOrderExclusions}}}},
+							bson.D{{"userId", bson.D{{"$nin", o.UserOrderExclusions}}}},
 						},
 					},
 				},
