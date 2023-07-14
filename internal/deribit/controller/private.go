@@ -333,6 +333,13 @@ func (h *DeribitHandler) cancelByInstrument(r *gin.Context) {
 		return
 	}
 
+	_, err = utils.ParseInstruments(msg.Params.InstrumentName, false)
+	if err != nil {
+		protocol.SendValidationMsg(connKey,
+			validation_reason.INVALID_PARAMS, err)
+		return
+	}
+
 	// Call service
 	_, err = h.svc.DeribitCancelByInstrument(r.Request.Context(), userID, deribitModel.DeribitCancelByInstrumentRequest{
 		InstrumentName: msg.Params.InstrumentName,
@@ -406,6 +413,13 @@ func (h *DeribitHandler) getUserTradeByInstrument(r *gin.Context) {
 		msg.Params.Count = 10
 	}
 
+	_, err = utils.ParseInstruments(msg.Params.InstrumentName, false)
+	if err != nil {
+		protocol.SendValidationMsg(connKey,
+			validation_reason.INVALID_PARAMS, err)
+		return
+	}
+
 	res := h.svc.DeribitGetUserTradesByInstrument(
 		r.Request.Context(),
 		userID,
@@ -434,6 +448,13 @@ func (h *DeribitHandler) getOpenOrdersByInstrument(r *gin.Context) {
 		} else {
 			sendInvalidRequestMessage(err, msg.Id, *reason, r)
 		}
+		return
+	}
+
+	_, err = utils.ParseInstruments(msg.Params.InstrumentName, false)
+	if err != nil {
+		protocol.SendValidationMsg(connKey,
+			validation_reason.INVALID_PARAMS, err)
 		return
 	}
 
@@ -474,6 +495,13 @@ func (h *DeribitHandler) getOrderHistoryByInstrument(r *gin.Context) {
 	// parameter default value
 	if msg.Params.Count <= 0 {
 		msg.Params.Count = 20
+	}
+
+	_, err = utils.ParseInstruments(msg.Params.InstrumentName, false)
+	if err != nil {
+		protocol.SendValidationMsg(connKey,
+			validation_reason.INVALID_PARAMS, err)
+		return
 	}
 
 	res := h.svc.DeribitGetOrderHistoryByInstrument(
@@ -734,6 +762,12 @@ func (h *DeribitHandler) getTradingviewChartData(r *gin.Context) {
 		return
 	}
 
+	_, err = utils.ParseInstruments(msg.Params.InstrumentName, false)
+	if err != nil {
+		protocol.SendValidationMsg(connKey,
+			validation_reason.INVALID_PARAMS, err)
+		return
+	}
 	msg.Params.UserId = userId
 
 	result, reason, err := h.svc.GetTradingViewChartData(context.TODO(), msg.Params)
