@@ -7,6 +7,7 @@ import (
 	deribitModel "gateway/internal/deribit/model"
 	authService "gateway/internal/user/service"
 	userType "gateway/internal/user/types"
+	"gateway/pkg/constant"
 	"gateway/pkg/hmac"
 	"gateway/pkg/middleware"
 	"gateway/pkg/protocol"
@@ -170,42 +171,49 @@ func (svc *wsHandler) publicSubscribe(input interface{}, c *ws.Client) {
 	}
 
 	const t = true
-	method := map[string]bool{"orderbook": t, "engine": t, "order": t, "trade": t, "trades": t, "quote": false, "book": t, "deribit_price_index": false, "ticker": t}
+	method := map[string]bool{"orderbook": t, "order": t, "trade": t, "trades": t, "quote": false, "book": t, "deribit_price_index": false, "ticker": t}
 	interval := map[string]bool{"raw": t, "100ms": t, "agg2": t}
 	for _, channel := range msg.Params.Channels {
 		s := strings.Split(channel, ".")
 		if len(s) == 0 {
-			err := errors.New("error invalid channel")
+			err := errors.New(constant.INVALID_CHANNEL)
 			c.SendInvalidRequestMessage(err)
 			return
 		}
+
+		if s[0] == "deribit_price_index" {
+			if !types.Pair(s[1]).IsValid() {
+				err := errors.New(constant.INVALID_INDEX_NAME)
+				c.SendInvalidRequestMessage(err)
+				return
+			}
+		} else {
+			_, err = utils.ParseInstruments(s[1], false)
+			if err != nil {
+				protocol.SendValidationMsg(connKey,
+					validation_reason.INVALID_PARAMS, err)
+				return
+			}
+		}
+
 		val, ok := method[s[0]]
 		if !ok {
-			err := errors.New("error invalid channel")
+			err := errors.New(constant.INVALID_CHANNEL)
 			c.SendInvalidRequestMessage(err)
 			return
 		}
 
 		if val {
 			if len(s) < 3 {
-				err := errors.New("error invalid interval")
+				err := errors.New(constant.INVALID_INTERVAL)
 				c.SendInvalidRequestMessage(err)
 				return
 			}
 			if _, ok := interval[s[2]]; !ok {
-				err := errors.New("error invalid interval")
+				err := errors.New(constant.INVALID_INTERVAL)
 				c.SendInvalidRequestMessage(err)
 				return
 			}
-		}
-	}
-
-	for _, channel := range msg.Params.Channels {
-		_, err = utils.ParseInstruments(channel, false)
-		if err != nil {
-			protocol.SendValidationMsg(connKey,
-				validation_reason.INVALID_PARAMS, err)
-			return
 		}
 	}
 
@@ -222,8 +230,6 @@ func (svc *wsHandler) publicSubscribe(input interface{}, c *ws.Client) {
 		}
 
 		switch s[0] {
-		case "engine":
-			svc.wsEngSvc.Subscribe(c, s[1])
 		case "trades":
 			svc.wsTradeSvc.SubscribeTrades(c, channel)
 		case "quote":
@@ -354,7 +360,7 @@ func (svc *wsHandler) getIndexPrice(input interface{}, c *ws.Client) {
 
 	if types.Pair(msg.Params.IndexName).IsValid() == false {
 		protocol.SendValidationMsg(connKey,
-			validation_reason.INVALID_PARAMS, errors.New("invalid index_name"))
+			validation_reason.INVALID_PARAMS, errors.New(constant.INVALID_INDEX_NAME))
 		return
 	}
 
