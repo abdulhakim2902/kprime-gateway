@@ -69,7 +69,11 @@ func (svc *wsHandler) buy(input interface{}, c *ws.Client) {
 
 	claim, connKey, reason, err := requestHelper(msg.Id, msg.Method, &msg.Params.AccessToken, c)
 	if err != nil {
-		protocol.SendValidationMsg(connKey, *reason, err)
+		if connKey != "" {
+			protocol.SendValidationMsg(connKey, *reason, err)
+		} else {
+			c.SendInvalidRequestMessage(err)
+		}
 		return
 	}
 
@@ -131,7 +135,11 @@ func (svc *wsHandler) sell(input interface{}, c *ws.Client) {
 
 	claim, connKey, reason, err := requestHelper(msg.Id, msg.Method, &msg.Params.AccessToken, c)
 	if err != nil {
-		protocol.SendValidationMsg(connKey, *reason, err)
+		if connKey != "" {
+			protocol.SendValidationMsg(connKey, *reason, err)
+		} else {
+			c.SendInvalidRequestMessage(err)
+		}
 		return
 	}
 
@@ -177,7 +185,11 @@ func (svc *wsHandler) edit(input interface{}, c *ws.Client) {
 
 	claim, connKey, reason, err := requestHelper(msg.Id, msg.Method, &msg.Params.AccessToken, c)
 	if err != nil {
-		protocol.SendValidationMsg(connKey, *reason, err)
+		if connKey != "" {
+			protocol.SendValidationMsg(connKey, *reason, err)
+		} else {
+			c.SendInvalidRequestMessage(err)
+		}
 		return
 	}
 
@@ -212,7 +224,11 @@ func (svc *wsHandler) cancel(input interface{}, c *ws.Client) {
 
 	claim, connKey, reason, err := requestHelper(msg.Id, msg.Method, &msg.Params.AccessToken, c)
 	if err != nil {
-		protocol.SendValidationMsg(connKey, *reason, err)
+		if connKey != "" {
+			protocol.SendValidationMsg(connKey, *reason, err)
+		} else {
+			c.SendInvalidRequestMessage(err)
+		}
 		return
 	}
 
@@ -270,7 +286,11 @@ func (svc *wsHandler) cancelAll(input interface{}, c *ws.Client) {
 
 	claim, connKey, reason, err := requestHelper(msg.Id, msg.Method, &msg.Params.AccessToken, c)
 	if err != nil {
-		protocol.SendValidationMsg(connKey, *reason, err)
+		if connKey != "" {
+			protocol.SendValidationMsg(connKey, *reason, err)
+		} else {
+			c.SendInvalidRequestMessage(err)
+		}
 		return
 	}
 
@@ -298,7 +318,11 @@ func (svc *wsHandler) getUserTradesByInstrument(input interface{}, c *ws.Client)
 
 	claim, connKey, reason, err := requestHelper(msg.Id, msg.Method, &msg.Params.AccessToken, c)
 	if err != nil {
-		protocol.SendValidationMsg(connKey, *reason, err)
+		if connKey != "" {
+			protocol.SendValidationMsg(connKey, *reason, err)
+		} else {
+			c.SendInvalidRequestMessage(err)
+		}
 		return
 	}
 
@@ -331,7 +355,11 @@ func (svc *wsHandler) getOpenOrdersByInstrument(input interface{}, c *ws.Client)
 
 	claim, connKey, reason, err := requestHelper(msg.Id, msg.Method, &msg.Params.AccessToken, c)
 	if err != nil {
-		protocol.SendValidationMsg(connKey, *reason, err)
+		if connKey != "" {
+			protocol.SendValidationMsg(connKey, *reason, err)
+		} else {
+			c.SendInvalidRequestMessage(err)
+		}
 		return
 	}
 
@@ -361,7 +389,11 @@ func (svc *wsHandler) getOrderHistoryByInstrument(input interface{}, c *ws.Clien
 
 	claim, connKey, reason, err := requestHelper(msg.Id, msg.Method, &msg.Params.AccessToken, c)
 	if err != nil {
-		protocol.SendValidationMsg(connKey, *reason, err)
+		if connKey != "" {
+			protocol.SendValidationMsg(connKey, *reason, err)
+		} else {
+			c.SendInvalidRequestMessage(err)
+		}
 		return
 	}
 
@@ -394,7 +426,11 @@ func (svc *wsHandler) getUserTradesByOrder(input interface{}, c *ws.Client) {
 
 	claim, connKey, reason, err := requestHelper(msg.Id, msg.Method, &msg.Params.AccessToken, c)
 	if err != nil {
-		protocol.SendValidationMsg(connKey, *reason, err)
+		if connKey != "" {
+			protocol.SendValidationMsg(connKey, *reason, err)
+		} else {
+			c.SendInvalidRequestMessage(err)
+		}
 		return
 	}
 
@@ -419,7 +455,11 @@ func (svc *wsHandler) getOrderState(input interface{}, c *ws.Client) {
 
 	claim, connKey, reason, err := requestHelper(msg.Id, msg.Method, &msg.Params.AccessToken, c)
 	if err != nil {
-		protocol.SendValidationMsg(connKey, *reason, err)
+		if connKey != "" {
+			protocol.SendValidationMsg(connKey, *reason, err)
+		} else {
+			c.SendInvalidRequestMessage(err)
+		}
 		return
 	}
 
@@ -443,7 +483,11 @@ func (svc *wsHandler) getAccountSummary(input interface{}, c *ws.Client) {
 
 	claim, connKey, reason, err := requestHelper(msg.Id, msg.Method, &msg.Params.AccessToken, c)
 	if err != nil {
-		protocol.SendValidationMsg(connKey, *reason, err)
+		if connKey != "" {
+			protocol.SendValidationMsg(connKey, *reason, err)
+		} else {
+			c.SendInvalidRequestMessage(err)
+		}
 		return
 	}
 
@@ -475,7 +519,11 @@ func (svc *wsHandler) getOrderStateByLabel(input interface{}, c *ws.Client) {
 
 	claim, connKey, reason, err := requestHelper(msg.Id, msg.Method, &msg.Params.AccessToken, c)
 	if err != nil {
-		protocol.SendValidationMsg(connKey, *reason, err)
+		if connKey != "" {
+			protocol.SendValidationMsg(connKey, *reason, err)
+		} else {
+			c.SendInvalidRequestMessage(err)
+		}
 		return
 	}
 
@@ -515,7 +563,11 @@ func (svc *wsHandler) privateSubscribe(input interface{}, c *ws.Client) {
 
 	claim, connKey, reason, err := requestHelper(msg.Id, msg.Method, &msg.Params.AccessToken, c)
 	if err != nil {
-		protocol.SendValidationMsg(connKey, *reason, err)
+		if connKey != "" {
+			protocol.SendValidationMsg(connKey, *reason, err)
+		} else {
+			c.SendInvalidRequestMessage(err)
+		}
 		return
 	}
 
@@ -677,7 +729,11 @@ func (svc *wsHandler) getInstruments(input interface{}, c *ws.Client) {
 
 	claim, connKey, reason, err := requestHelper(msg.Id, msg.Method, &msg.Params.AccessToken, c)
 	if err != nil {
-		protocol.SendValidationMsg(connKey, *reason, err)
+		if connKey != "" {
+			protocol.SendValidationMsg(connKey, *reason, err)
+		} else {
+			c.SendInvalidRequestMessage(err)
+		}
 	}
 
 	currency, ok := confType.Pair(msg.Params.Currency).CurrencyCheck()
@@ -717,7 +773,11 @@ func (svc *wsHandler) getOrderBook(input interface{}, c *ws.Client) {
 
 	claim, connKey, reason, err := requestHelper(msg.Id, msg.Method, &msg.Params.AccessToken, c)
 	if err != nil {
-		protocol.SendValidationMsg(connKey, *reason, err)
+		if connKey != "" {
+			protocol.SendValidationMsg(connKey, *reason, err)
+		} else {
+			c.SendInvalidRequestMessage(err)
+		}
 		return
 	}
 
@@ -747,7 +807,11 @@ func (svc *wsHandler) getTradingviewChartData(input interface{}, c *ws.Client) {
 
 	claim, connKey, reason, err := requestHelper(msg.Id, msg.Method, &msg.Params.AccessToken, c)
 	if err != nil {
-		protocol.SendValidationMsg(connKey, *reason, err)
+		if connKey != "" {
+			protocol.SendValidationMsg(connKey, *reason, err)
+		} else {
+			c.SendInvalidRequestMessage(err)
+		}
 		return
 	}
 

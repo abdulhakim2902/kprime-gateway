@@ -80,7 +80,11 @@ func (svc *wsHandler) auth(input interface{}, c *ws.Client) {
 
 	_, connKey, reason, err := requestHelper(msg.Id, msg.Method, nil, c)
 	if err != nil {
-		protocol.SendValidationMsg(connKey, *reason, err)
+		if connKey != "" {
+			protocol.SendValidationMsg(connKey, *reason, err)
+		} else {
+			c.SendInvalidRequestMessage(err)
+		}
 		return
 	}
 
@@ -165,7 +169,11 @@ func (svc *wsHandler) publicSubscribe(input interface{}, c *ws.Client) {
 
 	_, connKey, reason, err := requestHelper(msg.Id, msg.Method, nil, c)
 	if err != nil {
-		protocol.SendValidationMsg(connKey, *reason, err)
+		if connKey != "" {
+			protocol.SendValidationMsg(connKey, *reason, err)
+		} else {
+			c.SendInvalidRequestMessage(err)
+		}
 		return
 	}
 
@@ -245,7 +253,11 @@ func (svc *wsHandler) publicUnsubscribe(input interface{}, c *ws.Client) {
 
 	_, connKey, reason, err := requestHelper(msg.Id, msg.Method, nil, c)
 	if err != nil {
-		protocol.SendValidationMsg(connKey, *reason, err)
+		if connKey != "" {
+			protocol.SendValidationMsg(connKey, *reason, err)
+		} else {
+			c.SendInvalidRequestMessage(err)
+		}
 		return
 	}
 
@@ -279,7 +291,11 @@ func (svc *wsHandler) publicUnsubscribeAll(input interface{}, c *ws.Client) {
 
 	_, connKey, reason, err := requestHelper(msg.Id, msg.Method, nil, c)
 	if err != nil {
-		protocol.SendValidationMsg(connKey, *reason, err)
+		if connKey != "" {
+			protocol.SendValidationMsg(connKey, *reason, err)
+		} else {
+			c.SendInvalidRequestMessage(err)
+		}
 		return
 	}
 
@@ -300,7 +316,11 @@ func (svc *wsHandler) getLastTradesByInstrument(input interface{}, c *ws.Client)
 
 	_, connKey, reason, err := requestHelper(msg.Id, msg.Method, nil, c)
 	if err != nil {
-		protocol.SendValidationMsg(connKey, *reason, err)
+		if connKey != "" {
+			protocol.SendValidationMsg(connKey, *reason, err)
+		} else {
+			c.SendInvalidRequestMessage(err)
+		}
 		return
 	}
 
@@ -334,7 +354,11 @@ func (svc *wsHandler) getIndexPrice(input interface{}, c *ws.Client) {
 
 	_, connKey, reason, err := requestHelper(msg.Id, msg.Method, nil, c)
 	if err != nil {
-		protocol.SendValidationMsg(connKey, *reason, err)
+		if connKey != "" {
+			protocol.SendValidationMsg(connKey, *reason, err)
+		} else {
+			c.SendInvalidRequestMessage(err)
+		}
 		return
 	}
 
@@ -360,7 +384,11 @@ func (svc *wsHandler) getDeliveryPrices(input interface{}, c *ws.Client) {
 
 	_, connKey, reason, err := requestHelper(msg.Id, msg.Method, nil, c)
 	if err != nil {
-		protocol.SendValidationMsg(connKey, *reason, err)
+		if connKey != "" {
+			protocol.SendValidationMsg(connKey, *reason, err)
+		} else {
+			c.SendInvalidRequestMessage(err)
+		}
 		return
 	}
 
@@ -388,7 +416,11 @@ func (svc *wsHandler) setHeartbeat(input interface{}, c *ws.Client) {
 
 	_, connKey, reason, err := requestHelper(msg.Id, msg.Method, nil, c)
 	if err != nil {
-		protocol.SendValidationMsg(connKey, *reason, err)
+		if connKey != "" {
+			protocol.SendValidationMsg(connKey, *reason, err)
+		} else {
+			c.SendInvalidRequestMessage(err)
+		}
 		return
 	}
 
@@ -412,7 +444,11 @@ func (svc *wsHandler) test(input interface{}, c *ws.Client) {
 
 	_, connKey, reason, err := requestHelper(msg.Id, msg.Method, nil, c)
 	if err != nil {
-		protocol.SendValidationMsg(connKey, *reason, err)
+		if connKey != "" {
+			protocol.SendValidationMsg(connKey, *reason, err)
+		} else {
+			c.SendInvalidRequestMessage(err)
+		}
 		return
 	}
 
