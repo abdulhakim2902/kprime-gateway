@@ -7,10 +7,6 @@ github.com/RackSec/srslog v0.0.0-20180709174129-a4725f04ec91/go.mod h1:cDLGBht23
 github.com/Shopify/sarama v1.38.1 h1:lqqPUPQZ7zPqYlWpTh+LQ9bhYNu2xJL6k1SJN4WVe2A=
 github.com/Shopify/sarama v1.38.1/go.mod h1:iwv9a67Ha8VNa+TifujYoWGxWnu2kNVAQdSdZ4X2o5g=
 github.com/Shopify/toxiproxy/v2 v2.5.0 h1:i4LPT+qrSlKNtQf5QliVjdP08GyAH8+BUIc9gT0eahc=
-github.com/Undercurrent-Technologies/kprime-utilities v1.1.0 h1:xM7cUvq0CTPP9dgHMmXAqgVsd1g85+iWlCUgjhroX/A=
-github.com/Undercurrent-Technologies/kprime-utilities v1.1.0/go.mod h1:2t0dFaWW2sGATFXcTCOzhUjfJw4eky7gqgyOw8WsFD0=
-github.com/Undercurrent-Technologies/kprime-utilities v1.1.1 h1:nfinJBu9Gr+gmFqPpcW8eERr6nI758TBKvplRlPE0gU=
-github.com/Undercurrent-Technologies/kprime-utilities v1.1.1/go.mod h1:726hW05V8VXH4JgR+qRjyrN2XaphDocq9X8WsCj8DAI=
 github.com/Undercurrent-Technologies/kprime-utilities v1.1.2 h1:JckEm1/y9BoKaaE2PQBjplohkoqV2U7ZsXMzIGjcKgg=
 github.com/Undercurrent-Technologies/kprime-utilities v1.1.2/go.mod h1:726hW05V8VXH4JgR+qRjyrN2XaphDocq9X8WsCj8DAI=
 github.com/armon/go-proxyproto v0.0.0-20210323213023-7e956b284f0a h1:AP/vsCIvJZ129pdm9Ek7bH7yutN3hByqsMoNrWAxRQc=
