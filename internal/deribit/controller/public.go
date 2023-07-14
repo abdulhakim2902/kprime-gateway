@@ -67,7 +67,11 @@ func (h *DeribitHandler) auth(r *gin.Context) {
 
 	_, connKey, reason, err := requestHelper(msg.Id, msg.Method, r)
 	if err != nil {
-		protocol.SendValidationMsg(connKey, *reason, err)
+		if connKey != "" {
+			protocol.SendValidationMsg(connKey, *reason, err)
+		} else {
+			sendInvalidRequestMessage(err, msg.Id, *reason, r)
+		}
 		return
 	}
 
@@ -199,7 +203,11 @@ func (h *DeribitHandler) getIndexPrice(r *gin.Context) {
 
 	_, connKey, reason, err := requestHelper(msg.Id, msg.Method, r)
 	if err != nil {
-		protocol.SendValidationMsg(connKey, *reason, err)
+		if connKey != "" {
+			protocol.SendValidationMsg(connKey, *reason, err)
+		} else {
+			sendInvalidRequestMessage(err, msg.Id, *reason, r)
+		}
 		return
 	}
 
@@ -237,7 +245,11 @@ func (h *DeribitHandler) getLastTradesByInstrument(r *gin.Context) {
 
 	_, connKey, reason, err := requestHelper(msg.Id, msg.Method, r)
 	if err != nil {
-		protocol.SendValidationMsg(connKey, *reason, err)
+		if connKey != "" {
+			protocol.SendValidationMsg(connKey, *reason, err)
+		} else {
+			sendInvalidRequestMessage(err, msg.Id, *reason, r)
+		}
 		return
 	}
 
@@ -282,7 +294,11 @@ func (h *DeribitHandler) getDeliveryPrices(r *gin.Context) {
 
 	_, connKey, reason, err := requestHelper(msg.Id, msg.Method, r)
 	if err != nil {
-		protocol.SendValidationMsg(connKey, *reason, err)
+		if connKey != "" {
+			protocol.SendValidationMsg(connKey, *reason, err)
+		} else {
+			sendInvalidRequestMessage(err, msg.Id, *reason, r)
+		}
 		return
 	}
 

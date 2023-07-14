@@ -138,3 +138,23 @@ func requestHelper(msgID uint64, method string, c *gin.Context) (
 
 	return
 }
+
+func sendInvalidRequestMessage(err error, msgId uint64, reason validation_reason.ValidationReason, r *gin.Context) {
+	reasonMsg := protocol.ReasonMessage{
+		Reason: reason.String(),
+	}
+	_, httpCode, _ := reason.Code()
+
+	errMsg := protocol.ErrorMessage{
+		Message:        err.Error(),
+		Data:           reasonMsg,
+		HttpStatusCode: httpCode,
+	}
+	m := protocol.RPCResponseMessage{
+		JSONRPC: "2.0",
+		ID:      msgId,
+		Error:   &errMsg,
+		Testnet: true,
+	}
+	r.AbortWithStatusJSON(http.StatusBadRequest, m)
+}

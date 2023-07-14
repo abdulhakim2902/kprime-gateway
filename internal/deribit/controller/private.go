@@ -82,7 +82,11 @@ func (h *DeribitHandler) buy(r *gin.Context) {
 
 	userID, connKey, reason, err := requestHelper(msg.Id, msg.Method, r)
 	if err != nil {
-		protocol.SendValidationMsg(connKey, *reason, err)
+		if connKey != "" {
+			protocol.SendValidationMsg(connKey, *reason, err)
+		} else {
+			sendInvalidRequestMessage(err, msg.Id, *reason, r)
+		}
 		return
 	}
 
@@ -166,7 +170,11 @@ func (h *DeribitHandler) sell(r *gin.Context) {
 
 	userID, connKey, reason, err := requestHelper(msg.Id, msg.Method, r)
 	if err != nil {
-		protocol.SendValidationMsg(connKey, *reason, err)
+		if connKey != "" {
+			protocol.SendValidationMsg(connKey, *reason, err)
+		} else {
+			sendInvalidRequestMessage(err, msg.Id, *reason, r)
+		}
 		return
 	}
 
@@ -225,7 +233,11 @@ func (h *DeribitHandler) edit(r *gin.Context) {
 
 	userID, connKey, reason, err := requestHelper(msg.Id, msg.Method, r)
 	if err != nil {
-		protocol.SendValidationMsg(connKey, *reason, err)
+		if connKey != "" {
+			protocol.SendValidationMsg(connKey, *reason, err)
+		} else {
+			sendInvalidRequestMessage(err, msg.Id, *reason, r)
+		}
 		return
 	}
 	channel := make(chan protocol.RPCResponseMessage)
@@ -276,7 +288,11 @@ func (h *DeribitHandler) cancel(r *gin.Context) {
 
 	userID, connKey, reason, err := requestHelper(msg.Id, msg.Method, r)
 	if err != nil {
-		protocol.SendValidationMsg(connKey, *reason, err)
+		if connKey != "" {
+			protocol.SendValidationMsg(connKey, *reason, err)
+		} else {
+			sendInvalidRequestMessage(err, msg.Id, *reason, r)
+		}
 		return
 	}
 	channel := make(chan protocol.RPCResponseMessage)
@@ -309,7 +325,11 @@ func (h *DeribitHandler) cancelByInstrument(r *gin.Context) {
 
 	userID, connKey, reason, err := requestHelper(msg.Id, msg.Method, r)
 	if err != nil {
-		protocol.SendValidationMsg(connKey, *reason, err)
+		if connKey != "" {
+			protocol.SendValidationMsg(connKey, *reason, err)
+		} else {
+			sendInvalidRequestMessage(err, msg.Id, *reason, r)
+		}
 		return
 	}
 
@@ -344,7 +364,11 @@ func (h *DeribitHandler) cancelAll(r *gin.Context) {
 
 	userID, connKey, reason, err := requestHelper(msg.Id, msg.Method, r)
 	if err != nil {
-		protocol.SendValidationMsg(connKey, *reason, err)
+		if connKey != "" {
+			protocol.SendValidationMsg(connKey, *reason, err)
+		} else {
+			sendInvalidRequestMessage(err, msg.Id, *reason, r)
+		}
 		return
 	}
 
@@ -369,7 +393,11 @@ func (h *DeribitHandler) getUserTradeByInstrument(r *gin.Context) {
 
 	userID, connKey, reason, err := requestHelper(msg.Id, msg.Method, r)
 	if err != nil {
-		protocol.SendValidationMsg(connKey, *reason, err)
+		if connKey != "" {
+			protocol.SendValidationMsg(connKey, *reason, err)
+		} else {
+			sendInvalidRequestMessage(err, msg.Id, *reason, r)
+		}
 		return
 	}
 
@@ -401,7 +429,11 @@ func (h *DeribitHandler) getOpenOrdersByInstrument(r *gin.Context) {
 
 	userId, connKey, reason, err := requestHelper(msg.Id, msg.Method, r)
 	if err != nil {
-		protocol.SendValidationMsg(connKey, *reason, err)
+		if connKey != "" {
+			protocol.SendValidationMsg(connKey, *reason, err)
+		} else {
+			sendInvalidRequestMessage(err, msg.Id, *reason, r)
+		}
 		return
 	}
 
@@ -431,7 +463,11 @@ func (h *DeribitHandler) getOrderHistoryByInstrument(r *gin.Context) {
 
 	userId, connKey, reason, err := requestHelper(msg.Id, msg.Method, r)
 	if err != nil {
-		protocol.SendValidationMsg(connKey, *reason, err)
+		if connKey != "" {
+			protocol.SendValidationMsg(connKey, *reason, err)
+		} else {
+			sendInvalidRequestMessage(err, msg.Id, *reason, r)
+		}
 		return
 	}
 
@@ -464,7 +500,11 @@ func (h *DeribitHandler) getOrderStateByLabel(r *gin.Context) {
 
 	userId, connKey, reason, err := requestHelper(msg.Id, msg.Method, r)
 	if err != nil {
-		protocol.SendValidationMsg(connKey, *reason, err)
+		if connKey != "" {
+			protocol.SendValidationMsg(connKey, *reason, err)
+		} else {
+			sendInvalidRequestMessage(err, msg.Id, *reason, r)
+		}
 		return
 	}
 
@@ -484,7 +524,11 @@ func (h *DeribitHandler) getOrderState(r *gin.Context) {
 
 	userId, connKey, reason, err := requestHelper(msg.Id, msg.Method, r)
 	if err != nil {
-		protocol.SendValidationMsg(connKey, *reason, err)
+		if connKey != "" {
+			protocol.SendValidationMsg(connKey, *reason, err)
+		} else {
+			sendInvalidRequestMessage(err, msg.Id, *reason, r)
+		}
 		return
 	}
 
@@ -510,7 +554,11 @@ func (h *DeribitHandler) getUserTradesByOrder(r *gin.Context) {
 
 	userId, connKey, reason, err := requestHelper(msg.Id, msg.Method, r)
 	if err != nil {
-		protocol.SendValidationMsg(connKey, *reason, err)
+		if connKey != "" {
+			protocol.SendValidationMsg(connKey, *reason, err)
+		} else {
+			sendInvalidRequestMessage(err, msg.Id, *reason, r)
+		}
 		return
 	}
 
@@ -536,7 +584,11 @@ func (h *DeribitHandler) getAccountSummary(r *gin.Context) {
 
 	userId, connKey, reason, err := requestHelper(msg.Id, msg.Method, r)
 	if err != nil {
-		protocol.SendValidationMsg(connKey, *reason, err)
+		if connKey != "" {
+			protocol.SendValidationMsg(connKey, *reason, err)
+		} else {
+			sendInvalidRequestMessage(err, msg.Id, *reason, r)
+		}
 		return
 	}
 
@@ -579,7 +631,11 @@ func (h *DeribitHandler) getInstruments(r *gin.Context) {
 
 	userId, connKey, reason, err := requestHelper(msg.Id, msg.Method, r)
 	if err != nil {
-		protocol.SendValidationMsg(connKey, *reason, err)
+		if connKey != "" {
+			protocol.SendValidationMsg(connKey, *reason, err)
+		} else {
+			sendInvalidRequestMessage(err, msg.Id, *reason, r)
+		}
 		return
 	}
 
@@ -636,7 +692,11 @@ func (h *DeribitHandler) getOrderBook(r *gin.Context) {
 
 	userId, connKey, reason, err := requestHelper(msg.Id, msg.Method, r)
 	if err != nil {
-		protocol.SendValidationMsg(connKey, *reason, err)
+		if connKey != "" {
+			protocol.SendValidationMsg(connKey, *reason, err)
+		} else {
+			sendInvalidRequestMessage(err, msg.Id, *reason, r)
+		}
 		return
 	}
 
@@ -666,7 +726,11 @@ func (h *DeribitHandler) getTradingviewChartData(r *gin.Context) {
 
 	userId, connKey, reason, err := requestHelper(msg.Id, msg.Method, r)
 	if err != nil {
-		protocol.SendValidationMsg(connKey, *reason, err)
+		if connKey != "" {
+			protocol.SendValidationMsg(connKey, *reason, err)
+		} else {
+			sendInvalidRequestMessage(err, msg.Id, *reason, r)
+		}
 		return
 	}
 
