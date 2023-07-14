@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"gateway/internal/deribit/model"
+	"gateway/pkg/constant"
 	"gateway/pkg/kafka/producer"
 
 	"github.com/Undercurrent-Technologies/kprime-utilities/commons/logs"
@@ -61,9 +62,9 @@ func readHandler(c *Client) {
 		c.closeConnection()
 	}()
 
-	c.SetReadDeadline(time.Now().Add(pongWait))
+	c.SetReadDeadline(time.Now().Add(constant.TIMEOUT))
 	c.SetPongHandler(func(string) error {
-		c.SetReadDeadline(time.Now().Add(pongWait))
+		c.SetReadDeadline(time.Now().Add(constant.TIMEOUT))
 		return nil
 	})
 
