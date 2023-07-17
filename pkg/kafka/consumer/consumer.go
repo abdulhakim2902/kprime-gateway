@@ -98,6 +98,9 @@ func handleTopicOrder(oSvc oInt.IwsOrderService, message *sarama.ConsumerMessage
 		return
 	}
 
+	if data.Matches.TakerOrder == nil {
+		return
+	}
 	// Send message to websocket
 	userIDStr := fmt.Sprintf("%v", data.Matches.TakerOrder.UserID)
 	var order ordermatch.Order

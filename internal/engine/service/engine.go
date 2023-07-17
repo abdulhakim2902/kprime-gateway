@@ -318,7 +318,9 @@ func (svc engineHandler) PublishOrder(data _engineType.EngineResponse) {
 }
 
 func (svc engineHandler) PublishValidation(data _engineType.EngineResponse) {
-	ID, _ := strconv.ParseUint(data.Matches.TakerOrder.ClOrdID, 0, 64)
-	connKey := utils.GetKeyFromIdUserID(ID, data.Matches.TakerOrder.UserID)
-	protocol.SendValidationMsg(connKey, data.Validation, nil)
+	if data.Matches == nil {
+		ID, _ := strconv.ParseUint(data.Matches.TakerOrder.ClOrdID, 0, 64)
+		connKey := utils.GetKeyFromIdUserID(ID, data.Matches.TakerOrder.UserID)
+		protocol.SendValidationMsg(connKey, data.Validation, nil)
+	}
 }
