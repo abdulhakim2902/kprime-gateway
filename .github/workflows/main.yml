@@ -13,7 +13,7 @@ jobs:
       GOPRIVATE: github.com/Undercurrent-Technologies/kprime-utilities
       ACCESS_USER: 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
       ACCESS_TOKEN: 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
-      IMAGE_TAG: ghcr.io/Undercurrent-Technologies/gateway-test:latest
+      IMAGE_TAG: ghcr.io/undercurrent-technologies/gateway-test:latest
       GIT_TERMINAL_PROMPT: 1
 
     steps:
