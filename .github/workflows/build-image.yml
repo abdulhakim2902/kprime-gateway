@@ -19,7 +19,7 @@ jobs:
         with:
           go-version: "1.19.2"
 
-      - run: git config --global url.https://darmawan01:${GH_ACCESS_TOKEN}@github.com/.insteadOf https://github.com
+      - run: git config --global url.https://darmawan01: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@github.com/.insteadOf https://github.com
 
       - name: Build Image
         run: |
