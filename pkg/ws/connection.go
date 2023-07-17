@@ -70,7 +70,7 @@ func readHandler(c *Client) {
 	for {
 		msgType, payload, err := c.ReadMessage()
 		if err != nil {
-			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+			if !websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 				logs.Log.Error().Err(err).Msg("")
 			}
 
