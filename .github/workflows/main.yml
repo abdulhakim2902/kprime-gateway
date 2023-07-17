@@ -25,5 +25,7 @@ jobs:
       - name: Build Image
         run: |
           cp .env.example .env
-          go get github.com/Undercurrent-Technologies/kprime-utilities
+          go mod tidy
           go build -o main main.go
+          docker --version
+          docker-compose --version
