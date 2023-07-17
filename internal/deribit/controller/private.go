@@ -11,6 +11,7 @@ import (
 	"github.com/Undercurrent-Technologies/kprime-utilities/types"
 
 	deribitModel "gateway/internal/deribit/model"
+	"gateway/pkg/constant"
 	"gateway/pkg/protocol"
 	"gateway/pkg/utils"
 	"strconv"
@@ -91,7 +92,7 @@ func (h *DeribitHandler) buy(r *gin.Context) {
 	}
 
 	channel := make(chan protocol.RPCResponseMessage)
-	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, _ := context.WithTimeout(context.Background(), constant.TIMEOUT)
 	go protocol.RegisterChannel(connKey, channel, ctx)
 	if err := utils.ValidateDeribitRequestParam(msg.Params); err != nil {
 		protocol.SendValidationMsg(connKey, validation_reason.INVALID_PARAMS, err)
@@ -184,7 +185,7 @@ func (h *DeribitHandler) sell(r *gin.Context) {
 	}
 
 	channel := make(chan protocol.RPCResponseMessage)
-	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, _ := context.WithTimeout(context.Background(), constant.TIMEOUT)
 	go protocol.RegisterChannel(connKey, channel, ctx)
 	if err := utils.ValidateDeribitRequestParam(msg.Params); err != nil {
 		protocol.SendValidationMsg(connKey, validation_reason.INVALID_PARAMS, err)
@@ -250,7 +251,7 @@ func (h *DeribitHandler) edit(r *gin.Context) {
 		return
 	}
 	channel := make(chan protocol.RPCResponseMessage)
-	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, _ := context.WithTimeout(context.Background(), constant.TIMEOUT)
 	go protocol.RegisterChannel(connKey, channel, ctx)
 	// Call service
 	_, reason, err = h.svc.DeribitParseEdit(r.Request.Context(), userID, deribitModel.DeribitEditRequest{
@@ -306,7 +307,7 @@ func (h *DeribitHandler) cancel(r *gin.Context) {
 		return
 	}
 	channel := make(chan protocol.RPCResponseMessage)
-	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, _ := context.WithTimeout(context.Background(), constant.TIMEOUT)
 	go protocol.RegisterChannel(connKey, channel, ctx)
 	// Call service
 	_, err = h.svc.DeribitParseCancel(r.Request.Context(), userID, deribitModel.DeribitCancelRequest{
@@ -362,7 +363,7 @@ func (h *DeribitHandler) cancelByInstrument(r *gin.Context) {
 	}
 
 	channel := make(chan protocol.RPCResponseMessage)
-	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, _ := context.WithTimeout(context.Background(), constant.TIMEOUT)
 	go protocol.RegisterChannel(connKey, channel, ctx)
 	res := <-channel
 	code := http.StatusOK

@@ -88,6 +88,8 @@ func (svc *wsHandler) auth(input interface{}, c *ws.Client) {
 		}
 		return
 	}
+	// Add timeout
+	go protocol.TimeOutProtocol(connKey)
 
 	var res any
 	var user *userType.User
@@ -338,6 +340,8 @@ func (svc *wsHandler) getLastTradesByInstrument(input interface{}, c *ws.Client)
 		}
 		return
 	}
+	// Add timeout
+	go protocol.TimeOutProtocol(connKey)
 
 	instruments, err := utils.ParseInstruments(msg.Params.InstrumentName, false)
 	if err != nil {
@@ -381,6 +385,8 @@ func (svc *wsHandler) getIndexPrice(input interface{}, c *ws.Client) {
 		}
 		return
 	}
+	// Add timeout
+	go protocol.TimeOutProtocol(connKey)
 
 	if types.Pair(msg.Params.IndexName).IsValid() == false {
 		protocol.SendValidationMsg(connKey,
@@ -411,6 +417,8 @@ func (svc *wsHandler) getDeliveryPrices(input interface{}, c *ws.Client) {
 		}
 		return
 	}
+	// Add timeout
+	go protocol.TimeOutProtocol(connKey)
 
 	if types.Pair(msg.Params.IndexName).IsValid() == false {
 		protocol.SendValidationMsg(connKey,

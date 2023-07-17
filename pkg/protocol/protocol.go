@@ -2,8 +2,10 @@ package protocol
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"gateway/pkg/collector"
+	"gateway/pkg/constant"
 	"gateway/pkg/utils"
 	"gateway/pkg/ws"
 	"net/http"
@@ -67,6 +69,8 @@ var channelConnections map[any]chan RPCResponseMessage
 var channelMutex sync.RWMutex
 var channelResults map[any]RPCResponseMessage
 var resultMutex sync.RWMutex
+var channelTimeout map[string]chan bool
+var timeoutMutex sync.RWMutex
 
 func (p *ProtocolRequest) getcollectorProtocol() collector.Protocol {
 	var protocol collector.Protocol
@@ -115,18 +119,43 @@ func RegisterProtocolRequest(key string, conn ProtocolRequest) (duplicateConnect
 	return
 }
 
-func UpgradeProtocol(oldKey, newKey string) bool {
-	protocolMutex.Lock()
-	defer protocolMutex.Unlock()
+func UpgradeProtocol(oldKey, newKey string) (duplicateConnection bool) {
+	protocolMutex.RLock()
 	conn := protocolConnections[oldKey]
+	protocolMutex.RUnlock()
 
+	duplicateConnection = isConnExist(newKey)
 	// Set the new ID
+	protocolMutex.Lock()
 	protocolConnections[newKey] = conn
 
 	// Remove old connection
 	delete(protocolConnections, oldKey)
+	protocolMutex.Unlock()
 
-	return true
+	return
+}
+
+func TimeOutProtocol(key string) {
+	ticker := time.NewTicker(constant.TIMEOUT)
+	timeoutMutex.Lock()
+	if channelTimeout == nil {
+		channelTimeout = make(map[string]chan bool)
+	}
+	channelTimeout[key] = make(chan bool)
+	timeoutMutex.Unlock()
+
+	for {
+		select {
+		case <-channelTimeout[key]:
+			ticker.Stop()
+			delete(channelTimeout, key)
+			return
+		case <-ticker.C:
+			err := errors.New(validation_reason.TIME_OUT.String())
+			SendValidationMsg(key, validation_reason.TIME_OUT, err)
+		}
+	}
 }
 
 func UnregisterProtocol(key string) {
@@ -281,6 +310,7 @@ func doSend(key string, result any, err *ErrorMessage) bool {
 	}(collectorLabel, m.Error, m.UsDiff)
 
 	UnregisterProtocol(key)
+	channelTimeout[key] <- true
 
 	return true
 }
