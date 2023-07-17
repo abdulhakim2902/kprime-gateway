@@ -888,7 +888,10 @@ func (r OrderRepository) GetOrderBookAgg2(o _orderbookType.GetOrderBook) _orderb
 			{
 				"$group": bson.D{
 					{"_id", "$price"},
-					{"amount", bson.D{{"$sum", bson.M{"$subtract": []string{"$amount", "$filledAmount"}}}}},
+					{"amount", bson.D{{"$sum", bson.M{"$subtract": bson.A{
+						"$amount",
+						bson.M{"$toDouble": "$filledAmount"},
+					}}}}},
 					{"detail", bson.D{{"$first", "$$ROOT"}}},
 				},
 			},
@@ -911,7 +914,10 @@ func (r OrderRepository) GetOrderBookAgg2(o _orderbookType.GetOrderBook) _orderb
 			{
 				"$group": bson.D{
 					{"_id", "$price"},
-					{"amount", bson.D{{"$sum", bson.M{"$subtract": []string{"$amount", "$filledAmount"}}}}},
+					{"amount", bson.D{{"$sum", bson.M{"$subtract": bson.A{
+						"$amount",
+						bson.M{"$toDouble": "$filledAmount"},
+					}}}}},
 					{"detail", bson.D{{"$first", "$$ROOT"}}},
 				},
 			},
@@ -1059,7 +1065,10 @@ func (r OrderRepository) GetOrderLatestTimestampAgg(o _orderbookType.GetOrderBoo
 			{
 				"$group": bson.D{
 					{"_id", "$price"},
-					{"amount", bson.D{{"$sum", bson.M{"$subtract": []string{"$amount", "$filledAmount"}}}}},
+					{"amount", bson.D{{"$sum", bson.M{"$subtract": bson.A{
+						"$amount",
+						bson.M{"$toDouble": "$filledAmount"},
+					}}}}},
 					{"detail", bson.D{{"$first", "$$ROOT"}}},
 				},
 			},
@@ -1083,7 +1092,10 @@ func (r OrderRepository) GetOrderLatestTimestampAgg(o _orderbookType.GetOrderBoo
 			{
 				"$group": bson.D{
 					{"_id", "$price"},
-					{"amount", bson.D{{"$sum", bson.M{"$subtract": []string{"$amount", "$filledAmount"}}}}},
+					{"amount", bson.D{{"$sum", bson.M{"$subtract": bson.A{
+						"$amount",
+						bson.M{"$toDouble": "$filledAmount"},
+					}}}}},
 					{"detail", bson.D{{"$first", "$$ROOT"}}},
 				},
 			},
