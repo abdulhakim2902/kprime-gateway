@@ -102,7 +102,13 @@ func requestHelper(
 	}
 
 	connKey = utils.GetKeyFromIdUserID(msgID, claim.UserID)
-	protocol.UpgradeProtocol(key, connKey)
+	if isDuplicateConnection := protocol.UpgradeProtocol(key, connKey); isDuplicateConnection {
+		validation := validation_reason.DUPLICATED_REQUEST_ID
+		reason = &validation
+
+		err = errors.New(validation.String())
+		return
+	}
 
 	return
 }
