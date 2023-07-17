@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"sort"
-	"strings"
 	"time"
 
 	"github.com/Undercurrent-Technologies/kprime-utilities/commons/logs"
@@ -372,7 +371,7 @@ func (r OrderRepository) GetOpenOrdersByInstrument(InstrumentName string, OrderT
 	if OrderType != "all" {
 		queryType := bson.M{
 			"$match": bson.M{
-				"orderType": bson.M{"$in": []types.Type{types.Type(strings.ToUpper(OrderType))}},
+				"orderType": OrderType,
 			},
 		}
 		pipelineInstruments = append(pipelineInstruments, queryType)

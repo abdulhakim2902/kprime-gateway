@@ -401,7 +401,6 @@ func (h *DeribitHandler) cancelAll(r *gin.Context) {
 	}
 
 	protocol.SendSuccessMsg(connKey, order)
-	return
 }
 
 func (h *DeribitHandler) getUserTradeByInstrument(r *gin.Context) {
@@ -446,7 +445,6 @@ func (h *DeribitHandler) getUserTradeByInstrument(r *gin.Context) {
 	)
 
 	protocol.SendSuccessMsg(connKey, res)
-	return
 }
 
 func (h *DeribitHandler) getOpenOrdersByInstrument(r *gin.Context) {
@@ -488,8 +486,7 @@ func (h *DeribitHandler) getOpenOrdersByInstrument(r *gin.Context) {
 		},
 	)
 
-	protocol.SendSuccessMsg(userId, res)
-	return
+	protocol.SendSuccessMsg(connKey, res)
 }
 
 func (h *DeribitHandler) getOrderHistoryByInstrument(r *gin.Context) {
@@ -534,7 +531,6 @@ func (h *DeribitHandler) getOrderHistoryByInstrument(r *gin.Context) {
 	)
 
 	protocol.SendSuccessMsg(connKey, res)
-	return
 }
 
 func (h *DeribitHandler) getOrderStateByLabel(r *gin.Context) {
@@ -560,7 +556,6 @@ func (h *DeribitHandler) getOrderStateByLabel(r *gin.Context) {
 	res := h.svc.DeribitGetOrderStateByLabel(r.Request.Context(), msg.Params)
 
 	protocol.SendSuccessMsg(connKey, res)
-	return
 }
 
 func (h *DeribitHandler) getOrderState(r *gin.Context) {
@@ -591,7 +586,6 @@ func (h *DeribitHandler) getOrderState(r *gin.Context) {
 	)
 
 	protocol.SendSuccessMsg(connKey, res)
-	return
 }
 
 func (h *DeribitHandler) getUserTradesByOrder(r *gin.Context) {
@@ -623,7 +617,6 @@ func (h *DeribitHandler) getUserTradesByOrder(r *gin.Context) {
 	)
 
 	protocol.SendSuccessMsg(connKey, res)
-	return
 }
 
 func (h *DeribitHandler) getAccountSummary(r *gin.Context) {
@@ -662,7 +655,6 @@ func (h *DeribitHandler) getAccountSummary(r *gin.Context) {
 	}
 
 	protocol.SendSuccessMsg(connKey, resp)
-	return
 }
 
 func (h *DeribitHandler) getInstruments(r *gin.Context) {
@@ -720,7 +712,6 @@ func (h *DeribitHandler) getInstruments(r *gin.Context) {
 	})
 
 	protocol.SendSuccessMsg(connKey, result)
-	return
 }
 
 func (h *DeribitHandler) getOrderBook(r *gin.Context) {
@@ -772,7 +763,6 @@ func (h *DeribitHandler) getOrderBook(r *gin.Context) {
 	})
 
 	protocol.SendSuccessMsg(connKey, result)
-	return
 }
 
 func (h *DeribitHandler) getTradingviewChartData(r *gin.Context) {
@@ -813,5 +803,4 @@ func (h *DeribitHandler) getTradingviewChartData(r *gin.Context) {
 	}
 
 	protocol.SendSuccessMsg(connKey, result)
-	return
 }
