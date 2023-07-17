@@ -69,6 +69,7 @@ func (h *DeribitHandler) auth(r *gin.Context) {
 	if err != nil {
 		if connKey != "" {
 			protocol.SendValidationMsg(connKey, *reason, err)
+			return
 		} else {
 			sendInvalidRequestMessage(err, msg.Id, *reason, r)
 		}
@@ -205,6 +206,7 @@ func (h *DeribitHandler) getIndexPrice(r *gin.Context) {
 	if err != nil {
 		if connKey != "" {
 			protocol.SendValidationMsg(connKey, *reason, err)
+			return
 		} else {
 			sendInvalidRequestMessage(err, msg.Id, *reason, r)
 		}
@@ -222,6 +224,7 @@ func (h *DeribitHandler) getIndexPrice(r *gin.Context) {
 	})
 
 	protocol.SendSuccessMsg(connKey, result)
+	return
 }
 
 func (h *DeribitHandler) getLastTradesByInstrument(r *gin.Context) {
@@ -247,13 +250,19 @@ func (h *DeribitHandler) getLastTradesByInstrument(r *gin.Context) {
 	if err != nil {
 		if connKey != "" {
 			protocol.SendValidationMsg(connKey, *reason, err)
+			return
 		} else {
 			sendInvalidRequestMessage(err, msg.Id, *reason, r)
 		}
 		return
 	}
 
-	instruments, _ := utils.ParseInstruments(msg.Params.InstrumentName, false)
+	instruments, err := utils.ParseInstruments(msg.Params.InstrumentName, false)
+	if err != nil {
+		protocol.SendValidationMsg(connKey,
+			validation_reason.INVALID_PARAMS, err)
+		return
+	}
 
 	if instruments == nil {
 		protocol.SendValidationMsg(connKey,
@@ -272,6 +281,7 @@ func (h *DeribitHandler) getLastTradesByInstrument(r *gin.Context) {
 	})
 
 	protocol.SendSuccessMsg(connKey, result)
+	return
 }
 
 func (h *DeribitHandler) getDeliveryPrices(r *gin.Context) {
@@ -296,6 +306,7 @@ func (h *DeribitHandler) getDeliveryPrices(r *gin.Context) {
 	if err != nil {
 		if connKey != "" {
 			protocol.SendValidationMsg(connKey, *reason, err)
+			return
 		} else {
 			sendInvalidRequestMessage(err, msg.Id, *reason, r)
 		}
@@ -315,6 +326,7 @@ func (h *DeribitHandler) getDeliveryPrices(r *gin.Context) {
 	})
 
 	protocol.SendSuccessMsg(connKey, result)
+	return
 }
 
 func (h *DeribitHandler) test(r *gin.Context) {
@@ -342,4 +354,5 @@ func (h *DeribitHandler) getTime(r *gin.Context) {
 		Result:  now,
 		ID:      msg.Id,
 	})
+	return
 }

@@ -96,6 +96,7 @@ func (h *DeribitHandler) buy(r *gin.Context) {
 	go protocol.RegisterChannel(connKey, channel, ctx)
 	if err := utils.ValidateDeribitRequestParam(msg.Params); err != nil {
 		protocol.SendValidationMsg(connKey, validation_reason.INVALID_PARAMS, err)
+		return
 	}
 
 	// Call service
@@ -116,9 +117,11 @@ func (h *DeribitHandler) buy(r *gin.Context) {
 	if err != nil {
 		if validation != nil {
 			protocol.SendValidationMsg(connKey, *validation, err)
+			return
 		}
 
 		protocol.SendErrMsg(connKey, err)
+		return
 	}
 
 	res := <-channel
@@ -127,6 +130,7 @@ func (h *DeribitHandler) buy(r *gin.Context) {
 		code = res.Error.HttpStatusCode
 	}
 	r.JSON(code, res)
+	return
 }
 
 func (h *DeribitHandler) sell(r *gin.Context) {
@@ -173,6 +177,7 @@ func (h *DeribitHandler) sell(r *gin.Context) {
 	if err != nil {
 		if connKey != "" {
 			protocol.SendValidationMsg(connKey, *reason, err)
+			return
 		} else {
 			sendInvalidRequestMessage(err, msg.Id, *reason, r)
 		}
@@ -184,6 +189,7 @@ func (h *DeribitHandler) sell(r *gin.Context) {
 	go protocol.RegisterChannel(connKey, channel, ctx)
 	if err := utils.ValidateDeribitRequestParam(msg.Params); err != nil {
 		protocol.SendValidationMsg(connKey, validation_reason.INVALID_PARAMS, err)
+		return
 	}
 
 	// Call service
@@ -203,8 +209,10 @@ func (h *DeribitHandler) sell(r *gin.Context) {
 	if err != nil {
 		if validation != nil {
 			protocol.SendValidationMsg(connKey, *validation, err)
+			return
 		}
 		protocol.SendErrMsg(connKey, err)
+		return
 	}
 	res := <-channel
 	code := http.StatusOK
@@ -236,6 +244,7 @@ func (h *DeribitHandler) edit(r *gin.Context) {
 	if err != nil {
 		if connKey != "" {
 			protocol.SendValidationMsg(connKey, *reason, err)
+			return
 		} else {
 			sendInvalidRequestMessage(err, msg.Id, *reason, r)
 		}
@@ -291,6 +300,7 @@ func (h *DeribitHandler) cancel(r *gin.Context) {
 	if err != nil {
 		if connKey != "" {
 			protocol.SendValidationMsg(connKey, *reason, err)
+			return
 		} else {
 			sendInvalidRequestMessage(err, msg.Id, *reason, r)
 		}
@@ -328,9 +338,17 @@ func (h *DeribitHandler) cancelByInstrument(r *gin.Context) {
 	if err != nil {
 		if connKey != "" {
 			protocol.SendValidationMsg(connKey, *reason, err)
+			return
 		} else {
 			sendInvalidRequestMessage(err, msg.Id, *reason, r)
 		}
+		return
+	}
+
+	_, err = utils.ParseInstruments(msg.Params.InstrumentName, false)
+	if err != nil {
+		protocol.SendValidationMsg(connKey,
+			validation_reason.INVALID_PARAMS, err)
 		return
 	}
 
@@ -367,6 +385,7 @@ func (h *DeribitHandler) cancelAll(r *gin.Context) {
 	if err != nil {
 		if connKey != "" {
 			protocol.SendValidationMsg(connKey, *reason, err)
+			return
 		} else {
 			sendInvalidRequestMessage(err, msg.Id, *reason, r)
 		}
@@ -383,6 +402,7 @@ func (h *DeribitHandler) cancelAll(r *gin.Context) {
 	}
 
 	protocol.SendSuccessMsg(connKey, order)
+	return
 }
 
 func (h *DeribitHandler) getUserTradeByInstrument(r *gin.Context) {
@@ -407,6 +427,13 @@ func (h *DeribitHandler) getUserTradeByInstrument(r *gin.Context) {
 		msg.Params.Count = 10
 	}
 
+	_, err = utils.ParseInstruments(msg.Params.InstrumentName, false)
+	if err != nil {
+		protocol.SendValidationMsg(connKey,
+			validation_reason.INVALID_PARAMS, err)
+		return
+	}
+
 	res := h.svc.DeribitGetUserTradesByInstrument(
 		r.Request.Context(),
 		userID,
@@ -420,7 +447,9 @@ func (h *DeribitHandler) getUserTradeByInstrument(r *gin.Context) {
 	)
 
 	protocol.SendSuccessMsg(connKey, res)
+	return
 }
+
 func (h *DeribitHandler) getOpenOrdersByInstrument(r *gin.Context) {
 	var msg deribitModel.RequestDto[deribitModel.GetOpenOrdersByInstrumentParams]
 	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
@@ -432,9 +461,17 @@ func (h *DeribitHandler) getOpenOrdersByInstrument(r *gin.Context) {
 	if err != nil {
 		if connKey != "" {
 			protocol.SendValidationMsg(connKey, *reason, err)
+			return
 		} else {
 			sendInvalidRequestMessage(err, msg.Id, *reason, r)
 		}
+		return
+	}
+
+	_, err = utils.ParseInstruments(msg.Params.InstrumentName, false)
+	if err != nil {
+		protocol.SendValidationMsg(connKey,
+			validation_reason.INVALID_PARAMS, err)
 		return
 	}
 
@@ -453,6 +490,7 @@ func (h *DeribitHandler) getOpenOrdersByInstrument(r *gin.Context) {
 	)
 
 	protocol.SendSuccessMsg(userId, res)
+	return
 }
 
 func (h *DeribitHandler) getOrderHistoryByInstrument(r *gin.Context) {
@@ -477,6 +515,13 @@ func (h *DeribitHandler) getOrderHistoryByInstrument(r *gin.Context) {
 		msg.Params.Count = 20
 	}
 
+	_, err = utils.ParseInstruments(msg.Params.InstrumentName, false)
+	if err != nil {
+		protocol.SendValidationMsg(connKey,
+			validation_reason.INVALID_PARAMS, err)
+		return
+	}
+
 	res := h.svc.DeribitGetOrderHistoryByInstrument(
 		context.TODO(),
 		userId,
@@ -490,6 +535,7 @@ func (h *DeribitHandler) getOrderHistoryByInstrument(r *gin.Context) {
 	)
 
 	protocol.SendSuccessMsg(connKey, res)
+	return
 }
 
 func (h *DeribitHandler) getOrderStateByLabel(r *gin.Context) {
@@ -503,6 +549,7 @@ func (h *DeribitHandler) getOrderStateByLabel(r *gin.Context) {
 	if err != nil {
 		if connKey != "" {
 			protocol.SendValidationMsg(connKey, *reason, err)
+			return
 		} else {
 			sendInvalidRequestMessage(err, msg.Id, *reason, r)
 		}
@@ -514,6 +561,7 @@ func (h *DeribitHandler) getOrderStateByLabel(r *gin.Context) {
 	res := h.svc.DeribitGetOrderStateByLabel(r.Request.Context(), msg.Params)
 
 	protocol.SendSuccessMsg(connKey, res)
+	return
 }
 
 func (h *DeribitHandler) getOrderState(r *gin.Context) {
@@ -527,6 +575,7 @@ func (h *DeribitHandler) getOrderState(r *gin.Context) {
 	if err != nil {
 		if connKey != "" {
 			protocol.SendValidationMsg(connKey, *reason, err)
+			return
 		} else {
 			sendInvalidRequestMessage(err, msg.Id, *reason, r)
 		}
@@ -543,6 +592,7 @@ func (h *DeribitHandler) getOrderState(r *gin.Context) {
 	)
 
 	protocol.SendSuccessMsg(connKey, res)
+	return
 }
 
 func (h *DeribitHandler) getUserTradesByOrder(r *gin.Context) {
@@ -557,6 +607,7 @@ func (h *DeribitHandler) getUserTradesByOrder(r *gin.Context) {
 	if err != nil {
 		if connKey != "" {
 			protocol.SendValidationMsg(connKey, *reason, err)
+			return
 		} else {
 			sendInvalidRequestMessage(err, msg.Id, *reason, r)
 		}
@@ -573,6 +624,7 @@ func (h *DeribitHandler) getUserTradesByOrder(r *gin.Context) {
 	)
 
 	protocol.SendSuccessMsg(connKey, res)
+	return
 }
 
 func (h *DeribitHandler) getAccountSummary(r *gin.Context) {
@@ -587,6 +639,7 @@ func (h *DeribitHandler) getAccountSummary(r *gin.Context) {
 	if err != nil {
 		if connKey != "" {
 			protocol.SendValidationMsg(connKey, *reason, err)
+			return
 		} else {
 			sendInvalidRequestMessage(err, msg.Id, *reason, r)
 		}
@@ -610,6 +663,7 @@ func (h *DeribitHandler) getAccountSummary(r *gin.Context) {
 	}
 
 	protocol.SendSuccessMsg(connKey, resp)
+	return
 }
 
 func (h *DeribitHandler) getInstruments(r *gin.Context) {
@@ -634,6 +688,7 @@ func (h *DeribitHandler) getInstruments(r *gin.Context) {
 	if err != nil {
 		if connKey != "" {
 			protocol.SendValidationMsg(connKey, *reason, err)
+			return
 		} else {
 			sendInvalidRequestMessage(err, msg.Id, *reason, r)
 		}
@@ -666,6 +721,7 @@ func (h *DeribitHandler) getInstruments(r *gin.Context) {
 	})
 
 	protocol.SendSuccessMsg(connKey, result)
+	return
 }
 
 func (h *DeribitHandler) getOrderBook(r *gin.Context) {
@@ -695,6 +751,7 @@ func (h *DeribitHandler) getOrderBook(r *gin.Context) {
 	if err != nil {
 		if connKey != "" {
 			protocol.SendValidationMsg(connKey, *reason, err)
+			return
 		} else {
 			sendInvalidRequestMessage(err, msg.Id, *reason, r)
 		}
@@ -716,6 +773,7 @@ func (h *DeribitHandler) getOrderBook(r *gin.Context) {
 	})
 
 	protocol.SendSuccessMsg(connKey, result)
+	return
 }
 
 func (h *DeribitHandler) getTradingviewChartData(r *gin.Context) {
@@ -735,6 +793,12 @@ func (h *DeribitHandler) getTradingviewChartData(r *gin.Context) {
 		return
 	}
 
+	_, err = utils.ParseInstruments(msg.Params.InstrumentName, false)
+	if err != nil {
+		protocol.SendValidationMsg(connKey,
+			validation_reason.INVALID_PARAMS, err)
+		return
+	}
 	msg.Params.UserId = userId
 
 	result, reason, err := h.svc.GetTradingViewChartData(context.TODO(), msg.Params)
@@ -750,4 +814,5 @@ func (h *DeribitHandler) getTradingviewChartData(r *gin.Context) {
 	}
 
 	protocol.SendSuccessMsg(connKey, result)
+	return
 }

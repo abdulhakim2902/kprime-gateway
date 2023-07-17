@@ -7,4 +7,7 @@ const (
 	INVALID_EXPIRY_DATE         = "invalid_expiry_date"
 	UNSUPPORTED_CURRENCY        = "unsupported_currency"
 	EXPIRED_INSTRUMENT          = "expired_instrument"
+	INVALID_INDEX_NAME          = "invalid_index_name"
+	INVALID_CHANNEL             = "invalid_channel"
+	INVALID_INTERVAL            = "invalid_interval"
 )

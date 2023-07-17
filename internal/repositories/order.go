@@ -3,9 +3,7 @@ package repositories
 import (
 	"context"
 	"errors"
-	"fmt"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 
@@ -17,6 +15,7 @@ import (
 	_deribitModel "gateway/internal/deribit/model"
 	_orderbookType "gateway/internal/orderbook/types"
 	"gateway/pkg/memdb"
+	"gateway/pkg/utils"
 
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -76,18 +75,21 @@ func (r OrderRepository) GetAvailableInstruments(currency string) ([]_deribitMod
 		"underlying": currency,
 	})
 	if err != nil {
+		logs.Log.Error().Err(err).Msg("")
+
 		return []_deribitModel.DeribitResponse{}, err
 	}
-	err = cur.Err()
-	if err != nil {
-		fmt.Printf("%+v\n", err)
+
+	if err = cur.Err(); err != nil {
+		logs.Log.Error().Err(err).Msg("")
+
 		return []_deribitModel.DeribitResponse{}, err
 	}
 
 	orders := []_deribitModel.DeribitResponse{}
 
 	if err = cur.All(context.TODO(), &orders); err != nil {
-		fmt.Printf("%+v\n", err)
+		logs.Log.Error().Err(err).Msg("")
 
 		return []_deribitModel.DeribitResponse{}, nil
 	}
@@ -191,7 +193,7 @@ func (r OrderRepository) GetInstruments(userId, currency string, expired bool) (
 				{"$and",
 					bson.A{
 						bson.D{{"userRole", types.MARKET_MAKER.String()}},
-						bson.D{{"userId", bson.D{{"$in", excludeUserId}}}},
+						bson.D{{"userId", bson.D{{"$nin", excludeUserId}}}},
 					},
 				},
 			},
@@ -259,27 +261,35 @@ func (r OrderRepository) GetInstruments(userId, currency string, expired bool) (
 
 	cursor, err := r.collection.Aggregate(context.Background(), pipelineInstruments)
 	if err != nil {
-		return []*_deribitModel.DeribitGetInstrumentsResponse{}, nil
+		logs.Log.Error().Err(err).Msg("")
+
+		return []*_deribitModel.DeribitGetInstrumentsResponse{}, err
 	}
 
 	err = cursor.Err()
 	if err != nil {
-		fmt.Printf("%+v\n", err)
+		logs.Log.Error().Err(err).Msg("")
+
 		return []*_deribitModel.DeribitGetInstrumentsResponse{}, err
 	}
 
 	orders := []*_deribitModel.DeribitGetInstrumentsResponse{}
 
 	if err = cursor.All(context.TODO(), &orders); err != nil {
-		fmt.Printf("%+v\n", err)
+		logs.Log.Error().Err(err).Msg("")
 
-		return []*_deribitModel.DeribitGetInstrumentsResponse{}, nil
+		return []*_deribitModel.DeribitGetInstrumentsResponse{}, err
 	}
 
 	return orders, nil
 }
 
 func (r OrderRepository) GetOpenOrdersByInstrument(InstrumentName string, OrderType string, userId string) ([]*_deribitModel.DeribitGetOpenOrdersByInstrumentResponse, error) {
+	instrument, err := utils.ParseInstruments(InstrumentName, false)
+	if err != nil {
+		return nil, err
+	}
+
 	projectStage := bson.M{
 		"$project": bson.M{
 			"InstrumentName": bson.M{"$concat": bson.A{
@@ -340,8 +350,9 @@ func (r OrderRepository) GetOpenOrdersByInstrument(InstrumentName string, OrderT
 
 	query := bson.M{
 		"$match": bson.M{
-			"orderState": bson.M{"$in": []types.OrderStatus{types.OPEN, types.PARTIALLY_FILLED}},
-			"userId":     userId,
+			"orderState":     bson.M{"$in": []types.OrderStatus{types.OPEN, types.PARTIALLY_FILLED}},
+			"userId":         userId,
+			"InstrumentName": InstrumentName,
 		},
 	}
 
@@ -353,10 +364,7 @@ func (r OrderRepository) GetOpenOrdersByInstrument(InstrumentName string, OrderT
 
 	pipelineInstruments := bson.A{}
 
-	priceAvgStage, err := tradePriceAvgQuery(InstrumentName)
-	if err != nil {
-		return nil, err
-	}
+	priceAvgStage := tradePriceAvgQuery(*instrument)
 	pipelineInstruments = append(pipelineInstruments, priceAvgStage...)
 
 	pipelineInstruments = append(pipelineInstruments, projectStage)
@@ -373,14 +381,13 @@ func (r OrderRepository) GetOpenOrdersByInstrument(InstrumentName string, OrderT
 
 	cursor, err := r.collection.Aggregate(context.Background(), pipelineInstruments)
 	if err != nil {
-		fmt.Printf("err:%+v\n", err)
+		logs.Log.Error().Err(err).Msg("")
 
-		return []*_deribitModel.DeribitGetOpenOrdersByInstrumentResponse{}, nil
+		return []*_deribitModel.DeribitGetOpenOrdersByInstrumentResponse{}, err
 	}
 
-	err = cursor.Err()
-	if err != nil {
-		fmt.Printf("%+v\n", err)
+	if err = cursor.Err(); err != nil {
+		logs.Log.Error().Err(err).Msg("")
 
 		return []*_deribitModel.DeribitGetOpenOrdersByInstrumentResponse{}, err
 	}
@@ -388,37 +395,49 @@ func (r OrderRepository) GetOpenOrdersByInstrument(InstrumentName string, OrderT
 	orders := []*_deribitModel.DeribitGetOpenOrdersByInstrumentResponse{}
 
 	if err = cursor.All(context.TODO(), &orders); err != nil {
-		fmt.Printf("%+v\n", err)
+		logs.Log.Error().Err(err).Msg("")
 
-		return []*_deribitModel.DeribitGetOpenOrdersByInstrumentResponse{}, nil
+		return []*_deribitModel.DeribitGetOpenOrdersByInstrumentResponse{}, err
 	}
 
 	return orders, nil
 }
 
 func (r OrderRepository) GetMarketData(instrumentName string, side string) (res []_deribitModel.DeribitResponse) {
-	splits := strings.Split(instrumentName, "-")
-	fmt.Println(splits, side)
-	price, _ := strconv.ParseFloat(splits[2], 64)
-	fmt.Println(price)
+	instrument, err := utils.ParseInstruments(instrumentName, false)
+	if err != nil {
+		logs.Log.Error().Err(err).Msg("")
+
+		return
+	}
+
 	curr, err := r.collection.Find(context.Background(), bson.M{
-		"underlying":  splits[0],
-		"expiryDate":  splits[1],
-		"strikePrice": price,
+		"underlying":  instrument.Underlying,
+		"expiryDate":  instrument.ExpDate,
+		"strikePrice": instrument.Strike,
 		"side":        side,
 	})
 	if err != nil {
-		fmt.Printf("%+v\n", err)
+		logs.Log.Error().Err(err).Msg("")
+
+		return
 	}
 
 	if err = curr.All(context.TODO(), &res); err != nil {
-		fmt.Printf("%+v\n", err)
+		logs.Log.Error().Err(err).Msg("")
+
+		return
 	}
 
 	return res
 }
 
 func (r OrderRepository) GetOrderHistoryByInstrument(InstrumentName string, Count int, Offset int, IncludeOld bool, IncludeUnfilled bool, userId string) ([]*_deribitModel.DeribitGetOrderHistoryByInstrumentResponse, error) {
+	instrument, err := utils.ParseInstruments(InstrumentName, false)
+	if err != nil {
+		return nil, err
+	}
+
 	now := time.Now()
 	loc, _ := time.LoadLocation("Singapore")
 	if loc != nil {
@@ -489,8 +508,9 @@ func (r OrderRepository) GetOrderHistoryByInstrument(InstrumentName string, Coun
 	}
 	query := bson.M{
 		"$match": bson.M{
-			"orderState": bson.M{"$in": orderState},
-			"userId":     userId,
+			"orderState":     bson.M{"$in": orderState},
+			"userId":         userId,
+			"InstrumentName": InstrumentName,
 		},
 	}
 
@@ -510,10 +530,7 @@ func (r OrderRepository) GetOrderHistoryByInstrument(InstrumentName string, Coun
 
 	pipelineInstruments := bson.A{}
 
-	priceAvgStage, err := tradePriceAvgQuery(InstrumentName)
-	if err != nil {
-		return nil, err
-	}
+	priceAvgStage := tradePriceAvgQuery(*instrument)
 	pipelineInstruments = append(pipelineInstruments, priceAvgStage...)
 
 	pipelineInstruments = append(pipelineInstruments, projectStage)
@@ -532,14 +549,13 @@ func (r OrderRepository) GetOrderHistoryByInstrument(InstrumentName string, Coun
 
 	cursor, err := r.collection.Aggregate(context.Background(), pipelineInstruments)
 	if err != nil {
-		fmt.Printf("err:%+v\n", err)
+		logs.Log.Error().Err(err).Msg("")
 
-		return []*_deribitModel.DeribitGetOrderHistoryByInstrumentResponse{}, nil
+		return []*_deribitModel.DeribitGetOrderHistoryByInstrumentResponse{}, err
 	}
 
-	err = cursor.Err()
-	if err != nil {
-		fmt.Printf("%+v\n", err)
+	if err = cursor.Err(); err != nil {
+		logs.Log.Error().Err(err).Msg("")
 
 		return []*_deribitModel.DeribitGetOrderHistoryByInstrumentResponse{}, err
 	}
@@ -547,15 +563,20 @@ func (r OrderRepository) GetOrderHistoryByInstrument(InstrumentName string, Coun
 	orders := []*_deribitModel.DeribitGetOrderHistoryByInstrumentResponse{}
 
 	if err = cursor.All(context.TODO(), &orders); err != nil {
-		fmt.Printf("%+v\n", err)
+		logs.Log.Error().Err(err).Msg("")
 
-		return []*_deribitModel.DeribitGetOrderHistoryByInstrumentResponse{}, nil
+		return []*_deribitModel.DeribitGetOrderHistoryByInstrumentResponse{}, err
 	}
 
 	return orders, nil
 }
 
 func (r OrderRepository) GetChangeOrdersByInstrument(InstrumentName string, userId []interface{}, orderId []interface{}) ([]_deribitModel.DeribitGetOpenOrdersByInstrumentResponse, error) {
+	instrument, err := utils.ParseInstruments(InstrumentName, false)
+	if err != nil {
+		return nil, err
+	}
+
 	projectStage := bson.M{
 		"$project": bson.M{
 			"InstrumentName": bson.M{"$concat": bson.A{
@@ -616,8 +637,9 @@ func (r OrderRepository) GetChangeOrdersByInstrument(InstrumentName string, user
 
 	query := bson.M{
 		"$match": bson.M{
-			"_id":    bson.M{"$in": orderId},
-			"userId": bson.M{"$in": userId},
+			"_id":            bson.M{"$in": orderId},
+			"userId":         bson.M{"$in": userId},
+			"InstrumentName": InstrumentName,
 		},
 	}
 
@@ -629,10 +651,7 @@ func (r OrderRepository) GetChangeOrdersByInstrument(InstrumentName string, user
 
 	pipelineInstruments := bson.A{}
 
-	priceAvgStage, err := tradePriceAvgQuery(InstrumentName)
-	if err != nil {
-		return nil, err
-	}
+	priceAvgStage := tradePriceAvgQuery(*instrument)
 	pipelineInstruments = append(pipelineInstruments, priceAvgStage...)
 
 	pipelineInstruments = append(pipelineInstruments, projectStage)
@@ -641,14 +660,13 @@ func (r OrderRepository) GetChangeOrdersByInstrument(InstrumentName string, user
 
 	cursor, err := r.collection.Aggregate(context.Background(), pipelineInstruments)
 	if err != nil {
-		fmt.Printf("err:%+v\n", err)
+		logs.Log.Error().Err(err).Msg("")
 
-		return []_deribitModel.DeribitGetOpenOrdersByInstrumentResponse{}, nil
+		return []_deribitModel.DeribitGetOpenOrdersByInstrumentResponse{}, err
 	}
 
-	err = cursor.Err()
-	if err != nil {
-		fmt.Printf("%+v\n", err)
+	if err = cursor.Err(); err != nil {
+		logs.Log.Error().Err(err).Msg("")
 
 		return []_deribitModel.DeribitGetOpenOrdersByInstrumentResponse{}, err
 	}
@@ -656,9 +674,9 @@ func (r OrderRepository) GetChangeOrdersByInstrument(InstrumentName string, user
 	orders := []_deribitModel.DeribitGetOpenOrdersByInstrumentResponse{}
 
 	if err = cursor.All(context.TODO(), &orders); err != nil {
-		fmt.Printf("%+v\n", err)
+		logs.Log.Error().Err(err).Msg("")
 
-		return []_deribitModel.DeribitGetOpenOrdersByInstrumentResponse{}, nil
+		return []_deribitModel.DeribitGetOpenOrdersByInstrumentResponse{}, err
 	}
 	return orders, nil
 }
@@ -669,16 +687,23 @@ func (r OrderRepository) WsAggregate(pipeline interface{}) []*_orderbookType.WsO
 	}
 	cursor, err := r.collection.Aggregate(context.Background(), pipeline, &opt)
 	if err != nil {
+		logs.Log.Error().Err(err).Msg("")
+
 		return []*_orderbookType.WsOrder{}
 	}
 
-	err = cursor.Err()
-	if err != nil {
+	if err = cursor.Err(); err != nil {
+		logs.Log.Error().Err(err).Msg("")
+
 		return []*_orderbookType.WsOrder{}
 	}
 
 	orders := []*_orderbookType.WsOrder{}
-	cursor.All(context.Background(), &orders)
+	if err := cursor.All(context.Background(), &orders); err != nil {
+		logs.Log.Error().Err(err).Msg("")
+
+		return []*_orderbookType.WsOrder{}
+	}
 
 	//sort orders by price
 	sort.Slice(orders, func(i, j int) bool {
@@ -695,17 +720,25 @@ func (r OrderRepository) CountAggregate(pipeline interface{}) []_orderbookType.C
 
 	cursor, err := r.collection.Aggregate(context.Background(), pipeline, &opt)
 	if err != nil {
+		logs.Log.Error().Err(err).Msg("")
+
 		return []_orderbookType.Count{}
 	}
 
 	err = cursor.Err()
 	if err != nil {
+		logs.Log.Error().Err(err).Msg("")
+
 		return []_orderbookType.Count{}
 	}
 
 	counts := []_orderbookType.Count{}
 
-	cursor.All(context.Background(), &counts)
+	if err = cursor.All(context.Background(), &counts); err != nil {
+		logs.Log.Error().Err(err).Msg("")
+
+		return []_orderbookType.Count{}
+	}
 
 	return counts
 }
@@ -730,24 +763,7 @@ func canceledReasonQuery() bson.D {
 	}
 }
 
-func tradePriceAvgQuery(instrument string) (query bson.A, err error) {
-	substring := strings.Split(instrument, "-")
-	if len(substring) != 4 {
-		err = fmt.Errorf("invalid instrument name")
-		return
-	}
-
-	var strikePrice float64
-	strikePrice, err = strconv.ParseFloat(substring[2], 64)
-	if err != nil {
-		return
-	}
-	_contracts := ""
-	if substring[3] == "P" {
-		_contracts = "PUT"
-	} else {
-		_contracts = "CALL"
-	}
+func tradePriceAvgQuery(instrument utils.Instruments) (query bson.A) {
 
 	query = bson.A{
 		bson.M{
@@ -758,10 +774,10 @@ func tradePriceAvgQuery(instrument string) (query bson.A, err error) {
 						bson.D{
 							{"$match",
 								bson.D{
-									{"underlying", substring[0]},
-									{"expiryDate", substring[1]},
-									{"strikePrice", strikePrice},
-									{"contracts", _contracts},
+									{"underlying", instrument.Underlying},
+									{"expiryDate", instrument.ExpDate},
+									{"strikePrice", instrument.Strike},
+									{"contracts", instrument.Contracts},
 								},
 							},
 						},
@@ -802,7 +818,7 @@ func (r OrderRepository) GetOrderBook(o _orderbookType.GetOrderBook) *_orderbook
 					{"$and",
 						bson.A{
 							bson.D{{"userRole", types.MARKET_MAKER.String()}},
-							bson.D{{"userId", bson.D{{"$in", o.UserOrderExclusions}}}},
+							bson.D{{"userId", bson.D{{"$nin", o.UserOrderExclusions}}}},
 						},
 					},
 				},
@@ -1188,6 +1204,8 @@ func (r OrderRepository) GetOrderState(userId string, orderId string) ([]_deribi
 
 	objectID, err := primitive.ObjectIDFromHex(orderId)
 	if err != nil {
+		logs.Log.Error().Err(err).Msg("")
+
 		return []_deribitModel.DeribitGetOrderStateResponse{}, err
 	}
 	pipelineInstruments := bson.A{}
@@ -1212,14 +1230,17 @@ func (r OrderRepository) GetOrderState(userId string, orderId string) ([]_deribi
 
 	cursor, err := r.collection.Aggregate(context.Background(), pipelineInstruments)
 	if err != nil {
-		return []_deribitModel.DeribitGetOrderStateResponse{}, nil
+		logs.Log.Error().Err(err).Msg("")
+
+		return []_deribitModel.DeribitGetOrderStateResponse{}, err
 	}
 
 	orders := []_deribitModel.DeribitGetOrderStateResponse{}
 
 	if err = cursor.All(context.TODO(), &orders); err != nil {
-		fmt.Printf("%+v\n", err)
-		return []_deribitModel.DeribitGetOrderStateResponse{}, nil
+		logs.Log.Error().Err(err).Msg("")
+
+		return []_deribitModel.DeribitGetOrderStateResponse{}, err
 	}
 
 	return orders, nil
@@ -1304,19 +1325,19 @@ func (r OrderRepository) GetOrderStateByLabel(ctx context.Context, req _deribitM
 	var cursor *mongo.Cursor
 	cursor, err = r.collection.Aggregate(context.Background(), pipelineInstruments)
 	if err != nil {
-		fmt.Printf("err:%+v\n", err)
+		logs.Log.Error().Err(err).Msg("")
 
 		return
 	}
 
 	if err = cursor.Err(); err != nil {
-		fmt.Printf("%+v\n", err)
+		logs.Log.Error().Err(err).Msg("")
 
 		return
 	}
 
 	if err = cursor.All(context.TODO(), &orders); err != nil {
-		fmt.Printf("%+v\n", err)
+		logs.Log.Error().Err(err).Msg("")
 
 		return
 	}
