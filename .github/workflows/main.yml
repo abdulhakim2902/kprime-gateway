@@ -26,6 +26,6 @@ jobs:
         run: |
           cp .env.example .env
           go mod tidy
-          go build -o main main.go
-          docker --version
-          docker-compose --version
+          go build -o gateway main.go
+          
+          docker build -t gateway:latest -f Dockerfile.test .
