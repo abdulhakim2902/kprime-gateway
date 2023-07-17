@@ -79,6 +79,9 @@ func (p *RedisConnectionPool) GetValue(key string) (string, error) {
 
 	value, err := redis.String(conn.Do("GET", key))
 	if err != nil {
+		if err == redis.ErrNil {
+			return "", nil
+		}
 		return "", err
 	}
 
