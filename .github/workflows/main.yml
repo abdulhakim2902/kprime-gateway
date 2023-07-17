@@ -11,6 +11,9 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GOPRIVATE: github.com/Undercurrent-Technologies/kprime-utilities
+      ACCESS_USER: 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
+      ACCESS_TOKEN: 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
+      IMAGE_TAG: ghcr.io/Undercurrent-Technologies/gateway-test:latest
       GIT_TERMINAL_PROMPT: 1
 
     steps:
@@ -20,12 +23,21 @@ jobs:
         with:
           go-version: "1.20"
 
-      - run: git config --global url.https://darmawan01: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@github.com/.insteadOf https://github.com
+      - run: git config --global url.https://${ACCESS_USER}:${ACCESS_TOKEN}@github.com/.insteadOf https://github.com
 
-      - name: Build Image
+      - name: Build App
         run: |
           cp .env.example .env
           go mod tidy
           go build -o gateway main.go
+      
+      - name: Build App container
+        run: |
+          docker build -t ${IMAGE_TAG} -f Dockerfile.test .
+
+      - name: Push image to registry
+        run: |
+          echo ${ACCESS_TOKEN} | docker login ghcr.io -u USERNAME --password-stdin
+          docker push ${IMAGE_TAG}
+
           
-          docker build -t gateway:latest -f Dockerfile.test .
