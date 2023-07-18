@@ -636,6 +636,9 @@ func (svc *wsHandler) privateSubscribe(input interface{}, c *ws.Client) {
 		return
 	}
 
+	// Add timeout
+	go protocol.TimeOutProtocol(connKey)
+
 	const t = true
 	method := map[string]bool{"orders": t, "trades": t, "changes": t}
 	interval := map[string]bool{"raw": t, "100ms": t, "agg2": t}

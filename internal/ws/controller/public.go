@@ -180,6 +180,9 @@ func (svc *wsHandler) publicSubscribe(input interface{}, c *ws.Client) {
 		return
 	}
 
+	// Add timeout
+	go protocol.TimeOutProtocol(connKey)
+
 	const t = true
 	method := map[string]bool{"orderbook": t, "order": t, "trade": t, "trades": t, "quote": false, "book": t, "deribit_price_index": false, "ticker": t}
 	interval := map[string]bool{"raw": t, "100ms": t, "agg2": t}
