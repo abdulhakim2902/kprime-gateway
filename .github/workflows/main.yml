@@ -11,6 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GOPRIVATE: github.com/Undercurrent-Technologies/kprime-utilities
+      ACCESS_USER: ${{ secrets.ACCESS_USER }}
+      ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
       IMAGE_TAG: ghcr.io/undercurrent-technologies/gateway-test:latest
       GIT_TERMINAL_PROMPT: 1
 
