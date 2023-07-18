@@ -430,8 +430,9 @@ func (svc wsOrderbookService) SubscribeTicker(c *ws.Client, channel, instrument,
 
 	if len(indexPrice) > 0 {
 		results.IndexPrice = &indexPrice[0].Price
-		results.UnderlyingIndex = &indexPrice[0].Price
+		results.UnderlyingPrice = &indexPrice[0].Price
 	}
+	results.UnderlyingIndex = "index_price"
 
 	_getSettlementPrice := svc.settlementPriceRepository.GetLatestSettlementPrice(
 		_order.Underlying,
@@ -989,8 +990,9 @@ func (svc wsOrderbookService) HandleConsumeTicker(_instrument string, interval s
 
 	if len(indexPrice) > 0 {
 		results.IndexPrice = &indexPrice[0].Price
-		results.UnderlyingIndex = &indexPrice[0].Price
+		results.UnderlyingPrice = &indexPrice[0].Price
 	}
+	results.UnderlyingIndex = "index_price"
 
 	_getSettlementPrice := svc.settlementPriceRepository.GetLatestSettlementPrice(
 		_order.Underlying,
@@ -1090,8 +1092,9 @@ func (svc wsOrderbookService) HandleConsumeUserTicker100ms(instrument string) {
 
 					if len(indexPrice) > 0 {
 						results.IndexPrice = &indexPrice[0].Price
-						results.UnderlyingIndex = &indexPrice[0].Price
+						results.UnderlyingPrice = &indexPrice[0].Price
 					}
+					results.UnderlyingIndex = "index_price"
 
 					_getSettlementPrice := svc.settlementPriceRepository.GetLatestSettlementPrice(
 						_order.Underlying,
@@ -1173,8 +1176,9 @@ func (svc wsOrderbookService) GetOrderBook(ctx context.Context, data _deribitMod
 
 	if len(indexPrice) > 0 {
 		results.IndexPrice = &indexPrice[0].Price
-		results.UnderlyingIndex = &indexPrice[0].Price
+		results.UnderlyingPrice = &indexPrice[0].Price
 	}
+	results.UnderlyingIndex = "index_price"
 
 	_getSettlementPrice := svc.settlementPriceRepository.GetLatestSettlementPrice(
 		_order.Underlying,
