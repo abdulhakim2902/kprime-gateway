@@ -12,7 +12,7 @@ jobs:
       ACCESS_USER: ${{ secrets.ACCESS_USER }}
       ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
       GOPRIVATE: github.com/Undercurrent-Technologies/kprime-utilities
-      IMAGE_TAG: ghcr.io/undercurrent-technologies/gateway:${PR_NUMBER}
+      IMAGE_TAG: ghcr.io/undercurrent-technologies/gateway
       GIT_TERMINAL_PROMPT: 1
 
     steps:
@@ -33,7 +33,7 @@ jobs:
       - name: Build App container
         run: |
           ls -la
-          docker build -t ${IMAGE_TAG} .
+          docker build -t ${IMAGE_TAG}:${PR_NUMBER} .
       
       - name: Run Tests
         run: |
