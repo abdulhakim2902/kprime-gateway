@@ -1,21 +1,19 @@
-name: Build Image
+name: Build Dev Image
 
 on:
   push:
-    branches: [ "development" ]
-  pull_request:
     branches: [ "development" ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      GOPRIVATE: github.com/Undercurrent-Technologies/kprime-utilities
       ACCESS_USER: ${{ secrets.ACCESS_USER }}
       ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
-      IMAGE_TAG: ghcr.io/undercurrent-technologies/gateway-test:latest
+      GOPRIVATE: github.com/Undercurrent-Technologies/kprime-utilities
+      IMAGE_TAG: ghcr.io/undercurrent-technologies/gateway:dev
       GIT_TERMINAL_PROMPT: 1
-
+    
     steps:
       - uses: actions/checkout@v3
       - name: Set up Go
@@ -33,11 +31,9 @@ jobs:
       
       - name: Build App container
         run: |
-          docker build -t ${IMAGE_TAG} -f Dockerfile.test .
+          docker build -t ${IMAGE_TAG} .
 
       - name: Push image to registry
         run: |
           echo ${ACCESS_TOKEN} | docker login ghcr.io -u USERNAME --password-stdin
           docker push ${IMAGE_TAG}
-
-          

@@ -1,13 +1,6 @@
-From golang:1.18
+FROM alpine:latest
 
-WORKDIR /go/src/app
+COPY gateway /gateway
+COPY internal/fix-acceptor/config/FIX44.xml /FIX44.xml
 
-COPY . .
-
-RUN git config  --global url."https://oauth2:${ACCESS_TOKEN}@git.devucc.name".insteadOf "https://git.devucc.name"
-
-RUN go build -o main main.go
-
-EXPOSE 8080
-
-CMD ["./main"]
+CMD ["/gateway"]
