@@ -999,6 +999,7 @@ func (a *Application) updateOrder(order Order, status enum.OrdStatus) {
 
 }
 
+// 35 Execution Report
 func OrderConfirmation(userId string, order _orderbookType.Order, symbol string) {
 	if userSession == nil {
 		if userSession[userId] == nil {
@@ -1019,19 +1020,37 @@ func OrderConfirmation(userId string, order _orderbookType.Order, symbol string)
 		exec = 4
 	}
 
-	conversion, _ := utils.ConvertToFloat(order.FilledAmount)
+	// FIX Side
+	fixSide := enum.Side_BUY;
+	if (order.Side == _utilitiesType.BUY) {
+		fixSide = enum.Side_SELL;
+	}
 
+	// FIX Order Status
+	fixStatus := enum.OrdStatus_NEW;
+	fixExecType := enum.ExecType_NEW;
+	if (order.Status == _utilitiesType.FILLED) {
+		fixStatus = enum.OrdStatus_FILLED
+		fixExecType = enum.ExecType_FILL;
+	} else if (order.Status == _utilitiesType.PARTIALLY_FILLED) {
+		fixStatus = enum.OrdStatus_PARTIALLY_FILLED
+		fixExecType = enum.ExecType_PARTIAL_FILL;
+	} else if (order.Status == _utilitiesType.CANCELLED) {
+		fixStatus = enum.OrdStatus_CANCELED
+		fixExecType = enum.ExecType_CANCELED;
+	}
+
+	conversion, _ := utils.ConvertToFloat(order.FilledAmount)
 	msg := executionreport.New(
-		field.NewOrderID(order.ID.Hex()),
-		field.NewExecID(strconv.Itoa(exec)),
-		field.NewExecType(enum.ExecType(order.Status)),
-		field.NewOrdStatus(enum.OrdStatus(order.Status)),
-		field.NewSide(enum.Side(order.Side)),
-		field.NewLeavesQty(decimal.NewFromFloat(order.Amount).Sub(decimal.NewFromFloat(conversion)), 2),
-		field.NewCumQty(decimal.NewFromFloat(conversion), 2),
-		field.NewAvgPx(decimal.NewFromFloat(order.Price), 2),
+		field.NewOrderID(order.ID.Hex()), // 37
+		field.NewExecID(strconv.Itoa(exec)), // 17
+		field.NewExecType(fixExecType), // 150
+		field.NewOrdStatus(fixStatus), // 39
+		field.NewSide(fixSide), // 54
+		field.NewLeavesQty(decimal.NewFromFloat(order.Amount).Sub(decimal.NewFromFloat(conversion)), 2), // 151
+		field.NewCumQty(decimal.NewFromFloat(conversion), 2), // 14
+		field.NewAvgPx(decimal.NewFromFloat(order.Price), 2), // 6 TODO: FIX ME
 	)
-	msg.SetOrdStatus(enum.OrdStatus_NEW)
 	msg.SetClOrdID(order.ClOrdID)
 
 	if sessionId == nil {
