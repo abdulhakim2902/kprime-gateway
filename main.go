@@ -30,7 +30,6 @@ import (
 	_obSvc "gateway/internal/orderbook/service"
 	_userSvc "gateway/internal/user/service"
 	_wsEngineSvc "gateway/internal/ws/engine/service"
-	_wsOrderbookSvc "gateway/internal/ws/service"
 	_wsSvc "gateway/internal/ws/service"
 
 	_wsCtrl "gateway/internal/ws/controller"
@@ -166,7 +165,7 @@ func main() {
 	settlementPriceRepo := repositories.NewSettlementPriceRepository(mongoConn)
 
 	_authSvc := _userSvc.NewAuthService(userRepo)
-	_wsOrderbookSvc := _wsOrderbookSvc.NewWSOrderbookService(
+	_wsOrderbookSvc := _wsSvc.NewWSOrderbookService(
 		redisConn,
 		orderRepo,
 		tradeRepo,
@@ -253,7 +252,8 @@ func main() {
 	// kill (no param) default send syscanll.SIGTERM
 	// kill -2 is syscall.SIGINT
 	// kill -9 is syscall. SIGKILL but can"t be catch, so don't need add it
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
+
 	<-quit
 	log.Println("Shutdown Server ...")
 
