@@ -93,7 +93,7 @@ services:
       - test-network
   
   gateway:
-    image: ghcr.io/undercurrent-technologies/gateway-test:latest
+    image: ${IMAGE_TAG}:pr-${PR_NUMBER}
     container_name: 'gateway'
     environment:
       - APP_ENV='development'

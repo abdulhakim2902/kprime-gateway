@@ -28,7 +28,7 @@ jobs:
           go mod tidy
           GOOS=linux GOARCH=amd64 go build -o gateway main.go
       
-      - name: Build App container
+      - name: Build App Image
         run: |
           docker build -t ${IMAGE_TAG} .
 
