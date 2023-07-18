@@ -1122,32 +1122,49 @@ func removeVMessageSubscriber(array []VMessageSubscriber, element VMessageSubscr
 	return array
 }
 
+// Response (y) Security List
+// 320 SecurityReqID
+// 322 SecurityResponseID = {Currency} - {Timestamp}
+// 560 SecurityRequestResult = 0 means success
+// => 55 Symbol
+// => 107 SecurityDesc
+// => 167 SecurityType
+// => 947 StrikeCurrency (USD)
+// => 202 StrikePrice
 func (a Application) SecurityListResponse(currency string, secReq string, sessionID quickfix.SessionID) quickfix.MessageRejectError {
 	secRes := time.Now().UnixMicro()
 	res := securitylist.New(
-		field.NewSecurityReqID(secReq),
-		field.NewSecurityResponseID(strconv.Itoa(int(secRes))),
-		field.NewSecurityRequestResult(enum.SecurityRequestResult_VALID_REQUEST),
+		field.NewSecurityReqID(secReq), // 320
+		field.NewSecurityResponseID(strconv.Itoa(int(secRes))), // 322
+		field.NewSecurityRequestResult(enum.SecurityRequestResult_VALID_REQUEST), // 0
 	)
 
-	// get isntrument from mongo
-	instruments, e := a.OrderRepository.GetAvailableInstruments(currency)
+	// Getting User ID
+	userId := ""
+	for i, v := range userSession {
+		if v.String() == sessionID.String() {
+			userId = i
+		}
+	}
+
+	// Get Available Instruments, including expired ones
+	instruments, e := a.OrderRepository.GetInstruments(userId, currency, false)
 	if e != nil {
 		return quickfix.NewMessageRejectError(e.Error(), 0, nil)
 	}
 
+	// Group Responses
 	secListGroup := securitylist.NewNoRelatedSymRepeatingGroup()
 	for _, instrument := range instruments {
 		row := secListGroup.Add()
-		strikePrice := strconv.FormatFloat(instrument.StrikePrice, 'f', 0, 64)
-		instrumentName := fmt.Sprintf("%s-%s-%s-%s", instrument.Underlying, instrument.ExpirationDate, strikePrice, instrument.Contracts)
+		
+		instrumentName := instrument.InstrumentName
 		row.SetSymbol(instrumentName)
 
 		row.SetSecurityDesc("OPTIONS")
 		row.SetSecurityType("OPT")
-		row.SetStrikePrice(decimal.NewFromFloat(instrument.StrikePrice), 0)
+		row.SetStrikePrice(decimal.NewFromFloat(instrument.Strike), 0)
 		row.SetStrikeCurrency("USD")
-
 	}
 
 	res.SetNoRelatedSym(secListGroup)
