@@ -26,14 +26,12 @@ jobs:
 
       - name: Build App
         run: |
-          cp .env.example .env
           go mod tidy
-          go build -o gateway main.go
+          GOOS=linux GOARCH=amd64 go build -o gateway main.go
       
       - name: Build App container
         run: |
-          ls -la
-          docker build -t ${IMAGE_TAG}:${PR_NUMBER} .
+          docker build -t ${IMAGE_TAG}:pr-${PR_NUMBER} .
       
       - name: Run Tests
         run: |
