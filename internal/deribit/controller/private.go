@@ -91,13 +91,14 @@ func (h *DeribitHandler) buy(r *gin.Context) {
 		return
 	}
 
+	if err := utils.ValidateDeribitRequestParam(msg.Params); err != nil {
+		sendInvalidRequestMessage(err, msg.Id, validation_reason.INVALID_PARAMS, r)
+		return
+	}
+
 	channel := make(chan protocol.RPCResponseMessage)
 	ctx, _ := context.WithTimeout(context.Background(), constant.TIMEOUT)
 	go protocol.RegisterChannel(connKey, channel, ctx)
-	if err := utils.ValidateDeribitRequestParam(msg.Params); err != nil {
-		protocol.SendValidationMsg(connKey, validation_reason.INVALID_PARAMS, err)
-		return
-	}
 
 	// Call service
 	_, validation, err := h.svc.DeribitRequest(r.Request.Context(), userID, deribitModel.DeribitRequest{
@@ -117,11 +118,9 @@ func (h *DeribitHandler) buy(r *gin.Context) {
 	if err != nil {
 		if validation != nil {
 			protocol.SendValidationMsg(connKey, *validation, err)
-			return
 		}
 
 		protocol.SendErrMsg(connKey, err)
-		return
 	}
 
 	res := <-channel
@@ -184,13 +183,14 @@ func (h *DeribitHandler) sell(r *gin.Context) {
 		return
 	}
 
+	if err := utils.ValidateDeribitRequestParam(msg.Params); err != nil {
+		sendInvalidRequestMessage(err, msg.Id, validation_reason.INVALID_PARAMS, r)
+		return
+	}
+
 	channel := make(chan protocol.RPCResponseMessage)
 	ctx, _ := context.WithTimeout(context.Background(), constant.TIMEOUT)
 	go protocol.RegisterChannel(connKey, channel, ctx)
-	if err := utils.ValidateDeribitRequestParam(msg.Params); err != nil {
-		protocol.SendValidationMsg(connKey, validation_reason.INVALID_PARAMS, err)
-		return
-	}
 
 	// Call service
 	_, validation, err := h.svc.DeribitRequest(r.Request.Context(), userID, deribitModel.DeribitRequest{
@@ -209,10 +209,8 @@ func (h *DeribitHandler) sell(r *gin.Context) {
 	if err != nil {
 		if validation != nil {
 			protocol.SendValidationMsg(connKey, *validation, err)
-			return
 		}
 		protocol.SendErrMsg(connKey, err)
-		return
 	}
 	res := <-channel
 	code := http.StatusOK
@@ -263,11 +261,8 @@ func (h *DeribitHandler) edit(r *gin.Context) {
 	if err != nil {
 		if reason != nil {
 			protocol.SendValidationMsg(connKey, *reason, err)
-			return
 		}
-
 		protocol.SendErrMsg(connKey, err)
-		return
 	}
 
 	res := <-channel
@@ -316,7 +311,6 @@ func (h *DeribitHandler) cancel(r *gin.Context) {
 	})
 	if err != nil {
 		protocol.SendErrMsg(connKey, err)
-		return
 	}
 
 	res := <-channel
