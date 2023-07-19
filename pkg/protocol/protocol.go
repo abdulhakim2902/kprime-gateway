@@ -175,7 +175,6 @@ func UnregisterProtocol(key string) {
 func UnregisterChannel(key string) {
 	reported := make(stoper)
 	channelContextStop.Store(key, reported)
-	close(reported)
 }
 
 func GetProtocol(key string) (bool, ProtocolRequest) {
