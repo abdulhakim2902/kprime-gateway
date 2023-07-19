@@ -68,6 +68,8 @@ var protocolMutex sync.RWMutex
 var channelConnections map[any]chan RPCResponseMessage
 var channelMutex sync.RWMutex
 var channelResults map[any]RPCResponseMessage
+var contextStopMutex sync.RWMutex
+var channelContextStop map[string]chan bool
 var resultMutex sync.RWMutex
 var channelTimeout map[string]chan bool
 var timeoutMutex sync.RWMutex
@@ -167,12 +169,12 @@ func UnregisterProtocol(key string) {
 }
 
 func UnregisterChannel(key string) {
-	resultMutex.Lock()
-	delete(channelResults, key)
-	resultMutex.Unlock()
-	channelMutex.Lock()
-	delete(channelConnections, key)
-	channelMutex.Unlock()
+	contextStopMutex.RLock()
+	localVar := channelContextStop[key]
+	contextStopMutex.RUnlock()
+	if localVar != nil {
+		channelContextStop[key] <- true
+	}
 }
 
 func GetProtocol(key string) (bool, ProtocolRequest) {
@@ -344,7 +346,15 @@ func RegisterChannel(key string, channel chan RPCResponseMessage, ctx context.Co
 	}
 	channelConnections[key] = channel
 	channelMutex.Unlock()
+	contextStopMutex.Lock()
+	if channelContextStop == nil {
+		channelContextStop = make(map[string]chan bool)
+	}
+	channelContextStop[key] = make(chan bool)
+	contextStopMutex.Unlock()
+
 	res := RPCResponseMessage{}
+readChannel:
 	for {
 		resultMutex.Lock()
 		res = channelResults[key]
@@ -363,7 +373,9 @@ func RegisterChannel(key string, channel chan RPCResponseMessage, ctx context.Co
 					},
 				},
 			}
-			break
+			break readChannel
+		case <-channelContextStop[key]:
+			break readChannel
 		default:
 			continue
 		}
@@ -376,5 +388,9 @@ func RegisterChannel(key string, channel chan RPCResponseMessage, ctx context.Co
 	channelMutex.Lock()
 	delete(channelConnections, key)
 	channelMutex.Unlock()
+	contextStopMutex.Lock()
+	delete(channelContextStop, key)
+	contextStopMutex.Unlock()
+
 	channel <- res
 }
