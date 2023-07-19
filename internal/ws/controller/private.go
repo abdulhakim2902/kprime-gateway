@@ -77,6 +77,9 @@ func (svc *wsHandler) buy(input interface{}, c *ws.Client) {
 		return
 	}
 
+	// Add timeout
+	go protocol.TimeOutProtocol(connKey)
+
 	enableCancel := c.EnableCancel
 	connId := fmt.Sprintf("%v", &c.Conn)
 
@@ -143,6 +146,9 @@ func (svc *wsHandler) sell(input interface{}, c *ws.Client) {
 		return
 	}
 
+	// Add timeout
+	go protocol.TimeOutProtocol(connKey)
+
 	enableCancel := c.EnableCancel
 	connId := fmt.Sprintf("%v", &c.Conn)
 
@@ -193,6 +199,9 @@ func (svc *wsHandler) edit(input interface{}, c *ws.Client) {
 		return
 	}
 
+	// Add timeout
+	go protocol.TimeOutProtocol(connKey)
+
 	// TODO: Validation
 
 	// Parse the Deribit Sell
@@ -232,6 +241,9 @@ func (svc *wsHandler) cancel(input interface{}, c *ws.Client) {
 		return
 	}
 
+	// Add timeout
+	go protocol.TimeOutProtocol(connKey)
+
 	// TODO: Validation
 
 	// Parse the Deribit Sell
@@ -260,6 +272,9 @@ func (svc *wsHandler) cancelByInstrument(input interface{}, c *ws.Client) {
 		protocol.SendValidationMsg(connKey, *reason, nil)
 		return
 	}
+
+	// Add timeout
+	go protocol.TimeOutProtocol(connKey)
 
 	_, err = utils.ParseInstruments(msg.Params.InstrumentName, false)
 	if err != nil {
@@ -299,6 +314,9 @@ func (svc *wsHandler) cancelAll(input interface{}, c *ws.Client) {
 		return
 	}
 
+	// Add timeout
+	go protocol.TimeOutProtocol(connKey)
+
 	// TODO: Validation
 
 	// Parse the Deribit Sell
@@ -330,6 +348,9 @@ func (svc *wsHandler) getUserTradesByInstrument(input interface{}, c *ws.Client)
 		}
 		return
 	}
+
+	// Add timeout
+	go protocol.TimeOutProtocol(connKey)
 
 	// Number of requested items, default - 10
 	if msg.Params.Count <= 0 {
@@ -375,6 +396,9 @@ func (svc *wsHandler) getOpenOrdersByInstrument(input interface{}, c *ws.Client)
 		return
 	}
 
+	// Add timeout
+	go protocol.TimeOutProtocol(connKey)
+
 	// type parameter
 	if msg.Params.Type == "" {
 		msg.Params.Type = "all"
@@ -415,6 +439,9 @@ func (svc *wsHandler) getOrderHistoryByInstrument(input interface{}, c *ws.Clien
 		}
 		return
 	}
+
+	// Add timeout
+	go protocol.TimeOutProtocol(connKey)
 
 	// parameter default value
 	if msg.Params.Count <= 0 {
@@ -460,6 +487,9 @@ func (svc *wsHandler) getUserTradesByOrder(input interface{}, c *ws.Client) {
 		return
 	}
 
+	// Add timeout
+	go protocol.TimeOutProtocol(connKey)
+
 	res := svc.wsTradeSvc.GetUserTradesByOrder(
 		context.TODO(),
 		claim.UserID,
@@ -489,6 +519,9 @@ func (svc *wsHandler) getOrderState(input interface{}, c *ws.Client) {
 		return
 	}
 
+	// Add timeout
+	go protocol.TimeOutProtocol(connKey)
+
 	res := svc.wsOSvc.GetOrderState(
 		context.TODO(),
 		claim.UserID,
@@ -516,6 +549,9 @@ func (svc *wsHandler) getAccountSummary(input interface{}, c *ws.Client) {
 		}
 		return
 	}
+
+	// Add timeout
+	go protocol.TimeOutProtocol(connKey)
 
 	result := svc.wsUserBalanceSvc.FetchUserBalance(
 		msg.Params.Currency,
@@ -552,6 +588,9 @@ func (svc *wsHandler) getOrderStateByLabel(input interface{}, c *ws.Client) {
 		}
 		return
 	}
+
+	// Add timeout
+	go protocol.TimeOutProtocol(connKey)
 
 	msg.Params.UserId = claim.UserID
 
@@ -596,6 +635,9 @@ func (svc *wsHandler) privateSubscribe(input interface{}, c *ws.Client) {
 		}
 		return
 	}
+
+	// Add timeout
+	go protocol.TimeOutProtocol(connKey)
 
 	const t = true
 	method := map[string]bool{"orders": t, "trades": t, "changes": t}
@@ -761,6 +803,8 @@ func (svc *wsHandler) getInstruments(input interface{}, c *ws.Client) {
 			c.SendInvalidRequestMessage(err)
 		}
 	}
+	// Add timeout
+	go protocol.TimeOutProtocol(connKey)
 
 	currency, ok := confType.Pair(msg.Params.Currency).CurrencyCheck()
 	if !ok {
@@ -806,6 +850,8 @@ func (svc *wsHandler) getOrderBook(input interface{}, c *ws.Client) {
 		}
 		return
 	}
+	// Add timeout
+	go protocol.TimeOutProtocol(connKey)
 
 	instruments, _ := utils.ParseInstruments(msg.Params.InstrumentName, false)
 
@@ -840,6 +886,8 @@ func (svc *wsHandler) getTradingviewChartData(input interface{}, c *ws.Client) {
 		}
 		return
 	}
+	// Add timeout
+	go protocol.TimeOutProtocol(connKey)
 
 	_, err = utils.ParseInstruments(msg.Params.InstrumentName, false)
 	if err != nil {

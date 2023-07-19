@@ -11,6 +11,7 @@ import (
 	"github.com/Undercurrent-Technologies/kprime-utilities/types"
 
 	deribitModel "gateway/internal/deribit/model"
+	"gateway/pkg/constant"
 	"gateway/pkg/protocol"
 	"gateway/pkg/utils"
 	"strconv"
@@ -91,7 +92,7 @@ func (h *DeribitHandler) buy(r *gin.Context) {
 	}
 
 	channel := make(chan protocol.RPCResponseMessage)
-	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, _ := context.WithTimeout(context.Background(), constant.TIMEOUT)
 	go protocol.RegisterChannel(connKey, channel, ctx)
 	if err := utils.ValidateDeribitRequestParam(msg.Params); err != nil {
 		protocol.SendValidationMsg(connKey, validation_reason.INVALID_PARAMS, err)
@@ -184,7 +185,7 @@ func (h *DeribitHandler) sell(r *gin.Context) {
 	}
 
 	channel := make(chan protocol.RPCResponseMessage)
-	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, _ := context.WithTimeout(context.Background(), constant.TIMEOUT)
 	go protocol.RegisterChannel(connKey, channel, ctx)
 	if err := utils.ValidateDeribitRequestParam(msg.Params); err != nil {
 		protocol.SendValidationMsg(connKey, validation_reason.INVALID_PARAMS, err)
@@ -250,7 +251,7 @@ func (h *DeribitHandler) edit(r *gin.Context) {
 		return
 	}
 	channel := make(chan protocol.RPCResponseMessage)
-	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, _ := context.WithTimeout(context.Background(), constant.TIMEOUT)
 	go protocol.RegisterChannel(connKey, channel, ctx)
 	// Call service
 	_, reason, err = h.svc.DeribitParseEdit(r.Request.Context(), userID, deribitModel.DeribitEditRequest{
@@ -306,7 +307,7 @@ func (h *DeribitHandler) cancel(r *gin.Context) {
 		return
 	}
 	channel := make(chan protocol.RPCResponseMessage)
-	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, _ := context.WithTimeout(context.Background(), constant.TIMEOUT)
 	go protocol.RegisterChannel(connKey, channel, ctx)
 	// Call service
 	_, err = h.svc.DeribitParseCancel(r.Request.Context(), userID, deribitModel.DeribitCancelRequest{
@@ -362,7 +363,7 @@ func (h *DeribitHandler) cancelByInstrument(r *gin.Context) {
 	}
 
 	channel := make(chan protocol.RPCResponseMessage)
-	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, _ := context.WithTimeout(context.Background(), constant.TIMEOUT)
 	go protocol.RegisterChannel(connKey, channel, ctx)
 	res := <-channel
 	code := http.StatusOK
@@ -401,7 +402,6 @@ func (h *DeribitHandler) cancelAll(r *gin.Context) {
 	}
 
 	protocol.SendSuccessMsg(connKey, order)
-	return
 }
 
 func (h *DeribitHandler) getUserTradeByInstrument(r *gin.Context) {
@@ -446,7 +446,6 @@ func (h *DeribitHandler) getUserTradeByInstrument(r *gin.Context) {
 	)
 
 	protocol.SendSuccessMsg(connKey, res)
-	return
 }
 
 func (h *DeribitHandler) getOpenOrdersByInstrument(r *gin.Context) {
@@ -488,8 +487,7 @@ func (h *DeribitHandler) getOpenOrdersByInstrument(r *gin.Context) {
 		},
 	)
 
-	protocol.SendSuccessMsg(userId, res)
-	return
+	protocol.SendSuccessMsg(connKey, res)
 }
 
 func (h *DeribitHandler) getOrderHistoryByInstrument(r *gin.Context) {
@@ -534,7 +532,6 @@ func (h *DeribitHandler) getOrderHistoryByInstrument(r *gin.Context) {
 	)
 
 	protocol.SendSuccessMsg(connKey, res)
-	return
 }
 
 func (h *DeribitHandler) getOrderStateByLabel(r *gin.Context) {
@@ -560,7 +557,6 @@ func (h *DeribitHandler) getOrderStateByLabel(r *gin.Context) {
 	res := h.svc.DeribitGetOrderStateByLabel(r.Request.Context(), msg.Params)
 
 	protocol.SendSuccessMsg(connKey, res)
-	return
 }
 
 func (h *DeribitHandler) getOrderState(r *gin.Context) {
@@ -591,7 +587,6 @@ func (h *DeribitHandler) getOrderState(r *gin.Context) {
 	)
 
 	protocol.SendSuccessMsg(connKey, res)
-	return
 }
 
 func (h *DeribitHandler) getUserTradesByOrder(r *gin.Context) {
@@ -623,7 +618,6 @@ func (h *DeribitHandler) getUserTradesByOrder(r *gin.Context) {
 	)
 
 	protocol.SendSuccessMsg(connKey, res)
-	return
 }
 
 func (h *DeribitHandler) getAccountSummary(r *gin.Context) {
@@ -662,7 +656,6 @@ func (h *DeribitHandler) getAccountSummary(r *gin.Context) {
 	}
 
 	protocol.SendSuccessMsg(connKey, resp)
-	return
 }
 
 func (h *DeribitHandler) getInstruments(r *gin.Context) {
@@ -720,7 +713,6 @@ func (h *DeribitHandler) getInstruments(r *gin.Context) {
 	})
 
 	protocol.SendSuccessMsg(connKey, result)
-	return
 }
 
 func (h *DeribitHandler) getOrderBook(r *gin.Context) {
@@ -772,7 +764,6 @@ func (h *DeribitHandler) getOrderBook(r *gin.Context) {
 	})
 
 	protocol.SendSuccessMsg(connKey, result)
-	return
 }
 
 func (h *DeribitHandler) getTradingviewChartData(r *gin.Context) {
@@ -813,5 +804,4 @@ func (h *DeribitHandler) getTradingviewChartData(r *gin.Context) {
 	}
 
 	protocol.SendSuccessMsg(connKey, result)
-	return
 }

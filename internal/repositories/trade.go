@@ -397,6 +397,8 @@ func (r TradeRepository) FindUserTradesByInstrument(
 		}
 		for _, trade := range res.Trades {
 			trade.Api = true
+			trade.UnderlyingPrice = trade.IndexPrice
+			trade.UnderlyingIndex = "index_price"
 		}
 	}
 
@@ -624,6 +626,8 @@ func (r TradeRepository) FindUserTradesById(
 		}
 		for _, trade := range res.Trades {
 			trade.Api = true
+			trade.UnderlyingPrice = trade.IndexPrice
+			trade.UnderlyingIndex = "index_price"
 		}
 	}
 
@@ -796,6 +800,8 @@ func (r TradeRepository) FindTradesByInstrument(
 		}
 		for _, trade := range res.Trades {
 			trade.Api = true
+			trade.UnderlyingPrice = trade.IndexPrice
+			trade.UnderlyingIndex = "index_price"
 		}
 	}
 
@@ -1209,6 +1215,8 @@ func (r TradeRepository) FilterUserTradesByOrder(userId string, orderId string) 
 		}
 		for _, trade := range res.Trades {
 			trade.Api = true
+			trade.UnderlyingPrice = trade.IndexPrice
+			trade.UnderlyingIndex = "index_price"
 		}
 	}
 

@@ -95,20 +95,22 @@ type DeribitGetIndexPriceResponse struct {
 }
 
 type DeribitGetUserTradesByOrderValue struct {
-	TradeId        primitive.ObjectID `json:"trade_id" bson:"_id"`
-	Amount         float64            `json:"amount" bson:"amount"`
-	Direction      types.Side         `json:"direction" bson:"direction"`
-	InstrumentName string             `json:"instrument_name" bson:"InstrumentName"`
-	OrderId        primitive.ObjectID `json:"order_id" bson:"order_id"`
-	OrderType      types.Type         `json:"order_type" bson:"order_type"`
-	Price          float64            `json:"price" bson:"price"`
-	State          types.OrderStatus  `json:"state" bson:"state"`
-	Timestamp      int64              `json:"timestamp" bson:"timestamp"`
-	Api            bool               `json:"api"`
-	IndexPrice     float64            `json:"index_price" bson:"indexPrice"`
-	Label          string             `json:"label,omitempty" bson:"label"`
-	TickDirection  int                `json:"tick_direction" bson:"tickDirection"`
-	TradeSequence  int                `json:"trade_seq" bson:"tradeSequence"`
+	TradeId         primitive.ObjectID `json:"trade_id" bson:"_id"`
+	Amount          float64            `json:"amount" bson:"amount"`
+	Direction       types.Side         `json:"direction" bson:"direction"`
+	InstrumentName  string             `json:"instrument_name" bson:"InstrumentName"`
+	OrderId         primitive.ObjectID `json:"order_id" bson:"order_id"`
+	OrderType       types.Type         `json:"order_type" bson:"order_type"`
+	Price           float64            `json:"price" bson:"price"`
+	State           types.OrderStatus  `json:"state" bson:"state"`
+	Timestamp       int64              `json:"timestamp" bson:"timestamp"`
+	Api             bool               `json:"api"`
+	IndexPrice      float64            `json:"index_price" bson:"indexPrice"`
+	Label           string             `json:"label,omitempty" bson:"label"`
+	TickDirection   int                `json:"tick_direction" bson:"tickDirection"`
+	TradeSequence   int                `json:"trade_seq" bson:"tradeSequence"`
+	UnderlyingPrice float64            `json:"underlying_price"`
+	UnderlyingIndex string             `json:"underlying_index"`
 }
 
 type DeribitGetUserTradesByOrderResponse struct {
@@ -343,7 +345,8 @@ type DeribitGetOrderBookResponse struct {
 	Asks            []*_orderbookType.WsOrder `json:"asks"`
 	IndexPrice      *float64                  `json:"index_price"`
 	SettlementPrice *float64                  `json:"settlement_price"`
-	UnderlyingIndex *float64                  `json:"underlying_index"`
+	UnderlyingPrice *float64                  `json:"underlying_price"`
+	UnderlyingIndex string                    `json:"underlying_index"`
 }
 
 type TickerSubcriptionResponse struct {
@@ -361,7 +364,8 @@ type TickerSubcriptionResponse struct {
 	BestAskAmount   float64        `json:"best_ask_amount"`
 	IndexPrice      *float64       `json:"index_price"`
 	SettlementPrice *float64       `json:"settlement_price"`
-	UnderlyingIndex *float64       `json:"underlying_index"`
+	UnderlyingPrice *float64       `json:"underlying_price"`
+	UnderlyingIndex string         `json:"underlying_index"`
 }
 
 type DeribitGetLastTradesByInstrumentValue struct {
@@ -406,20 +410,22 @@ type DeribitGetUserTradesByInstrumentsRequest struct {
 }
 
 type DeribitGetUserTradesByInstruments struct {
-	TradeId        primitive.ObjectID `json:"trade_id" bson:"_id"`
-	Amount         float64            `json:"amount" bson:"amount"`
-	Direction      types.Side         `json:"direction" bson:"direction"`
-	InstrumentName string             `json:"instrument_name" bson:"InstrumentName"`
-	OrderId        primitive.ObjectID `json:"order_id" bson:"order_id"`
-	OrderType      types.Type         `json:"order_type" bson:"order_type"`
-	Price          float64            `json:"price" bson:"price"`
-	State          types.OrderStatus  `json:"state" bson:"state"`
-	Timestamp      int64              `json:"timestamp" bson:"timestamp"`
-	Api            bool               `json:"api"`
-	IndexPrice     float64            `json:"index_price" bson:"indexPrice"`
-	Label          string             `json:"label,omitempty" bson:"label"`
-	TickDirection  int                `json:"tick_direction" bson:"tickDirection"`
-	TradeSequence  int                `json:"trade_seq" bson:"tradeSequence"`
+	TradeId         primitive.ObjectID `json:"trade_id" bson:"_id"`
+	Amount          float64            `json:"amount" bson:"amount"`
+	Direction       types.Side         `json:"direction" bson:"direction"`
+	InstrumentName  string             `json:"instrument_name" bson:"InstrumentName"`
+	OrderId         primitive.ObjectID `json:"order_id" bson:"order_id"`
+	OrderType       types.Type         `json:"order_type" bson:"order_type"`
+	Price           float64            `json:"price" bson:"price"`
+	State           types.OrderStatus  `json:"state" bson:"state"`
+	Timestamp       int64              `json:"timestamp" bson:"timestamp"`
+	Api             bool               `json:"api"`
+	IndexPrice      float64            `json:"index_price" bson:"indexPrice"`
+	Label           string             `json:"label,omitempty" bson:"label"`
+	TickDirection   int                `json:"tick_direction" bson:"tickDirection"`
+	TradeSequence   int                `json:"trade_seq" bson:"tradeSequence"`
+	UnderlyingPrice float64            `json:"underlying_price"`
+	UnderlyingIndex string             `json:"underlying_index"`
 }
 
 type DeribitGetUserTradesByInstrumentsResponse struct {

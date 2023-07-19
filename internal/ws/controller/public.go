@@ -88,6 +88,8 @@ func (svc *wsHandler) auth(input interface{}, c *ws.Client) {
 		}
 		return
 	}
+	// Add timeout
+	go protocol.TimeOutProtocol(connKey)
 
 	var res any
 	var user *userType.User
@@ -177,6 +179,9 @@ func (svc *wsHandler) publicSubscribe(input interface{}, c *ws.Client) {
 		}
 		return
 	}
+
+	// Add timeout
+	go protocol.TimeOutProtocol(connKey)
 
 	const t = true
 	method := map[string]bool{"orderbook": t, "order": t, "trade": t, "trades": t, "quote": false, "book": t, "deribit_price_index": false, "ticker": t}
@@ -338,6 +343,8 @@ func (svc *wsHandler) getLastTradesByInstrument(input interface{}, c *ws.Client)
 		}
 		return
 	}
+	// Add timeout
+	go protocol.TimeOutProtocol(connKey)
 
 	instruments, err := utils.ParseInstruments(msg.Params.InstrumentName, false)
 	if err != nil {
@@ -381,6 +388,8 @@ func (svc *wsHandler) getIndexPrice(input interface{}, c *ws.Client) {
 		}
 		return
 	}
+	// Add timeout
+	go protocol.TimeOutProtocol(connKey)
 
 	if types.Pair(msg.Params.IndexName).IsValid() == false {
 		protocol.SendValidationMsg(connKey,
@@ -411,6 +420,8 @@ func (svc *wsHandler) getDeliveryPrices(input interface{}, c *ws.Client) {
 		}
 		return
 	}
+	// Add timeout
+	go protocol.TimeOutProtocol(connKey)
 
 	if types.Pair(msg.Params.IndexName).IsValid() == false {
 		protocol.SendValidationMsg(connKey,

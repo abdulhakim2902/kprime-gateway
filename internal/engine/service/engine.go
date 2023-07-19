@@ -289,21 +289,23 @@ func (svc engineHandler) PublishOrder(data _engineType.EngineResponse) {
 			for _, element := range data.Matches.Trades {
 				conversion, _ := utils.ConvertToFloat(element.Amount)
 				trades = append(trades, _engineType.BuySellEditTrade{
-					Advanced:       "usd",
-					Amount:         conversion,
-					Direction:      element.Side,
-					InstrumentName: instrumentName,
-					OrderId:        data.Matches.TakerOrder.ID,
-					OrderType:      types.Type(data.Matches.TakerOrder.Type),
-					Price:          element.Price,
-					State:          element.Status,
-					Timestamp:      utils.MakeTimestamp(element.CreatedAt),
-					TradeId:        element.ID,
-					Api:            true,
-					Label:          data.Matches.TakerOrder.Label,
-					TickDirection:  element.TickDirection,
-					TradeSequence:  element.TradeSequence,
-					IndexPrice:     element.IndexPrice,
+					Advanced:        "usd",
+					Amount:          conversion,
+					Direction:       element.Side,
+					InstrumentName:  instrumentName,
+					OrderId:         data.Matches.TakerOrder.ID,
+					OrderType:       types.Type(data.Matches.TakerOrder.Type),
+					Price:           element.Price,
+					State:           element.Status,
+					Timestamp:       utils.MakeTimestamp(element.CreatedAt),
+					TradeId:         element.ID,
+					Api:             true,
+					Label:           data.Matches.TakerOrder.Label,
+					TickDirection:   element.TickDirection,
+					TradeSequence:   element.TradeSequence,
+					IndexPrice:      element.IndexPrice,
+					UnderlyingPrice: element.IndexPrice,
+					UnderlyingIndex: "index_price",
 				})
 			}
 		}
@@ -318,7 +320,9 @@ func (svc engineHandler) PublishOrder(data _engineType.EngineResponse) {
 }
 
 func (svc engineHandler) PublishValidation(data _engineType.EngineResponse) {
-	ID, _ := strconv.ParseUint(data.Matches.TakerOrder.ClOrdID, 0, 64)
-	connKey := utils.GetKeyFromIdUserID(ID, data.Matches.TakerOrder.UserID)
-	protocol.SendValidationMsg(connKey, data.Validation, nil)
+	if data.Matches == nil {
+		ID, _ := strconv.ParseUint(data.Matches.TakerOrder.ClOrdID, 0, 64)
+		connKey := utils.GetKeyFromIdUserID(ID, data.Matches.TakerOrder.UserID)
+		protocol.SendValidationMsg(connKey, data.Validation, nil)
+	}
 }
