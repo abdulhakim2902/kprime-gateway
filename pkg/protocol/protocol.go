@@ -310,7 +310,12 @@ func doSend(key string, result any, err *ErrorMessage) bool {
 	}(collectorLabel, m.Error, m.UsDiff)
 
 	UnregisterProtocol(key)
-	channelTimeout[key] <- true
+	timeoutMutex.RLock()
+	timeout := channelTimeout[key]
+	timeoutMutex.RUnlock()
+	if timeout != nil {
+		channelTimeout[key] <- true
+	}
 
 	return true
 }
