@@ -118,10 +118,12 @@ func (h *DeribitHandler) buy(r *gin.Context) {
 	if err != nil {
 		if validation != nil {
 			sendInvalidRequestMessage(err, msg.Id, *validation, r)
+			protocol.UnregisterChannel(connKey)
 			return
 		}
 
 		sendInvalidRequestMessage(err, msg.Id, validation_reason.PARSE_ERROR, r)
+		protocol.UnregisterChannel(connKey)
 		return
 	}
 
@@ -211,10 +213,12 @@ func (h *DeribitHandler) sell(r *gin.Context) {
 	if err != nil {
 		if validation != nil {
 			sendInvalidRequestMessage(err, msg.Id, *validation, r)
+			protocol.UnregisterChannel(connKey)
 			return
 		}
 
 		sendInvalidRequestMessage(err, msg.Id, validation_reason.PARSE_ERROR, r)
+		protocol.UnregisterChannel(connKey)
 		return
 	}
 	res := <-channel
@@ -266,10 +270,12 @@ func (h *DeribitHandler) edit(r *gin.Context) {
 	if err != nil {
 		if reason != nil {
 			sendInvalidRequestMessage(err, msg.Id, *reason, r)
+			protocol.UnregisterChannel(connKey)
 			return
 		}
 
 		sendInvalidRequestMessage(err, msg.Id, validation_reason.PARSE_ERROR, r)
+		protocol.UnregisterChannel(connKey)
 		return
 	}
 
@@ -319,6 +325,7 @@ func (h *DeribitHandler) cancel(r *gin.Context) {
 	})
 	if err != nil {
 		sendInvalidRequestMessage(err, msg.Id, validation_reason.PARSE_ERROR, r)
+		protocol.UnregisterChannel(connKey)
 		return
 	}
 
@@ -366,6 +373,7 @@ func (h *DeribitHandler) cancelByInstrument(r *gin.Context) {
 	})
 	if err != nil {
 		protocol.SendErrMsg(connKey, err)
+		protocol.UnregisterChannel(connKey)
 		return
 	}
 
@@ -406,6 +414,7 @@ func (h *DeribitHandler) cancelAll(r *gin.Context) {
 	})
 	if err != nil {
 		protocol.SendErrMsg(connKey, err)
+		protocol.UnregisterChannel(connKey)
 		return
 	}
 

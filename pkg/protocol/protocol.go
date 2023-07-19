@@ -166,6 +166,15 @@ func UnregisterProtocol(key string) {
 	protocolMutex.Unlock()
 }
 
+func UnregisterChannel(key string) {
+	resultMutex.Lock()
+	delete(channelResults, key)
+	resultMutex.Unlock()
+	channelMutex.Lock()
+	delete(channelConnections, key)
+	channelMutex.Unlock()
+}
+
 func GetProtocol(key string) (bool, ProtocolRequest) {
 	protocolMutex.RLock()
 	defer protocolMutex.RUnlock()
