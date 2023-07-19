@@ -834,49 +834,71 @@ func sumAmount(data []MarketDataResponse, og []MarketDataResponse) (res []Market
 }
 
 func OnMatchingOrder(data types.EngineResponse) {
+	// No matches, then nothing to do
 	if data.Matches == nil {
 		return
 	}
 
+	// No trades, then nothing to do
 	if data.Matches.Trades == nil {
 		return
 	}
 
+	// This is the update, then only cares about maker
 	for _, trd := range data.Matches.MakerOrders {
 		if userSession == nil {
 			return
 		}
-		if userSession[trd.Order.UserID] == nil {
-			return
-		}
 
-		sessionID := userSession[data.Matches.Trades[0].MakerID]
+		// If the maker user ID doesnt have the session in the FIX
+		// then do nothing
+		sessionID := userSession[trd.Order.UserID]
 		if sessionID == nil {
 			return
 		}
-		order := data.Matches.TakerOrder
+
+		// order := data.Matches.TakerOrder
+		order := trd.Order
 		conversion, _ := utils.ConvertToFloat(order.FilledAmount)
+
+		// FIX Side
+		fixSide := enum.Side_BUY;
+		if (order.Side == _utilitiesType.BUY) {
+			fixSide = enum.Side_SELL;
+		}
+
+		// Exec type https://www.onixs.biz/fix-dictionary/4.4/tagnum_150.html
+		// FIX Order Status
+		fixStatus := enum.OrdStatus_NEW;
+		fixExecType := enum.ExecType_NEW;
+		if (order.Status == _utilitiesType.FILLED) {
+			fixStatus = enum.OrdStatus_FILLED
+			fixExecType = enum.ExecType_FILL;
+		} else if (order.Status == _utilitiesType.PARTIALLY_FILLED) {
+			fixStatus = enum.OrdStatus_PARTIALLY_FILLED
+			fixExecType = enum.ExecType_TRADE;
+		} else if (order.Status == _utilitiesType.CANCELLED) {
+			fixStatus = enum.OrdStatus_CANCELED
+			fixExecType = enum.ExecType_TRADE;
+		}	
+
 		msg := executionreport.New(
-			field.NewOrderID(trd.ID.String()),
+			field.NewOrderID(trd.ID.Hex()),
 			field.NewExecID(order.ClOrdID),
-			field.NewExecType(enum.ExecType(order.Status)),
-			field.NewOrdStatus(enum.OrdStatus(order.Status)),
-			field.NewSide(enum.Side(trd.Side)),
+			field.NewExecType(fixExecType),
+			field.NewOrdStatus(fixStatus),
+			field.NewSide(fixSide),
 			field.NewLeavesQty(decimal.NewFromFloat(trd.Amount), 2),
 			field.NewCumQty(decimal.NewFromFloat(conversion), 2),
 			field.NewAvgPx(decimal.NewFromFloat(trd.Price), 2),
 		)
-		if trd.Amount == 0 {
-			msg.SetOrdStatus(enum.OrdStatus_FILLED)
-		} else {
-			msg.SetOrdStatus(enum.OrdStatus_PARTIALLY_FILLED)
-		}
+
 		msg.SetClOrdID(trd.ClOrdID)
 		msg.SetLastPx(decimal.NewFromFloat(trd.Price), 2)
 		msg.SetLastQty(decimal.NewFromFloat(trd.Amount), 2)
 
 		if err := quickfix.SendToTarget(msg, *sessionID); err != nil {
-			logs.Log.Err(err).Msg("Error sending matchingoerder msg")
+			logs.Log.Err(err).Msg("Error notifying FIX session order")
 		}
 	}
 
@@ -1031,10 +1053,10 @@ func OrderConfirmation(userId string, order _orderbookType.Order, symbol string)
 	fixExecType := enum.ExecType_NEW;
 	if (order.Status == _utilitiesType.FILLED) {
 		fixStatus = enum.OrdStatus_FILLED
-		fixExecType = enum.ExecType_FILL;
+		fixExecType = enum.ExecType_TRADE;
 	} else if (order.Status == _utilitiesType.PARTIALLY_FILLED) {
 		fixStatus = enum.OrdStatus_PARTIALLY_FILLED
-		fixExecType = enum.ExecType_PARTIAL_FILL;
+		fixExecType = enum.ExecType_TRADE;
 	} else if (order.Status == _utilitiesType.CANCELLED) {
 		fixStatus = enum.OrdStatus_CANCELED
 		fixExecType = enum.ExecType_CANCELED;
