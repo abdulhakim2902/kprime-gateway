@@ -24,6 +24,7 @@ jobs:
 
       - name: Build App Image
         run: |
+          go get github.com/Undercurrent-Technologies/kprime-utilities
           go mod tidy
           docker build -t ${IMAGE_TAG} .
 
