@@ -264,6 +264,13 @@ func doSend(key string, result any, err *ErrorMessage) bool {
 
 		conn.WS.Send(msg)
 
+		timeoutMutex.RLock()
+		timeout := channelTimeout[key]
+		timeoutMutex.RUnlock()
+		if timeout != nil {
+			channelTimeout[key] <- true
+		}
+
 		break
 	case HTTP:
 		statusCode := http.StatusOK
@@ -310,12 +317,6 @@ func doSend(key string, result any, err *ErrorMessage) bool {
 	}(collectorLabel, m.Error, m.UsDiff)
 
 	UnregisterProtocol(key)
-	timeoutMutex.RLock()
-	timeout := channelTimeout[key]
-	timeoutMutex.RUnlock()
-	if timeout != nil {
-		channelTimeout[key] <- true
-	}
 
 	return true
 }
