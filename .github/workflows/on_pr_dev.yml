@@ -63,7 +63,7 @@ jobs:
             -e REDIS_HOST='redis' \
             -e REDIS_PORT='6379' \
             --network=test-network \
-            ${IMAGE_TAG}:pr-${PR_NUMBER}
+            ghcr.io/undercurrent-technologies/tests:dev
 
       - name: Cleanup
         run: docker-compose down -v
