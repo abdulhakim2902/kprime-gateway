@@ -35,6 +35,8 @@ jobs:
       
       - name: Run Tests
         run: |
+          echo ${ACCESS_TOKEN} | docker login ghcr.io -u USERNAME --password-stdin
+          
           docker-compose -f docker-compose.itest.yml up -d --force-recreate redis mongo zookeeper kafka seeder
           sleep 5
           docker-compose -f docker-compose.itest.yml up -d --force-recreate matching-engine pickup gateway
