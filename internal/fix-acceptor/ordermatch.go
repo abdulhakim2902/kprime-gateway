@@ -495,8 +495,10 @@ func (a *Application) onOrderMassCancelRequest(msg ordermasscancelrequest.OrderM
 
 	return nil
 }
-
+// 37 Order ID
+// 448 Party ID
 func (a *Application) onOrderCancelRequest(msg ordercancelrequest.OrderCancelRequest, sessionID quickfix.SessionID) quickfix.MessageRejectError {
+	fmt.Println("onOrderCancelRequest")
 	userId := ""
 	for i, v := range userSession {
 		if v.String() == sessionID.String() {
@@ -504,38 +506,44 @@ func (a *Application) onOrderCancelRequest(msg ordercancelrequest.OrderCancelReq
 		}
 	}
 
-	user, e := a.UserRepository.FindById(context.TODO(), userId)
-	if e != nil {
-		return quickfix.NewMessageRejectError("Failed getting user", 1, nil)
-	}
+	// user, e := a.UserRepository.FindById(context.TODO(), userId)
+	// if e != nil {
+	// 	return quickfix.NewMessageRejectError("Failed getting user", 1, nil)
+	// }
 
 	orderId, err := msg.GetOrderID()
 	if err != nil {
 		return err
 	}
 
-	clOrdID, err := msg.GetClOrdID()
-	if err != nil {
-		return err
-	}
+	// clOrdID, err := msg.GetClOrdID()
+	// if err != nil {
+	// 	return err
+	// }
 
-	symbol, err := msg.GetSymbol()
-	if err != nil {
-		return err
-	}
+	// symbol, err := msg.GetSymbol()
+	// if err != nil {
+	// 	return err
+	// }
 	var partyId quickfix.FIXString
 	msg.GetField(tag.PartyID, &partyId)
 
-	fmt.Println(partyId.String())
-
-	_, reason, r := a.DeribitService.DeribitRequest(context.TODO(), user.ID.Hex(), _deribitModel.DeribitRequest{
-		ID:             orderId,
-		ClOrdID:        clOrdID,
-		ClientId:       partyId.String(),
-		Side:           _utilitiesType.CANCEL,
-		InstrumentName: symbol,
-		Type:           _utilitiesType.LIMIT,
+		// TODO: party id
+	// Call cancel service
+	// Call service
+	_, r := a.DeribitService.DeribitParseCancel(context.Background(), userId, _deribitModel.DeribitCancelRequest{
+		Id:      orderId,
+		ClOrdID: partyId.String(),
 	})
+
+	// _, reason, r := a.DeribitService.DeribitRequest(context.TODO(), user.ID.Hex(), _deribitModel.DeribitRequest{
+	// 	ID:             orderId,
+	// 	ClOrdID:        clOrdID,
+	// 	ClientId:       partyId.String(),
+	// 	Side:           _utilitiesType.CANCEL,
+	// 	InstrumentName: symbol,
+	// 	Type:           _utilitiesType.LIMIT,
+	// })
 
 	if r != nil {
 		fmt.Println(r)
@@ -543,18 +551,18 @@ func (a *Application) onOrderCancelRequest(msg ordercancelrequest.OrderCancelReq
 		return quickfix.NewMessageRejectError("Failed to send cancel request", 1, nil)
 	}
 
-	if reason != nil {
-		a.sendOrderCancelReject(
-			field.NewOrderID(orderId),
-			field.NewClOrdID(clOrdID),
-			field.NewOrigClOrdID(clOrdID),
-			field.NewOrdStatus(enum.OrdStatus_REJECTED),
-			field.NewCxlRejResponseTo(enum.CxlRejResponseTo_ORDER_CANCEL_REQUEST),
-			field.NewText(reason.String()),
-			sessionID)
-		logs.Log.Err(r).Msg(fmt.Sprintf("Failed to send cancel request, %v", reason.String()))
-		return nil
-	}
+	// if reason != nil {
+	// 	a.sendOrderCancelReject(
+	// 		field.NewOrderID(orderId),
+	// 		field.NewClOrdID(clOrdID),
+	// 		field.NewOrigClOrdID(clOrdID),
+	// 		field.NewOrdStatus(enum.OrdStatus_REJECTED),
+	// 		field.NewCxlRejResponseTo(enum.CxlRejResponseTo_ORDER_CANCEL_REQUEST),
+	// 		field.NewText(reason.String()),
+	// 		sessionID)
+	// 	logs.Log.Err(r).Msg(fmt.Sprintf("Failed to send cancel request, %v", reason.String()))
+	// 	return nil
+	// }
 
 	return nil
 }
