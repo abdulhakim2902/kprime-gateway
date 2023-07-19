@@ -20,9 +20,9 @@ jobs:
       - name: Build App Image
         run: |
           docker build \
-           --build-arg ACCESS_USER=${ACCESS_USER} \
-           --build-arg ACCESS_TOKEN=${ACCESS_TOKEN} \
-          -t ${IMAGE_TAG}:pr-${PR_NUMBER} .
+            --build-arg ACCESS_USER=${ACCESS_USER} \
+            --build-arg ACCESS_TOKEN=${ACCESS_TOKEN} \
+            -t ${IMAGE_TAG}:pr-${PR_NUMBER} .
       
       - name: Prepare for test
         run: |
