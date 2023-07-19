@@ -1,0 +1,48 @@
+{
+    "base": [
+      {
+        "name": "btc",
+        "tickers": {
+          "btc_usd": [
+            {
+              "name": "coinbase",
+              "url": "https://api.pro.coinbase.com/products/BTC-USD/ticker"
+            },
+            {
+              "name": "bitfinex",
+              "url": "https://api.bitfinex.com/v1/pubticker/btcusd"
+            },
+            {
+              "name": "binance",
+              "url": "https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT"
+            }
+          ]
+        }
+      },
+      {
+        "name": "eth",
+        "tickers": {
+          "eth_usd": [
+            {
+              "name": "coinbase",
+              "url": "https://api.pro.coinbase.com/products/ETH-USD/ticker"
+            },
+            {
+              "name": "bitfinex",
+              "url": "https://api.bitfinex.com/v1/pubticker/ethusd"
+            },
+            {
+              "name": "binance",
+              "url": "https://api.binance.com/api/v3/ticker/price?symbol=ETHUSDT"
+            }
+          ]
+        }
+      }
+    ],
+    "quote": [
+      {
+        "name": "usd"
+      }
+    ]
+  }
+  
