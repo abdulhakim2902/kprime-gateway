@@ -2,6 +2,7 @@ FROM golang:alpine AS builder
 
 ARG ACCESS_USER
 ARG ACCESS_TOKEN
+ARG UTITLITIES
 
 ENV GOPRIVATE=github.com/Undercurrent-Technologies/kprime-utilities
 
@@ -26,6 +27,6 @@ COPY --from=builder /src/gateway .
 COPY --from=builder /src/internal/fix-acceptor/config/FIX44.xml .
 
 RUN mkdir -p /config/json
-COPY --from=builder /src/datasources/json/supported-currencies.json /config/json
+COPY --from=builder /src/${UTITLITIES}/config/json/supported-currencies.json /config/json
 
 CMD ["./gateway"]

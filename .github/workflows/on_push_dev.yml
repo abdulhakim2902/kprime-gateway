@@ -16,11 +16,17 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - run: git config --global url.https://${ACCESS_USER}:${ACCESS_TOKEN}@github.com/.insteadOf https://github.com
+      - name: Fetch utilities
+        run: |
+          git clone https://github.com/Undercurrent-Technologies/kprime-utilities.git
+
       - name: Build App Image
         run: |
           docker build \
             --build-arg ACCESS_USER=${ACCESS_USER} \
             --build-arg ACCESS_TOKEN=${ACCESS_TOKEN} \
+            --build-arg UTITLITIES=kprime-utilities \
             -t ${IMAGE_TAG} .
 
       - name: Push image to registry
