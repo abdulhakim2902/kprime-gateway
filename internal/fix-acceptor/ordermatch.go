@@ -592,6 +592,7 @@ func (a *Application) sendOrderCancelReject(
 func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataRequest, sessionID quickfix.SessionID) (err quickfix.MessageRejectError) {
 	subs, _ := msg.GetSubscriptionRequestType()
 
+	// 0 = BID, 1 = ASK, 2 = TRADE
 	mdEntryTypes := marketdatarequest.NewNoMDEntryTypesRepeatingGroup()
 	err = msg.GetGroup(mdEntryTypes)
 	if err != nil {
@@ -616,74 +617,85 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 		}
 	}
 
+
 	// loop based on symbol requested
 	for i := 0; i < noRelatedsym.Len(); i++ {
 		response := []MarketDataResponse{}
 		sym, _ := noRelatedsym.Get(i).GetSymbol()
 
+		// Split Instrument Name
+		splits := strings.Split(sym, "-")
+		price, _ := strconv.ParseFloat(splits[2], 64)
+
+		// Get Order Book (bids and asks)
+		_order := _orderbookType.GetOrderBook{
+			InstrumentName: sym,
+			Underlying:     splits[0],
+			ExpiryDate:     splits[1],
+			StrikePrice:    price,
+		}
+		_orderbook := a.OrderRepository.GetOrderBook(_order)
+		fmt.Printf("%+v\n", _orderbook.Asks)
+
+		fmt.Println("bid %v", _orderbook.Bids)
+		fmt.Println("InstrumentName", _orderbook.InstrumentName)
+		fmt.Println("InstrumentName", _orderbook.InstrumentName)
+
+		// 0 means BID / BUY
 		if utils.ArrContains(entries, "0") {
-			asks := a.OrderRepository.GetMarketData(sym, "BUY")
-			for _, ask := range asks {
-				if ask.Status == "FILLED" {
-					continue
-				}
+			// asks := a.OrderRepository.GetMarketData(sym, "buy")
+			// Loop Order Book Bids
+			for _, bid := range _orderbook.Bids {
 				response = append(response, MarketDataResponse{
-					Price:  ask.Price,
-					Amount: ask.Amount - ask.FilledAmount,
-					Side:   ask.Side,
-					InstrumentName: ask.Underlying + "-" + ask.ExpirationDate + "-" + strconv.FormatFloat(ask.StrikePrice, 'f', 0, 64) +
-						"-" + string(ask.Contracts)[0:1],
-					Date: ask.CreatedAt.String(),
-					Type: "ASK",
+					Price: bid.Price,
+					Amount: bid.Amount,
+					Side: "buy",
+					InstrumentName: sym,
+					Type: "bid",
 				})
 			}
 		}
 
+		// 1 means ASK / sell
 		if utils.ArrContains(entries, "1") {
-			bids := a.OrderRepository.GetMarketData(sym, "SELL")
-			for _, bid := range bids {
-				if bid.Status == "FILLED" {
-					continue
-				}
+			for _, ask := range _orderbook.Asks {
 				response = append(response, MarketDataResponse{
-					Price:  bid.Price,
-					Amount: bid.Amount - bid.FilledAmount,
-					Side:   bid.Side,
-					InstrumentName: bid.Underlying + "-" + bid.ExpirationDate + "-" + strconv.FormatFloat(bid.StrikePrice, 'f', 0, 64) +
-						"-" + string(bid.Contracts)[0:1],
-					Date: bid.CreatedAt.String(),
-					Type: "BID",
+					Price: ask.Price,
+					Amount: ask.Amount,
+					Side: "sell",
+					InstrumentName: sym,
+					Type: "ask",
 				})
 			}
 
 		}
 
-		if utils.ArrContains(entries, "2") {
-			splits := strings.Split(sym, "-")
-			price, _ := strconv.ParseFloat(splits[2], 64)
-			trades, _ := a.TradeRepository.Find(bson.M{
-				"underlying":  splits[0],
-				"expiryDate":  splits[1],
-				"strikePrice": price,
-				"status":      "success",
-			}, nil, 0, -1)
-			for _, trade := range trades {
-				conversion, _ := utils.ConvertToFloat(trade.Amount)
-				response = append(response, MarketDataResponse{
-					Price:  trade.Price,
-					Amount: conversion,
-					Side:   trade.Side,
-					InstrumentName: trade.Underlying + "-" + trade.ExpiryDate + "-" + strconv.FormatFloat(trade.StrikePrice, 'f', 0, 64) +
-						"-" + string(trade.Contracts)[0:1],
-					Date:    trade.CreatedAt.String(),
-					Type:    "TRADE",
-					MakerID: trade.Maker.OrderID.Hex(),
-					TakerID: trade.Taker.OrderID.Hex(),
-					Status:  string(trade.Status),
-				})
-			}
-		}
-
+		// if utils.ArrContains(entries, "2") {
+		// 	splits := strings.Split(sym, "-")
+		// 	price, _ := strconv.ParseFloat(splits[2], 64)
+		// 	trades, _ := a.TradeRepository.Find(bson.M{
+		// 		"underlying":  splits[0],
+		// 		"expiryDate":  splits[1],
+		// 		"strikePrice": price,
+		// 		"status":      "success",
+		// 	}, nil, 0, -1)
+		// 	for _, trade := range trades {
+		// 		conversion, _ := utils.ConvertToFloat(trade.Amount)
+		// 		response = append(response, MarketDataResponse{
+		// 			Price:  trade.Price,
+		// 			Amount: conversion,
+		// 			Side:   trade.Side,
+		// 			InstrumentName: trade.Underlying + "-" + trade.ExpiryDate + "-" + strconv.FormatFloat(trade.StrikePrice, 'f', 0, 64) +
+		// 				"-" + string(trade.Contracts)[0:1],
+		// 			Date:    trade.CreatedAt.String(),
+		// 			Type:    "TRADE",
+		// 			MakerID: trade.Maker.OrderID.Hex(),
+		// 			TakerID: trade.Taker.OrderID.Hex(),
+		// 			Status:  string(trade.Status),
+		// 		})
+		// 	}
+		// }
+fmt.Println("lebresoib", len(response))
 		if len(response) == 0 {
 			continue
 		}
@@ -706,6 +718,7 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 
 		}
 		snap.SetNoMDEntries(grp)
+		fmt.Println("SENDING")
 		error := quickfix.SendToTarget(snap, sessionID)
 		if error != nil {
 			logs.Log.Err(error).Msg("Error sending market data")
