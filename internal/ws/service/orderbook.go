@@ -400,7 +400,7 @@ func (svc wsOrderbookService) SubscribeTicker(c *ws.Client, channel, instrument,
 
 	dataQuote := svc.GetBestPrice(orderBook, instrument)
 
-	orderBookValue, indexPrice := svc.GetDataOrderBook(_order, dataQuote)
+	orderBookValue, indexPrice, markData := svc.GetDataOrderBook(_order, dataQuote)
 
 	results := _deribitModel.TickerSubcriptionResponse{
 		InstrumentName: orderBook.InstrumentName,
@@ -426,8 +426,14 @@ func (svc wsOrderbookService) SubscribeTicker(c *ws.Client, channel, instrument,
 			Tetha: orderBookValue.GreeksTetha,
 			Rho:   orderBookValue.GreeksRho,
 		},
+		MarkPrice: &markData.MarkPrice,
+		MarkIv:    &markData.MarkIv,
 	}
 
+	if markData.MarkPrice == 0 {
+		results.MarkPrice = nil
+		results.MarkIv = nil
+	}
 	if len(indexPrice) > 0 {
 		results.IndexPrice = &indexPrice[0].Price
 		results.UnderlyingPrice = &indexPrice[0].Price
@@ -451,7 +457,7 @@ func (svc wsOrderbookService) SubscribeTicker(c *ws.Client, channel, instrument,
 	socket.SendInitMessage(c, method, params)
 }
 
-func (svc wsOrderbookService) GetDataOrderBook(_order _orderbookTypes.GetOrderBook, dataQuote _orderbookTypes.QuoteMessage) (_orderbookTypes.OrderBookData, []*_engineTypes.RawPrice) {
+func (svc wsOrderbookService) GetDataOrderBook(_order _orderbookTypes.GetOrderBook, dataQuote _orderbookTypes.QuoteMessage) (_orderbookTypes.OrderBookData, []*_engineTypes.RawPrice, _orderbookTypes.MarkData) {
 	//check state
 	dateString := _order.ExpiryDate
 	layout := "02Jan06"
@@ -562,7 +568,14 @@ func (svc wsOrderbookService) GetDataOrderBook(_order _orderbookTypes.GetOrderBo
 		GreeksTetha:  _getGreeksTetha,
 		GreeksRho:    _getGreeksRho,
 	}
-	return value, _getIndexPrice
+
+	markData := _orderbookTypes.MarkData{}
+	if dataQuote.BestAskPrice != 0 && dataQuote.BestBidPrice != 0 {
+		markData.MarkPrice = (dataQuote.BestAskPrice + dataQuote.BestBidPrice) / 2
+		markData.MarkIv = svc.tradeRepository.GetImpliedVolatility(float64(markData.MarkPrice), optionPrice, float64(underlyingPrice), float64(_order.StrikePrice), float64(dateValue))
+	}
+
+	return value, _getIndexPrice, markData
 }
 
 func (svc wsOrderbookService) GetDataQuote(order _orderbookTypes.GetOrderBook) (_orderbookTypes.QuoteMessage, _orderbookTypes.Orderbook) {
@@ -960,7 +973,7 @@ func (svc wsOrderbookService) HandleConsumeTicker(_instrument string, interval s
 	dataQuote := svc.GetBestPrice(orderBook, _instrument)
 
 	//check state
-	orderBookValue, indexPrice := svc.GetDataOrderBook(_order, dataQuote)
+	orderBookValue, indexPrice, markData := svc.GetDataOrderBook(_order, dataQuote)
 
 	results := _deribitModel.TickerSubcriptionResponse{
 		InstrumentName: orderBook.InstrumentName,
@@ -986,6 +999,13 @@ func (svc wsOrderbookService) HandleConsumeTicker(_instrument string, interval s
 			Tetha: orderBookValue.GreeksTetha,
 			Rho:   orderBookValue.GreeksRho,
 		},
+		MarkPrice: &markData.MarkPrice,
+		MarkIv:    &markData.MarkIv,
+	}
+
+	if markData.MarkPrice == 0 {
+		results.MarkPrice = nil
+		results.MarkIv = nil
 	}
 
 	if len(indexPrice) > 0 {
@@ -1062,7 +1082,7 @@ func (svc wsOrderbookService) HandleConsumeUserTicker100ms(instrument string) {
 
 					dataQuote := svc.GetBestPrice(orderBook, instrument)
 
-					orderBookValue, indexPrice := svc.GetDataOrderBook(_order, dataQuote)
+					orderBookValue, indexPrice, markData := svc.GetDataOrderBook(_order, dataQuote)
 
 					results := _deribitModel.TickerSubcriptionResponse{
 						InstrumentName: orderBook.InstrumentName,
@@ -1088,6 +1108,13 @@ func (svc wsOrderbookService) HandleConsumeUserTicker100ms(instrument string) {
 							Tetha: orderBookValue.GreeksTetha,
 							Rho:   orderBookValue.GreeksRho,
 						},
+						MarkPrice: &markData.MarkPrice,
+						MarkIv:    &markData.MarkIv,
+					}
+
+					if markData.MarkPrice == 0 {
+						results.MarkPrice = nil
+						results.MarkIv = nil
 					}
 
 					if len(indexPrice) > 0 {
@@ -1144,7 +1171,7 @@ func (svc wsOrderbookService) GetOrderBook(ctx context.Context, data _deribitMod
 
 	dataQuote, orderBook := svc.GetDataQuote(_order)
 
-	orderBookValue, indexPrice := svc.GetDataOrderBook(_order, dataQuote)
+	orderBookValue, indexPrice, markData := svc.GetDataOrderBook(_order, dataQuote)
 
 	results := _deribitModel.DeribitGetOrderBookResponse{
 		InstrumentName: orderBook.InstrumentName,
@@ -1172,6 +1199,13 @@ func (svc wsOrderbookService) GetOrderBook(ctx context.Context, data _deribitMod
 			Tetha: orderBookValue.GreeksTetha,
 			Rho:   orderBookValue.GreeksRho,
 		},
+		MarkPrice: &markData.MarkPrice,
+		MarkIv:    &markData.MarkIv,
+	}
+
+	if markData.MarkPrice == 0 {
+		results.MarkPrice = nil
+		results.MarkIv = nil
 	}
 
 	if len(indexPrice) > 0 {

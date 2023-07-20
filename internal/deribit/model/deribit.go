@@ -347,6 +347,8 @@ type DeribitGetOrderBookResponse struct {
 	SettlementPrice *float64                  `json:"settlement_price"`
 	UnderlyingPrice *float64                  `json:"underlying_price"`
 	UnderlyingIndex string                    `json:"underlying_index"`
+	MarkPrice       *float64                  `json:"mark_price"`
+	MarkIv          *float64                  `json:"mark_iv"`
 }
 
 type TickerSubcriptionResponse struct {
@@ -366,6 +368,8 @@ type TickerSubcriptionResponse struct {
 	SettlementPrice *float64       `json:"settlement_price"`
 	UnderlyingPrice *float64       `json:"underlying_price"`
 	UnderlyingIndex string         `json:"underlying_index"`
+	MarkPrice       *float64       `json:"mark_price"`
+	MarkIv          *float64       `json:"mark_iv"`
 }
 
 type DeribitGetLastTradesByInstrumentValue struct {
