@@ -20,7 +20,7 @@ jobs:
       - run: git config --global url.https://${ACCESS_USER}:${ACCESS_TOKEN}@github.com/.insteadOf https://github.com
       - name: Fetch utilities
         run: |
-          git clone https://github.com/undercurrent-technologies/utilities.git
+          git clone https://github.com/Undercurrent-Technologies/kprime-utilities.git
           ls
 
       # - name: Build App Image
