@@ -151,15 +151,19 @@ func TimeOutProtocol(key string) {
 	channelTimeout[key] = make(chan bool)
 	timeoutMutex.Unlock()
 
+timeoutTicker:
 	for {
 		select {
 		case <-channelTimeout[key]:
 			ticker.Stop()
 			delete(channelTimeout, key)
-			return
+			break timeoutTicker
 		case <-ticker.C:
+			ticker.Stop()
+			delete(channelTimeout, key)
 			err := errors.New(validation_reason.TIME_OUT.String())
 			SendValidationMsg(key, validation_reason.TIME_OUT, err)
+			break timeoutTicker
 		}
 	}
 }
