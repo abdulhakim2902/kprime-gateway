@@ -12,6 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	orderType "github.com/Undercurrent-Technologies/kprime-utilities/models/order"
+	_types "github.com/Undercurrent-Technologies/kprime-utilities/types"
 
 	_engineType "gateway/internal/engine/types"
 	ordermatch "gateway/internal/fix-acceptor"
@@ -240,10 +241,10 @@ func (svc orderbookHandler) HandleConsumeBook(msg *sarama.ConsumerMessage) {
 		bidsData = make([][]interface{}, 0)
 	}
 	// Check on order cancel
-	if order.Status == "CANCELLED" {
+	if string(order.Status) == string(_types.CANCELLED) {
 		// Check if price point deleted
 		switch order.Side {
-		case "BUY":
+		case _types.BUY:
 			if amount, ok := changeId.Bids[fmt.Sprintf("%f", order.Price)]; ok {
 				if amount-order.Amount == 0 {
 					var bidData []interface{}
@@ -253,7 +254,7 @@ func (svc orderbookHandler) HandleConsumeBook(msg *sarama.ConsumerMessage) {
 					bidsData = append(bidsData, bidData)
 				}
 			}
-		case "SELL":
+		case _types.SELL:
 			if amount, ok := changeId.Asks[fmt.Sprintf("%f", order.Price)]; ok {
 				if amount-order.Amount == 0 {
 					var askData []interface{}
@@ -264,9 +265,9 @@ func (svc orderbookHandler) HandleConsumeBook(msg *sarama.ConsumerMessage) {
 				}
 			}
 		}
-	} else if order.Status == "FILLED" { // Check on filled order
+	} else if string(order.Status) == string(_types.FILLED) { // Check on filled order
 		switch order.Side {
-		case "BUY":
+		case _types.BUY:
 			if amount, ok := changeId.Asks[fmt.Sprintf("%f", order.Price)]; ok {
 				if amount-order.Amount == 0 {
 					var askData []interface{}
@@ -276,7 +277,7 @@ func (svc orderbookHandler) HandleConsumeBook(msg *sarama.ConsumerMessage) {
 					asksData = append(asksData, askData)
 				}
 			}
-		case "SELL":
+		case _types.SELL:
 			if amount, ok := changeId.Bids[fmt.Sprintf("%f", order.Price)]; ok {
 				if amount-order.Amount == 0 {
 					var bidData []interface{}
@@ -291,7 +292,7 @@ func (svc orderbookHandler) HandleConsumeBook(msg *sarama.ConsumerMessage) {
 		// Check on order edit
 		updated := order.Amendments[len(order.Amendments)-1].UpdatedFields
 		switch order.Side {
-		case "BUY":
+		case _types.BUY:
 			if val, ok := updated["price"]; ok {
 				if _, ok := changeId.Bids[fmt.Sprintf("%f", val.OldValue)]; ok {
 					// check if old price point deleted
@@ -304,7 +305,7 @@ func (svc orderbookHandler) HandleConsumeBook(msg *sarama.ConsumerMessage) {
 					}
 				}
 			}
-		case "SELL":
+		case _types.SELL:
 			if val, ok := updated["price"]; ok {
 				if _, ok := changeId.Asks[fmt.Sprintf("%f", val.OldValue)]; ok {
 					// check if old price point deleted
@@ -407,13 +408,13 @@ func (svc orderbookHandler) HandleConsumeBookCancel(msg *sarama.ConsumerMessage)
 		_instrument = order.Underlying + "-" + order.ExpiryDate + "-" + fmt.Sprintf("%.0f", order.StrikePrice) + "-" + string(order.Contracts[0])
 		if val, ok := books[_instrument]; !ok {
 			switch order.Side {
-			case "BUY":
+			case _types.BUY:
 				bid := types.WsOrder{
 					Amount: order.Amount,
 					Price:  order.Price,
 				}
 				bids[order.Price] = bid
-			case "SELL":
+			case _types.SELL:
 				ask := types.WsOrder{
 					Amount: order.Amount,
 					Price:  order.Price,
@@ -427,7 +428,7 @@ func (svc orderbookHandler) HandleConsumeBookCancel(msg *sarama.ConsumerMessage)
 			}
 		} else {
 			switch order.Side {
-			case "BUY":
+			case _types.BUY:
 				bid := types.WsOrder{
 					Amount: order.Amount,
 					Price:  order.Price,
@@ -438,7 +439,7 @@ func (svc orderbookHandler) HandleConsumeBookCancel(msg *sarama.ConsumerMessage)
 					v.Amount = v.Amount + order.Amount
 					val.Bids[order.Price] = v
 				}
-			case "SELL":
+			case _types.SELL:
 				ask := types.WsOrder{
 					Amount: order.Amount,
 					Price:  order.Price,
@@ -813,10 +814,10 @@ func (svc orderbookHandler) HandleConsumeBookAgg(_instrument string, order types
 		}
 	} else {
 		// Check on order cancel
-		if order.Status == "CANCELLED" {
+		if string(order.Status) == string(_types.CANCELLED) {
 			// Check if price point deleted
 			switch order.Side {
-			case "BUY":
+			case _types.BUY:
 				if amount, ok := changeId.BidsAgg[fmt.Sprintf("%f", order.Price)]; ok {
 					if amount-order.Amount == 0 {
 						var bidData []interface{}
@@ -826,7 +827,7 @@ func (svc orderbookHandler) HandleConsumeBookAgg(_instrument string, order types
 						bidsData = append(bidsData, bidData)
 					}
 				}
-			case "SELL":
+			case _types.SELL:
 				if amount, ok := changeId.AsksAgg[fmt.Sprintf("%f", order.Price)]; ok {
 					if amount-order.Amount == 0 {
 						var askData []interface{}
@@ -837,9 +838,9 @@ func (svc orderbookHandler) HandleConsumeBookAgg(_instrument string, order types
 					}
 				}
 			}
-		} else if order.Status == "FILLED" { // Check on filled order
+		} else if string(order.Status) == string(_types.FILLED) { // Check on filled order
 			switch order.Side {
-			case "BUY":
+			case _types.BUY:
 				if amount, ok := changeId.AsksAgg[fmt.Sprintf("%f", order.Price)]; ok {
 					if amount-order.Amount == 0 {
 						var askData []interface{}
@@ -849,7 +850,7 @@ func (svc orderbookHandler) HandleConsumeBookAgg(_instrument string, order types
 						asksData = append(asksData, askData)
 					}
 				}
-			case "SELL":
+			case _types.SELL:
 				if amount, ok := changeId.BidsAgg[fmt.Sprintf("%f", order.Price)]; ok {
 					if amount-order.Amount == 0 {
 						var bidData []interface{}
@@ -864,7 +865,7 @@ func (svc orderbookHandler) HandleConsumeBookAgg(_instrument string, order types
 			// Check on order edit
 			updated := order.Amendments[len(order.Amendments)-1].UpdatedFields
 			switch order.Side {
-			case "BUY":
+			case _types.BUY:
 				if val, ok := updated["price"]; ok {
 					if _, ok := changeId.BidsAgg[fmt.Sprintf("%f", val.OldValue)]; ok {
 						// check if old price point deleted
@@ -877,7 +878,7 @@ func (svc orderbookHandler) HandleConsumeBookAgg(_instrument string, order types
 						}
 					}
 				}
-			case "SELL":
+			case _types.SELL:
 				if val, ok := updated["price"]; ok {
 					if _, ok := changeId.AsksAgg[fmt.Sprintf("%f", val.OldValue)]; ok {
 						// check if old price point deleted
@@ -1109,10 +1110,10 @@ func (svc orderbookHandler) Handle100msInterval(instrument string) {
 							}
 						}
 					} else {
-						if changeIdLocalVar.Status == "CANCELLED" {
+						if string(changeIdLocalVar.Status) == string(_types.CANCELLED) {
 							// Check if price point deleted
 							switch changeIdLocalVar.Side {
-							case "BUY":
+							case _types.BUY:
 								if amount, ok := changeId.Bids100[fmt.Sprintf("%f", changeIdLocalVar.Price)]; ok {
 									if amount-changeIdLocalVar.Amount == 0 {
 										var bidData []interface{}
@@ -1122,7 +1123,7 @@ func (svc orderbookHandler) Handle100msInterval(instrument string) {
 										bidsData = append(bidsData, bidData)
 									}
 								}
-							case "SELL":
+							case _types.SELL:
 								if amount, ok := changeId.Asks100[fmt.Sprintf("%f", changeIdLocalVar.Price)]; ok {
 									if amount-changeIdLocalVar.Amount == 0 {
 										var askData []interface{}
@@ -1133,9 +1134,9 @@ func (svc orderbookHandler) Handle100msInterval(instrument string) {
 									}
 								}
 							}
-						} else if changeIdLocalVar.Status == "FILLED" { // Check on filled order
+						} else if string(changeIdLocalVar.Status) == string(_types.FILLED) { // Check on filled order
 							switch changeIdLocalVar.Side {
-							case "BUY":
+							case _types.BUY:
 								if amount, ok := changeId.Asks100[fmt.Sprintf("%f", changeIdLocalVar.Price)]; ok {
 									if amount-changeIdLocalVar.Amount == 0 {
 										var askData []interface{}
@@ -1145,7 +1146,7 @@ func (svc orderbookHandler) Handle100msInterval(instrument string) {
 										asksData = append(asksData, askData)
 									}
 								}
-							case "SELL":
+							case _types.SELL:
 								if amount, ok := changeId.Bids100[fmt.Sprintf("%f", changeIdLocalVar.Price)]; ok {
 									if amount-changeIdLocalVar.Amount == 0 {
 										var bidData []interface{}
@@ -1160,7 +1161,7 @@ func (svc orderbookHandler) Handle100msInterval(instrument string) {
 							// Check on order edit
 							updated := changeIdLocalVar.Amendments[len(changeIdLocalVar.Amendments)-1].UpdatedFields
 							switch changeIdLocalVar.Side {
-							case "BUY":
+							case _types.BUY:
 								if val, ok := updated["price"]; ok {
 									if _, ok := changeId.Bids100[fmt.Sprintf("%f", val.OldValue)]; ok {
 										// check if old price point deleted
@@ -1174,7 +1175,7 @@ func (svc orderbookHandler) Handle100msInterval(instrument string) {
 										}
 									}
 								}
-							case "SELL":
+							case _types.SELL:
 								if val, ok := updated["price"]; ok {
 									if _, ok := changeId.Asks100[fmt.Sprintf("%f", val.OldValue)]; ok {
 										// check if old price point deleted
