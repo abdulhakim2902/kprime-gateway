@@ -156,11 +156,15 @@ timeoutTicker:
 		select {
 		case <-channelTimeout[key]:
 			ticker.Stop()
+			timeoutMutex.Lock()
 			delete(channelTimeout, key)
+			timeoutMutex.Unlock()
 			break timeoutTicker
 		case <-ticker.C:
 			ticker.Stop()
+			timeoutMutex.Lock()
 			delete(channelTimeout, key)
+			timeoutMutex.Unlock()
 			err := errors.New(validation_reason.TIME_OUT.String())
 			SendValidationMsg(key, validation_reason.TIME_OUT, err)
 			break timeoutTicker
