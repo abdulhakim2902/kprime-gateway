@@ -20,6 +20,8 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o gateway main.go
 
 FROM alpine:latest AS final
 
+ARG UTITLITIES
+
 RUN apk add --no-cache tzdata
 ENV TZ=Asia/Singapore
 
