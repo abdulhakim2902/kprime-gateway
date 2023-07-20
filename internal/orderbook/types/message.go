@@ -155,3 +155,8 @@ type OrderBookData struct {
 	GreeksTetha  float64
 	GreeksRho    float64
 }
+
+type MarkData struct {
+	MarkPrice float64 `json:"mark_price"`
+	MarkIv    float64 `json:"mark_iv"`
+}
