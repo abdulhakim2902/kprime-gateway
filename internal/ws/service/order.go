@@ -294,6 +294,16 @@ func (svc wsOrderService) Subscribe(c *ws.Client, key string) {
 	socket.SendInitMessage(c, initData)
 }
 
+// SubscribeUserOrder asyncApi
+// @summary Notification user orders changes
+// @description Get notifications about changes in user's orders for given instrument.
+// @payload model.SubscribeChannelParameters
+// @x-response model.SubscribeChannelResponse
+// @contentType application/json
+// @auth private
+// @queue user.orders.{instrument_name}.{interval}
+// @method user.orders.instrument_name.interval
+// @tags private subscribe orders
 func (svc wsOrderService) SubscribeUserOrder(c *ws.Client, channel string, userId string) {
 	socket := ws.GetOrderSocket()
 	key := strings.Split(channel, ".")

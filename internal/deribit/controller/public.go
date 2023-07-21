@@ -45,8 +45,13 @@ type Params struct {
 // auth asyncApi
 // @summary authenticate user
 // @description authenticate user with client_key and client_secrets
-// @payload deribitModel.RequestDto[Params]
+// @payload types.AuthParams
+// @x-response types.AuthResponse
 // @contentType application/json
+// @auth public
+// @queue public/auth
+// @method auth
+// @tags public auth
 func (h *DeribitHandler) auth(r *gin.Context) {
 	var msg deribitModel.RequestDto[Params]
 	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {

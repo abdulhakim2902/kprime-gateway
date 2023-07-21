@@ -69,8 +69,10 @@ func validateSignatureAuth(params userType.AuthParams, connKey string) {
 // @description endpoint: `ws://localhost:8080/ws/api/v2` with method public/auth
 // @payload types.AuthParams
 // @x-response types.AuthResponse
-// @queue auth
-// @tags auth
+// @auth public
+// @queue public/auth
+// @method auth
+// @tags public auth
 // @contentType application/json
 func (svc *wsHandler) auth(input interface{}, c *ws.Client) {
 	var msg deribitModel.RequestDto[userType.AuthParams]
