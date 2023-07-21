@@ -12,6 +12,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"gateway/pkg/constant"
 
 	confType "github.com/Undercurrent-Technologies/kprime-utilities/config/types"
 	"github.com/Undercurrent-Technologies/kprime-utilities/types"
@@ -196,6 +198,13 @@ func (svc *wsHandler) edit(input interface{}, c *ws.Client) {
 		} else {
 			c.SendInvalidRequestMessage(err)
 		}
+		return
+	}
+
+	// Validate order id, make sure it's a valid order id (Mongodb object id)
+	_, err = primitive.ObjectIDFromHex(msg.Params.OrderId)
+	if err != nil {
+		c.SendInvalidRequestMessage(errors.New(constant.INVALID_ORDER_ID))
 		return
 	}
 
