@@ -15,7 +15,6 @@ import (
 	"gateway/pkg/utils"
 
 	"github.com/Undercurrent-Technologies/kprime-utilities/commons/logs"
-	"github.com/Undercurrent-Technologies/kprime-utilities/models/order"
 	utilType "github.com/Undercurrent-Technologies/kprime-utilities/types"
 	"github.com/gin-gonic/gin"
 	"github.com/hashicorp/go-uuid"
@@ -143,16 +142,16 @@ func (svc *userService) SyncMemDB(ctx context.Context, filter interface{}) (err 
 	}
 
 	for _, user := range users {
-		var typeInclusions []order.TypeInclusions
+		var typeInclusions []schema.TypeInclusions
 		for _, orderType := range user.OrderTypes {
-			typeInclusions = append(typeInclusions, order.TypeInclusions{
+			typeInclusions = append(typeInclusions, schema.TypeInclusions{
 				Name: orderType.Name,
 			})
 		}
 
-		var orderExclusions []order.OrderExclusion
+		var orderExclusions []schema.OrderExclusion
 		for _, item := range user.OrderExclusions {
-			orderExclusions = append(orderExclusions, order.OrderExclusion{
+			orderExclusions = append(orderExclusions, schema.OrderExclusion{
 				UserID: item.UserID,
 			})
 		}

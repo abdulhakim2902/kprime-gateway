@@ -1,16 +1,24 @@
 package schema
 
 import (
-	"github.com/Undercurrent-Technologies/kprime-utilities/models/order"
 	"github.com/Undercurrent-Technologies/kprime-utilities/types"
 	"github.com/hashicorp/go-memdb"
 )
 
+type OrderExclusion struct {
+	UserID string `json:"userId" bson:"userId"`
+}
+
+type TypeInclusions struct {
+	Name string `json:"name" bson:"name"`
+	ID   string `json:"id" bson:"_id"`
+}
+
 type User struct {
-	ID              string                 `json:"id"`
-	OrderExclusions []order.OrderExclusion `json:"order_exclusions"`
-	TypeInclusions  []order.TypeInclusions `json:"type_inclustion"`
-	Role            types.UserRole         `json:"role"`
+	ID              string           `json:"id"`
+	OrderExclusions []OrderExclusion `json:"order_exclusions"`
+	TypeInclusions  []TypeInclusions `json:"type_inclustion"`
+	Role            types.UserRole   `json:"role"`
 }
 
 type UserCredential struct {
