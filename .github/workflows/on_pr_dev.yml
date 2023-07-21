@@ -43,6 +43,10 @@ jobs:
             ghcr.io/undercurrent-technologies/seeder:dev -- user,balance
           sleep 3
           docker-compose -f docker-compose.itest.yml up -d --force-recreate matching-engine pickup gateway
+          sleep 10
+          docker-compose -f docker-compose.itest.yml logs -f --tail 10 gateway
+          docker-compose -f docker-compose.itest.yml logs -f --tail 10 matching-engine
+          docker-compose -f docker-compose.itest.yml logs -f --tail 10 pickup
 
       - name: Run test
         run: |
