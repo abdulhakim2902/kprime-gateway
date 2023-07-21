@@ -102,26 +102,24 @@ func (svc deribitService) DeribitRequest(
 	}
 
 	payload := model.DeribitResponse{
-		ID:              data.ID,
-		UserId:          userId,
-		ClientId:        data.ClientId,
-		Underlying:      instruments.Underlying,
-		ExpirationDate:  instruments.ExpDate,
-		StrikePrice:     instruments.Strike,
-		Type:            types.Type(strings.ToLower(string(data.Type))),
-		Side:            data.Side,
-		ClOrdID:         data.ClOrdID,
-		Price:           data.Price,
-		Amount:          data.Amount,
-		Contracts:       instruments.Contracts,
-		TimeInForce:     _timeInForce,
-		Label:           data.Label,
-		MaxShow:         data.MaxShow,
-		ReduceOnly:      data.ReduceOnly,
-		PostOnly:        data.PostOnly,
-		UserRole:        userCast.Role,
-		OrderExclusions: userCast.OrderExclusions,
-		TypeInclusions:  userCast.TypeInclusions,
+		ID:             data.ID,
+		UserId:         userId,
+		ClientId:       data.ClientId,
+		Underlying:     instruments.Underlying,
+		ExpirationDate: instruments.ExpDate,
+		StrikePrice:    instruments.Strike,
+		Type:           types.Type(strings.ToLower(string(data.Type))),
+		Side:           data.Side,
+		ClOrdID:        data.ClOrdID,
+		Price:          data.Price,
+		Amount:         data.Amount,
+		Contracts:      instruments.Contracts,
+		TimeInForce:    _timeInForce,
+		Label:          data.Label,
+		MaxShow:        data.MaxShow,
+		ReduceOnly:     data.ReduceOnly,
+		PostOnly:       data.PostOnly,
+		UserRole:       userCast.Role,
 	}
 	if data.EnableCancel {
 		payload.ConnectionId = data.ConnectionId
@@ -144,35 +142,14 @@ func (svc deribitService) DeribitRequest(
 
 func (svc deribitService) DeribitParseEdit(ctx context.Context, userId string, data model.DeribitEditRequest) (*model.DeribitEditResponse, *validation_reason.ValidationReason, error) {
 
-	user, err := memdb.Schemas.User.FindOne("id", userId)
-	if err != nil {
-		logs.Log.Error().Err(err).Msg("")
-		reason := validation_reason.OTHER
-
-		return nil, &reason, err
-	}
-
-	if user == nil {
-		reason := validation_reason.UNAUTHORIZED
-		return nil, &reason, errors.New(reason.String())
-	}
-
-	userCast, ok := user.(userSchema.User)
-	if !ok {
-		reason := validation_reason.UNAUTHORIZED
-		return nil, &reason, errors.New(reason.String())
-	}
-
 	edit := model.DeribitEditResponse{
-		Id:              data.Id,
-		UserId:          userId,
-		ClientId:        "",
-		Side:            string(types.EDIT),
-		ClOrdID:         data.ClOrdID,
-		Price:           data.Price,
-		Amount:          data.Amount,
-		OrderExclusions: userCast.OrderExclusions,
-		TypeInclusions:  userCast.TypeInclusions,
+		Id:       data.Id,
+		UserId:   userId,
+		ClientId: "",
+		Side:     string(types.EDIT),
+		ClOrdID:  data.ClOrdID,
+		Price:    data.Price,
+		Amount:   data.Amount,
 	}
 
 	_edit, err := json.Marshal(edit)

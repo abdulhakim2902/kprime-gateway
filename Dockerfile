@@ -1,13 +1,35 @@
-From golang:1.18
+FROM golang:alpine AS builder
 
-WORKDIR /go/src/app
+ARG ACCESS_USER
+ARG ACCESS_TOKEN
+ARG UTITLITIES
 
-COPY . .
+ENV GOPRIVATE=github.com/Undercurrent-Technologies/kprime-utilities
 
-RUN git config  --global url."https://oauth2:${ACCESS_TOKEN}@git.devucc.name".insteadOf "https://git.devucc.name"
+RUN apk add git
 
-RUN go build -o main main.go
+RUN git config --global url.https://${ACCESS_USER}:${ACCESS_TOKEN}@github.com/.insteadOf https://github.com
 
-EXPOSE 8080
+RUN mkdir /src
+ADD . /src
+WORKDIR /src
 
-CMD ["./main"]
+# RUN go mod tidy
+
+RUN CGO_ENABLED=0 GOOS=linux go build -o gateway main.go
+
+FROM alpine:latest AS final
+
+ARG UTITLITIES
+
+RUN apk add --no-cache tzdata
+ENV TZ=Asia/Singapore
+ENV IMAGE=true
+
+COPY --from=builder /src/gateway .
+COPY --from=builder /src/internal/fix-acceptor/config/FIX44.xml .
+
+RUN mkdir -p /config/json
+COPY --from=builder /src/${UTITLITIES}/config/json/supported-currencies.json /config/json
+
+CMD ["./gateway"]
