@@ -112,6 +112,7 @@ type MarketDataResponse struct {
 	InstrumentName string                   `json:"instrumentName"`
 	Side           _utilitiesType.Side      `json:"side"`
 	Contract       _utilitiesType.Contracts `json:"contract"`
+	EntryType       enum.MDEntryType `json:"entryType"`
 	Price          float64                  `json:"price"`
 	Amount         float64                  `json:"amount"`
 	Date           string                   `json:"date"`
@@ -650,6 +651,7 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 					Price: bid.Price,
 					Amount: bid.Amount,
 					Side: "buy",
+					EntryType: enum.MDEntryType_BID,
 					InstrumentName: sym,
 					Type: "bid",
 				})
@@ -663,6 +665,7 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 					Price: ask.Price,
 					Amount: ask.Amount,
 					Side: "sell",
+					EntryType: enum.MDEntryType_OFFER,
 					InstrumentName: sym,
 					Type: "ask",
 				})
@@ -695,7 +698,7 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 		// 		})
 		// 	}
 		// }
-fmt.Println("lebresoib", len(response))
+
 		if len(response) == 0 {
 			continue
 		}
@@ -710,12 +713,11 @@ fmt.Println("lebresoib", len(response))
 		a.redis.Set("MARKETDATA-"+response[0].InstrumentName, string(bytes))
 		for _, res := range response {
 			row := grp.Add()
-			row.SetMDEntryType(enum.MDEntryType(res.Side))
-			row.SetMDEntrySize(decimal.NewFromFloat(res.Amount), 2)
-			row.SetMDEntryPx(decimal.NewFromFloat(res.Price), 2)
+			row.SetMDEntryType(res.EntryType) // 269
+			row.SetMDEntrySize(decimal.NewFromFloat(res.Amount), 2) // 271
+			row.SetMDEntryPx(decimal.NewFromFloat(res.Price), 2) // 270
 			row.SetMDEntryDate(res.Date)
 			row.SetOrderID(res.MakerID)
-
 		}
 		snap.SetNoMDEntries(grp)
 		fmt.Println("SENDING")
