@@ -48,6 +48,8 @@ jobs:
           docker-compose -f docker-compose.itest.yml logs --tail 10 matching-engine
           docker-compose -f docker-compose.itest.yml logs --tail 10 pickup
 
+          docker network ls
+
       - name: Run test
         run: |
           docker run --rm \
