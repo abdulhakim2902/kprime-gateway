@@ -112,7 +112,7 @@ func (svc *userService) syncMemDB(c *gin.Context) {
 				logs.Log.Error().Err(err).Msg(err.Error())
 			}
 			logs.Log.Error().Msg(fmt.Sprintf("%s id failed to sync to engine", id))
-			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("%s id failed to sync to engine", id)})
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("%s id failed to sync to engine %s", id, err.Error())})
 			return
 		}
 	}
