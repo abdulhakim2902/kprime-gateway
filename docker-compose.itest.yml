@@ -99,6 +99,7 @@ services:
       - MATCHING_ENGINE_URL=http://matching-engine:8002
       - PROTECT_BASIC=*
       - PROTECT_IP_WHITELISTS=*
+      - PROTECT_BASIC_ENGINE=*
       - RATE_LIMITER_MAX_REQUESTS=100
       - RATE_LIMITER_DURATION=1
     networks:
