@@ -10,6 +10,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"github.com/Undercurrent-Technologies/kprime-utilities/commons/logs"
 
 	engInt "gateway/internal/engine/service"
 	_engineType "gateway/internal/engine/types"
@@ -88,13 +89,13 @@ func KafkaConsumer(
 }
 
 func handleTopicOrder(oSvc oInt.IwsOrderService, message *sarama.ConsumerMessage) {
-	fmt.Printf("Received message from ORDER: %s\n", string(message.Value))
+	logs.Log.Info().Msg(fmt.Sprintf("Received message from ORDER: %s\n", string(message.Value)))
 
 	str := string(message.Value)
 	var data _engineType.EngineResponse
 	err := json.Unmarshal([]byte(str), &data)
 	if err != nil {
-		fmt.Println("Error parsing JSON:", err)
+		logs.Log.Error().Err(err).Msg("Error parsing JSON")
 		return
 	}
 
