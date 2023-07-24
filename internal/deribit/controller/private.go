@@ -492,7 +492,18 @@ func (h *DeribitHandler) getUserTradeByInstrument(r *gin.Context) {
 func (h *DeribitHandler) getOpenOrdersByInstrument(r *gin.Context) {
 	var msg deribitModel.RequestDto[deribitModel.GetOpenOrdersByInstrumentParams]
 	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
-		r.AbortWithError(http.StatusBadRequest, err)
+		errMsg := protocol.ErrorMessage{
+			Message:        err.Error(),
+			Data:           protocol.ReasonMessage{},
+			HttpStatusCode: http.StatusBadRequest,
+		}
+		m := protocol.RPCResponseMessage{
+			JSONRPC: "2.0",
+			ID:      msg.Id,
+			Error:   &errMsg,
+			Testnet: true,
+		}
+		r.AbortWithStatusJSON(http.StatusBadRequest, m)
 		return
 	}
 
