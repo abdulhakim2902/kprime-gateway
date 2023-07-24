@@ -304,6 +304,7 @@ func (svc wsOrderService) Subscribe(c *ws.Client, key string) {
 // @queue user.orders.{instrument_name}.{interval}
 // @method user.orders.instrument_name.interval
 // @tags private subscribe orders
+// @operation subscribe
 func (svc wsOrderService) SubscribeUserOrder(c *ws.Client, channel string, userId string) {
 	socket := ws.GetOrderSocket()
 	key := strings.Split(channel, ".")
