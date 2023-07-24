@@ -359,7 +359,35 @@ func (h *DeribitHandler) cancel(r *gin.Context) {
 func (h *DeribitHandler) cancelByInstrument(r *gin.Context) {
 	var msg deribitModel.RequestDto[deribitModel.CancelByInstrumentParams]
 	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
-		r.AbortWithError(http.StatusBadRequest, err)
+		errMsg := protocol.ErrorMessage{
+			Message:        err.Error(),
+			Data:           protocol.ReasonMessage{},
+			HttpStatusCode: http.StatusBadRequest,
+		}
+		m := protocol.RPCResponseMessage{
+			JSONRPC: "2.0",
+			ID:      msg.Id,
+			Error:   &errMsg,
+			Testnet: true,
+		}
+		r.AbortWithStatusJSON(http.StatusBadRequest, m)
+		return
+	}
+
+	_, err := utils.ParseInstruments(msg.Params.InstrumentName, false)
+	if err != nil {
+		errMsg := protocol.ErrorMessage{
+			Message:        err.Error(),
+			Data:           protocol.ReasonMessage{},
+			HttpStatusCode: http.StatusBadRequest,
+		}
+		m := protocol.RPCResponseMessage{
+			JSONRPC: "2.0",
+			ID:      msg.Id,
+			Error:   &errMsg,
+			Testnet: true,
+		}
+		r.AbortWithStatusJSON(http.StatusBadRequest, m)
 		return
 	}
 
@@ -374,13 +402,6 @@ func (h *DeribitHandler) cancelByInstrument(r *gin.Context) {
 		return
 	}
 
-	_, err = utils.ParseInstruments(msg.Params.InstrumentName, false)
-	if err != nil {
-		protocol.SendValidationMsg(connKey,
-			validation_reason.INVALID_PARAMS, err)
-		return
-	}
-
 	channel := make(chan protocol.RPCResponseMessage)
 	ctx, _ := context.WithTimeout(context.Background(), constant.TIMEOUT)
 	go protocol.RegisterChannel(connKey, channel, ctx)
@@ -388,6 +409,7 @@ func (h *DeribitHandler) cancelByInstrument(r *gin.Context) {
 	// Call service
 	_, err = h.svc.DeribitCancelByInstrument(r.Request.Context(), userID, deribitModel.DeribitCancelByInstrumentRequest{
 		InstrumentName: msg.Params.InstrumentName,
+		Type:           types.Type(msg.Params.Type),
 		ClOrdID:        strconv.FormatUint(msg.Id, 10),
 	})
 	if err != nil {

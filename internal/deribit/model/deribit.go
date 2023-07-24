@@ -43,8 +43,9 @@ type CancelParams struct {
 }
 
 type CancelByInstrumentParams struct {
-	AccessToken    string `json:"access_token" form:"access_token"`
-	InstrumentName string `json:"instrument_name" form:"instrument_name"`
+	AccessToken    string     `json:"access_token" form:"access_token"`
+	InstrumentName string     `json:"instrument_name" form:"instrument_name" validate:"required"`
+	Type           types.Side `json:"type" form:"type"`
 }
 
 type CancelOnDisconnectParams struct {
@@ -235,11 +236,13 @@ type DeribitCancelByInstrumentResponse struct {
 	Side           string          `json:"side"`
 	Contracts      types.Contracts `json:"contracts"`
 	ClOrdID        string          `json:"clOrdID"`
+	Type           types.Type      `json:"type"`
 }
 
 type DeribitCancelByInstrumentRequest struct {
-	InstrumentName string `json:"instrument_name" validate:"required"`
-	ClOrdID        string `json:"clOrdID"`
+	InstrumentName string     `json:"instrument_name" validate:"required"`
+	Type           types.Type `json:"type"`
+	ClOrdID        string     `json:"clOrdID"`
 }
 
 type DeribitEditRequest struct {
