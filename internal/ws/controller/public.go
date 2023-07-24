@@ -21,6 +21,10 @@ import (
 	"github.com/Undercurrent-Technologies/kprime-utilities/types/validation_reason"
 )
 
+// @title K-Prime Gateway API Documentation
+// @version API Version 2
+// @description Welcome to the K-Prime API Documentation! You can use our API to access K-Prime API endpoints, which can get informationin our database. We have language bindings in Shell! You can view code examples in the dark area to the right
+
 func (handler *wsHandler) RegisterPublic() {
 	ws.RegisterChannel("public/auth", middleware.MiddlewaresWrapper(handler.auth, middleware.RateLimiterWs))
 	ws.RegisterChannel("public/subscribe", middleware.MiddlewaresWrapper(handler.publicSubscribe, middleware.RateLimiterWs))
@@ -34,19 +38,7 @@ func (handler *wsHandler) RegisterPublic() {
 	ws.RegisterChannel("public/get_time", middleware.MiddlewaresWrapper(handler.publicGetTime, middleware.RateLimiterWs))
 }
 
-type Params struct {
-	GrantType    string `json:"grant_type" validate:"required"`
-	ClientID     string `json:"client_id"`
-	ClientSecret string `json:"client_secret"`
-	RefreshToken string `json:"refresh_token"`
-
-	Signature string `json:"signature"`
-	Timestamp string `json:"timestamp"`
-	Nonce     string `json:"nonce"`
-	Data      string `json:"data"`
-}
-
-func validateSignatureAuth(params Params, connKey string) {
+func validateSignatureAuth(params userType.AuthParams, connKey string) {
 	if params.ClientID == "" {
 		protocol.SendValidationMsg(connKey,
 			validation_reason.INVALID_PARAMS, errors.New("client_id is a required field"))
@@ -72,8 +64,16 @@ func validateSignatureAuth(params Params, connKey string) {
 	}
 }
 
+// auth asyncApi
+// @summary This endpoint is use for login and get the access_token.
+// @description endpoint: `ws://localhost:8080/ws/api/v2` with method public/auth
+// @payload types.AuthParams
+// @x-response types.AuthResponse
+// @queue auth
+// @tags auth
+// @contentType application/json
 func (svc *wsHandler) auth(input interface{}, c *ws.Client) {
-	var msg deribitModel.RequestDto[Params]
+	var msg deribitModel.RequestDto[userType.AuthParams]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
 		c.SendInvalidRequestMessage(err)
 		return

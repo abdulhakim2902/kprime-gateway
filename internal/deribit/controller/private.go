@@ -9,6 +9,7 @@ import (
 
 	confType "github.com/Undercurrent-Technologies/kprime-utilities/config/types"
 	"github.com/Undercurrent-Technologies/kprime-utilities/types"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 
 	deribitModel "gateway/internal/deribit/model"
 	"gateway/pkg/constant"
@@ -234,6 +235,24 @@ func (h *DeribitHandler) edit(r *gin.Context) {
 	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
 		errMsg := protocol.ErrorMessage{
 			Message:        err.Error(),
+			Data:           protocol.ReasonMessage{},
+			HttpStatusCode: http.StatusBadRequest,
+		}
+		m := protocol.RPCResponseMessage{
+			JSONRPC: "2.0",
+			ID:      msg.Id,
+			Error:   &errMsg,
+			Testnet: true,
+		}
+		r.AbortWithStatusJSON(http.StatusBadRequest, m)
+		return
+	}
+
+	// Validate order id, make sure it's a valid order id (Mongodb object id)
+	_, err := primitive.ObjectIDFromHex(msg.Params.OrderId)
+	if err != nil {
+		errMsg := protocol.ErrorMessage{
+			Message:        constant.INVALID_ORDER_ID,
 			Data:           protocol.ReasonMessage{},
 			HttpStatusCode: http.StatusBadRequest,
 		}
@@ -473,7 +492,18 @@ func (h *DeribitHandler) getUserTradeByInstrument(r *gin.Context) {
 func (h *DeribitHandler) getOpenOrdersByInstrument(r *gin.Context) {
 	var msg deribitModel.RequestDto[deribitModel.GetOpenOrdersByInstrumentParams]
 	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
-		r.AbortWithError(http.StatusBadRequest, err)
+		errMsg := protocol.ErrorMessage{
+			Message:        err.Error(),
+			Data:           protocol.ReasonMessage{},
+			HttpStatusCode: http.StatusBadRequest,
+		}
+		m := protocol.RPCResponseMessage{
+			JSONRPC: "2.0",
+			ID:      msg.Id,
+			Error:   &errMsg,
+			Testnet: true,
+		}
+		r.AbortWithStatusJSON(http.StatusBadRequest, m)
 		return
 	}
 

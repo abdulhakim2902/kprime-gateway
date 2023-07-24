@@ -10,4 +10,5 @@ const (
 	INVALID_INDEX_NAME          = "invalid_index_name"
 	INVALID_CHANNEL             = "invalid_channel"
 	INVALID_INTERVAL            = "invalid_interval"
+	INVALID_ORDER_ID            = "invalid_order_id"
 )
