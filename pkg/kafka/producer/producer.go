@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/Shopify/sarama"
+	"github.com/Undercurrent-Technologies/kprime-utilities/commons/logs"
 )
 
 func KafkaProducer(obj string, topic string) {
@@ -17,7 +18,7 @@ func KafkaProducer(obj string, topic string) {
 
 	producer, err := sarama.NewSyncProducer([]string{os.Getenv("KAFKA_BROKER")}, config)
 	if err != nil {
-		panic(err)
+		logs.Log.Error().Err(err).Msg("failed to create producer")
 	}
 	defer producer.Close()
 
@@ -30,7 +31,7 @@ func KafkaProducer(obj string, topic string) {
 
 	partition, offset, err := producer.SendMessage(message)
 	if err != nil {
-		panic(err)
+		logs.Log.Error().Err(err).Msg("failed to send message")
 	}
 
 	// Metrics

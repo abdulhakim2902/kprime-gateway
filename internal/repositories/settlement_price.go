@@ -85,7 +85,8 @@ func (r SettlementPriceRepository) GetLatestSettlementPrice(underlying, expDate 
 
 	trades, err := r.Find(tradesQuery, tradesSort, 0, 1)
 	if err != nil {
-		panic(err)
+		logs.Log.Error().Err(err).Msg("")
+		return nil
 	}
 
 	return trades
