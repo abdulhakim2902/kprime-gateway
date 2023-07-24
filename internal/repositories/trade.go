@@ -884,7 +884,8 @@ func (r TradeRepository) GetLastTrades(o _orderbookType.GetOrderBook) []*_engine
 
 	trades, err := r.Find(tradesQuery, tradesSort, 0, -1)
 	if err != nil {
-		panic(err)
+		logs.Log.Error().Err(err).Msg("")
+		return nil
 	}
 
 	return trades
@@ -914,7 +915,8 @@ func (r TradeRepository) GetHighLowTrades(o _orderbookType.GetOrderBook, t int) 
 
 	trades, err := r.Find(tradesQuery, tradesSort, 0, -1)
 	if err != nil {
-		panic(err)
+		logs.Log.Error().Err(err).Msg("")
+		return nil
 	}
 
 	return trades
@@ -944,7 +946,8 @@ func (r TradeRepository) Get24HoursTrades(o _orderbookType.GetOrderBook) []*_eng
 
 	trades, err := r.Find(tradesQuery, tradesSort, 0, -1)
 	if err != nil {
-		panic(err)
+		logs.Log.Error().Err(err).Msg("")
+		return nil
 	}
 
 	return trades
