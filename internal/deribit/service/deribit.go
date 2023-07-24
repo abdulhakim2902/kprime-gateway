@@ -205,6 +205,7 @@ func (svc deribitService) DeribitCancelByInstrument(ctx context.Context, userId 
 		Contracts:      instruments.Contracts,
 		Side:           string(types.CANCEL_ALL_BY_INSTRUMENT),
 		ClOrdID:        data.ClOrdID,
+		Type:           data.Type,
 	}
 
 	_cancel, err := json.Marshal(cancel)

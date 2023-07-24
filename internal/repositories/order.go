@@ -349,7 +349,7 @@ func (r OrderRepository) GetOpenOrdersByInstrument(InstrumentName string, OrderT
 
 	query := bson.M{
 		"$match": bson.M{
-			"orderState":     bson.M{"$in": []types.OrderStatus{types.OPEN, types.PARTIALLY_FILLED}},
+			"orderState":     bson.M{"$in": []types.OrderStatus{types.OPEN}},
 			"userId":         userId,
 			"InstrumentName": InstrumentName,
 		},
