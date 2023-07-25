@@ -69,33 +69,6 @@ func (r OrderRepository) Find(filter interface{}, sort interface{}, offset, limi
 	return orders, nil
 }
 
-func (r OrderRepository) GetAvailableInstruments(currency string) ([]_deribitModel.DeribitResponse, error) {
-	cur, err := r.collection.Find(context.Background(), bson.M{
-		"underlying": currency,
-	})
-	if err != nil {
-		logs.Log.Error().Err(err).Msg("")
-
-		return []_deribitModel.DeribitResponse{}, err
-	}
-
-	if err = cur.Err(); err != nil {
-		logs.Log.Error().Err(err).Msg("")
-
-		return []_deribitModel.DeribitResponse{}, err
-	}
-
-	orders := []_deribitModel.DeribitResponse{}
-
-	if err = cur.All(context.TODO(), &orders); err != nil {
-		logs.Log.Error().Err(err).Msg("")
-
-		return []_deribitModel.DeribitResponse{}, nil
-	}
-
-	return orders, nil
-}
-
 func (r OrderRepository) GetInstruments(userId, currency string, expired bool) ([]*_deribitModel.DeribitGetInstrumentsResponse, error) {
 	user, reason, err := memdb.MDBFindUserById(userId)
 	if err != nil {

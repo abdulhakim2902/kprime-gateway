@@ -112,6 +112,7 @@ type MarketDataResponse struct {
 	InstrumentName string                   `json:"instrumentName"`
 	Side           _utilitiesType.Side      `json:"side"`
 	Contract       _utilitiesType.Contracts `json:"contract"`
+	EntryType      enum.MDEntryType         `json:"entryType"`
 	Price          float64                  `json:"price"`
 	Amount         float64                  `json:"amount"`
 	Date           string                   `json:"date"`
@@ -496,7 +497,10 @@ func (a *Application) onOrderMassCancelRequest(msg ordermasscancelrequest.OrderM
 	return nil
 }
 
+// 37 Order ID
+// 448 Party ID
 func (a *Application) onOrderCancelRequest(msg ordercancelrequest.OrderCancelRequest, sessionID quickfix.SessionID) quickfix.MessageRejectError {
+	fmt.Println("onOrderCancelRequest")
 	userId := ""
 	for i, v := range userSession {
 		if v.String() == sessionID.String() {
@@ -504,38 +508,44 @@ func (a *Application) onOrderCancelRequest(msg ordercancelrequest.OrderCancelReq
 		}
 	}
 
-	user, e := a.UserRepository.FindById(context.TODO(), userId)
-	if e != nil {
-		return quickfix.NewMessageRejectError("Failed getting user", 1, nil)
-	}
+	// user, e := a.UserRepository.FindById(context.TODO(), userId)
+	// if e != nil {
+	// 	return quickfix.NewMessageRejectError("Failed getting user", 1, nil)
+	// }
 
 	orderId, err := msg.GetOrderID()
 	if err != nil {
 		return err
 	}
 
-	clOrdID, err := msg.GetClOrdID()
-	if err != nil {
-		return err
-	}
+	// clOrdID, err := msg.GetClOrdID()
+	// if err != nil {
+	// 	return err
+	// }
 
-	symbol, err := msg.GetSymbol()
-	if err != nil {
-		return err
-	}
+	// symbol, err := msg.GetSymbol()
+	// if err != nil {
+	// 	return err
+	// }
 	var partyId quickfix.FIXString
 	msg.GetField(tag.PartyID, &partyId)
 
-	fmt.Println(partyId.String())
-
-	_, reason, r := a.DeribitService.DeribitRequest(context.TODO(), user.ID.Hex(), _deribitModel.DeribitRequest{
-		ID:             orderId,
-		ClOrdID:        clOrdID,
-		ClientId:       partyId.String(),
-		Side:           _utilitiesType.CANCEL,
-		InstrumentName: symbol,
-		Type:           _utilitiesType.LIMIT,
+	// TODO: party id
+	// Call cancel service
+	// Call service
+	_, r := a.DeribitService.DeribitParseCancel(context.Background(), userId, _deribitModel.DeribitCancelRequest{
+		Id:      orderId,
+		ClOrdID: partyId.String(),
 	})
+
+	// _, reason, r := a.DeribitService.DeribitRequest(context.TODO(), user.ID.Hex(), _deribitModel.DeribitRequest{
+	// 	ID:             orderId,
+	// 	ClOrdID:        clOrdID,
+	// 	ClientId:       partyId.String(),
+	// 	Side:           _utilitiesType.CANCEL,
+	// 	InstrumentName: symbol,
+	// 	Type:           _utilitiesType.LIMIT,
+	// })
 
 	if r != nil {
 		fmt.Println(r)
@@ -543,18 +553,18 @@ func (a *Application) onOrderCancelRequest(msg ordercancelrequest.OrderCancelReq
 		return quickfix.NewMessageRejectError("Failed to send cancel request", 1, nil)
 	}
 
-	if reason != nil {
-		a.sendOrderCancelReject(
-			field.NewOrderID(orderId),
-			field.NewClOrdID(clOrdID),
-			field.NewOrigClOrdID(clOrdID),
-			field.NewOrdStatus(enum.OrdStatus_REJECTED),
-			field.NewCxlRejResponseTo(enum.CxlRejResponseTo_ORDER_CANCEL_REQUEST),
-			field.NewText(reason.String()),
-			sessionID)
-		logs.Log.Err(r).Msg(fmt.Sprintf("Failed to send cancel request, %v", reason.String()))
-		return nil
-	}
+	// if reason != nil {
+	// 	a.sendOrderCancelReject(
+	// 		field.NewOrderID(orderId),
+	// 		field.NewClOrdID(clOrdID),
+	// 		field.NewOrigClOrdID(clOrdID),
+	// 		field.NewOrdStatus(enum.OrdStatus_REJECTED),
+	// 		field.NewCxlRejResponseTo(enum.CxlRejResponseTo_ORDER_CANCEL_REQUEST),
+	// 		field.NewText(reason.String()),
+	// 		sessionID)
+	// 	logs.Log.Err(r).Msg(fmt.Sprintf("Failed to send cancel request, %v", reason.String()))
+	// 	return nil
+	// }
 
 	return nil
 }
@@ -584,6 +594,7 @@ func (a *Application) sendOrderCancelReject(
 func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataRequest, sessionID quickfix.SessionID) (err quickfix.MessageRejectError) {
 	subs, _ := msg.GetSubscriptionRequestType()
 
+	// 0 = BID, 1 = ASK, 2 = TRADE
 	mdEntryTypes := marketdatarequest.NewNoMDEntryTypesRepeatingGroup()
 	err = msg.GetGroup(mdEntryTypes)
 	if err != nil {
@@ -613,68 +624,80 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 		response := []MarketDataResponse{}
 		sym, _ := noRelatedsym.Get(i).GetSymbol()
 
+		// Split Instrument Name
+		splits := strings.Split(sym, "-")
+		price, _ := strconv.ParseFloat(splits[2], 64)
+
+		// Get Order Book (bids and asks)
+		_order := _orderbookType.GetOrderBook{
+			InstrumentName: sym,
+			Underlying:     splits[0],
+			ExpiryDate:     splits[1],
+			StrikePrice:    price,
+		}
+		_orderbook := a.OrderRepository.GetOrderBook(_order)
+		fmt.Printf("%+v\n", _orderbook.Asks)
+
+		fmt.Println("bid %v", _orderbook.Bids)
+		fmt.Println("InstrumentName", _orderbook.InstrumentName)
+		fmt.Println("InstrumentName", _orderbook.InstrumentName)
+
+		// 0 means BID / BUY
 		if utils.ArrContains(entries, "0") {
-			asks := a.OrderRepository.GetMarketData(sym, "BUY")
-			for _, ask := range asks {
-				if ask.Status == "FILLED" {
-					continue
-				}
+			// asks := a.OrderRepository.GetMarketData(sym, "buy")
+			// Loop Order Book Bids
+			for _, bid := range _orderbook.Bids {
 				response = append(response, MarketDataResponse{
-					Price:  ask.Price,
-					Amount: ask.Amount - ask.FilledAmount,
-					Side:   ask.Side,
-					InstrumentName: ask.Underlying + "-" + ask.ExpirationDate + "-" + strconv.FormatFloat(ask.StrikePrice, 'f', 0, 64) +
-						"-" + string(ask.Contracts)[0:1],
-					Date: ask.CreatedAt.String(),
-					Type: "ASK",
+					Price:          bid.Price,
+					Amount:         bid.Amount,
+					Side:           "buy",
+					EntryType:      enum.MDEntryType_BID,
+					InstrumentName: sym,
+					Type:           "bid",
 				})
 			}
 		}
 
+		// 1 means ASK / sell
 		if utils.ArrContains(entries, "1") {
-			bids := a.OrderRepository.GetMarketData(sym, "SELL")
-			for _, bid := range bids {
-				if bid.Status == "FILLED" {
-					continue
-				}
+			for _, ask := range _orderbook.Asks {
 				response = append(response, MarketDataResponse{
-					Price:  bid.Price,
-					Amount: bid.Amount - bid.FilledAmount,
-					Side:   bid.Side,
-					InstrumentName: bid.Underlying + "-" + bid.ExpirationDate + "-" + strconv.FormatFloat(bid.StrikePrice, 'f', 0, 64) +
-						"-" + string(bid.Contracts)[0:1],
-					Date: bid.CreatedAt.String(),
-					Type: "BID",
+					Price:          ask.Price,
+					Amount:         ask.Amount,
+					Side:           "sell",
+					EntryType:      enum.MDEntryType_OFFER,
+					InstrumentName: sym,
+					Type:           "ask",
 				})
 			}
 
 		}
 
-		if utils.ArrContains(entries, "2") {
-			splits := strings.Split(sym, "-")
-			price, _ := strconv.ParseFloat(splits[2], 64)
-			trades, _ := a.TradeRepository.Find(bson.M{
-				"underlying":  splits[0],
-				"expiryDate":  splits[1],
-				"strikePrice": price,
-				"status":      "success",
-			}, nil, 0, -1)
-			for _, trade := range trades {
-				conversion, _ := utils.ConvertToFloat(trade.Amount)
-				response = append(response, MarketDataResponse{
-					Price:  trade.Price,
-					Amount: conversion,
-					Side:   trade.Side,
-					InstrumentName: trade.Underlying + "-" + trade.ExpiryDate + "-" + strconv.FormatFloat(trade.StrikePrice, 'f', 0, 64) +
-						"-" + string(trade.Contracts)[0:1],
-					Date:    trade.CreatedAt.String(),
-					Type:    "TRADE",
-					MakerID: trade.Maker.OrderID.Hex(),
-					TakerID: trade.Taker.OrderID.Hex(),
-					Status:  string(trade.Status),
-				})
-			}
-		}
+		// if utils.ArrContains(entries, "2") {
+		// 	splits := strings.Split(sym, "-")
+		// 	price, _ := strconv.ParseFloat(splits[2], 64)
+		// 	trades, _ := a.TradeRepository.Find(bson.M{
+		// 		"underlying":  splits[0],
+		// 		"expiryDate":  splits[1],
+		// 		"strikePrice": price,
+		// 		"status":      "success",
+		// 	}, nil, 0, -1)
+		// 	for _, trade := range trades {
+		// 		conversion, _ := utils.ConvertToFloat(trade.Amount)
+		// 		response = append(response, MarketDataResponse{
+		// 			Price:  trade.Price,
+		// 			Amount: conversion,
+		// 			Side:   trade.Side,
+		// 			InstrumentName: trade.Underlying + "-" + trade.ExpiryDate + "-" + strconv.FormatFloat(trade.StrikePrice, 'f', 0, 64) +
+		// 				"-" + string(trade.Contracts)[0:1],
+		// 			Date:    trade.CreatedAt.String(),
+		// 			Type:    "TRADE",
+		// 			MakerID: trade.Maker.OrderID.Hex(),
+		// 			TakerID: trade.Taker.OrderID.Hex(),
+		// 			Status:  string(trade.Status),
+		// 		})
+		// 	}
+		// }
 
 		if len(response) == 0 {
 			continue
@@ -690,14 +713,14 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 		a.redis.Set("MARKETDATA-"+response[0].InstrumentName, string(bytes))
 		for _, res := range response {
 			row := grp.Add()
-			row.SetMDEntryType(enum.MDEntryType(res.Side))
-			row.SetMDEntrySize(decimal.NewFromFloat(res.Amount), 2)
-			row.SetMDEntryPx(decimal.NewFromFloat(res.Price), 2)
+			row.SetMDEntryType(res.EntryType)                       // 269
+			row.SetMDEntrySize(decimal.NewFromFloat(res.Amount), 2) // 271
+			row.SetMDEntryPx(decimal.NewFromFloat(res.Price), 2)    // 270
 			row.SetMDEntryDate(res.Date)
 			row.SetOrderID(res.MakerID)
-
 		}
 		snap.SetNoMDEntries(grp)
+		fmt.Println("SENDING")
 		error := quickfix.SendToTarget(snap, sessionID)
 		if error != nil {
 			logs.Log.Err(error).Msg("Error sending market data")
@@ -834,49 +857,71 @@ func sumAmount(data []MarketDataResponse, og []MarketDataResponse) (res []Market
 }
 
 func OnMatchingOrder(data types.EngineResponse) {
+	// No matches, then nothing to do
 	if data.Matches == nil {
 		return
 	}
 
+	// No trades, then nothing to do
 	if data.Matches.Trades == nil {
 		return
 	}
 
+	// This is the update, then only cares about maker
 	for _, trd := range data.Matches.MakerOrders {
 		if userSession == nil {
 			return
 		}
-		if userSession[trd.Order.UserID.Hex()] == nil {
-			return
-		}
 
-		sessionID := userSession[data.Matches.Trades[0].MakerID]
+		// If the maker user ID doesnt have the session in the FIX
+		// then do nothing
+		sessionID := userSession[trd.Order.UserID.Hex()]
 		if sessionID == nil {
 			return
 		}
-		order := data.Matches.TakerOrder
+
+		// order := data.Matches.TakerOrder
+		order := trd.Order
 		conversion, _ := utils.ConvertToFloat(order.FilledAmount)
+
+		// FIX Side
+		fixSide := enum.Side_BUY
+		if order.Side == _utilitiesType.BUY {
+			fixSide = enum.Side_SELL
+		}
+
+		// Exec type https://www.onixs.biz/fix-dictionary/4.4/tagnum_150.html
+		// FIX Order Status
+		fixStatus := enum.OrdStatus_NEW
+		fixExecType := enum.ExecType_NEW
+		if order.Status == _utilitiesType.FILLED {
+			fixStatus = enum.OrdStatus_FILLED
+			fixExecType = enum.ExecType_FILL
+		} else if order.Status == _utilitiesType.PARTIALLY_FILLED {
+			fixStatus = enum.OrdStatus_PARTIALLY_FILLED
+			fixExecType = enum.ExecType_TRADE
+		} else if order.Status == _utilitiesType.CANCELLED {
+			fixStatus = enum.OrdStatus_CANCELED
+			fixExecType = enum.ExecType_TRADE
+		}
+
 		msg := executionreport.New(
-			field.NewOrderID(trd.ID.String()),
+			field.NewOrderID(trd.ID.Hex()),
 			field.NewExecID(order.ClOrdID),
-			field.NewExecType(enum.ExecType(order.Status)),
-			field.NewOrdStatus(enum.OrdStatus(order.Status)),
-			field.NewSide(enum.Side(trd.Side)),
+			field.NewExecType(fixExecType),
+			field.NewOrdStatus(fixStatus),
+			field.NewSide(fixSide),
 			field.NewLeavesQty(decimal.NewFromFloat(trd.Amount), 2),
 			field.NewCumQty(decimal.NewFromFloat(conversion), 2),
 			field.NewAvgPx(decimal.NewFromFloat(trd.Price), 2),
 		)
-		if trd.Amount == 0 {
-			msg.SetOrdStatus(enum.OrdStatus_FILLED)
-		} else {
-			msg.SetOrdStatus(enum.OrdStatus_PARTIALLY_FILLED)
-		}
+
 		msg.SetClOrdID(trd.ClOrdID)
 		msg.SetLastPx(decimal.NewFromFloat(trd.Price), 2)
 		msg.SetLastQty(decimal.NewFromFloat(trd.Amount), 2)
 
 		if err := quickfix.SendToTarget(msg, *sessionID); err != nil {
-			logs.Log.Err(err).Msg("Error sending matchingoerder msg")
+			logs.Log.Err(err).Msg("Error notifying FIX session order")
 		}
 	}
 
@@ -999,6 +1044,7 @@ func (a *Application) updateOrder(order Order, status enum.OrdStatus) {
 
 }
 
+// 35 Execution Report
 func OrderConfirmation(userId string, order _orderbookType.Order, symbol string) {
 	if userSession == nil {
 		if userSession[userId] == nil {
@@ -1019,19 +1065,37 @@ func OrderConfirmation(userId string, order _orderbookType.Order, symbol string)
 		exec = 4
 	}
 
-	conversion, _ := utils.ConvertToFloat(order.FilledAmount)
+	// FIX Side
+	fixSide := enum.Side_BUY
+	if order.Side == _utilitiesType.BUY {
+		fixSide = enum.Side_SELL
+	}
 
+	// FIX Order Status
+	fixStatus := enum.OrdStatus_NEW
+	fixExecType := enum.ExecType_NEW
+	if order.Status == _utilitiesType.FILLED {
+		fixStatus = enum.OrdStatus_FILLED
+		fixExecType = enum.ExecType_TRADE
+	} else if order.Status == _utilitiesType.PARTIALLY_FILLED {
+		fixStatus = enum.OrdStatus_PARTIALLY_FILLED
+		fixExecType = enum.ExecType_TRADE
+	} else if order.Status == _utilitiesType.CANCELLED {
+		fixStatus = enum.OrdStatus_CANCELED
+		fixExecType = enum.ExecType_CANCELED
+	}
+
+	conversion, _ := utils.ConvertToFloat(order.FilledAmount)
 	msg := executionreport.New(
-		field.NewOrderID(order.ID.Hex()),
-		field.NewExecID(strconv.Itoa(exec)),
-		field.NewExecType(enum.ExecType(order.Status)),
-		field.NewOrdStatus(enum.OrdStatus(order.Status)),
-		field.NewSide(enum.Side(order.Side)),
-		field.NewLeavesQty(decimal.NewFromFloat(order.Amount).Sub(decimal.NewFromFloat(conversion)), 2),
-		field.NewCumQty(decimal.NewFromFloat(conversion), 2),
-		field.NewAvgPx(decimal.NewFromFloat(order.Price), 2),
+		field.NewOrderID(order.ID.Hex()),    // 37
+		field.NewExecID(strconv.Itoa(exec)), // 17
+		field.NewExecType(fixExecType),      // 150
+		field.NewOrdStatus(fixStatus),       // 39
+		field.NewSide(fixSide),              // 54
+		field.NewLeavesQty(decimal.NewFromFloat(order.Amount).Sub(decimal.NewFromFloat(conversion)), 2), // 151
+		field.NewCumQty(decimal.NewFromFloat(conversion), 2),                                            // 14
+		field.NewAvgPx(decimal.NewFromFloat(order.Price), 2),                                            // 6 TODO: FIX ME
 	)
-	msg.SetOrdStatus(enum.OrdStatus_NEW)
 	msg.SetClOrdID(order.ClOrdID)
 
 	if sessionId == nil {
@@ -1122,32 +1186,49 @@ func removeVMessageSubscriber(array []VMessageSubscriber, element VMessageSubscr
 	return array
 }
 
+// Response (y) Security List
+// 320 SecurityReqID
+// 322 SecurityResponseID = {Currency} - {Timestamp}
+// 560 SecurityRequestResult = 0 means success
+// => 55 Symbol
+// => 107 SecurityDesc
+// => 167 SecurityType
+// => 947 StrikeCurrency (USD)
+// => 202 StrikePrice
 func (a Application) SecurityListResponse(currency string, secReq string, sessionID quickfix.SessionID) quickfix.MessageRejectError {
 	secRes := time.Now().UnixMicro()
 	res := securitylist.New(
-		field.NewSecurityReqID(secReq),
-		field.NewSecurityResponseID(strconv.Itoa(int(secRes))),
-		field.NewSecurityRequestResult(enum.SecurityRequestResult_VALID_REQUEST),
+		field.NewSecurityReqID(secReq),                                           // 320
+		field.NewSecurityResponseID(strconv.Itoa(int(secRes))),                   // 322
+		field.NewSecurityRequestResult(enum.SecurityRequestResult_VALID_REQUEST), // 0
 	)
 
-	// get isntrument from mongo
-	instruments, e := a.OrderRepository.GetAvailableInstruments(currency)
+	// Getting User ID
+	userId := ""
+	for i, v := range userSession {
+		if v.String() == sessionID.String() {
+			userId = i
+		}
+	}
+
+	// Get Available Instruments, including expired ones
+	instruments, e := a.OrderRepository.GetInstruments(userId, currency, false)
 	if e != nil {
 		return quickfix.NewMessageRejectError(e.Error(), 0, nil)
 	}
 
+	// Group Responses
 	secListGroup := securitylist.NewNoRelatedSymRepeatingGroup()
 	for _, instrument := range instruments {
 		row := secListGroup.Add()
-		strikePrice := strconv.FormatFloat(instrument.StrikePrice, 'f', 0, 64)
-		instrumentName := fmt.Sprintf("%s-%s-%s-%s", instrument.Underlying, instrument.ExpirationDate, strikePrice, instrument.Contracts)
+
+		instrumentName := instrument.InstrumentName
 		row.SetSymbol(instrumentName)
 
 		row.SetSecurityDesc("OPTIONS")
 		row.SetSecurityType("OPT")
-		row.SetStrikePrice(decimal.NewFromFloat(instrument.StrikePrice), 0)
+		row.SetStrikePrice(decimal.NewFromFloat(instrument.Strike), 0)
 		row.SetStrikeCurrency("USD")
-
 	}
 
 	res.SetNoRelatedSym(secListGroup)

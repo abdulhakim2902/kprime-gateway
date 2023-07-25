@@ -768,8 +768,8 @@
    <field name='OpenCloseSettlFlag' required='N' />
    <field name='Scope' required='N' />
    <field name='MDImplicitDelete' required='N' />
-   <component name='MDReqGrp' required='Y' />
-   <component name='InstrmtMDReqGrp' required='Y' />
+   <component name='MDReqGrp' required='N' />
+   <component name='InstrmtMDReqGrp' required='N' />
    <component name='TrdgSesGrp' required='N' />
    <field name='ApplQueueAction' required='N' />
    <field name='ApplQueueMax' required='N' />
