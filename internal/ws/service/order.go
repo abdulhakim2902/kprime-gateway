@@ -16,10 +16,9 @@ import (
 	engineType "gateway/internal/engine/types"
 	_types "gateway/internal/orderbook/types"
 
-	orderType "github.com/Undercurrent-Technologies/kprime-utilities/models/order"
-
 	"github.com/Shopify/sarama"
 	"github.com/Undercurrent-Technologies/kprime-utilities/commons/logs"
+	"github.com/Undercurrent-Technologies/kprime-utilities/models/kafka"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -155,7 +154,7 @@ func (svc wsOrderService) HandleConsumeUserOrder(msg *sarama.ConsumerMessage) {
 }
 
 func (svc wsOrderService) HandleConsumeUserOrderCancel(msg *sarama.ConsumerMessage) {
-	var data orderType.CancelledOrder
+	var data kafka.CancelledOrder
 
 	err := json.Unmarshal(msg.Value, &data)
 	if err != nil {

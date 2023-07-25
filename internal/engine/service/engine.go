@@ -10,6 +10,7 @@ import (
 
 	"github.com/Shopify/sarama"
 	"github.com/Undercurrent-Technologies/kprime-utilities/commons/logs"
+	"github.com/Undercurrent-Technologies/kprime-utilities/models/kafka"
 	"github.com/Undercurrent-Technologies/kprime-utilities/types"
 	"github.com/Undercurrent-Technologies/kprime-utilities/types/validation_reason"
 	"github.com/gin-gonic/gin"
@@ -18,8 +19,6 @@ import (
 	_ordermatch "gateway/internal/fix-acceptor"
 	_orderbookTypes "gateway/internal/orderbook/types"
 	wsService "gateway/internal/ws/service"
-
-	orderType "github.com/Undercurrent-Technologies/kprime-utilities/models/order"
 
 	"gateway/internal/repositories"
 
@@ -161,7 +160,7 @@ func (svc engineHandler) HandleConsumeQuote(msg *sarama.ConsumerMessage) {
 }
 
 func (svc engineHandler) HandleConsumeQuoteCancel(msg *sarama.ConsumerMessage) {
-	var data orderType.CancelledOrder
+	var data kafka.CancelledOrder
 
 	err := json.Unmarshal(msg.Value, &data)
 	if err != nil {
