@@ -45,18 +45,7 @@ func (handler *DeribitHandler) RegisterPrivate() {
 func (h *DeribitHandler) buy(r *gin.Context) {
 	var msg deribitModel.RequestDto[deribitModel.RequestParams]
 	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
-		errMsg := protocol.ErrorMessage{
-			Message:        err.Error(),
-			Data:           protocol.ReasonMessage{},
-			HttpStatusCode: http.StatusBadRequest,
-		}
-		m := protocol.RPCResponseMessage{
-			JSONRPC: "2.0",
-			ID:      msg.Id,
-			Error:   &errMsg,
-			Testnet: true,
-		}
-		r.AbortWithStatusJSON(http.StatusBadRequest, m)
+		sendInvalidRequestMessage(err, msg.Id, validation_reason.INVALID_PARAMS, r)
 		return
 	}
 
@@ -67,18 +56,7 @@ func (h *DeribitHandler) buy(r *gin.Context) {
 
 	if strings.ToLower(string(msg.Params.Type)) == string(types.LIMIT) && msg.Params.Price == 0 {
 		err := errors.New(validation_reason.PRICE_IS_REQUIRED.String())
-		errMsg := protocol.ErrorMessage{
-			Message:        err.Error(),
-			Data:           protocol.ReasonMessage{},
-			HttpStatusCode: http.StatusBadRequest,
-		}
-		m := protocol.RPCResponseMessage{
-			JSONRPC: "2.0",
-			ID:      msg.Id,
-			Error:   &errMsg,
-			Testnet: true,
-		}
-		r.AbortWithStatusJSON(http.StatusBadRequest, m)
+		sendInvalidRequestMessage(err, msg.Id, validation_reason.PRICE_IS_REQUIRED, r)
 		return
 	}
 
@@ -140,18 +118,7 @@ func (h *DeribitHandler) buy(r *gin.Context) {
 func (h *DeribitHandler) sell(r *gin.Context) {
 	var msg deribitModel.RequestDto[deribitModel.RequestParams]
 	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
-		errMsg := protocol.ErrorMessage{
-			Message:        err.Error(),
-			Data:           protocol.ReasonMessage{},
-			HttpStatusCode: http.StatusBadRequest,
-		}
-		m := protocol.RPCResponseMessage{
-			JSONRPC: "2.0",
-			ID:      msg.Id,
-			Error:   &errMsg,
-			Testnet: true,
-		}
-		r.AbortWithStatusJSON(http.StatusBadRequest, m)
+		sendInvalidRequestMessage(err, msg.Id, validation_reason.INVALID_PARAMS, r)
 		return
 	}
 
@@ -162,18 +129,7 @@ func (h *DeribitHandler) sell(r *gin.Context) {
 
 	if strings.ToLower(string(msg.Params.Type)) == string(types.LIMIT) && msg.Params.Price == 0 {
 		err := errors.New(validation_reason.PRICE_IS_REQUIRED.String())
-		errMsg := protocol.ErrorMessage{
-			Message:        err.Error(),
-			Data:           protocol.ReasonMessage{},
-			HttpStatusCode: http.StatusBadRequest,
-		}
-		m := protocol.RPCResponseMessage{
-			JSONRPC: "2.0",
-			ID:      msg.Id,
-			Error:   &errMsg,
-			Testnet: true,
-		}
-		r.AbortWithStatusJSON(http.StatusBadRequest, m)
+		sendInvalidRequestMessage(err, msg.Id, validation_reason.PRICE_IS_REQUIRED, r)
 		return
 	}
 
@@ -233,18 +189,7 @@ func (h *DeribitHandler) sell(r *gin.Context) {
 func (h *DeribitHandler) edit(r *gin.Context) {
 	var msg deribitModel.RequestDto[deribitModel.EditParams]
 	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
-		errMsg := protocol.ErrorMessage{
-			Message:        err.Error(),
-			Data:           protocol.ReasonMessage{},
-			HttpStatusCode: http.StatusBadRequest,
-		}
-		m := protocol.RPCResponseMessage{
-			JSONRPC: "2.0",
-			ID:      msg.Id,
-			Error:   &errMsg,
-			Testnet: true,
-		}
-		r.AbortWithStatusJSON(http.StatusBadRequest, m)
+		sendInvalidRequestMessage(err, msg.Id, validation_reason.INVALID_PARAMS, r)
 		return
 	}
 
@@ -309,18 +254,7 @@ func (h *DeribitHandler) edit(r *gin.Context) {
 func (h *DeribitHandler) cancel(r *gin.Context) {
 	var msg deribitModel.RequestDto[deribitModel.CancelParams]
 	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
-		errMsg := protocol.ErrorMessage{
-			Message:        err.Error(),
-			Data:           protocol.ReasonMessage{},
-			HttpStatusCode: http.StatusBadRequest,
-		}
-		m := protocol.RPCResponseMessage{
-			JSONRPC: "2.0",
-			ID:      msg.Id,
-			Error:   &errMsg,
-			Testnet: true,
-		}
-		r.AbortWithStatusJSON(http.StatusBadRequest, m)
+		sendInvalidRequestMessage(err, msg.Id, validation_reason.INVALID_PARAMS, r)
 		return
 	}
 
@@ -359,35 +293,13 @@ func (h *DeribitHandler) cancel(r *gin.Context) {
 func (h *DeribitHandler) cancelByInstrument(r *gin.Context) {
 	var msg deribitModel.RequestDto[deribitModel.CancelByInstrumentParams]
 	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
-		errMsg := protocol.ErrorMessage{
-			Message:        err.Error(),
-			Data:           protocol.ReasonMessage{},
-			HttpStatusCode: http.StatusBadRequest,
-		}
-		m := protocol.RPCResponseMessage{
-			JSONRPC: "2.0",
-			ID:      msg.Id,
-			Error:   &errMsg,
-			Testnet: true,
-		}
-		r.AbortWithStatusJSON(http.StatusBadRequest, m)
+		sendInvalidRequestMessage(err, msg.Id, validation_reason.INVALID_PARAMS, r)
 		return
 	}
 
 	_, err := utils.ParseInstruments(msg.Params.InstrumentName, false)
 	if err != nil {
-		errMsg := protocol.ErrorMessage{
-			Message:        err.Error(),
-			Data:           protocol.ReasonMessage{},
-			HttpStatusCode: http.StatusBadRequest,
-		}
-		m := protocol.RPCResponseMessage{
-			JSONRPC: "2.0",
-			ID:      msg.Id,
-			Error:   &errMsg,
-			Testnet: true,
-		}
-		r.AbortWithStatusJSON(http.StatusBadRequest, m)
+		sendInvalidRequestMessage(err, msg.Id, validation_reason.INVALID_PARAMS, r)
 		return
 	}
 
@@ -514,18 +426,7 @@ func (h *DeribitHandler) getUserTradeByInstrument(r *gin.Context) {
 func (h *DeribitHandler) getOpenOrdersByInstrument(r *gin.Context) {
 	var msg deribitModel.RequestDto[deribitModel.GetOpenOrdersByInstrumentParams]
 	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
-		errMsg := protocol.ErrorMessage{
-			Message:        err.Error(),
-			Data:           protocol.ReasonMessage{},
-			HttpStatusCode: http.StatusBadRequest,
-		}
-		m := protocol.RPCResponseMessage{
-			JSONRPC: "2.0",
-			ID:      msg.Id,
-			Error:   &errMsg,
-			Testnet: true,
-		}
-		r.AbortWithStatusJSON(http.StatusBadRequest, m)
+		sendInvalidRequestMessage(err, msg.Id, validation_reason.INVALID_PARAMS, r)
 		return
 	}
 
@@ -735,18 +636,7 @@ func (h *DeribitHandler) getAccountSummary(r *gin.Context) {
 func (h *DeribitHandler) getInstruments(r *gin.Context) {
 	var msg deribitModel.RequestDto[deribitModel.GetInstrumentsParams]
 	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
-		errMsg := protocol.ErrorMessage{
-			Message:        err.Error(),
-			Data:           protocol.ReasonMessage{},
-			HttpStatusCode: http.StatusBadRequest,
-		}
-		m := protocol.RPCResponseMessage{
-			JSONRPC: "2.0",
-			ID:      msg.Id,
-			Error:   &errMsg,
-			Testnet: true,
-		}
-		r.AbortWithStatusJSON(http.StatusBadRequest, m)
+		sendInvalidRequestMessage(err, msg.Id, validation_reason.INVALID_PARAMS, r)
 		return
 	}
 
