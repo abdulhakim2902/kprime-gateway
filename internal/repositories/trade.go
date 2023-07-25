@@ -394,7 +394,6 @@ func (r TradeRepository) FindUserTradesByInstrument(
 		},
 	}
 
-	fmt.Println(sort, sortOrder)
 	var cursor *mongo.Cursor
 	cursor, err = r.collection.Aggregate(context.Background(), query, &options)
 	if err != nil {
