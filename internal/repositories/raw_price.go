@@ -9,6 +9,7 @@ import (
 	_engineType "gateway/internal/engine/types"
 	_orderbookType "gateway/internal/orderbook/types"
 
+	"github.com/Undercurrent-Technologies/kprime-utilities/commons/logs"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -81,7 +82,8 @@ func (r RawPriceRepository) GetLatestIndexPrice(o _orderbookType.GetOrderBook) [
 
 	trades, err := r.Find(tradesQuery, tradesSort, 0, 1)
 	if err != nil {
-		panic(err)
+		logs.Log.Error().Err(err).Msg("")
+		return nil
 	}
 
 	return trades
@@ -101,7 +103,8 @@ func (r RawPriceRepository) GetIndexPrice(indexName string) []*_engineType.RawPr
 
 	trades, err := r.Find(tradesQuery, tradesSort, 0, 1)
 	if err != nil {
-		panic(err)
+		logs.Log.Error().Err(err).Msg("")
+		return nil
 	}
 
 	return trades
