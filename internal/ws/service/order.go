@@ -22,6 +22,7 @@ import (
 	"github.com/Undercurrent-Technologies/kprime-utilities/commons/logs"
 
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type wsOrderService struct {
@@ -124,21 +125,22 @@ func (svc wsOrderService) HandleConsumeUserOrder(msg *sarama.ConsumerMessage) {
 	}
 	keys = make(map[interface{}]bool)
 	for _, id := range userId {
-		if _, ok := keys[id]; !ok {
-			keys[id] = true
-			mapIndex := fmt.Sprintf("%s-%s", _instrument, id)
+		_id := id.(primitive.ObjectID).Hex()
+		if _, ok := keys[_id]; !ok {
+			keys[_id] = true
+			mapIndex := fmt.Sprintf("%s-%s", _instrument, _id)
 			if _, ok := userOrders[mapIndex]; !ok {
 				userOrdersMutex.Lock()
 				userOrders[mapIndex] = orders
 				userOrdersMutex.Unlock()
-				go svc.HandleConsumeUserOrder100ms(_instrument, id.(string))
+				go svc.HandleConsumeUserOrder100ms(_instrument, _id)
 			} else {
 				userOrdersMutex.Lock()
 				userOrders[mapIndex] = append(userOrders[mapIndex], orders...)
 				userOrdersMutex.Unlock()
 			}
 			// broadcast to user id
-			broadcastId := fmt.Sprintf("%s.%s.%s-%s", "user", "orders", _instrument, id)
+			broadcastId := fmt.Sprintf("%s.%s.%s-%s", "user", "orders", _instrument, _id)
 
 			for _, order := range orders {
 				params := _types.QuoteResponse{
@@ -150,7 +152,6 @@ func (svc wsOrderService) HandleConsumeUserOrder(msg *sarama.ConsumerMessage) {
 			}
 		}
 	}
-	return
 }
 
 func (svc wsOrderService) HandleConsumeUserOrderCancel(msg *sarama.ConsumerMessage) {
@@ -180,21 +181,23 @@ func (svc wsOrderService) HandleConsumeUserOrderCancel(msg *sarama.ConsumerMessa
 		}
 		keys := make(map[interface{}]bool)
 		for _, id := range userId {
-			if _, ok := keys[id]; !ok {
-				keys[id] = true
-				mapIndex := fmt.Sprintf("%s-%s", _instrument, id)
+			_id := id.(primitive.ObjectID).Hex()
+
+			if _, ok := keys[_id]; !ok {
+				keys[_id] = true
+				mapIndex := fmt.Sprintf("%s-%s", _instrument, _id)
 				if _, ok := userOrders[mapIndex]; !ok {
 					userOrdersMutex.Lock()
 					userOrders[mapIndex] = orders
 					userOrdersMutex.Unlock()
-					go svc.HandleConsumeUserOrder100ms(_instrument, id.(string))
+					go svc.HandleConsumeUserOrder100ms(_instrument, _id)
 				} else {
 					userOrdersMutex.Lock()
 					userOrders[mapIndex] = append(userOrders[mapIndex], orders...)
 					userOrdersMutex.Unlock()
 				}
 				// broadcast to user id
-				broadcastId := fmt.Sprintf("%s.%s.%s-%s", "user", "orders", _instrument, id)
+				broadcastId := fmt.Sprintf("%s.%s.%s-%s", "user", "orders", _instrument, _id)
 
 				for _, order := range orders {
 					params := _types.QuoteResponse{
@@ -207,7 +210,6 @@ func (svc wsOrderService) HandleConsumeUserOrderCancel(msg *sarama.ConsumerMessa
 			}
 		}
 	}
-	return
 }
 
 func (svc wsOrderService) HandleConsumeUserOrder100ms(instrument string, userId string) {

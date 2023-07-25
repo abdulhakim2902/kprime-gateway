@@ -2,6 +2,8 @@ module gateway
 
 go 1.20
 
+replace github.com/Undercurrent-Technologies/kprime-utilities => ../utilities
+
 require (
 	github.com/Shopify/sarama v1.38.1
 	github.com/Undercurrent-Technologies/kprime-utilities v1.1.8

@@ -846,7 +846,7 @@ func OnMatchingOrder(data types.EngineResponse) {
 		if userSession == nil {
 			return
 		}
-		if userSession[trd.Order.UserID] == nil {
+		if userSession[trd.Order.UserID.Hex()] == nil {
 			return
 		}
 

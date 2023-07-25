@@ -275,14 +275,13 @@ func (svc engineHandler) PublishOrder(data _engineType.EngineResponse) {
 	}
 
 	ID, _ := strconv.ParseUint(data.Matches.TakerOrder.ClOrdID, 0, 64)
-	connKey := utils.GetKeyFromIdUserID(ID, data.Matches.TakerOrder.UserID)
+	connKey := utils.GetKeyFromIdUserID(ID, data.Matches.TakerOrder.UserID.Hex())
 
 	switch data.Status {
 	case types.ORDER_CANCELLED:
 		protocol.SendSuccessMsg(connKey, _engineType.CancelResponse{
 			Order: order,
 		})
-		break
 	default:
 		trades := []_engineType.BuySellEditTrade{}
 		if data.Matches != nil && data.Matches.Trades != nil && len(data.Matches.Trades) > 0 {
@@ -314,7 +313,6 @@ func (svc engineHandler) PublishOrder(data _engineType.EngineResponse) {
 			Order:  order,
 			Trades: trades,
 		})
-		break
 	}
 
 }
@@ -322,7 +320,7 @@ func (svc engineHandler) PublishOrder(data _engineType.EngineResponse) {
 func (svc engineHandler) PublishValidation(data _engineType.EngineResponse) {
 	if data.Matches != nil {
 		ID, _ := strconv.ParseUint(data.Matches.TakerOrder.ClOrdID, 0, 64)
-		connKey := utils.GetKeyFromIdUserID(ID, data.Matches.TakerOrder.UserID)
+		connKey := utils.GetKeyFromIdUserID(ID, data.Matches.TakerOrder.UserID.Hex())
 		protocol.SendValidationMsg(connKey, data.Validation, nil)
 	}
 }
