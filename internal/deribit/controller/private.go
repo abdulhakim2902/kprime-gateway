@@ -382,7 +382,7 @@ func (h *DeribitHandler) cancelAll(r *gin.Context) {
 func (h *DeribitHandler) getUserTradeByInstrument(r *gin.Context) {
 	var msg deribitModel.RequestDto[deribitModel.GetUserTradesByInstrumentParams]
 	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
-		r.AbortWithError(http.StatusBadRequest, err)
+		sendInvalidRequestMessage(err, msg.Id, validation_reason.INVALID_PARAMS, r)
 		return
 	}
 
@@ -403,8 +403,7 @@ func (h *DeribitHandler) getUserTradeByInstrument(r *gin.Context) {
 
 	_, err = utils.ParseInstruments(msg.Params.InstrumentName, false)
 	if err != nil {
-		protocol.SendValidationMsg(connKey,
-			validation_reason.INVALID_PARAMS, err)
+		sendInvalidRequestMessage(err, msg.Id, validation_reason.INVALID_PARAMS, r)
 		return
 	}
 
