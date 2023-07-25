@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	deribitModel "gateway/internal/deribit/model"
+	"gateway/pkg/constant"
 	"gateway/pkg/middleware"
 	"gateway/pkg/protocol"
 	"gateway/pkg/utils"
@@ -12,8 +13,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"gateway/pkg/constant"
 
 	confType "github.com/Undercurrent-Technologies/kprime-utilities/config/types"
 	"github.com/Undercurrent-Technologies/kprime-utilities/types"
@@ -651,37 +652,47 @@ func (svc *wsHandler) privateSubscribe(input interface{}, c *ws.Client) {
 	const t = true
 	method := map[string]bool{"orders": t, "trades": t, "changes": t}
 	interval := map[string]bool{"raw": t, "100ms": t, "agg2": t}
+	validChannels := []string{}
 	for _, channel := range msg.Params.Channels {
 		s := strings.Split(channel, ".")
-		if len(s) == 0 {
+		if s[0] == "" {
+			continue
+		}
+
+		if len(s) < 2 {
 			err := errors.New("error invalid channel")
-			c.SendInvalidRequestMessage(err)
+			protocol.SendValidationMsg(connKey,
+				validation_reason.INVALID_PARAMS, err)
 			return
 		}
 		val, ok := method[s[1]]
 		if !ok {
 			err := errors.New("error invalid channel")
-			c.SendInvalidRequestMessage(err)
+			protocol.SendValidationMsg(connKey,
+				validation_reason.INVALID_PARAMS, err)
 			return
 		}
 
 		if val {
 			if len(s) < 4 {
 				err := errors.New("error invalid interval")
-				c.SendInvalidRequestMessage(err)
+				protocol.SendValidationMsg(connKey,
+					validation_reason.INVALID_PARAMS, err)
 				return
 			}
 			if _, ok := interval[s[3]]; !ok {
 				err := errors.New("error invalid interval")
-				c.SendInvalidRequestMessage(err)
+				protocol.SendValidationMsg(connKey,
+					validation_reason.INVALID_PARAMS, err)
 				return
 			}
 		}
+		validChannels = append(validChannels, channel)
 	}
 
-	protocol.SendSuccessMsg(connKey, msg.Params.Channels)
+	protocol.SendSuccessMsg(connKey, validChannels)
 
-	for _, channel := range msg.Params.Channels {
+	for _, channel := range validChannels {
 		s := strings.Split(channel, ".")
 		if len(s) != 4 {
 			reason := validation_reason.INVALID_PARAMS
@@ -705,8 +716,7 @@ func (svc *wsHandler) privateSubscribe(input interface{}, c *ws.Client) {
 		}
 	}
 
-	protocol.SendSuccessMsg(connKey, msg.Params.Channels)
-
+	// protocol.SendSuccessMsg(connKey, msg.Params.Channels)
 }
 
 func (svc *wsHandler) privateUnsubscribe(input interface{}, c *ws.Client) {
