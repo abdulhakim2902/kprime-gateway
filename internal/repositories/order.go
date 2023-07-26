@@ -1293,11 +1293,13 @@ func (r OrderRepository) GetOrderStateByLabel(ctx context.Context, req _deribitM
 			// },
 		}}
 
+	uId, _ := primitive.ObjectIDFromHex(req.UserId)
+
 	query := bson.M{
 		"$match": bson.M{
 			"underlying": req.Currency,
 			"label":      req.Label,
-			"userId":     req.UserId,
+			"userId":     uId,
 		},
 	}
 
