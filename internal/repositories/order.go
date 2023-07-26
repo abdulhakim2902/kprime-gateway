@@ -69,33 +69,6 @@ func (r OrderRepository) Find(filter interface{}, sort interface{}, offset, limi
 	return orders, nil
 }
 
-func (r OrderRepository) GetAvailableInstruments(currency string) ([]_deribitModel.DeribitResponse, error) {
-	cur, err := r.collection.Find(context.Background(), bson.M{
-		"underlying": currency,
-	})
-	if err != nil {
-		logs.Log.Error().Err(err).Msg("")
-
-		return []_deribitModel.DeribitResponse{}, err
-	}
-
-	if err = cur.Err(); err != nil {
-		logs.Log.Error().Err(err).Msg("")
-
-		return []_deribitModel.DeribitResponse{}, err
-	}
-
-	orders := []_deribitModel.DeribitResponse{}
-
-	if err = cur.All(context.TODO(), &orders); err != nil {
-		logs.Log.Error().Err(err).Msg("")
-
-		return []_deribitModel.DeribitResponse{}, nil
-	}
-
-	return orders, nil
-}
-
 func (r OrderRepository) GetInstruments(userId, currency string, expired bool) ([]*_deribitModel.DeribitGetInstrumentsResponse, error) {
 	user, reason, err := memdb.MDBFindUserById(userId)
 	if err != nil {
@@ -347,10 +320,15 @@ func (r OrderRepository) GetOpenOrdersByInstrument(InstrumentName string, OrderT
 		},
 	}
 
+	uId, err := primitive.ObjectIDFromHex(userId)
+	if err != nil {
+		return nil, err
+	}
+
 	query := bson.M{
 		"$match": bson.M{
 			"orderState":     bson.M{"$in": []types.OrderStatus{types.OPEN}},
-			"userId":         userId,
+			"userId":         uId,
 			"InstrumentName": InstrumentName,
 		},
 	}
@@ -1315,11 +1293,13 @@ func (r OrderRepository) GetOrderStateByLabel(ctx context.Context, req _deribitM
 			// },
 		}}
 
+	uId, _ := primitive.ObjectIDFromHex(req.UserId)
+
 	query := bson.M{
 		"$match": bson.M{
 			"underlying": req.Currency,
 			"label":      req.Label,
-			"userId":     req.UserId,
+			"userId":     uId,
 		},
 	}
 

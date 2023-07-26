@@ -10,6 +10,7 @@ import (
 
 	"github.com/Shopify/sarama"
 	"github.com/Undercurrent-Technologies/kprime-utilities/commons/logs"
+	"github.com/Undercurrent-Technologies/kprime-utilities/models/kafka"
 	"github.com/Undercurrent-Technologies/kprime-utilities/types"
 	"github.com/Undercurrent-Technologies/kprime-utilities/types/validation_reason"
 	"github.com/gin-gonic/gin"
@@ -18,8 +19,6 @@ import (
 	_ordermatch "gateway/internal/fix-acceptor"
 	_orderbookTypes "gateway/internal/orderbook/types"
 	wsService "gateway/internal/ws/service"
-
-	orderType "github.com/Undercurrent-Technologies/kprime-utilities/models/order"
 
 	"gateway/internal/repositories"
 
@@ -161,7 +160,7 @@ func (svc engineHandler) HandleConsumeQuote(msg *sarama.ConsumerMessage) {
 }
 
 func (svc engineHandler) HandleConsumeQuoteCancel(msg *sarama.ConsumerMessage) {
-	var data orderType.CancelledOrder
+	var data kafka.CancelledOrder
 
 	err := json.Unmarshal(msg.Value, &data)
 	if err != nil {
@@ -275,14 +274,13 @@ func (svc engineHandler) PublishOrder(data _engineType.EngineResponse) {
 	}
 
 	ID, _ := strconv.ParseUint(data.Matches.TakerOrder.ClOrdID, 0, 64)
-	connKey := utils.GetKeyFromIdUserID(ID, data.Matches.TakerOrder.UserID)
+	connKey := utils.GetKeyFromIdUserID(ID, data.Matches.TakerOrder.UserID.Hex())
 
 	switch data.Status {
 	case types.ORDER_CANCELLED:
 		protocol.SendSuccessMsg(connKey, _engineType.CancelResponse{
 			Order: order,
 		})
-		break
 	default:
 		trades := []_engineType.BuySellEditTrade{}
 		if data.Matches != nil && data.Matches.Trades != nil && len(data.Matches.Trades) > 0 {
@@ -314,7 +312,6 @@ func (svc engineHandler) PublishOrder(data _engineType.EngineResponse) {
 			Order:  order,
 			Trades: trades,
 		})
-		break
 	}
 
 }
@@ -322,7 +319,7 @@ func (svc engineHandler) PublishOrder(data _engineType.EngineResponse) {
 func (svc engineHandler) PublishValidation(data _engineType.EngineResponse) {
 	if data.Matches != nil {
 		ID, _ := strconv.ParseUint(data.Matches.TakerOrder.ClOrdID, 0, 64)
-		connKey := utils.GetKeyFromIdUserID(ID, data.Matches.TakerOrder.UserID)
+		connKey := utils.GetKeyFromIdUserID(ID, data.Matches.TakerOrder.UserID.Hex())
 		protocol.SendValidationMsg(connKey, data.Validation, nil)
 	}
 }

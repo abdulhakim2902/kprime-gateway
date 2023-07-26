@@ -20,6 +20,7 @@ import (
 	"github.com/Shopify/sarama"
 	"github.com/Undercurrent-Technologies/kprime-utilities/commons/logs"
 	"github.com/Undercurrent-Technologies/kprime-utilities/types"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type wsTradeService struct {
@@ -156,13 +157,15 @@ func (svc wsTradeService) HandleConsumeUserTrades(msg *sarama.ConsumerMessage) {
 			return
 		}
 		if len(trades.Trades) > 0 {
-			for _, id := range userId {
+			for _, _id := range userId {
+				id := _id.(primitive.ObjectID).Hex()
+
 				mapIndex := fmt.Sprintf("%s-%s", _instrument, id)
 				if _, ok := userTrades[mapIndex]; !ok {
 					userTradesMutex.Lock()
 					userTrades[mapIndex] = trades.Trades
 					userTradesMutex.Unlock()
-					go svc.HandleConsumeUserTrades100ms(_instrument, id.(string))
+					go svc.HandleConsumeUserTrades100ms(_instrument, id)
 				} else {
 					userTradesMutex.Lock()
 					userTrades[mapIndex] = append(userTrades[mapIndex], trades.Trades...)
