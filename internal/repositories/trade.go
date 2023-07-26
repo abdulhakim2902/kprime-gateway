@@ -186,6 +186,14 @@ func (r TradeRepository) FindUserTradesByInstrument(
 	count int,
 	userId string,
 ) (result _deribitModel.DeribitGetUserTradesByInstrumentsResponse, err error) {
+	sortOrder := -1 // Default sort order is descending
+
+	switch sort {
+	case "asc":
+		sortOrder = 1
+	case "desc":
+		sortOrder = -1
+	}
 	options := options.AggregateOptions{
 		MaxTime: &defaultTimeout,
 	}

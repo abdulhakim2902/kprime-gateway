@@ -1249,7 +1249,7 @@ func Execute(deribit _deribitSvc.IDeribitService) error {
 
 	input, _ := ioutil.ReadFile(path.Join(b, "../", "config", templateCfg))
 
-	config := strings.Replace(string(input), "$DATA_DICTIONARY_PATH", os.Getenv("DATA_DICTIONARY_PATH"), 1)
+	config := strings.ReplaceAll(string(input), "$DATA_DICTIONARY_PATH", os.Getenv("DATA_DICTIONARY_PATH"))
 
 	ioutil.WriteFile(path.Join(b, "../", "config", cfgFileName), []byte(config), 0644)
 
