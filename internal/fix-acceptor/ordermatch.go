@@ -875,7 +875,7 @@ func OnMatchingOrder(data types.EngineResponse) {
 
 		// If the maker user ID doesnt have the session in the FIX
 		// then do nothing
-		sessionID := userSession[trd.Order.UserID]
+		sessionID := userSession[trd.Order.UserID.Hex()]
 		if sessionID == nil {
 			return
 		}

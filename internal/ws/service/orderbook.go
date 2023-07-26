@@ -826,15 +826,16 @@ func (svc wsOrderbookService) HandleConsumeUserChange(msg *sarama.ConsumerMessag
 
 	keys = make(map[interface{}]bool)
 	for _, id := range userId {
-		if _, ok := keys[id]; !ok {
-			keys[id] = true
-			mapIndex := fmt.Sprintf("%s-%s", _instrument, id)
+		_id := id.(primitive.ObjectID).Hex()
+		if _, ok := keys[_id]; !ok {
+			keys[_id] = true
+			mapIndex := fmt.Sprintf("%s-%s", _instrument, _id)
 			if _, ok := userChanges[mapIndex]; !ok {
 				userChangesMutex.Lock()
 				userChanges[mapIndex] = ordersInterface
 				userChangesTrades[mapIndex] = tradesInterface
 				userChangesMutex.Unlock()
-				go svc.HandleConsumeUserChange100ms(_instrument, id.(string))
+				go svc.HandleConsumeUserChange100ms(_instrument, _id)
 			} else {
 				userChangesMutex.Lock()
 				userChanges[mapIndex] = append(userChanges[mapIndex], ordersInterface...)
@@ -842,7 +843,7 @@ func (svc wsOrderbookService) HandleConsumeUserChange(msg *sarama.ConsumerMessag
 				userChangesMutex.Unlock()
 			}
 			// broadcast to user id
-			broadcastId := fmt.Sprintf("%s.%s.%s-%s", "user", "changes", _instrument, id)
+			broadcastId := fmt.Sprintf("%s.%s.%s-%s", "user", "changes", _instrument, _id)
 
 			params := _orderbookTypes.QuoteResponse{
 				Channel: fmt.Sprintf("user.changes.%s.raw", _instrument),
@@ -852,7 +853,6 @@ func (svc wsOrderbookService) HandleConsumeUserChange(msg *sarama.ConsumerMessag
 			ws.GetOrderBookSocket().BroadcastMessageSubcription(broadcastId, method, params)
 		}
 	}
-	return
 }
 
 func (svc wsOrderbookService) HandleConsumeUserChangeCancel(order orderType.Order) {
@@ -883,7 +883,8 @@ func (svc wsOrderbookService) HandleConsumeUserChangeCancel(order orderType.Orde
 	}
 
 	keys := make(map[interface{}]bool)
-	for _, id := range userId {
+	for _, _id := range userId {
+		id := _id.(primitive.ObjectID).Hex()
 		if _, ok := keys[id]; !ok {
 			keys[id] = true
 			mapIndex := fmt.Sprintf("%s-%s", _instrument, id)
@@ -891,7 +892,7 @@ func (svc wsOrderbookService) HandleConsumeUserChangeCancel(order orderType.Orde
 				userChangesMutex.Lock()
 				userChanges[mapIndex] = ordersInterface
 				userChangesMutex.Unlock()
-				go svc.HandleConsumeUserChange100ms(_instrument, id.(string))
+				go svc.HandleConsumeUserChange100ms(_instrument, id)
 			} else {
 				userChangesMutex.Lock()
 				userChanges[mapIndex] = append(userChanges[mapIndex], ordersInterface...)
@@ -908,7 +909,6 @@ func (svc wsOrderbookService) HandleConsumeUserChangeCancel(order orderType.Orde
 			ws.GetOrderBookSocket().BroadcastMessageSubcription(broadcastId, method, params)
 		}
 	}
-	return
 }
 
 func (svc wsOrderbookService) HandleConsumeUserChange100ms(instrument string, userId string) {

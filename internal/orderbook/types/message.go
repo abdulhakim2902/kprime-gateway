@@ -3,9 +3,10 @@ package types
 import (
 	"time"
 
+	"github.com/Undercurrent-Technologies/kprime-utilities/models/order"
 	"github.com/Undercurrent-Technologies/kprime-utilities/types"
 
-	"github.com/Undercurrent-Technologies/kprime-utilities/models/order"
+	"github.com/Undercurrent-Technologies/kprime-utilities/models"
 	"github.com/shopspring/decimal"
 )
 
@@ -119,7 +120,7 @@ type ChangeStruct struct {
 	Side           types.Side              `json:"side"`
 	Price          float64                 `json:"price"`
 	Amount         float64                 `json:"amount"`
-	Amendments     []order.Amendment       `json:"amendments"`
+	Amendments     []*models.Amendment     `json:"amendments"`
 	CancelledBooks map[string]OrderbookMap `json:"cancelled_books"`
 }
 

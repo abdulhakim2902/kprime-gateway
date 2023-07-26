@@ -320,10 +320,15 @@ func (r OrderRepository) GetOpenOrdersByInstrument(InstrumentName string, OrderT
 		},
 	}
 
+	uId, err := primitive.ObjectIDFromHex(userId)
+	if err != nil {
+		return nil, err
+	}
+
 	query := bson.M{
 		"$match": bson.M{
 			"orderState":     bson.M{"$in": []types.OrderStatus{types.OPEN}},
-			"userId":         userId,
+			"userId":         uId,
 			"InstrumentName": InstrumentName,
 		},
 	}
