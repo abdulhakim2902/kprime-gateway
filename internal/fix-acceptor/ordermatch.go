@@ -112,7 +112,7 @@ type MarketDataResponse struct {
 	InstrumentName string                   `json:"instrumentName"`
 	Side           _utilitiesType.Side      `json:"side"`
 	Contract       _utilitiesType.Contracts `json:"contract"`
-	EntryType       enum.MDEntryType `json:"entryType"`
+	EntryType      enum.MDEntryType         `json:"entryType"`
 	Price          float64                  `json:"price"`
 	Amount         float64                  `json:"amount"`
 	Date           string                   `json:"date"`
@@ -496,6 +496,7 @@ func (a *Application) onOrderMassCancelRequest(msg ordermasscancelrequest.OrderM
 
 	return nil
 }
+
 // 37 Order ID
 // 448 Party ID
 func (a *Application) onOrderCancelRequest(msg ordercancelrequest.OrderCancelRequest, sessionID quickfix.SessionID) quickfix.MessageRejectError {
@@ -529,7 +530,7 @@ func (a *Application) onOrderCancelRequest(msg ordercancelrequest.OrderCancelReq
 	var partyId quickfix.FIXString
 	msg.GetField(tag.PartyID, &partyId)
 
-		// TODO: party id
+	// TODO: party id
 	// Call cancel service
 	// Call service
 	_, r := a.DeribitService.DeribitParseCancel(context.Background(), userId, _deribitModel.DeribitCancelRequest{
@@ -618,7 +619,6 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 		}
 	}
 
-
 	// loop based on symbol requested
 	for i := 0; i < noRelatedsym.Len(); i++ {
 		response := []MarketDataResponse{}
@@ -648,12 +648,12 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 			// Loop Order Book Bids
 			for _, bid := range _orderbook.Bids {
 				response = append(response, MarketDataResponse{
-					Price: bid.Price,
-					Amount: bid.Amount,
-					Side: "buy",
-					EntryType: enum.MDEntryType_BID,
+					Price:          bid.Price,
+					Amount:         bid.Amount,
+					Side:           "buy",
+					EntryType:      enum.MDEntryType_BID,
 					InstrumentName: sym,
-					Type: "bid",
+					Type:           "bid",
 				})
 			}
 		}
@@ -662,12 +662,12 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 		if utils.ArrContains(entries, "1") {
 			for _, ask := range _orderbook.Asks {
 				response = append(response, MarketDataResponse{
-					Price: ask.Price,
-					Amount: ask.Amount,
-					Side: "sell",
-					EntryType: enum.MDEntryType_OFFER,
+					Price:          ask.Price,
+					Amount:         ask.Amount,
+					Side:           "sell",
+					EntryType:      enum.MDEntryType_OFFER,
 					InstrumentName: sym,
-					Type: "ask",
+					Type:           "ask",
 				})
 			}
 
@@ -713,9 +713,9 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 		a.redis.Set("MARKETDATA-"+response[0].InstrumentName, string(bytes))
 		for _, res := range response {
 			row := grp.Add()
-			row.SetMDEntryType(res.EntryType) // 269
+			row.SetMDEntryType(res.EntryType)                       // 269
 			row.SetMDEntrySize(decimal.NewFromFloat(res.Amount), 2) // 271
-			row.SetMDEntryPx(decimal.NewFromFloat(res.Price), 2) // 270
+			row.SetMDEntryPx(decimal.NewFromFloat(res.Price), 2)    // 270
 			row.SetMDEntryDate(res.Date)
 			row.SetOrderID(res.MakerID)
 		}
@@ -885,25 +885,25 @@ func OnMatchingOrder(data types.EngineResponse) {
 		conversion, _ := utils.ConvertToFloat(order.FilledAmount)
 
 		// FIX Side
-		fixSide := enum.Side_BUY;
-		if (order.Side == _utilitiesType.BUY) {
-			fixSide = enum.Side_SELL;
+		fixSide := enum.Side_BUY
+		if order.Side == _utilitiesType.BUY {
+			fixSide = enum.Side_SELL
 		}
 
 		// Exec type https://www.onixs.biz/fix-dictionary/4.4/tagnum_150.html
 		// FIX Order Status
-		fixStatus := enum.OrdStatus_NEW;
-		fixExecType := enum.ExecType_NEW;
-		if (order.Status == _utilitiesType.FILLED) {
+		fixStatus := enum.OrdStatus_NEW
+		fixExecType := enum.ExecType_NEW
+		if order.Status == _utilitiesType.FILLED {
 			fixStatus = enum.OrdStatus_FILLED
-			fixExecType = enum.ExecType_FILL;
-		} else if (order.Status == _utilitiesType.PARTIALLY_FILLED) {
+			fixExecType = enum.ExecType_FILL
+		} else if order.Status == _utilitiesType.PARTIALLY_FILLED {
 			fixStatus = enum.OrdStatus_PARTIALLY_FILLED
-			fixExecType = enum.ExecType_TRADE;
-		} else if (order.Status == _utilitiesType.CANCELLED) {
+			fixExecType = enum.ExecType_TRADE
+		} else if order.Status == _utilitiesType.CANCELLED {
 			fixStatus = enum.OrdStatus_CANCELED
-			fixExecType = enum.ExecType_TRADE;
-		}	
+			fixExecType = enum.ExecType_TRADE
+		}
 
 		msg := executionreport.New(
 			field.NewOrderID(trd.ID.Hex()),
@@ -1066,35 +1066,35 @@ func OrderConfirmation(userId string, order _orderbookType.Order, symbol string)
 	}
 
 	// FIX Side
-	fixSide := enum.Side_BUY;
-	if (order.Side == _utilitiesType.BUY) {
-		fixSide = enum.Side_SELL;
+	fixSide := enum.Side_BUY
+	if order.Side == _utilitiesType.BUY {
+		fixSide = enum.Side_SELL
 	}
 
 	// FIX Order Status
-	fixStatus := enum.OrdStatus_NEW;
-	fixExecType := enum.ExecType_NEW;
-	if (order.Status == _utilitiesType.FILLED) {
+	fixStatus := enum.OrdStatus_NEW
+	fixExecType := enum.ExecType_NEW
+	if order.Status == _utilitiesType.FILLED {
 		fixStatus = enum.OrdStatus_FILLED
-		fixExecType = enum.ExecType_TRADE;
-	} else if (order.Status == _utilitiesType.PARTIALLY_FILLED) {
+		fixExecType = enum.ExecType_TRADE
+	} else if order.Status == _utilitiesType.PARTIALLY_FILLED {
 		fixStatus = enum.OrdStatus_PARTIALLY_FILLED
-		fixExecType = enum.ExecType_TRADE;
-	} else if (order.Status == _utilitiesType.CANCELLED) {
+		fixExecType = enum.ExecType_TRADE
+	} else if order.Status == _utilitiesType.CANCELLED {
 		fixStatus = enum.OrdStatus_CANCELED
-		fixExecType = enum.ExecType_CANCELED;
+		fixExecType = enum.ExecType_CANCELED
 	}
 
 	conversion, _ := utils.ConvertToFloat(order.FilledAmount)
 	msg := executionreport.New(
-		field.NewOrderID(order.ID.Hex()), // 37
+		field.NewOrderID(order.ID.Hex()),    // 37
 		field.NewExecID(strconv.Itoa(exec)), // 17
-		field.NewExecType(fixExecType), // 150
-		field.NewOrdStatus(fixStatus), // 39
-		field.NewSide(fixSide), // 54
+		field.NewExecType(fixExecType),      // 150
+		field.NewOrdStatus(fixStatus),       // 39
+		field.NewSide(fixSide),              // 54
 		field.NewLeavesQty(decimal.NewFromFloat(order.Amount).Sub(decimal.NewFromFloat(conversion)), 2), // 151
-		field.NewCumQty(decimal.NewFromFloat(conversion), 2), // 14
-		field.NewAvgPx(decimal.NewFromFloat(order.Price), 2), // 6 TODO: FIX ME
+		field.NewCumQty(decimal.NewFromFloat(conversion), 2),                                            // 14
+		field.NewAvgPx(decimal.NewFromFloat(order.Price), 2),                                            // 6 TODO: FIX ME
 	)
 	msg.SetClOrdID(order.ClOrdID)
 
@@ -1198,8 +1198,8 @@ func removeVMessageSubscriber(array []VMessageSubscriber, element VMessageSubscr
 func (a Application) SecurityListResponse(currency string, secReq string, sessionID quickfix.SessionID) quickfix.MessageRejectError {
 	secRes := time.Now().UnixMicro()
 	res := securitylist.New(
-		field.NewSecurityReqID(secReq), // 320
-		field.NewSecurityResponseID(strconv.Itoa(int(secRes))), // 322
+		field.NewSecurityReqID(secReq),                                           // 320
+		field.NewSecurityResponseID(strconv.Itoa(int(secRes))),                   // 322
 		field.NewSecurityRequestResult(enum.SecurityRequestResult_VALID_REQUEST), // 0
 	)
 
@@ -1221,7 +1221,7 @@ func (a Application) SecurityListResponse(currency string, secReq string, sessio
 	secListGroup := securitylist.NewNoRelatedSymRepeatingGroup()
 	for _, instrument := range instruments {
 		row := secListGroup.Add()
-		
+
 		instrumentName := instrument.InstrumentName
 		row.SetSymbol(instrumentName)
 
@@ -1249,7 +1249,7 @@ func Execute(deribit _deribitSvc.IDeribitService) error {
 
 	input, _ := ioutil.ReadFile(path.Join(b, "../", "config", templateCfg))
 
-	config := strings.Replace(string(input), "$DATA_DICTIONARY_PATH", os.Getenv("DATA_DICTIONARY_PATH"), 1)
+	config := strings.ReplaceAll(string(input), "$DATA_DICTIONARY_PATH", os.Getenv("DATA_DICTIONARY_PATH"))
 
 	ioutil.WriteFile(path.Join(b, "../", "config", cfgFileName), []byte(config), 0644)
 
