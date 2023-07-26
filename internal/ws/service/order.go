@@ -126,27 +126,29 @@ func (svc wsOrderService) HandleConsumeUserOrder(msg *sarama.ConsumerMessage) {
 	for _, id := range userId {
 		if _, ok := keys[id]; !ok {
 			keys[id] = true
-			mapIndex := fmt.Sprintf("%s-%s", _instrument, id)
-			if _, ok := userOrders[mapIndex]; !ok {
-				userOrdersMutex.Lock()
-				userOrders[mapIndex] = orders
-				userOrdersMutex.Unlock()
-				go svc.HandleConsumeUserOrder100ms(_instrument, id.(string))
-			} else {
-				userOrdersMutex.Lock()
-				userOrders[mapIndex] = append(userOrders[mapIndex], orders...)
-				userOrdersMutex.Unlock()
-			}
-			// broadcast to user id
-			broadcastId := fmt.Sprintf("%s.%s.%s-%s", "user", "orders", _instrument, id)
-
 			for _, order := range orders {
-				params := _types.QuoteResponse{
-					Channel: fmt.Sprintf("user.orders.%s.raw", _instrument),
-					Data:    order,
+				if id == order.UserId.Hex() {
+					mapIndex := fmt.Sprintf("%s-%s", _instrument, id)
+					if _, ok := userOrders[mapIndex]; !ok {
+						order100ms := []deribitModel.DeribitGetOpenOrdersByInstrumentResponse{order}
+						userOrdersMutex.Lock()
+						userOrders[mapIndex] = order100ms
+						userOrdersMutex.Unlock()
+						go svc.HandleConsumeUserOrder100ms(_instrument, id.(string))
+					} else {
+						userOrdersMutex.Lock()
+						userOrders[mapIndex] = append(userOrders[mapIndex], order)
+						userOrdersMutex.Unlock()
+					}
+					// broadcast to user id
+					broadcastId := fmt.Sprintf("%s.%s.%s-%s", "user", "orders", _instrument, id)
+					params := _types.QuoteResponse{
+						Channel: fmt.Sprintf("user.orders.%s.raw", _instrument),
+						Data:    order,
+					}
+					method := "subscription"
+					ws.GetOrderSocket().BroadcastMessageOrder(broadcastId, method, params)
 				}
-				method := "subscription"
-				ws.GetOrderSocket().BroadcastMessageOrder(broadcastId, method, params)
 			}
 		}
 	}
@@ -182,27 +184,29 @@ func (svc wsOrderService) HandleConsumeUserOrderCancel(msg *sarama.ConsumerMessa
 		for _, id := range userId {
 			if _, ok := keys[id]; !ok {
 				keys[id] = true
-				mapIndex := fmt.Sprintf("%s-%s", _instrument, id)
-				if _, ok := userOrders[mapIndex]; !ok {
-					userOrdersMutex.Lock()
-					userOrders[mapIndex] = orders
-					userOrdersMutex.Unlock()
-					go svc.HandleConsumeUserOrder100ms(_instrument, id.(string))
-				} else {
-					userOrdersMutex.Lock()
-					userOrders[mapIndex] = append(userOrders[mapIndex], orders...)
-					userOrdersMutex.Unlock()
-				}
-				// broadcast to user id
-				broadcastId := fmt.Sprintf("%s.%s.%s-%s", "user", "orders", _instrument, id)
-
 				for _, order := range orders {
-					params := _types.QuoteResponse{
-						Channel: fmt.Sprintf("user.orders.%s.raw", _instrument),
-						Data:    order,
+					if id == order.UserId.Hex() {
+						mapIndex := fmt.Sprintf("%s-%s", _instrument, id)
+						if _, ok := userOrders[mapIndex]; !ok {
+							order100ms := []deribitModel.DeribitGetOpenOrdersByInstrumentResponse{order}
+							userOrdersMutex.Lock()
+							userOrders[mapIndex] = order100ms
+							userOrdersMutex.Unlock()
+							go svc.HandleConsumeUserOrder100ms(_instrument, id.(string))
+						} else {
+							userOrdersMutex.Lock()
+							userOrders[mapIndex] = append(userOrders[mapIndex], order)
+							userOrdersMutex.Unlock()
+						}
+						// broadcast to user id
+						broadcastId := fmt.Sprintf("%s.%s.%s-%s", "user", "orders", _instrument, id)
+						params := _types.QuoteResponse{
+							Channel: fmt.Sprintf("user.orders.%s.raw", _instrument),
+							Data:    order,
+						}
+						method := "subscription"
+						ws.GetOrderSocket().BroadcastMessageOrder(broadcastId, method, params)
 					}
-					method := "subscription"
-					ws.GetOrderSocket().BroadcastMessageOrder(broadcastId, method, params)
 				}
 			}
 		}
