@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	deribitModel "gateway/internal/deribit/model"
+	"gateway/pkg/constant"
 	"gateway/pkg/middleware"
 	"gateway/pkg/protocol"
 	"gateway/pkg/utils"
@@ -12,8 +13,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"gateway/pkg/constant"
 
 	confType "github.com/Undercurrent-Technologies/kprime-utilities/config/types"
 	"github.com/Undercurrent-Technologies/kprime-utilities/types"
@@ -296,6 +297,7 @@ func (svc *wsHandler) cancelByInstrument(input interface{}, c *ws.Client) {
 	_, err = svc.deribitSvc.DeribitCancelByInstrument(context.TODO(), claim.UserID, deribitModel.DeribitCancelByInstrumentRequest{
 		InstrumentName: msg.Params.InstrumentName,
 		ClOrdID:        strconv.FormatUint(msg.Id, 10),
+		Type:           types.Type(msg.Params.Type),
 	})
 	if err != nil {
 		protocol.SendErrMsg(connKey, err)
