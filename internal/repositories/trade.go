@@ -181,7 +181,7 @@ func (r TradeRepository) Find(filter interface{}, sort interface{}, offset, limi
 }
 
 func (r TradeRepository) FindUserTradesByInstrument(
-	instrument string,
+	instrumentName string,
 	sort string,
 	count int,
 	userId string,
@@ -190,15 +190,21 @@ func (r TradeRepository) FindUserTradesByInstrument(
 		MaxTime: &defaultTimeout,
 	}
 
-	_string := instrument
-	substring := strings.Split(_string, "-")
+	sortOrder := -1 // Default sort order is descending
 
-	_strikePrice, err := strconv.ParseFloat(substring[2], 64)
-	if err != nil {
-		fmt.Println(err)
+	switch sort {
+	case "asc":
+		sortOrder = 1
+	case "desc":
+		sortOrder = -1
 	}
-	_underlying := substring[0]
-	_expiryDate := strings.ToUpper(substring[1])
+
+	instrument, _ := utils.ParseInstruments(instrumentName, false)
+	var uId primitive.ObjectID
+	uId, err = primitive.ObjectIDFromHex(userId)
+	if err != nil {
+		return
+	}
 
 	query := bson.A{
 		bson.D{
@@ -224,13 +230,13 @@ func (r TradeRepository) FindUserTradesByInstrument(
 		bson.D{
 			{"$match",
 				bson.D{
-					{"underlying", _underlying},
-					{"strikePrice", _strikePrice},
-					{"expiryDate", _expiryDate},
+					{"underlying", instrument.Underlying},
+					{"strikePrice", instrument.Strike},
+					{"expiryDate", instrument.ExpDate},
 					{"$or",
 						bson.A{
-							bson.D{{"taker.userId", userId}},
-							bson.D{{"maker.userId", userId}},
+							bson.D{{"maker.userId", uId}},
+							bson.D{{"taker.userId", uId}},
 						},
 					},
 				},
@@ -239,55 +245,30 @@ func (r TradeRepository) FindUserTradesByInstrument(
 		bson.D{
 			{"$project",
 				bson.D{
-					{"InstrumentName", bson.M{"$concat": bson.A{
+					{"InstrumentName",
 						bson.D{
-							{"$convert", bson.D{
-								{"input", "$underlying"},
-								{"to", "string"},
-							}}},
-						"-",
-						bson.D{
-							{"$convert", bson.D{
-								{"input", "$expiryDate"},
-								{"to", "string"},
-							}}},
-						"-",
-						bson.D{
-							{"$convert", bson.D{
-								{"input", "$strikePrice"},
-								{"to", "string"},
-							}}},
-						"-",
-						bson.M{"$substr": bson.A{"$contracts", 0, 1}},
-					}}},
-					{"amount", bson.D{
-						{"$convert", bson.D{
-							{"input", "$amount"},
-							{"to", "double"},
-						}},
-					}},
+							{"$concat",
+								bson.A{
+									bson.D{{"$convert", bson.D{{"input", "$underlying"}, {"to", "string"}}}},
+									"-",
+									bson.D{{"$convert", bson.D{{"input", "$expiryDate"}, {"to", "string"}}}},
+									"-",
+									bson.D{{"$convert", bson.D{{"input", "$strikePrice"}, {"to", "string"}}}},
+									"-",
+									bson.D{{"$substr", bson.A{"$contracts", 0, 1}}},
+								},
+							},
+						},
+					},
+					{"amount", bson.D{{"$convert", bson.D{{"input", "$amount"}, {"to", "double"}}}}},
 					{"direction", "$side"},
 					{"label",
 						bson.D{
 							{"$cond",
-								bson.A{
-									"$taker.userId" == userId,
-									bson.D{
-										{"$arrayElemAt",
-											bson.A{
-												"$takerOrder.label",
-												0,
-											},
-										},
-									},
-									bson.D{
-										{"$arrayElemAt",
-											bson.A{
-												"$makerOrder.label",
-												0,
-											},
-										},
-									},
+								bson.D{
+									{"if", bson.D{{"$eq", bson.A{"$taker.userId", uId}}}},
+									{"then", bson.D{{"$arrayElemAt", bson.A{"$takerOrder.label", 0}}}},
+									{"else", bson.D{{"$arrayElemAt", bson.A{"$makerOrder.label", 0}}}},
 								},
 							},
 						},
@@ -295,10 +276,10 @@ func (r TradeRepository) FindUserTradesByInstrument(
 					{"order_id",
 						bson.D{
 							{"$cond",
-								bson.A{
-									"$taker.userId" == userId,
-									"$taker.orderId",
-									"$maker.orderId",
+								bson.D{
+									{"if", bson.D{{"$eq", bson.A{"$taker.userId", uId}}}},
+									{"then", "$taker.orderId"},
+									{"else", "$maker.orderId"},
 								},
 							},
 						},
@@ -306,24 +287,10 @@ func (r TradeRepository) FindUserTradesByInstrument(
 					{"order_type",
 						bson.D{
 							{"$cond",
-								bson.A{
-									"$taker.userId" == userId,
-									bson.D{
-										{"$arrayElemAt",
-											bson.A{
-												"$takerOrder.type",
-												0,
-											},
-										},
-									},
-									bson.D{
-										{"$arrayElemAt",
-											bson.A{
-												"$makerOrder.type",
-												0,
-											},
-										},
-									},
+								bson.D{
+									{"if", bson.D{{"$eq", bson.A{"$taker.userId", uId}}}},
+									{"then", bson.D{{"$arrayElemAt", bson.A{"$takerOrder.type", 0}}}},
+									{"else", bson.D{{"$arrayElemAt", bson.A{"$makerOrder.type", 0}}}},
 								},
 							},
 						},
@@ -332,29 +299,15 @@ func (r TradeRepository) FindUserTradesByInstrument(
 					{"state",
 						bson.D{
 							{"$cond",
-								bson.A{
-									"$takerId" == userId,
-									bson.D{
-										{"$arrayElemAt",
-											bson.A{
-												"$takerOrderId.status",
-												0,
-											},
-										},
-									},
-									bson.D{
-										{"$arrayElemAt",
-											bson.A{
-												"$makerOrder.status",
-												0,
-											},
-										},
-									},
+								bson.D{
+									{"if", bson.D{{"$eq", bson.A{"$takerId", uId}}}},
+									{"then", bson.D{{"$arrayElemAt", bson.A{"$takerOrderId.status", 0}}}},
+									{"else", bson.D{{"$arrayElemAt", bson.A{"$makerOrder.status", 0}}}},
 								},
 							},
 						},
 					},
-					{"timestamp", bson.M{"$toLong": "$createdAt"}},
+					{"timestamp", bson.D{{"$toLong", "$createdAt"}}},
 					{"strikePrice", "$strikePrice"},
 					{"tickDirection", "$tickDirection"},
 					{"tradeSequence", "$tradeSequence"},
@@ -369,6 +322,11 @@ func (r TradeRepository) FindUserTradesByInstrument(
 						bson.A{
 							bson.D{{"$skip", 0}},
 							bson.D{{"$limit", count}},
+							bson.D{
+								{"$sort", bson.D{
+									{"timestamp", sortOrder},
+								}},
+							},
 						},
 					},
 					{"total",
