@@ -8,7 +8,7 @@ on:
 
 jobs:
   deploy:
-    uses: Undercurrent-Technologies/kprime-gateway/.github/workflows/reusable-deployment.yml@development
+    uses: Undercurrent-Technologies/kprime-gateway/.github/workflows/reusable-deployment.yml@ci-cd-runner-self
     with:
       environment: development
     secrets: inherit
