@@ -16,10 +16,9 @@ import (
 	engineType "gateway/internal/engine/types"
 	_types "gateway/internal/orderbook/types"
 
-	orderType "github.com/Undercurrent-Technologies/kprime-utilities/models/order"
-
 	"github.com/Shopify/sarama"
 	"github.com/Undercurrent-Technologies/kprime-utilities/commons/logs"
+	"github.com/Undercurrent-Technologies/kprime-utilities/models/kafka"
 
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -152,11 +151,10 @@ func (svc wsOrderService) HandleConsumeUserOrder(msg *sarama.ConsumerMessage) {
 			}
 		}
 	}
-	return
 }
 
 func (svc wsOrderService) HandleConsumeUserOrderCancel(msg *sarama.ConsumerMessage) {
-	var data orderType.CancelledOrder
+	var data kafka.CancelledOrder
 
 	err := json.Unmarshal(msg.Value, &data)
 	if err != nil {
@@ -211,7 +209,6 @@ func (svc wsOrderService) HandleConsumeUserOrderCancel(msg *sarama.ConsumerMessa
 			}
 		}
 	}
-	return
 }
 
 func (svc wsOrderService) HandleConsumeUserOrder100ms(instrument string, userId string) {
@@ -298,6 +295,17 @@ func (svc wsOrderService) Subscribe(c *ws.Client, key string) {
 	socket.SendInitMessage(c, initData)
 }
 
+// SubscribeUserOrder asyncApi
+// @summary Notification user orders changes
+// @description Get notifications about changes in user's orders for given instrument.
+// @payload model.SubscribeChannelParameters
+// @x-response model.SubscribeChannelResponse
+// @contentType application/json
+// @auth private
+// @queue user.orders.{instrument_name}.{interval}
+// @method user.orders.instrument_name.interval
+// @tags private subscribe orders
+// @operation subscribe
 func (svc wsOrderService) SubscribeUserOrder(c *ws.Client, channel string, userId string) {
 	socket := ws.GetOrderSocket()
 	key := strings.Split(channel, ".")

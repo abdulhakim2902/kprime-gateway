@@ -1,0 +1,205 @@
+asyncapi: 2.6.0
+info:
+    title: K-Prime Gateway API Documentation
+    version: API Version 2
+    description: authenticate user with client_key and client_secrets
+channels:
+    public/auth:
+        publish:
+            message:
+                oneOf:
+                    - $ref: '#/components/messages/public.auth'
+    user.orders.{instrument_name}.{interval}:
+        publish:
+            message:
+                oneOf:
+                    - $ref: '#/components/messages/private.user.orders.instrument_name.interval'
+components:
+    messages:
+        private.user.orders.instrument_name.interval:
+            tags:
+                - name: private
+                - name: subscribe
+                - name: orders
+            payload:
+                $ref: '#/components/schemas/model.SubscribeChannelParameters'
+            x-response:
+                $ref: '#/components/schemas/model.SubscribeChannelResponse'
+            summary: Notification user orders changes
+            description: Get notifications about changes in user's orders for given instrument.
+        public.auth:
+            tags:
+                - name: public
+                - name: auth
+            payload:
+                $ref: '#/components/schemas/types.AuthParams'
+            x-response:
+                $ref: '#/components/schemas/types.AuthResponse'
+            summary: authenticate user
+            description: authenticate user with client_key and client_secrets
+    schemas:
+        Order:
+            type: object
+            properties:
+                amount:
+                    description: Trade amount
+                    type: number
+                api:
+                    description: true if created with API
+                average_price:
+                    description: Average fill price of the order
+                cancel_reason:
+                    description: Enumerated reason behind cancel
+                    type: string
+                creation_timestamp:
+                    description: The timestamp (milliseconds since the Unix epoch)
+                    type: integer
+                direction:
+                    $ref: '#/components/schemas/types.Side'
+                    enum:
+                        - buy
+                        - sell
+                    description: Direction
+                filled_amount:
+                    description: Trade amount
+                    type: number
+                instrument_name:
+                    description: Unique instrument identifier
+                    type: string
+                label:
+                    description: User defined label
+                    type: string
+                last_update_timestamp:
+                    description: The timestamp (milliseconds since the Unix epoch)
+                    type: integer
+                max_show:
+                    description: Maximum amount within an order to be shown to other customers
+                    type: number
+                order_id:
+                    $ref: '#/components/schemas/primitive.ObjectID'
+                    description: Unique order identifier
+                order_state:
+                    $ref: '#/components/schemas/types.OrderStatus'
+                    enum:
+                        - open
+                        - filled
+                        - rejected
+                        - cancelled
+                        - untriggered
+                    description: Order state
+                order_type:
+                    $ref: '#/components/schemas/types.Type'
+                    enum:
+                        - limit
+                        - market
+                        - stop_limit
+                        - stop_market
+                    description: Order type
+                post_only:
+                    description: If true, the order is considered post-only
+                price:
+                    description: Price in base currency
+                    type: number
+                reduce_only:
+                    description: If true, the order is considered reduce-only which is intended to only reduce a current position
+                replaced:
+                    description: true if the order was edited, otherwise false
+                time_in_force:
+                    $ref: '#/components/schemas/types.TimeInForce'
+                    enum:
+                        - good_til_cancelled
+                        - good_til_day
+                        - fill_or_kill
+                        - immediate_or_cancel
+                    description: Order time in force
+                usd:
+                    description: Option price in USD
+                    type: number
+        model.SubscribeChannelParameters:
+            type: object
+            required:
+                - instrument_name
+                - interval
+            properties:
+                instrument_name:
+                    description: Instrument name
+                    example: BTC-31JUN23-50000-C
+                    type: string
+                interval:
+                    enum:
+                        - raw
+                        - 100ms
+                        - agg2
+                    description: Frequency of notifications
+                    type: integer
+        model.SubscribeChannelResponse:
+            type: object
+            properties:
+                channel:
+                    description: channel parameter
+                    type: string
+                data:
+                    description: array of order
+                    type: array
+                    items:
+                        - $ref: '#/components/schemas/Order'
+        primitive.ObjectID: {}
+        types.AuthParams:
+            type: object
+            required:
+                - grant_type
+            properties:
+                client_id:
+                    description: Required for grant type client_credentials and client_signature
+                    type: string
+                client_secret:
+                    description: Required for grant type client_credentials
+                    type: string
+                data:
+                    description: Optional for grant type client_signature; contains any user specific value
+                    type: string
+                grant_type:
+                    enum:
+                        - client_credentials
+                        - client_signature
+                        - refresh_token
+                    description: Method of authentication
+                    type: string
+                nonce:
+                    description: Optional for grant type client_signature; delivers user generated initialization vector for the server token
+                    type: string
+                refresh_token:
+                    description: Required for grant type refresh_token
+                    type: string
+                signature:
+                    description: Required for grant type client_signature, it's a cryptographic signature calculated over provided fields using user secret key.
+                    type: string
+                timestamp:
+                    description: Required for grant type client_signature, provides time when request has been generated
+                    type: string
+        types.AuthResponse:
+            type: object
+            properties:
+                access_token:
+                    description: Access Token to use for authentication
+                    type: string
+                expires_in:
+                    description: Token lifetime in seconds
+                    type: integer
+                refresh_token:
+                    description: Can be used to request a new token (with a new lifetime)
+                    type: string
+                scope:
+                    description: Type of the access for assigned token
+                    type: string
+                token_type:
+                    description: Authorization type, allowed value - bearer
+                    type: string
+        types.OrderStatus:
+            type: string
+        types.Side:
+            type: string
+        types.TimeInForce:
+            type: string
+        types.Type:
+            type: string

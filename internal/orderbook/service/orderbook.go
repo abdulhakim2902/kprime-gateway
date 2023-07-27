@@ -11,7 +11,7 @@ import (
 	"github.com/Shopify/sarama"
 	"github.com/gin-gonic/gin"
 
-	orderType "github.com/Undercurrent-Technologies/kprime-utilities/models/order"
+	"github.com/Undercurrent-Technologies/kprime-utilities/models/kafka"
 	_types "github.com/Undercurrent-Technologies/kprime-utilities/types"
 
 	_engineType "gateway/internal/engine/types"
@@ -71,7 +71,7 @@ func (svc orderbookHandler) HandleConsumeUserChange(msg *sarama.ConsumerMessage)
 }
 
 func (svc orderbookHandler) HandleConsumeUserChangeCancel(msg *sarama.ConsumerMessage) {
-	var data orderType.CancelledOrder
+	var data kafka.CancelledOrder
 
 	err := json.Unmarshal(msg.Value, &data)
 	if err != nil {
@@ -103,7 +103,7 @@ func (svc orderbookHandler) HandleConsumeTicker(msg *sarama.ConsumerMessage) {
 }
 
 func (svc orderbookHandler) HandleConsumeTickerCancel(msg *sarama.ConsumerMessage) {
-	var data orderType.CancelledOrder
+	var data kafka.CancelledOrder
 
 	err := json.Unmarshal(msg.Value, &data)
 	if err != nil {
@@ -293,7 +293,7 @@ func (svc orderbookHandler) HandleConsumeBook(msg *sarama.ConsumerMessage) {
 		updated := order.Amendments[len(order.Amendments)-1].UpdatedFields
 		switch order.Side {
 		case _types.BUY:
-			if val, ok := updated["price"]; ok {
+			if val, ok := (*updated)["price"]; ok {
 				if _, ok := changeId.Bids[fmt.Sprintf("%f", val.OldValue)]; ok {
 					// check if old price point deleted
 					if val.OldValue != order.Price {
@@ -306,7 +306,7 @@ func (svc orderbookHandler) HandleConsumeBook(msg *sarama.ConsumerMessage) {
 				}
 			}
 		case _types.SELL:
-			if val, ok := updated["price"]; ok {
+			if val, ok := (*updated)["price"]; ok {
 				if _, ok := changeId.Asks[fmt.Sprintf("%f", val.OldValue)]; ok {
 					// check if old price point deleted
 					if val.OldValue != order.Price {
@@ -866,7 +866,7 @@ func (svc orderbookHandler) HandleConsumeBookAgg(_instrument string, order types
 			updated := order.Amendments[len(order.Amendments)-1].UpdatedFields
 			switch order.Side {
 			case _types.BUY:
-				if val, ok := updated["price"]; ok {
+				if val, ok := (*updated)["price"]; ok {
 					if _, ok := changeId.BidsAgg[fmt.Sprintf("%f", val.OldValue)]; ok {
 						// check if old price point deleted
 						if val.OldValue != order.Price {
@@ -879,7 +879,7 @@ func (svc orderbookHandler) HandleConsumeBookAgg(_instrument string, order types
 					}
 				}
 			case _types.SELL:
-				if val, ok := updated["price"]; ok {
+				if val, ok := (*updated)["price"]; ok {
 					if _, ok := changeId.AsksAgg[fmt.Sprintf("%f", val.OldValue)]; ok {
 						// check if old price point deleted
 						if val.OldValue != order.Price {
@@ -1162,7 +1162,7 @@ func (svc orderbookHandler) Handle100msInterval(instrument string) {
 							updated := changeIdLocalVar.Amendments[len(changeIdLocalVar.Amendments)-1].UpdatedFields
 							switch changeIdLocalVar.Side {
 							case _types.BUY:
-								if val, ok := updated["price"]; ok {
+								if val, ok := (*updated)["price"]; ok {
 									if _, ok := changeId.Bids100[fmt.Sprintf("%f", val.OldValue)]; ok {
 										// check if old price point deleted
 
@@ -1176,7 +1176,7 @@ func (svc orderbookHandler) Handle100msInterval(instrument string) {
 									}
 								}
 							case _types.SELL:
-								if val, ok := updated["price"]; ok {
+								if val, ok := (*updated)["price"]; ok {
 									if _, ok := changeId.Asks100[fmt.Sprintf("%f", val.OldValue)]; ok {
 										// check if old price point deleted
 										if val.OldValue != changeIdLocalVar.Price {

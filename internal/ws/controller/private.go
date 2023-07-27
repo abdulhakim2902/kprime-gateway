@@ -599,10 +599,18 @@ func (svc *wsHandler) getOrderStateByLabel(input interface{}, c *ws.Client) {
 		return
 	}
 
+	currency, ok := confType.Pair(msg.Params.Currency).CurrencyCheck()
+	if !ok {
+		protocol.SendValidationMsg(connKey,
+			validation_reason.INVALID_PARAMS, errors.New("invalid currency"))
+		return
+	}
+
 	// Add timeout
 	go protocol.TimeOutProtocol(connKey)
 
 	msg.Params.UserId = claim.UserID
+	msg.Params.Currency = currency
 
 	res := svc.deribitSvc.DeribitGetOrderStateByLabel(context.TODO(), msg.Params)
 

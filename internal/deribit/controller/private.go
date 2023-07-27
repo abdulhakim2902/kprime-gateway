@@ -511,7 +511,22 @@ func (h *DeribitHandler) getOrderHistoryByInstrument(r *gin.Context) {
 func (h *DeribitHandler) getOrderStateByLabel(r *gin.Context) {
 	var msg deribitModel.RequestDto[deribitModel.DeribitGetOrderStateByLabelRequest]
 	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
-		r.AbortWithError(http.StatusBadRequest, err)
+		reason := validation_reason.PARSE_ERROR
+		code, _, codeStr := reason.Code()
+
+		m := protocol.RPCResponseMessage{
+			JSONRPC: "2.0",
+			ID:      msg.Id,
+			Error: &protocol.ErrorMessage{
+				Message: err.Error(),
+				Data: protocol.ReasonMessage{
+					Reason: codeStr,
+				},
+				Code: code,
+			},
+			Testnet: true,
+		}
+		r.AbortWithStatusJSON(http.StatusBadRequest, m)
 		return
 	}
 
@@ -526,7 +541,15 @@ func (h *DeribitHandler) getOrderStateByLabel(r *gin.Context) {
 		return
 	}
 
+	currency, ok := confType.Pair(msg.Params.Currency).CurrencyCheck()
+	if !ok {
+		protocol.SendValidationMsg(connKey,
+			validation_reason.INVALID_PARAMS, errors.New("invalid currency"))
+		return
+	}
+
 	msg.Params.UserId = userId
+	msg.Params.Currency = currency
 
 	res := h.svc.DeribitGetOrderStateByLabel(r.Request.Context(), msg.Params)
 
