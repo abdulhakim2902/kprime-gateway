@@ -145,7 +145,7 @@ type GetOrderHistoryByInstrumentParams struct {
 
 type GetOrderStateParams struct {
 	AccessToken string `json:"access_token"`
-	OrderId     string `json:"order_id"`
+	OrderId     string `json:"order_id" form:"order_id" validate:"required"`
 }
 
 type GetAccountSummary struct {

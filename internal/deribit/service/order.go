@@ -78,7 +78,7 @@ func (svc deribitService) DeribitGetInstruments(ctx context.Context, data model.
 	return orders
 }
 
-func (svc deribitService) DeribitGetOrderState(ctx context.Context, userId string, request model.DeribitGetOrderStateRequest) []model.DeribitGetOrderStateResponse {
+func (svc deribitService) DeribitGetOrderState(ctx context.Context, userId string, request model.DeribitGetOrderStateRequest) *model.DeribitGetOrderStateResponse {
 	orders, err := svc.orderRepo.GetOrderState(
 		userId,
 		request.OrderId,
@@ -98,7 +98,11 @@ func (svc deribitService) DeribitGetOrderState(ctx context.Context, userId strin
 		return nil
 	}
 
-	return orderState
+	if len(orderState) > 0 {
+		return &orderState[0]
+	}
+
+	return nil
 }
 
 func (svc deribitService) DeribitGetOrderStateByLabel(ctx context.Context, data model.DeribitGetOrderStateByLabelRequest) []*model.DeribitGetOrderStateByLabelResponse {

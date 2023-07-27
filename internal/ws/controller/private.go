@@ -529,6 +529,13 @@ func (svc *wsHandler) getOrderState(input interface{}, c *ws.Client) {
 		return
 	}
 
+	_, err = primitive.ObjectIDFromHex(msg.Params.OrderId)
+	if err != nil {
+		reason := validation_reason.INVALID_PARAMS
+		protocol.SendValidationMsg(connKey, reason, errors.New("invalid order_id"))
+		return
+	}
+
 	// Add timeout
 	go protocol.TimeOutProtocol(connKey)
 

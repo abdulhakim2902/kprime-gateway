@@ -1191,18 +1191,14 @@ func (r OrderRepository) GetOrderState(userId string, orderId string) ([]_deribi
 		},
 	}
 
-	objectID, err := primitive.ObjectIDFromHex(orderId)
-	if err != nil {
-		logs.Log.Error().Err(err).Msg("")
-
-		return []_deribitModel.DeribitGetOrderStateResponse{}, err
-	}
+	oId, _ := primitive.ObjectIDFromHex(orderId)
+	uId, _ := primitive.ObjectIDFromHex(userId)
 	pipelineInstruments := bson.A{}
 
 	query := bson.M{
 		"$match": bson.M{
-			"_id":    objectID,
-			"userId": userId,
+			"_id":    oId,
+			"userId": uId,
 		},
 	}
 	pipelineInstruments = append(pipelineInstruments, query)

@@ -417,7 +417,7 @@ func (svc wsOrderService) GetGetOrderHistoryByInstrument(ctx context.Context, us
 	return historyOrderData
 }
 
-func (svc wsOrderService) GetOrderState(ctx context.Context, userId string, request deribitModel.DeribitGetOrderStateRequest) []deribitModel.DeribitGetOrderStateResponse {
+func (svc wsOrderService) GetOrderState(ctx context.Context, userId string, request deribitModel.DeribitGetOrderStateRequest) *deribitModel.DeribitGetOrderStateResponse {
 	orders, err := svc.repo.GetOrderState(
 		userId,
 		request.OrderId,
@@ -440,5 +440,9 @@ func (svc wsOrderService) GetOrderState(ctx context.Context, userId string, requ
 		return nil
 	}
 
-	return orderState
+	if len(orderState) > 0 {
+		return &orderState[0]
+	}
+
+	return nil
 }
