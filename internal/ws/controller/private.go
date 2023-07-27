@@ -297,6 +297,7 @@ func (svc *wsHandler) cancelByInstrument(input interface{}, c *ws.Client) {
 	_, err = svc.deribitSvc.DeribitCancelByInstrument(context.TODO(), claim.UserID, deribitModel.DeribitCancelByInstrumentRequest{
 		InstrumentName: msg.Params.InstrumentName,
 		ClOrdID:        strconv.FormatUint(msg.Id, 10),
+		Type:           types.Type(msg.Params.Type),
 	})
 	if err != nil {
 		protocol.SendErrMsg(connKey, err)
