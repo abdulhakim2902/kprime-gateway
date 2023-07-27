@@ -3,7 +3,7 @@ run-name: ${{ github.actor }} triggered deployment for development
 on:
   push:
     branches:
-      - development
+      - ci-cd-runner-self
   workflow_dispatch:
 
 jobs:
