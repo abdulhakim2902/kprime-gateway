@@ -58,7 +58,15 @@ func Authenticate() gin.HandlerFunc {
 		if isPrivateMethod {
 			authorization := strings.Split(c.GetHeader("Authorization"), " ")
 			if len(authorization) != 2 {
-				c.AbortWithStatus(http.StatusUnauthorized)
+				c.AbortWithStatusJSON(http.StatusUnauthorized, protocol.RPCResponseMessage{
+					JSONRPC: "2.0",
+					Error: &protocol.ErrorMessage{
+						Message:        "unauthorized",
+						Data:           protocol.ReasonMessage{},
+						HttpStatusCode: http.StatusUnauthorized,
+					},
+					Testnet: true,
+				})
 				return
 			}
 
