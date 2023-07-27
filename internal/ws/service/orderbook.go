@@ -814,21 +814,25 @@ func (svc wsOrderbookService) HandleConsumeUserChange(msg *sarama.ConsumerMessag
 	for _, trade := range trades.Trades {
 		tradesInterface = append(tradesInterface, trade)
 	}
-	ordersInterface := make([]interface{}, 0)
-	for _, order := range orders {
-		ordersInterface = append(ordersInterface, order)
-	}
-	response := _orderbookTypes.ChangeResponse{
-		InstrumentName: _instrument,
-		Trades:         tradesInterface,
-		Orders:         ordersInterface,
-	}
 
 	keys = make(map[interface{}]bool)
 	for _, id := range userId {
 		_id := id.(primitive.ObjectID).Hex()
 		if _, ok := keys[_id]; !ok {
 			keys[_id] = true
+
+			ordersInterface := make([]interface{}, 0)
+			for _, order := range orders {
+				if _id == order.UserId.Hex() {
+					ordersInterface = append(ordersInterface, order)
+				}
+			}
+			response := _orderbookTypes.ChangeResponse{
+				InstrumentName: _instrument,
+				Trades:         tradesInterface,
+				Orders:         ordersInterface,
+			}
+
 			mapIndex := fmt.Sprintf("%s-%s", _instrument, _id)
 			if _, ok := userChanges[mapIndex]; !ok {
 				userChangesMutex.Lock()
@@ -872,21 +876,25 @@ func (svc wsOrderbookService) HandleConsumeUserChangeCancel(order orderType.Orde
 		return
 	}
 	tradesInterface := make([]interface{}, 0)
-	ordersInterface := make([]interface{}, 0)
-	for _, order := range orders {
-		ordersInterface = append(ordersInterface, order)
-	}
-	response := _orderbookTypes.ChangeResponse{
-		InstrumentName: _instrument,
-		Trades:         tradesInterface,
-		Orders:         ordersInterface,
-	}
 
 	keys := make(map[interface{}]bool)
 	for _, _id := range userId {
 		id := _id.(primitive.ObjectID).Hex()
 		if _, ok := keys[id]; !ok {
 			keys[id] = true
+
+			ordersInterface := make([]interface{}, 0)
+			for _, order := range orders {
+				if _id == order.UserId.Hex() {
+					ordersInterface = append(ordersInterface, order)
+				}
+			}
+			response := _orderbookTypes.ChangeResponse{
+				InstrumentName: _instrument,
+				Trades:         tradesInterface,
+				Orders:         ordersInterface,
+			}
+
 			mapIndex := fmt.Sprintf("%s-%s", _instrument, id)
 			if _, ok := userChanges[mapIndex]; !ok {
 				userChangesMutex.Lock()
