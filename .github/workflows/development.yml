@@ -3,12 +3,12 @@ run-name: ${{ github.actor }} triggered deployment for development
 on:
   push:
     branches:
-      - ci-cd-runner-self
+      - development
   workflow_dispatch:
 
 jobs:
   deploy:
-    uses: Undercurrent-Technologies/kprime-gateway/.github/workflows/reusable-deployment.yml@ci-cd-runner-self
+    uses: Undercurrent-Technologies/kprime-gateway/.github/workflows/reusable-deployment.yml@development
     with:
       environment: development
     secrets: inherit
