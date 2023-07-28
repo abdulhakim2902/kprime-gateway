@@ -210,7 +210,7 @@ func (svc *wsHandler) publicSubscribe(input interface{}, c *ws.Client) {
 			}
 		} else {
 			if len(s) > 1 {
-				_, err = utils.ParseInstruments(s[1], false)
+				_, err = utils.ParseInstruments(s[1], true)
 				if err != nil {
 					protocol.SendValidationMsg(connKey,
 						validation_reason.INVALID_PARAMS, err)
