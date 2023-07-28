@@ -148,39 +148,43 @@ func (svc wsTradeService) HandleConsumeUserTrades(msg *sarama.ConsumerMessage) {
 				}
 			}
 		}
-		trades, err := svc.repo.FindUserTradesById(
-			_instrument,
-			userId,
-			tradeId,
-		)
-		if err != nil {
-			return
-		}
-		if len(trades.Trades) > 0 {
-			for _, _id := range userId {
-				id := _id.(primitive.ObjectID).Hex()
+		for _, _id := range userId {
+			id := _id.(primitive.ObjectID).Hex()
+			var userIdOrder []interface{}
+			userIdOrder = append(userIdOrder, _id)
+			isTaker := (data.Matches.TakerOrder.UserID == _id)
 
-				mapIndex := fmt.Sprintf("%s-%s", _instrument, id)
-				if _, ok := userTrades[mapIndex]; !ok {
-					userTradesMutex.Lock()
-					userTrades[mapIndex] = trades.Trades
-					userTradesMutex.Unlock()
-					go svc.HandleConsumeUserTrades100ms(_instrument, id)
-				} else {
-					userTradesMutex.Lock()
-					userTrades[mapIndex] = append(userTrades[mapIndex], trades.Trades...)
-					userTradesMutex.Unlock()
-				}
-				// broadcast to user id
-				broadcastId := fmt.Sprintf("%s.%s.%s-%s", "user", "trades", _instrument, id)
+			trades, err := svc.repo.FindTradesEachUser(
+				_instrument,
+				userIdOrder,
+				tradeId,
+				isTaker,
+			)
 
-				params := _types.QuoteResponse{
-					Channel: fmt.Sprintf("user.trades.%s.raw", _instrument),
-					Data:    trades.Trades,
-				}
-				method := "subscription"
-				ws.GetTradeSocket().BroadcastMessageTrade(broadcastId, method, params)
+			if err != nil {
+				continue
 			}
+
+			mapIndex := fmt.Sprintf("%s-%s", _instrument, id)
+			if _, ok := userTrades[mapIndex]; !ok {
+				userTradesMutex.Lock()
+				userTrades[mapIndex] = trades.Trades
+				userTradesMutex.Unlock()
+				go svc.HandleConsumeUserTrades100ms(_instrument, id)
+			} else {
+				userTradesMutex.Lock()
+				userTrades[mapIndex] = append(userTrades[mapIndex], trades.Trades...)
+				userTradesMutex.Unlock()
+			}
+			// broadcast to user id
+			broadcastId := fmt.Sprintf("%s.%s.%s-%s", "user", "trades", _instrument, id)
+
+			params := _types.QuoteResponse{
+				Channel: fmt.Sprintf("user.trades.%s.raw", _instrument),
+				Data:    trades.Trades,
+			}
+			method := "subscription"
+			ws.GetTradeSocket().BroadcastMessageTrade(broadcastId, method, params)
 		}
 		return
 	} else {
