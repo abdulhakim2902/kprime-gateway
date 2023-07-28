@@ -47,7 +47,6 @@ services:
       - test-network
   
   matching-engine:
-    platform: linux/amd64
     image: ghcr.io/undercurrent-technologies/matching-engine:dev
     container_name: 'test_matching-engine'
     environment:
@@ -66,7 +65,6 @@ services:
       - test-network
   
   pickup:
-    platform: linux/amd64
     image: ghcr.io/undercurrent-technologies/pickup:dev
     container_name: 'test_pickup'
     environment:
