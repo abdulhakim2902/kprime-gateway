@@ -8,13 +8,11 @@ networks:
 services:
   redis:
     image: redis
-    container_name: 'test_redis'
     networks:
       - test-network
 
   mongo: 
     image: 'mongo:latest'
-    container_name: 'test_mongo'
     environment:
       - MONGO_INITDB_ROOT_USERNAME=root
       - MONGO_INITDB_ROOT_PASSWORD=root
@@ -23,7 +21,6 @@ services:
 
   zookeeper:
     image: 'bitnami/zookeeper:latest'
-    container_name: 'test_zookeeper'
     environment:
       - ZOO_PORT_NUMBER=2181
       - ZOO_TICK_TIME=2000
@@ -33,7 +30,6 @@ services:
   
   kafka:
     image: 'bitnami/kafka:3.4.0-debian-11-r21'
-    container_name: 'test_kafka'
     environment:
       - KAFKA_BROKER_ID=1
       - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092
@@ -48,7 +44,6 @@ services:
   
   matching-engine:
     image: ghcr.io/undercurrent-technologies/matching-engine:dev
-    container_name: 'test_matching-engine'
     environment:
       - NODE_ENV=development
       - SERVER_PORT=8002
@@ -66,7 +61,6 @@ services:
   
   pickup:
     image: ghcr.io/undercurrent-technologies/pickup:dev
-    container_name: 'test_pickup'
     environment:
       - NODE_ENV=development
       - SERVER_PORT=8003
@@ -84,7 +78,6 @@ services:
   
   gateway:
     image: ${IMAGE_TAG}:pr-${PR_NUMBER}
-    container_name: 'test_gateway'
     environment:
       - APP_ENV=development
       - PORT=8001
