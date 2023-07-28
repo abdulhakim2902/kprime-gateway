@@ -16,7 +16,7 @@ WORKDIR /src
 
 # RUN go mod tidy
 
-RUN CGO_ENABLED=0 GOOS=linux go build -o gateway main.go
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o gateway main.go
 
 FROM alpine:latest AS final
 
