@@ -1,15 +1,15 @@
 version: '3.9'
 
 networks:
-  test-network:
-    name: test-network
+  gateway-test-network:
+    name: gateway-test-network
     driver: bridge
 
 services:
   redis:
     image: redis
     networks:
-      - test-network
+      - gateway-test-network
 
   mongo: 
     image: 'mongo:latest'
@@ -17,7 +17,7 @@ services:
       - MONGO_INITDB_ROOT_USERNAME=root
       - MONGO_INITDB_ROOT_PASSWORD=root
     networks:
-      - test-network
+      - gateway-test-network
 
   zookeeper:
     image: 'bitnami/zookeeper:latest'
@@ -26,7 +26,7 @@ services:
       - ZOO_TICK_TIME=2000
       - ALLOW_ANONYMOUS_LOGIN=yes
     networks:
-      - test-network
+      - gateway-test-network
   
   kafka:
     image: 'bitnami/kafka:3.4.0-debian-11-r21'
@@ -40,7 +40,7 @@ services:
     depends_on:
       - zookeeper
     networks:
-      - test-network
+      - gateway-test-network
   
   matching-engine:
     image: ghcr.io/undercurrent-technologies/matching-engine:dev
@@ -57,7 +57,7 @@ services:
       - PROTECT_BASIC=*
       - PROTECT_IP_WHITELISTS=*
     networks:
-      - test-network
+      - gateway-test-network
   
   pickup:
     image: ghcr.io/undercurrent-technologies/pickup:dev
@@ -74,7 +74,7 @@ services:
     depends_on:
       - matching-engine
     networks:
-      - test-network
+      - gateway-test-network
   
   gateway:
     image: ${IMAGE_TAG}:pr-${PR_NUMBER}
@@ -95,4 +95,4 @@ services:
       - RATE_LIMITER_MAX_REQUESTS=100
       - RATE_LIMITER_DURATION=1
     networks:
-      - test-network
+      - gateway-test-network
