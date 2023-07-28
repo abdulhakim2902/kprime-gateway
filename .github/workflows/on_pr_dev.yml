@@ -13,6 +13,7 @@ jobs:
       ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
       IMAGE_TAG: ghcr.io/undercurrent-technologies/gateway
       GIT_TERMINAL_PROMPT: 1
+      DOCKER_DEFAULT_PLATFORM: linux/amd64
 
     steps:
       - uses: actions/checkout@v3
