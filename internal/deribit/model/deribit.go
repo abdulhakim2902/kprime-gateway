@@ -475,7 +475,7 @@ type DeribitGetOrderHistoryByInstrumentRequest struct {
 
 type DeribitGetUserTradesByOrderRequest struct {
 	OrderId string `json:"order_id " validate:"required"`
-	Sorting string `json:"sorting "`
+	Sorting string `json:"sorting"`
 }
 
 type DeribitGetOrderHistoryByInstrumentResponse struct {

@@ -11,6 +11,8 @@ github.com/Undercurrent-Technologies/kprime-utilities v1.1.12 h1:q4qdMDPba13if2v
 github.com/Undercurrent-Technologies/kprime-utilities v1.1.12/go.mod h1:726hW05V8VXH4JgR+qRjyrN2XaphDocq9X8WsCj8DAI=
 github.com/Undercurrent-Technologies/kprime-utilities v1.1.13 h1:tPXKAK/orSE7UF2/OoZIGM5dpADZnmHS9rKgp/BQoQQ=
 github.com/Undercurrent-Technologies/kprime-utilities v1.1.13/go.mod h1:726hW05V8VXH4JgR+qRjyrN2XaphDocq9X8WsCj8DAI=
+github.com/Undercurrent-Technologies/kprime-utilities v1.1.15 h1:H7w2ODH0g3JVoebE2pZouVmIaUZB3K7QvoWG/xONc5Q=
+github.com/Undercurrent-Technologies/kprime-utilities v1.1.15/go.mod h1:726hW05V8VXH4JgR+qRjyrN2XaphDocq9X8WsCj8DAI=
 github.com/armon/go-proxyproto v0.0.0-20210323213023-7e956b284f0a h1:AP/vsCIvJZ129pdm9Ek7bH7yutN3hByqsMoNrWAxRQc=
 github.com/armon/go-proxyproto v0.0.0-20210323213023-7e956b284f0a/go.mod h1:QmP9hvJ91BbJmGVGSbutW19IC0Q9phDCLGaomwTJbgU=
 github.com/beorn7/perks v1.0.1 h1:VlbKKnNfV8bJzeqoa4cOKqO6bYr3WgKZxO8Z16+hsOM=

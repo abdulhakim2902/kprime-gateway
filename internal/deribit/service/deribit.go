@@ -310,6 +310,7 @@ func (svc *deribitService) DeribitGetUserTradesByOrder(ctx context.Context, user
 	trades, err := svc.tradeRepo.FilterUserTradesByOrder(
 		userId,
 		data.OrderId,
+		data.Sorting,
 	)
 	if err != nil {
 		return nil
