@@ -13,7 +13,6 @@ jobs:
       ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
       IMAGE_TAG: ghcr.io/undercurrent-technologies/gateway
       GIT_TERMINAL_PROMPT: 1
-      DOCKER_DEFAULT_PLATFORM: linux/amd64
 
     steps:
       - uses: actions/checkout@v3
@@ -42,7 +41,7 @@ jobs:
 
           docker-compose -f docker-compose.itest.yml up -d --force-recreate redis mongo zookeeper kafka
           sleep 5
-          docker run --rm --name seeder --network=test-network \
+          docker run --rm --platform linux/amd64 --name seeder --network=test-network \
             -e NODE_ENV=development \
             -e MONGODB_URI="mongodb://root:root@mongo:27017" \
             -e MONGODB_DB_NAME=option_exchange \
@@ -58,7 +57,7 @@ jobs:
 
       - name: Run test
         run: |
-          docker run --rm \
+          docker run --rm --platform linux/amd64 \
             --name tests \
             -e GATEWAY_URL=ws://gateway:8001/ws/api/v2 \
             -e GATEWAY_URL_HTTP=http://gateway:8001/api/v2 \
