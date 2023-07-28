@@ -9,7 +9,7 @@ on:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: Ubuntu-22.04-ARM64
     environment:
       name: ${{ inputs.environment }}
     env:
