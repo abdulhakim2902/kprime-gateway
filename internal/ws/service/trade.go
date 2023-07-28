@@ -462,6 +462,7 @@ func (svc *wsTradeService) GetUserTradesByOrder(ctx context.Context, userId stri
 	trades, err := svc.repo.FilterUserTradesByOrder(
 		userId,
 		data.OrderId,
+		data.Sorting,
 	)
 	if err != nil {
 		return nil

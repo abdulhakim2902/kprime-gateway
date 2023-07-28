@@ -1163,16 +1163,22 @@ func (r TradeRepository) GetGreeks(types string, impliedVolatily float64, option
 	return delta
 }
 
-func (r TradeRepository) FilterUserTradesByOrder(userId string, orderId string) (result _deribitModel.DeribitGetUserTradesByOrderResponse, err error) {
+func (r TradeRepository) FilterUserTradesByOrder(userId, orderId, sort string) (result _deribitModel.DeribitGetUserTradesByOrderResponse, err error) {
 	options := options.AggregateOptions{
 		MaxTime: &defaultTimeout,
 	}
 
-	objectID, err := primitive.ObjectIDFromHex(orderId)
-	if err != nil {
-		fmt.Println(err)
-		return
+	sortOrder := -1 // Default sort order is descending
+
+	switch sort {
+	case "asc":
+		sortOrder = 1
+	case "desc":
+		sortOrder = -1
 	}
+
+	oId, _ := primitive.ObjectIDFromHex(orderId)
+	uId, _ := primitive.ObjectIDFromHex(userId)
 
 	lookupTakerOrderStage := bson.D{
 		{"$lookup",
@@ -1201,8 +1207,8 @@ func (r TradeRepository) FilterUserTradesByOrder(userId string, orderId string) 
 			bson.D{
 				{"$or",
 					bson.A{
-						bson.D{{"taker.userId", userId}, {"taker.orderId", objectID}},
-						bson.D{{"maker.userId", userId}, {"maker.orderId", objectID}},
+						bson.D{{"taker.userId", uId}, {"taker.orderId", oId}},
+						bson.D{{"maker.userId", uId}, {"maker.orderId", oId}},
 					},
 				},
 			},
@@ -1244,7 +1250,7 @@ func (r TradeRepository) FilterUserTradesByOrder(userId string, orderId string) 
 					bson.D{
 						{"$cond",
 							bson.A{
-								bson.D{{"$eq", bson.A{"$taker.orderId", objectID}}},
+								bson.D{{"$eq", bson.A{"$taker.orderId", oId}}},
 								bson.D{
 									{"$arrayElemAt",
 										bson.A{
@@ -1269,7 +1275,7 @@ func (r TradeRepository) FilterUserTradesByOrder(userId string, orderId string) 
 					bson.D{
 						{"$cond",
 							bson.A{
-								bson.D{{"$eq", bson.A{"$taker.orderId", objectID}}},
+								bson.D{{"$eq", bson.A{"$taker.orderId", oId}}},
 								"$taker.orderId",
 								"$maker.orderId",
 							},
@@ -1280,7 +1286,7 @@ func (r TradeRepository) FilterUserTradesByOrder(userId string, orderId string) 
 					bson.D{
 						{"$cond",
 							bson.A{
-								bson.D{{"$eq", bson.A{"$taker.orderId", objectID}}},
+								bson.D{{"$eq", bson.A{"$taker.orderId", oId}}},
 								bson.D{
 									{"$arrayElemAt",
 										bson.A{
@@ -1306,7 +1312,7 @@ func (r TradeRepository) FilterUserTradesByOrder(userId string, orderId string) 
 					bson.D{
 						{"$cond",
 							bson.A{
-								bson.D{{"$eq", bson.A{"$taker.orderId", objectID}}},
+								bson.D{{"$eq", bson.A{"$taker.orderId", oId}}},
 								bson.D{
 									{"$arrayElemAt",
 										bson.A{
@@ -1343,7 +1349,16 @@ func (r TradeRepository) FilterUserTradesByOrder(userId string, orderId string) 
 		}},
 	}
 
-	pipeline := mongo.Pipeline{lookupMakerOrderStage, lookupTakerOrderStage, matchStage, projectStage, groupStage}
+	sortStage := bson.D{{"$sort", bson.D{{"createdAt", sortOrder}}}}
+
+	pipeline := mongo.Pipeline{
+		lookupMakerOrderStage,
+		lookupTakerOrderStage,
+		matchStage,
+		sortStage,
+		projectStage,
+		groupStage,
+	}
 
 	var cursor *mongo.Cursor
 	cursor, err = r.collection.Aggregate(context.Background(), pipeline, &options)
