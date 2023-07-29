@@ -208,6 +208,7 @@ func (a Application) FromAdmin(msg *quickfix.Message, sessionID quickfix.Session
 			userSession = make(map[string]*quickfix.SessionID)
 		}
 
+		fmt.Println("debug user.ID.Hex()", user.ID.Hex())
 		userSession[user.ID.Hex()] = &sessionID
 	}
 	return nil
@@ -1104,8 +1105,11 @@ func OrderConfirmation(userId string, order _orderbookType.Order, symbol string)
 	msg.SetClOrdID(order.ClOrdID)
 
 	if sessionId == nil {
+		fmt.Println("debug session id null")
 		return
 	}
+	fmt.Println("debug session id not null, sending response")
+
 	err := quickfix.SendToTarget(msg, *sessionId)
 	if err != nil {
 		fmt.Print(err.Error())
