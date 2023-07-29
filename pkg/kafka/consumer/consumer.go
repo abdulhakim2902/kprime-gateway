@@ -106,7 +106,6 @@ func handleTopicOrder(oSvc oInt.IwsOrderService, message *sarama.ConsumerMessage
 
 	// convert mongodb object id to string
 	userIDStr := data.Matches.TakerOrder.UserID.Hex()
-	// userIDStr := fmt.Sprintf("%v", data.Matches.TakerOrder.UserID)
 	var order ordermatch.Order
 
 	symbol := strings.Split(order.InstrumentName, "-")[0]
