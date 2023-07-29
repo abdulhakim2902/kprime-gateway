@@ -1046,6 +1046,8 @@ func (a *Application) updateOrder(order Order, status enum.OrdStatus) {
 
 // 35 Execution Report
 func OrderConfirmation(userId string, order _orderbookType.Order, symbol string) {
+	fmt.Println("debug OrderConfirmation")
+	fmt.Println("debug userId", userId)
 	if userSession == nil {
 		if userSession[userId] == nil {
 			return
@@ -1053,6 +1055,7 @@ func OrderConfirmation(userId string, order _orderbookType.Order, symbol string)
 		return
 	}
 	sessionId := userSession[userId]
+	fmt.Println("debug sessionId", sessionId)
 	exec := 0
 	switch order.Status {
 	case "FILLED":
@@ -1086,6 +1089,8 @@ func OrderConfirmation(userId string, order _orderbookType.Order, symbol string)
 	}
 
 	conversion, _ := utils.ConvertToFloat(order.FilledAmount)
+	fmt.Println("debug Sending Execution Report")
+
 	msg := executionreport.New(
 		field.NewOrderID(order.ID.Hex()),    // 37
 		field.NewExecID(strconv.Itoa(exec)), // 17
