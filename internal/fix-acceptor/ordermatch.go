@@ -1088,7 +1088,7 @@ func OrderConfirmation(userId string, order _orderbookType.Order, symbol string)
 	conversion, _ := utils.ConvertToFloat(order.FilledAmount)
 
 	fmt.Println("debug order.ID.Hex()", order.ID.Hex())
-	
+
 	msg := executionreport.New(
 		field.NewOrderID(order.ID.Hex()),    // 37
 		field.NewExecID(strconv.Itoa(exec)), // 17
@@ -1100,6 +1100,12 @@ func OrderConfirmation(userId string, order _orderbookType.Order, symbol string)
 		field.NewAvgPx(decimal.NewFromFloat(order.Price), 2),                                            // 6 TODO: FIX ME
 	)
 	msg.SetClOrdID(order.ClOrdID)
+
+	// Setting price to the FIX message
+	msg.SetPrice(decimal.NewFromFloat(order.Price), 2) // 44
+
+	vd, _ := msg.GetPrice();
+	fmt.Println("debug vd", vd)
 
 	if sessionId == nil {
 		return
