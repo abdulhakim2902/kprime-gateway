@@ -1087,6 +1087,8 @@ func OrderConfirmation(userId string, order _orderbookType.Order, symbol string)
 
 	conversion, _ := utils.ConvertToFloat(order.FilledAmount)
 
+	fmt.Println("debug order.ID.Hex()", order.ID.Hex())
+	
 	msg := executionreport.New(
 		field.NewOrderID(order.ID.Hex()),    // 37
 		field.NewExecID(strconv.Itoa(exec)), // 17
