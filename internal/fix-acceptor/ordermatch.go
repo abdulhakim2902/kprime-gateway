@@ -1104,7 +1104,6 @@ func OrderConfirmation(userId string, order _orderbookType.Order, symbol string)
 	// Setting price to the FIX message
 	msg.SetPrice(decimal.NewFromFloat(order.Price), 2) // 44
 
-	fmt.Println("debug symbol", symbol)
 	msg.SetSymbol(symbol) // 55
 
 	if sessionId == nil {

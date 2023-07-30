@@ -111,8 +111,6 @@ func handleTopicOrder(oSvc oInt.IwsOrderService, message *sarama.ConsumerMessage
 	takerOrder := data.Matches.TakerOrder;
 	instrumentName := takerOrder.Underlying + "-" + takerOrder.ExpiryDate + "-" + fmt.Sprintf("%.0f", takerOrder.StrikePrice) + "-" + string(takerOrder.Contracts[0])
 
-	fmt.Println("debug instrumentName", instrumentName)
-	
 	go ordermatch.OrderConfirmation(userIDStr, *data.Matches.TakerOrder, instrumentName)
 
 	// no need to use HandleConsume
