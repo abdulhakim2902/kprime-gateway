@@ -1095,8 +1095,8 @@ func OrderConfirmation(userId string, order _orderbookType.Order, symbol string)
 		field.NewExecType(fixExecType),      // 150
 		field.NewOrdStatus(fixStatus),       // 39
 		field.NewSide(fixSide),              // 54
-		field.NewLeavesQty(decimal.NewFromFloat(order.Amount).Sub(decimal.NewFromFloat(conversion)), 2), // 151
-		field.NewCumQty(decimal.NewFromFloat(conversion), 2),                                            // 14
+		field.NewLeavesQty(decimal.NewFromFloat(order.Amount).Sub(decimal.NewFromFloat(conversion)), 2), // Order quantity open for further execution (LeavesQty = OrderQty - CumQty) 151
+		field.NewCumQty(decimal.NewFromFloat(conversion), 2),                                            // Executed Qty 14
 		field.NewAvgPx(decimal.NewFromFloat(order.Price), 2),                                            // 6 TODO: FIX ME
 	)
 	msg.SetClOrdID(order.ClOrdID)
@@ -1104,8 +1104,8 @@ func OrderConfirmation(userId string, order _orderbookType.Order, symbol string)
 	// Setting price to the FIX message
 	msg.SetPrice(decimal.NewFromFloat(order.Price), 2) // 44
 
-	vd, _ := msg.GetPrice();
-	fmt.Println("debug vd", vd)
+	fmt.Println("debug symbol", symbol)
+	msg.SetSymbol(symbol) // 55
 
 	if sessionId == nil {
 		return
