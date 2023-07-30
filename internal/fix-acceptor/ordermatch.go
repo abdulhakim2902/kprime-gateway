@@ -1099,12 +1099,26 @@ func OrderConfirmation(userId string, order _orderbookType.Order, symbol string)
 		field.NewCumQty(decimal.NewFromFloat(conversion), 2),                                            // Executed Qty 14
 		field.NewAvgPx(decimal.NewFromFloat(order.Price), 2),                                            // 6 TODO: FIX ME
 	)
-	msg.SetClOrdID(order.ClOrdID)
+
+	// ClOrderID -- Order MT ID in MT5
+	msg.SetClOrdID(order.ClOrdID) // 11
 
 	// Setting price to the FIX message
 	msg.SetPrice(decimal.NewFromFloat(order.Price), 2) // 44
 
+	// Instrument Name. Tag 55
 	msg.SetSymbol(symbol) // 55
+
+	// Setting Party ID == Order . Client ID -- Login in MT5. Tag 448
+	fmt.Println("debug order.ClientID", order.ClientID)
+	msg.Set(field.NewPartyID(order.ClientID))
+
+	// Setting Order Type (Market or Limit) -- Tag 40
+	if (order.Type == _utilitiesType.MARKET){
+		msg.SetOrdType(enum.OrdType_MARKET);
+	} else {
+		msg.SetOrdType(enum.OrdType_LIMIT);
+	}
 
 	if sessionId == nil {
 		return
