@@ -106,11 +106,14 @@ func handleTopicOrder(oSvc oInt.IwsOrderService, message *sarama.ConsumerMessage
 
 	// convert mongodb object id to string
 	userIDStr := data.Matches.TakerOrder.UserID.Hex()
-	var order ordermatch.Order
 
-	fmt.Println("order.InstrumentName", order.InstrumentName)
-	symbol := strings.Split(order.InstrumentName, "-")[0]
-	go ordermatch.OrderConfirmation(userIDStr, *data.Matches.TakerOrder, symbol)
+	// Get instrument name from TakerOrder
+	takerOrder := data.Matches.TakerOrder;
+	instrumentName := takerOrder.Underlying + "-" + takerOrder.ExpiryDate + "-" + fmt.Sprintf("%.0f", takerOrder.StrikePrice) + "-" + string(takerOrder.Contracts[0])
+
+	fmt.Println("debug instrumentName", instrumentName)
+	
+	go ordermatch.OrderConfirmation(userIDStr, *data.Matches.TakerOrder, instrumentName)
 
 	// no need to use HandleConsume
 	// userId := data.Matches.TakerOrder.UserID
