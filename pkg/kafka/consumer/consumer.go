@@ -108,6 +108,7 @@ func handleTopicOrder(oSvc oInt.IwsOrderService, message *sarama.ConsumerMessage
 	userIDStr := data.Matches.TakerOrder.UserID.Hex()
 	var order ordermatch.Order
 
+	fmt.Println("order.InstrumentName", order.InstrumentName)
 	symbol := strings.Split(order.InstrumentName, "-")[0]
 	go ordermatch.OrderConfirmation(userIDStr, *data.Matches.TakerOrder, symbol)
 
