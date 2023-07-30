@@ -1087,7 +1087,6 @@ func OrderConfirmation(userId string, order _orderbookType.Order, symbol string)
 
 	conversion, _ := utils.ConvertToFloat(order.FilledAmount)
 
-	fmt.Println("debug order.ID.Hex()", order.ID.Hex())
 
 	msg := executionreport.New(
 		field.NewOrderID(order.ID.Hex()),    // 37
@@ -1110,7 +1109,6 @@ func OrderConfirmation(userId string, order _orderbookType.Order, symbol string)
 	msg.SetSymbol(symbol) // 55
 
 	// Setting Party ID == Order . Client ID -- Login in MT5. Tag 448
-	fmt.Println("debug order.ClientID", order.ClientID)
 	msg.Set(field.NewPartyID(order.ClientID))
 
 	// Setting Order Type (Market or Limit) -- Tag 40
