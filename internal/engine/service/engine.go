@@ -286,6 +286,7 @@ func (svc engineHandler) PublishOrder(data _engineType.EngineResponse) {
 		if data.Matches != nil && data.Matches.Trades != nil && len(data.Matches.Trades) > 0 {
 			for _, element := range data.Matches.Trades {
 				conversion, _ := utils.ConvertToFloat(element.Amount)
+				markPrice, _ := strconv.ParseFloat(element.MarkPrice, 64)
 				trades = append(trades, _engineType.BuySellEditTrade{
 					Advanced:        "usd",
 					Amount:          conversion,
@@ -304,6 +305,7 @@ func (svc engineHandler) PublishOrder(data _engineType.EngineResponse) {
 					IndexPrice:      element.IndexPrice,
 					UnderlyingPrice: element.IndexPrice,
 					UnderlyingIndex: "index_price",
+					MarkPrice:       markPrice,
 				})
 			}
 		}

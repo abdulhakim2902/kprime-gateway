@@ -312,6 +312,7 @@ func (r TradeRepository) FindUserTradesByInstrument(
 					{"tickDirection", "$tickDirection"},
 					{"tradeSequence", "$tradeSequence"},
 					{"indexPrice", "$indexPrice"},
+					{"markPrice", bson.M{"$toDouble": "$markPrice"}},
 				},
 			},
 		},
@@ -732,6 +733,9 @@ func (r TradeRepository) FindTradesEachUser(
 					{"tickDirection", "$tickDirection"},
 					{"tradeSequence", "$tradeSequence"},
 					{"indexPrice", "$indexPrice"},
+					{"contracts", "$contracts"},
+					{"expiryDate", "$expiryDate"},
+					{"markPrice", bson.M{"$toDouble": "$markPrice"}},
 				},
 			},
 		},
@@ -771,6 +775,18 @@ func (r TradeRepository) FindTradesEachUser(
 			trade.Api = true
 			trade.UnderlyingPrice = trade.IndexPrice
 			trade.UnderlyingIndex = "index_price"
+
+			if trade.MarkPrice != 0 {
+				var contracts string
+				switch trade.Contracts {
+				case "CALL":
+					contracts = "C"
+				case "PUT":
+					contracts = "P"
+				}
+				markIv := r.GetMarkIv(float64(trade.MarkPrice), contracts, trade.ExpirationDate, trade.StrikePrice, trade.IndexPrice)
+				trade.MarkIV = markIv
+			}
 		}
 	}
 
@@ -906,6 +922,9 @@ func (r TradeRepository) FindTradesByInstrument(
 					{"tickDirection", "$tickDirection"},
 					{"tradeSequence", "$tradeSequence"},
 					{"indexPrice", "$indexPrice"},
+					{"contracts", "$contracts"},
+					{"expiryDate", "$expiryDate"},
+					{"markPrice", bson.M{"$toDouble": "$markPrice"}},
 				},
 			},
 		},
@@ -945,6 +964,18 @@ func (r TradeRepository) FindTradesByInstrument(
 			trade.Api = true
 			trade.UnderlyingPrice = trade.IndexPrice
 			trade.UnderlyingIndex = "index_price"
+
+			if trade.MarkPrice != 0 {
+				var contracts string
+				switch trade.Contracts {
+				case "CALL":
+					contracts = "C"
+				case "PUT":
+					contracts = "P"
+				}
+				markIv := r.GetMarkIv(float64(trade.MarkPrice), contracts, trade.ExpirationDate, trade.StrikePrice, trade.IndexPrice)
+				trade.MarkIV = markIv
+			}
 		}
 	}
 
@@ -1094,6 +1125,26 @@ func (r TradeRepository) Get24HoursTrades(o _orderbookType.GetOrderBook) []*_eng
 	}
 
 	return trades
+}
+
+func (r TradeRepository) GetMarkIv(markPrice float64, contracts string, expiredDate string, strikePrice float64, indexPrice float64) float64 {
+	currentDate := time.Now().Format("2006-01-02 15:04:05")
+	layoutExpired := "02Jan06"
+	layoutCurrent := "2006-01-02 15:04:05"
+	expired, _ := time.Parse(layoutExpired, expiredDate)
+	current, _ := time.Parse(layoutCurrent, currentDate)
+	calculate := float64(expired.Day()) - float64(current.Day())
+	dateValue := float64(calculate / 365)
+
+	optionPrice := ""
+	if string(contracts) == "C" {
+		optionPrice = "call"
+	} else {
+		optionPrice = "put"
+	}
+
+	markIv := r.GetImpliedVolatility(float64(markPrice), optionPrice, float64(indexPrice), float64(strikePrice), float64(dateValue))
+	return markIv
 }
 
 func (r TradeRepository) GetImpliedVolatility(marketPrice float64, optionPrice string, underlying float64, strikePrice float64, timeeXP float64) float64 {
@@ -1338,6 +1389,7 @@ func (r TradeRepository) FilterUserTradesByOrder(userId, orderId, sort string) (
 				{"tickDirection", "$tickDirection"},
 				{"tradeSequence", "$tradeSequence"},
 				{"indexPrice", "$indexPrice"},
+				{"markPrice", bson.M{"$toDouble": "$markPrice"}},
 			},
 		},
 	}
