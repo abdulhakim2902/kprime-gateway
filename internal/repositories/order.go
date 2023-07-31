@@ -484,10 +484,14 @@ func (r OrderRepository) GetOrderHistoryByInstrument(InstrumentName string, Coun
 	if IncludeUnfilled {
 		orderState = append(orderState, types.CANCELLED)
 	}
+	userObjectId, err := primitive.ObjectIDFromHex(userId)
+	if err != nil {
+		return nil, err
+	}
 	query := bson.M{
 		"$match": bson.M{
 			"orderState":     bson.M{"$in": orderState},
-			"userId":         userId,
+			"userId":         userObjectId,
 			"InstrumentName": InstrumentName,
 		},
 	}

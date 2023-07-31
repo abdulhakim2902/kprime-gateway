@@ -485,7 +485,7 @@ func (h *DeribitHandler) getOpenOrdersByInstrument(r *gin.Context) {
 func (h *DeribitHandler) getOrderHistoryByInstrument(r *gin.Context) {
 	var msg deribitModel.RequestDto[deribitModel.GetOrderHistoryByInstrumentParams]
 	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
-		r.AbortWithError(http.StatusBadRequest, err)
+		sendInvalidRequestMessage(err, msg.Id, validation_reason.INVALID_PARAMS, r)
 		return
 	}
 
