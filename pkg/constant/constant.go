@@ -11,4 +11,6 @@ const (
 	INVALID_CHANNEL             = "invalid_channel"
 	INVALID_INTERVAL            = "invalid_interval"
 	INVALID_ORDER_ID            = "invalid_order_id"
+	NOT_OWNER_OF_ORDER          = "not_owner_of_order"
+	ORDER_ALREADY_CLOSED        = "order_already_closed"
 )

@@ -8,6 +8,7 @@ import (
 	"gateway/internal/deribit/model"
 	"gateway/internal/repositories"
 	"gateway/pkg/collector"
+	"gateway/pkg/constant"
 	"gateway/pkg/kafka/producer"
 	"gateway/pkg/memdb"
 	"gateway/pkg/redis"
@@ -181,6 +182,22 @@ func (svc deribitService) DeribitParseCancel(ctx context.Context, userId string,
 		return nil, err
 	}
 
+	order, err := svc.orderRepo.GetOrderById(data.Id)
+	if err != nil {
+		logs.Log.Error().Err(err).Msg("")
+		return nil, err
+	}
+
+	if order.UserID.Hex() != userId {
+		logs.Log.Error().Err(err).Msg("")
+		return nil, errors.New(constant.NOT_OWNER_OF_ORDER)
+	}
+
+	fmt.Println(order.Status, "STATUS")
+	if order.Status == types.FILLED {
+		logs.Log.Error().Err(err).Msg("")
+		return nil, errors.New(constant.ORDER_ALREADY_CLOSED)
+	}
 	// collector
 	collector.StartKafkaDuration(cancel.UserId, cancel.ClOrdID)
 
