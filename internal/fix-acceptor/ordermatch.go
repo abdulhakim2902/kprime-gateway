@@ -732,6 +732,56 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 	return
 }
 
+// Handle Ticks
+// Whoever submit GetMarketDataRequest with Updates, will receive this tick
+func OnTradeHappens(trades []*types.Trade) {
+
+	// check whether trades is not empty array
+	if len(trades) == 0 {
+		return
+	}
+
+	// Check whether we have subscribers
+	if len(vMessageSubs) == 0 {
+		fmt.Println("debug No subscribers")
+		return
+	}
+
+	fmt.Println("debug got subscribers")
+
+	// Create a new MarketDataIncrementalRefresh message
+	msg := marketdataincrementalrefresh.New()
+
+	msg.SetMDReqID("tick") //tag 262
+	grp := marketdataincrementalrefresh.NewNoMDEntriesRepeatingGroup()
+	for _, trade := range trades {
+		row := grp.Add()
+		symbol := trade.Underlying + "-" + trade.ExpiryDate + "-" + fmt.Sprintf("%.0f", trade.StrikePrice) + "-" + string(trade.Contracts[0]);
+		fmt.Println("debug symbol", symbol)
+
+		row.SetMDUpdateAction(enum.MDUpdateAction_NEW)
+
+		// Symbol
+		row.SetSymbol(symbol)
+		// Price. Tag 270
+		row.SetMDEntryPx(decimal.NewFromFloat(trade.Price), 2);
+		// Amount. Tag 271
+		amt, _:= utils.ConvertToFloat(trade.Amount)
+		row.SetMDEntrySize(decimal.NewFromFloat(amt), 2);
+		// Type. Tag 269
+		row.SetMDEntryType(enum.MDEntryType_TRADE);
+	}
+	msg.SetNoMDEntries(grp)
+
+	// Broadcast to all subscribers
+	for _, sess := range vMessageSubs {
+		fmt.Println("debug SendToTarget")
+		err := quickfix.SendToTarget(msg, sess.sessiondID)
+		if err != nil {
+			logs.Log.Err(err).Msg("Error sending orderbook update")
+		}
+	}
+}
 func (a *Application) GetTrade(filter bson.M) (trades []*types.Trade) {
 	trades, _ = a.TradeRepository.Find(filter, nil, 0, -1)
 	return trades
@@ -792,6 +842,7 @@ func OnMarketDataUpdate(instrument string, book _orderbookType.BookData) {
 		}
 
 		msg := marketdataincrementalrefresh.New()
+		msg.SetMDReqID("orderbook") //tag 262
 		grp := marketdataincrementalrefresh.NewNoMDEntriesRepeatingGroup()
 		for _, res := range response {
 			update := enum.MDUpdateAction_NEW
