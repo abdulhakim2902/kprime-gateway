@@ -1265,6 +1265,14 @@ func (svc wsOrderbookService) GetLastTradesByInstrument(ctx context.Context, dat
 		case "PUT":
 			contracts = "P"
 		}
+
+		markPrice, _ := strconv.ParseFloat(jsonDoc["markPrice"].(string), 64)
+		var markIv float64
+
+		if markPrice != 0 {
+			markIv = svc.tradeRepository.GetMarkIv(markPrice, contracts, jsonDoc["expiryDate"].(string), jsonDoc["strikePrice"].(float64), jsonDoc["indexPrice"].(float64))
+		}
+
 		tradeObjectId := jsonDoc["_id"].(primitive.ObjectID)
 		conversion, _ := utils.ConvertToFloat(jsonDoc["amount"].(string))
 		resultData := _deribitModel.DeribitGetLastTradesByInstrumentValue{
@@ -1278,7 +1286,14 @@ func (svc wsOrderbookService) GetLastTradesByInstrument(ctx context.Context, dat
 			IndexPrice:     jsonDoc["indexPrice"].(float64),
 			TickDirection:  jsonDoc["tickDirection"].(int32),
 			TradeSeq:       jsonDoc["tradeSequence"].(int32),
+			MarkPrice:      &markPrice,
+			MarkIv:         &markIv,
 			CreatedAt:      jsonDoc["createdAt"].(primitive.DateTime).Time(),
+		}
+
+		if markPrice == 0 {
+			resultData.MarkPrice = nil
+			resultData.MarkIv = nil
 		}
 
 		_getLastTradesByInstrument = append(_getLastTradesByInstrument, resultData)

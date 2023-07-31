@@ -111,6 +111,7 @@ type DeribitGetUserTradesByOrderValue struct {
 	TradeSequence   int                `json:"trade_seq" bson:"tradeSequence"`
 	UnderlyingPrice float64            `json:"underlying_price"`
 	UnderlyingIndex string             `json:"underlying_index"`
+	MarkPrice       float64            `json:"mark_price" bson:"markPrice"`
 }
 
 type DeribitGetUserTradesByOrderResponse struct {
@@ -381,6 +382,8 @@ type DeribitGetLastTradesByInstrumentValue struct {
 	IndexPrice     float64   `json:"index_price"`
 	TickDirection  int32     `json:"tick_direction"`
 	TradeSeq       int32     `json:"trade_seq"`
+	MarkPrice      *float64  `json:"mark_price"`
+	MarkIv         *float64  `json:"mark_iv"`
 	CreatedAt      time.Time `json:"created_at"`
 }
 
@@ -428,6 +431,11 @@ type DeribitGetUserTradesByInstruments struct {
 	TradeSequence   int                `json:"trade_seq" bson:"tradeSequence"`
 	UnderlyingPrice float64            `json:"underlying_price"`
 	UnderlyingIndex string             `json:"underlying_index"`
+	MarkPrice       float64            `json:"mark_price" bson:"markPrice"`
+	MarkIV          float64            `json:"mark_iv"`
+	Contracts       string             `json:"-" bson:"contracts"`
+	ExpirationDate  string             `json:"-" bson:"expiryDate"`
+	StrikePrice     float64            `json:"-" bson:"strikePrice"`
 }
 
 type DeribitGetUserTradesByInstrumentsResponse struct {

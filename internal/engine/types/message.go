@@ -97,6 +97,7 @@ type BuySellEditTrade struct {
 	TradeSequence   int                 `json:"trade_seq"`
 	UnderlyingPrice float64             `json:"underlying_price"`
 	UnderlyingIndex string              `json:"underlying_index"`
+	MarkPrice       float64             `json:"mark_price"`
 }
 
 type ErrorMessage struct {
