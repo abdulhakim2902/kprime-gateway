@@ -269,8 +269,7 @@ func (svc *wsHandler) cancel(input interface{}, c *ws.Client) {
 		ClOrdID: strconv.FormatUint(msg.Id, 10),
 	})
 	if err != nil {
-		fmt.Println("cancel error", err)
-		protocol.SendErrMsg(connKey, err)
+		c.SendInvalidRequestMessage(err)
 		return
 	}
 
