@@ -457,6 +457,12 @@ func (svc *wsHandler) setHeartbeat(input interface{}, c *ws.Client) {
 		return
 	}
 
+	if msg.Params.Interval < 10 {
+		err := errors.New(constant.INTERVAL_MUST_BE_GREATER_THAN_10)
+		c.SendInvalidRequestMessage(err)
+		return
+	}
+
 	_, connKey, reason, err := requestHelper(msg.Id, msg.Method, nil, c)
 	if err != nil {
 		if connKey != "" {
