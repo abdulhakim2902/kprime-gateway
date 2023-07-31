@@ -624,6 +624,8 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 		response := []MarketDataResponse{}
 		sym, _ := noRelatedsym.Get(i).GetSymbol()
 
+		fmt.Println("debug sym", sym)
+
 		// Split Instrument Name
 		splits := strings.Split(sym, "-")
 		price, _ := strconv.ParseFloat(splits[2], 64)
