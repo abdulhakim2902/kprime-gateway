@@ -193,7 +193,7 @@ func (svc deribitService) DeribitParseCancel(ctx context.Context, userId string,
 		return nil, errors.New(constant.NOT_OWNER_OF_ORDER)
 	}
 
-	if order.Status == types.FILLED {
+	if order.Status == types.FILLED || order.Status == types.CANCELLED {
 		logs.Log.Error().Err(err).Msg("")
 		return nil, errors.New(constant.ORDER_ALREADY_CLOSED)
 	}
