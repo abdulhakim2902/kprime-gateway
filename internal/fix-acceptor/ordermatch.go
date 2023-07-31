@@ -732,9 +732,102 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 	return
 }
 
-// Handle Ticks
-// Whoever submit GetMarketDataRequest with Updates, will receive this tick
-func OnTradeHappens(trades []*types.Trade) {
+// Hook when Engine topic received
+func OnTradeHappens(data types.EngineResponse) {
+	// Handle Ticks
+	// Broadcast last price and volume based on instrument name
+	BroadcastTrades(data.Matches.Trades)
+
+	takerOrder := data.Matches.TakerOrder
+	instrumentName := takerOrder.Underlying + "-" + takerOrder.ExpiryDate + "-" + fmt.Sprintf("%.0f", takerOrder.StrikePrice) + "-" + string(takerOrder.Contracts[0]);
+
+	// Broadcast order book
+	BroadcastOrderBook(instrumentName)
+}
+
+// Broadcast whole order book
+// Whoever submit GetMarketDataRequest will receive this broadcast
+func BroadcastOrderBook(instrument string) {
+
+	mongoDb, _ := _mongo.InitConnection(os.Getenv("MONGO_URL"))
+	orderRepo := repositories.NewOrderRepository(mongoDb)
+
+	// Check whether we have subscribers
+	if len(vMessageSubs) == 0 {
+		fmt.Println("debug BroadcastOrderBook No subscribers")
+		return
+	}
+	
+	response := []MarketDataResponse{}
+
+	splits := strings.Split(instrument, "-")
+	price, _ := strconv.ParseFloat(splits[2], 64)
+
+	_order := _orderbookType.GetOrderBook{
+		InstrumentName: instrument,
+		Underlying:     splits[0],
+		ExpiryDate:     splits[1],
+		StrikePrice:    price,
+	}
+	_orderbook := orderRepo.GetOrderBook(_order)
+
+	// Loop Order Book Bids
+	for _, bid := range _orderbook.Bids {
+		response = append(response, MarketDataResponse{
+			Price:          bid.Price,
+			Amount:         bid.Amount,
+			Side:           "buy",
+			EntryType:      enum.MDEntryType_BID,
+			InstrumentName: instrument,
+			Type:           "bid",
+		})
+	}
+
+	// 1 means ASK / sell
+	for _, ask := range _orderbook.Asks {
+		response = append(response, MarketDataResponse{
+			Price:          ask.Price,
+			Amount:         ask.Amount,
+			Side:           "sell",
+			EntryType:      enum.MDEntryType_OFFER,
+			InstrumentName: instrument,
+			Type:           "ask",
+		})
+	}
+
+	if len(response) == 0 {
+		fmt.Println("debug orderbook nil response")
+		return
+	}
+
+	fmt.Println("debug broadcast orderbook")
+	snap := marketdatasnapshotfullrefresh.New()
+	snap.SetSymbol(instrument)
+	snap.SetMDReqID("orderbook")
+	grp := marketdatasnapshotfullrefresh.NewNoMDEntriesRepeatingGroup()
+	response = mapMarketDataResponse(response)
+	for _, res := range response {
+		row := grp.Add()
+		row.SetMDEntryType(res.EntryType)                       // 269
+		row.SetMDEntrySize(decimal.NewFromFloat(res.Amount), 2) // 271
+		row.SetMDEntryPx(decimal.NewFromFloat(res.Price), 2)    // 270
+		row.SetMDEntryDate(res.Date)
+		row.SetOrderID(res.MakerID)
+	}
+	snap.SetNoMDEntries(grp)
+
+	// Broadcast to all subscribers
+	for _, sess := range vMessageSubs {
+		err := quickfix.SendToTarget(snap, sess.sessiondID)
+		if err != nil {
+			logs.Log.Err(err).Msg("Error sending orderbook update")
+		}
+	}
+}
+
+// Broadcast last price and volume based on instrument name
+// Whoever submit GetMarketDataRequest will receive this broadcast
+func BroadcastTrades(trades []*types.Trade) {
 
 	// check whether trades is not empty array
 	if len(trades) == 0 {
@@ -778,10 +871,11 @@ func OnTradeHappens(trades []*types.Trade) {
 		fmt.Println("debug SendToTarget")
 		err := quickfix.SendToTarget(msg, sess.sessiondID)
 		if err != nil {
-			logs.Log.Err(err).Msg("Error sending orderbook update")
+			logs.Log.Err(err).Msg("Error sending tick update")
 		}
 	}
 }
+
 func (a *Application) GetTrade(filter bson.M) (trades []*types.Trade) {
 	trades, _ = a.TradeRepository.Find(filter, nil, 0, -1)
 	return trades
