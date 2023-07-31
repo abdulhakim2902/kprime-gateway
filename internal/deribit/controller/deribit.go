@@ -135,7 +135,6 @@ func requestHelper(msgID uint64, method string, c *gin.Context) (
 
 	connKey = utils.GetKeyFromIdUserID(msgID, userId)
 	protocol.UpgradeProtocol(key, connKey)
-
 	return
 }
 

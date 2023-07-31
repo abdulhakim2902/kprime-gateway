@@ -251,6 +251,13 @@ func (svc *wsHandler) cancel(input interface{}, c *ws.Client) {
 		return
 	}
 
+	// Validate order id, make sure it's a valid order id (Mongodb object id)
+	_, err = primitive.ObjectIDFromHex(msg.Params.OrderId)
+	if err != nil {
+		c.SendInvalidRequestMessage(errors.New(constant.INVALID_ORDER_ID))
+		return
+	}
+
 	// Add timeout
 	go protocol.TimeOutProtocol(connKey)
 
@@ -262,7 +269,7 @@ func (svc *wsHandler) cancel(input interface{}, c *ws.Client) {
 		ClOrdID: strconv.FormatUint(msg.Id, 10),
 	})
 	if err != nil {
-		protocol.SendErrMsg(connKey, err)
+		c.SendInvalidRequestMessage(err)
 		return
 	}
 

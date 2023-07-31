@@ -258,6 +258,24 @@ func (h *DeribitHandler) cancel(r *gin.Context) {
 		return
 	}
 
+	// Validate order id, make sure it's a valid order id (Mongodb object id)
+	_, err := primitive.ObjectIDFromHex(msg.Params.OrderId)
+	if err != nil {
+		errMsg := protocol.ErrorMessage{
+			Message:        constant.INVALID_ORDER_ID,
+			Data:           protocol.ReasonMessage{},
+			HttpStatusCode: http.StatusBadRequest,
+		}
+		m := protocol.RPCResponseMessage{
+			JSONRPC: "2.0",
+			ID:      msg.Id,
+			Error:   &errMsg,
+			Testnet: true,
+		}
+		r.AbortWithStatusJSON(http.StatusBadRequest, m)
+		return
+	}
+
 	userID, connKey, reason, err := requestHelper(msg.Id, msg.Method, r)
 	if err != nil {
 		if connKey != "" {
@@ -467,7 +485,7 @@ func (h *DeribitHandler) getOpenOrdersByInstrument(r *gin.Context) {
 func (h *DeribitHandler) getOrderHistoryByInstrument(r *gin.Context) {
 	var msg deribitModel.RequestDto[deribitModel.GetOrderHistoryByInstrumentParams]
 	if err := utils.UnmarshalAndValidate(r, &msg); err != nil {
-		r.AbortWithError(http.StatusBadRequest, err)
+		sendInvalidRequestMessage(err, msg.Id, validation_reason.INVALID_PARAMS, r)
 		return
 	}
 

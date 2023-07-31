@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Undercurrent-Technologies/kprime-utilities/commons/logs"
+	"github.com/Undercurrent-Technologies/kprime-utilities/models/order"
 	"github.com/Undercurrent-Technologies/kprime-utilities/types"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -483,10 +484,14 @@ func (r OrderRepository) GetOrderHistoryByInstrument(InstrumentName string, Coun
 	if IncludeUnfilled {
 		orderState = append(orderState, types.CANCELLED)
 	}
+	userObjectId, err := primitive.ObjectIDFromHex(userId)
+	if err != nil {
+		return nil, err
+	}
 	query := bson.M{
 		"$match": bson.M{
 			"orderState":     bson.M{"$in": orderState},
-			"userId":         userId,
+			"userId":         userObjectId,
 			"InstrumentName": InstrumentName,
 		},
 	}
@@ -1131,6 +1136,28 @@ func (r OrderRepository) GetOrderLatestTimestampAgg(o _orderbookType.GetOrderBoo
 	}
 
 	return orderbooks
+}
+
+func (r OrderRepository) GetOrderById(orderId string) (order.Order, error) {
+	orderObjectID, err := primitive.ObjectIDFromHex(orderId)
+	if err != nil {
+		logs.Log.Error().Err(err).Msg("")
+		return order.Order{}, err
+	}
+	res := r.collection.FindOne(context.TODO(), bson.M{"_id": orderObjectID})
+	if res.Err() != nil {
+		logs.Log.Error().Err(res.Err()).Msg("")
+
+		return order.Order{}, res.Err()
+	}
+	ord := order.Order{}
+	err = res.Decode(&ord)
+	if err != nil {
+		logs.Log.Error().Err(err).Msg("")
+
+		return order.Order{}, err
+	}
+	return ord, nil
 }
 
 func (r OrderRepository) GetOrderState(userId string, orderId string) ([]_deribitModel.DeribitGetOrderStateResponse, error) {
