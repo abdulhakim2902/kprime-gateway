@@ -688,6 +688,16 @@ func (svc *wsHandler) privateSubscribe(input interface{}, c *ws.Client) {
 				validation_reason.INVALID_PARAMS, err)
 			return
 		}
+
+		if len(s) > 2 {
+			_, err = utils.ParseInstruments(s[2], true)
+			if err != nil {
+				protocol.SendValidationMsg(connKey,
+					validation_reason.INVALID_PARAMS, err)
+				return
+			}
+		}
+
 		val, ok := method[s[1]]
 		if !ok {
 			err := errors.New("error invalid channel")
