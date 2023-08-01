@@ -1351,8 +1351,10 @@ func MakerConfirmation(data types.EngineResponse) {
 			side = enum.Side_SELL
 		}
 
+		trade_amount_conversion, _ := utils.ConvertToFloat(trade.Amount)
+
 		leavesQty := decimal.NewFromFloat(makerOrder.Amount).Sub(decimal.NewFromFloat(conversion))
-		cumQty := decimal.NewFromFloat(conversion)
+		cumQty := decimal.NewFromFloat(trade_amount_conversion)
 		avgPx := decimal.NewFromFloat(0)
 
 		fmt.Println("debug makerOrder.ID.Hex()", makerOrder.ID.Hex())
