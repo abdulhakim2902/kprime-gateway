@@ -583,7 +583,7 @@ type DeliveryPricesResponse struct {
 }
 
 type SetHeartbeatParams struct {
-	Interval int `json:"interval"`
+	Interval int `json:"interval" validate:"required" form:"interval"`
 }
 
 type TestParams struct {
