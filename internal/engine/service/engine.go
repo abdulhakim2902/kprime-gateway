@@ -287,6 +287,7 @@ func (svc engineHandler) PublishOrder(data _engineType.EngineResponse) {
 			for _, element := range data.Matches.Trades {
 				conversion, _ := utils.ConvertToFloat(element.Amount)
 				markPrice, _ := strconv.ParseFloat(element.MarkPrice, 64)
+				tradeStatus := data.Matches.TakerOrder.Status
 				trades = append(trades, _engineType.BuySellEditTrade{
 					Advanced:        "usd",
 					Amount:          conversion,
@@ -295,7 +296,7 @@ func (svc engineHandler) PublishOrder(data _engineType.EngineResponse) {
 					OrderId:         data.Matches.TakerOrder.ID,
 					OrderType:       types.Type(data.Matches.TakerOrder.Type),
 					Price:           element.Price,
-					State:           element.Status,
+					State:           string(tradeStatus),
 					Timestamp:       utils.MakeTimestamp(element.CreatedAt),
 					TradeId:         element.ID,
 					Api:             true,
