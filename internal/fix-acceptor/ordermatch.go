@@ -1301,7 +1301,6 @@ func OrderConfirmation(data types.EngineResponse) {
 }
 
 func MakerConfirmation(data types.EngineResponse) {
-	return
 	// Check if there's any trades
 	if len(data.Matches.Trades) == 0 {
 		return
