@@ -87,7 +87,7 @@ type BuySellEditTrade struct {
 	OrderId         primitive.ObjectID  `json:"order_id"`
 	OrderType       types.Type          `json:"order_type"`
 	Price           float64             `json:"price"`
-	State           types.TradeStatus   `json:"state"`
+	State           string              `json:"state"`
 	Timestamp       int64               `json:"timestamp"`
 	TradeId         primitive.ObjectID  `json:"trade_id"`
 	Api             bool                `json:"api"`
