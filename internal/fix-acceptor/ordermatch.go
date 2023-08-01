@@ -1004,6 +1004,8 @@ func sumAmount(data []MarketDataResponse, og []MarketDataResponse) (res []Market
 }
 
 func OnMatchingOrder(data types.EngineResponse) {
+	return;
+
 	// No matches, then nothing to do
 	if data.Matches == nil {
 		return
@@ -1296,6 +1298,105 @@ func OrderConfirmation(data types.EngineResponse) {
 	}
 	newApplication(nil).
 		broadcastInstrumentList(takerOrder.Underlying)
+}
+
+func MakerConfirmation(data types.EngineResponse) {
+	return
+	// Check if there's any trades
+	if len(data.Matches.Trades) == 0 {
+		return
+	}
+
+	fmt.Println("debug MakerConfirmation")
+
+	for _, trade := range data.Matches.Trades {
+		// Only carse about maker
+		
+		userId := trade.Maker.UserID.Hex();
+		// CHeck if the user has FIX session
+		if (userSession[userId] == nil) {
+			continue
+		}
+		sessionId := userSession[userId]
+
+		makerOrderID := trade.Maker.OrderID.Hex();
+		// Find order based on the engine response
+		// Do not query into the database - since it may need sometime for DB to reflect
+		var makerOrder *_orderbookType.Order
+
+		for _, order := range data.Matches.MakerOrders {
+			if order.UserID.Hex() == userId && order.ID.Hex() == makerOrderID {
+				makerOrder = order
+				break
+			}
+		}
+
+		if (makerOrder == nil) {
+			fmt.Println("debug makerOrder nil")
+			continue
+		}
+
+		//makerOrder, _ := newApplication(nil).OrderRepository.GetOrderById(makerOrderID);
+		symbol := makerOrder.Underlying + "-" + makerOrder.ExpiryDate + "-" + fmt.Sprintf("%.0f", makerOrder.StrikePrice) + "-" + string(makerOrder.Contracts[0])
+
+		execID := "KPR"
+		execType := enum.ExecType_TRADE;
+		ordStatus := enum.OrdStatus_FILLED
+		side := enum.Side_BUY
+		conversion, _ := utils.ConvertToFloat(makerOrder.FilledAmount)
+
+		if makerOrder.Status == _utilitiesType.PARTIALLY_FILLED {
+			ordStatus = enum.OrdStatus_PARTIALLY_FILLED
+		}
+		if makerOrder.Side == _utilitiesType.BUY {
+			side = enum.Side_SELL
+		}
+
+		leavesQty := decimal.NewFromFloat(makerOrder.Amount).Sub(decimal.NewFromFloat(conversion))
+		cumQty := decimal.NewFromFloat(conversion)
+		avgPx := decimal.NewFromFloat(0)
+
+		msg := executionreport.New(
+			field.NewOrderID(makerOrder.ID.Hex()),    // 37
+			field.NewExecID(execID), // 17
+			field.NewExecType(execType),      // 150
+			field.NewOrdStatus(ordStatus),       // 39
+			field.NewSide(side),              // 54
+			field.NewLeavesQty(leavesQty, 2), // Order quantity open for further execution (LeavesQty = OrderQty - CumQty) 151
+			field.NewCumQty(cumQty, 2),                                            // Executed Qty 14
+			field.NewAvgPx(avgPx, 2),                                            // 6 TODO: FIX ME
+		)
+
+		// ClOrderID -- Order MT ID in MT5
+		msg.SetClOrdID(makerOrder.ClOrdID) // 11
+
+		// Setting price to the FIX message
+		msg.SetPrice(decimal.NewFromFloat(trade.Price), 2) // 44
+
+		// Instrument Name. Tag 55
+		msg.SetSymbol(symbol) // 55
+
+		// Setting Party ID == Order . Client ID -- Login in MT5. Tag 448
+		msg.Set(field.NewPartyID(makerOrder.ClientID))
+
+		// Setting Order Type (Market or Limit) -- Tag 40
+		if (makerOrder.Type == _utilitiesType.MARKET){
+			msg.SetOrdType(enum.OrdType_MARKET);
+		} else {
+			msg.SetOrdType(enum.OrdType_LIMIT);
+		}
+
+		// Convert trade amount from string to float
+		conversion, _ = utils.ConvertToFloat(trade.Amount)
+		msg.SetLastQty(decimal.NewFromFloat(conversion), 2) // 32
+		msg.SetLastPx(decimal.NewFromFloat(trade.Price), 2)   // 31
+
+		err := quickfix.SendToTarget(msg, *sessionId)
+		if err != nil {
+			fmt.Print(err.Error())
+		}
+	}
+
 }
 
 func (a Application) onSecurityListRequest(msg securitylistrequest.SecurityListRequest, sessionID quickfix.SessionID) quickfix.MessageRejectError {

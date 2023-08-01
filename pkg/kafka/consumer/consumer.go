@@ -110,7 +110,12 @@ func handleTopicOrder(oSvc oInt.IwsOrderService, message *sarama.ConsumerMessage
 	// Get instrument name from TakerOrder
 	//takerOrder := data.Matches.TakerOrder;
 	//instrumentName := takerOrder.Underlying + "-" + takerOrder.ExpiryDate + "-" + fmt.Sprintf("%.0f", takerOrder.StrikePrice) + "-" + string(takerOrder.Contracts[0])
+
+	// Handle taker order (if FIX user is subscribing)
 	go ordermatch.OrderConfirmation(data)
+
+	// Handle maker order (if FIX user is subscribing)
+	go ordermatch.MakerConfirmation(data)
 
 	// FIX Subscription
 	go ordermatch.OnTradeHappens(data)
