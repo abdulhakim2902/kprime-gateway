@@ -108,9 +108,9 @@ func handleTopicOrder(oSvc oInt.IwsOrderService, message *sarama.ConsumerMessage
 	userIDStr := data.Matches.TakerOrder.UserID.Hex()
 
 	// Get instrument name from TakerOrder
-	takerOrder := data.Matches.TakerOrder;
-	instrumentName := takerOrder.Underlying + "-" + takerOrder.ExpiryDate + "-" + fmt.Sprintf("%.0f", takerOrder.StrikePrice) + "-" + string(takerOrder.Contracts[0])
-	go ordermatch.OrderConfirmation(userIDStr, *data.Matches.TakerOrder, instrumentName)
+	//takerOrder := data.Matches.TakerOrder;
+	//instrumentName := takerOrder.Underlying + "-" + takerOrder.ExpiryDate + "-" + fmt.Sprintf("%.0f", takerOrder.StrikePrice) + "-" + string(takerOrder.Contracts[0])
+	go ordermatch.OrderConfirmation(data)
 
 	// FIX Subscription
 	go ordermatch.OnTradeHappens(data)

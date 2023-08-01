@@ -1192,7 +1192,17 @@ func (a *Application) updateOrder(order Order, status enum.OrdStatus) {
 }
 
 // 35 Execution Report
-func OrderConfirmation(userId string, order _orderbookType.Order, symbol string) {
+// There are 2 things here:
+// 1. Construct execution report for the taker order (the one that is being executed)
+// 2. If the order is partially filled/filled (based on the trades), then add LastQty and LastPx
+// For point 2, we need several things:
+// - 1363	FillExecID, 1364	FillPx, 1365	FillQty
+func OrderConfirmation(data types.EngineResponse) {
+	userId := data.Matches.TakerOrder.UserID.Hex()
+	takerOrder := data.Matches.TakerOrder;
+	symbol := takerOrder.Underlying + "-" + takerOrder.ExpiryDate + "-" + fmt.Sprintf("%.0f", takerOrder.StrikePrice) + "-" + string(takerOrder.Contracts[0])
+
+	// Point 1, execution report for the taker order 
 	if userSession == nil {
 		if userSession[userId] == nil {
 			return
@@ -1200,8 +1210,12 @@ func OrderConfirmation(userId string, order _orderbookType.Order, symbol string)
 		return
 	}
 	sessionId := userSession[userId]
+	if sessionId == nil {
+		return
+	}
+
 	exec := 0
-	switch order.Status {
+	switch takerOrder.Status {
 	case "FILLED":
 		exec = 2
 		break
@@ -1214,67 +1228,74 @@ func OrderConfirmation(userId string, order _orderbookType.Order, symbol string)
 
 	// FIX Side
 	fixSide := enum.Side_BUY
-	if order.Side == _utilitiesType.BUY {
+	if takerOrder.Side == _utilitiesType.BUY {
 		fixSide = enum.Side_SELL
 	}
 
 	// FIX Order Status
 	fixStatus := enum.OrdStatus_NEW
 	fixExecType := enum.ExecType_NEW
-	if order.Status == _utilitiesType.FILLED {
+	if takerOrder.Status == _utilitiesType.FILLED {
 		fixStatus = enum.OrdStatus_FILLED
 		fixExecType = enum.ExecType_TRADE
-	} else if order.Status == _utilitiesType.PARTIALLY_FILLED {
+	} else if takerOrder.Status == _utilitiesType.PARTIALLY_FILLED {
 		fixStatus = enum.OrdStatus_PARTIALLY_FILLED
 		fixExecType = enum.ExecType_TRADE
-	} else if order.Status == _utilitiesType.CANCELLED {
+	} else if takerOrder.Status == _utilitiesType.CANCELLED {
 		fixStatus = enum.OrdStatus_CANCELED
 		fixExecType = enum.ExecType_CANCELED
 	}
 
-	conversion, _ := utils.ConvertToFloat(order.FilledAmount)
-
+	conversion, _ := utils.ConvertToFloat(takerOrder.FilledAmount)
 
 	msg := executionreport.New(
-		field.NewOrderID(order.ID.Hex()),    // 37
+		field.NewOrderID(takerOrder.ID.Hex()),    // 37
 		field.NewExecID(strconv.Itoa(exec)), // 17
 		field.NewExecType(fixExecType),      // 150
 		field.NewOrdStatus(fixStatus),       // 39
 		field.NewSide(fixSide),              // 54
-		field.NewLeavesQty(decimal.NewFromFloat(order.Amount).Sub(decimal.NewFromFloat(conversion)), 2), // Order quantity open for further execution (LeavesQty = OrderQty - CumQty) 151
+		field.NewLeavesQty(decimal.NewFromFloat(takerOrder.Amount).Sub(decimal.NewFromFloat(conversion)), 2), // Order quantity open for further execution (LeavesQty = OrderQty - CumQty) 151
 		field.NewCumQty(decimal.NewFromFloat(conversion), 2),                                            // Executed Qty 14
-		field.NewAvgPx(decimal.NewFromFloat(order.Price), 2),                                            // 6 TODO: FIX ME
+		field.NewAvgPx(decimal.NewFromFloat(takerOrder.Price), 2),                                            // 6 TODO: FIX ME
 	)
 
 	// ClOrderID -- Order MT ID in MT5
-	msg.SetClOrdID(order.ClOrdID) // 11
+	msg.SetClOrdID(takerOrder.ClOrdID) // 11
 
 	// Setting price to the FIX message
-	msg.SetPrice(decimal.NewFromFloat(order.Price), 2) // 44
+	msg.SetPrice(decimal.NewFromFloat(takerOrder.Price), 2) // 44
 
 	// Instrument Name. Tag 55
 	msg.SetSymbol(symbol) // 55
 
 	// Setting Party ID == Order . Client ID -- Login in MT5. Tag 448
-	msg.Set(field.NewPartyID(order.ClientID))
+	msg.Set(field.NewPartyID(takerOrder.ClientID))
 
 	// Setting Order Type (Market or Limit) -- Tag 40
-	if (order.Type == _utilitiesType.MARKET){
+	if (takerOrder.Type == _utilitiesType.MARKET){
 		msg.SetOrdType(enum.OrdType_MARKET);
 	} else {
 		msg.SetOrdType(enum.OrdType_LIMIT);
 	}
 
-	if sessionId == nil {
-		return
+	// Point 2, check if there's trades
+	if (conversion == 0) {
+		fmt.Println("debug no trades")
+		msg.SetLastQty(decimal.NewFromFloat(0), 2) // 32
+		msg.SetLastPx(decimal.NewFromFloat(0), 2)   // 31
+	} else {
+		fmt.Println("debug there are trades")
+		msg.SetLastQty(decimal.NewFromFloat(conversion), 2) // 32
+		msg.SetLastPx(decimal.NewFromFloat(takerOrder.Price), 2)   // 31
 	}
+
 
 	err := quickfix.SendToTarget(msg, *sessionId)
 	if err != nil {
 		fmt.Print(err.Error())
 	}
 	newApplication(nil).
-		broadcastInstrumentList(order.Underlying)
+		broadcastInstrumentList(takerOrder.Underlying)
 }
 
 func (a Application) onSecurityListRequest(msg securitylistrequest.SecurityListRequest, sessionID quickfix.SessionID) quickfix.MessageRejectError {
