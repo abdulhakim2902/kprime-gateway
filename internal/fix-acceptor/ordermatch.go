@@ -882,6 +882,8 @@ func (a *Application) GetTrade(filter bson.M) (trades []*types.Trade) {
 }
 
 func OnMarketDataUpdate(instrument string, book _orderbookType.BookData) {
+	// FIX ME bug found here
+	return
 	for _, subs := range vMessageSubs {
 		response := []MarketDataResponse{}
 		if subs.InstrumentName != instrument {
