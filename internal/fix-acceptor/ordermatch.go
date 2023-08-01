@@ -1355,6 +1355,9 @@ func MakerConfirmation(data types.EngineResponse) {
 		cumQty := decimal.NewFromFloat(conversion)
 		avgPx := decimal.NewFromFloat(0)
 
+		fmt.Println("debug makerOrder.ID.Hex()", makerOrder.ID.Hex())
+		fmt.Println("debug makerOrder.ID", makerOrder.ID)
+
 		msg := executionreport.New(
 			field.NewOrderID(makerOrder.ID.Hex()),    // 37
 			field.NewExecID(execID), // 17
