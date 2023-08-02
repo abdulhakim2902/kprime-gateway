@@ -14,4 +14,9 @@ const (
 	NOT_OWNER_OF_ORDER               = "not_owner_of_order"
 	ORDER_ALREADY_CLOSED             = "order_already_closed"
 	INTERVAL_MUST_BE_GREATER_THAN_10 = "interval_must_be_greater_than_10"
+
+	// For FIX Protocol
+	NO_SESSION_FOUND 				= "no_session_found"
+	NO_USER_FOUND = "no_user_found"
+	ERROR_SENDING_MESSAGE = "error_sending_message"
 )
