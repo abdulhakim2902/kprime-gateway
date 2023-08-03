@@ -52,13 +52,15 @@ var (
 	})
 
 	RequestDurationHistogram = promauto.NewHistogramVec(prometheus.HistogramOpts{
-		Name: "request_duration",
-		Help: "The total number of request duration",
+		Name:    "request_duration",
+		Help:    "The total number of request duration",
+		Buckets: []float64{100, 1000, 10000, 100000, 1000000},
 	}, []string{"success"})
 
 	KafkaDurationHistogram = promauto.NewHistogram(prometheus.HistogramOpts{
-		Name: "kafka_duration",
-		Help: "The total number of kafka duration",
+		Name:    "kafka_duration",
+		Help:    "The total number of kafka duration",
+		Buckets: []float64{100, 1000, 10000, 100000, 1000000},
 	})
 )
 
