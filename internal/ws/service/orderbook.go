@@ -772,9 +772,8 @@ func (svc wsOrderbookService) HandleConsumeUserChange(msg *sarama.ConsumerMessag
 		}
 	}
 
-	var trades _tradeType.UserTradesByInstrumentResult
+	var tradeId []interface{}
 	if len(data.Matches.Trades) > 0 {
-		var tradeId []interface{}
 		var userId []interface{}
 		keys := make(map[interface{}]bool)
 		keysUser := make(map[interface{}]bool)
@@ -792,14 +791,6 @@ func (svc wsOrderbookService) HandleConsumeUserChange(msg *sarama.ConsumerMessag
 				}
 			}
 		}
-		trades, err = svc.tradeRepository.FindUserTradesById(
-			_instrument,
-			userId,
-			tradeId,
-		)
-		if err != nil {
-			return
-		}
 	}
 
 	orders, err := svc.orderRepository.GetChangeOrdersByInstrument(
@@ -810,16 +801,34 @@ func (svc wsOrderbookService) HandleConsumeUserChange(msg *sarama.ConsumerMessag
 	if err != nil {
 		return
 	}
-	tradesInterface := make([]interface{}, 0)
-	for _, trade := range trades.Trades {
-		tradesInterface = append(tradesInterface, trade)
-	}
 
 	keys = make(map[interface{}]bool)
 	for _, id := range userId {
 		_id := id.(primitive.ObjectID).Hex()
 		if _, ok := keys[_id]; !ok {
 			keys[_id] = true
+			var trades _tradeType.UserTradesByInstrumentResult
+			if len(data.Matches.Trades) > 0 {
+				var userIdOrder []interface{}
+				userIdOrder = append(userIdOrder, id)
+				isTaker := (data.Matches.TakerOrder.UserID == id)
+
+				trades, err = svc.tradeRepository.FindTradesEachUser(
+					_instrument,
+					userIdOrder,
+					tradeId,
+					isTaker,
+				)
+
+				if err != nil {
+					continue
+				}
+			}
+
+			tradesInterface := make([]interface{}, 0)
+			for _, trade := range trades.Trades {
+				tradesInterface = append(tradesInterface, trade)
+			}
 
 			ordersInterface := make([]interface{}, 0)
 			for _, order := range orders {
