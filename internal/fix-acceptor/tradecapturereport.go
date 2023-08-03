@@ -187,7 +187,7 @@ func (a *Application) OnTradeCaptureReportRequest(msg tradecapturereportrequest.
 		if errStr != "" {
 			return quickfix.NewMessageRejectError(errStr, 1, nil)
 		}
-		if msg == nil {
+		if msg != nil {
 			errSnt := quickfix.SendToTarget(msg, sessionID)
 			if errSnt != nil {
 				logs.Log.Err(errSnt).Msg("Error sending message")
