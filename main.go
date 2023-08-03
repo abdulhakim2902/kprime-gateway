@@ -189,7 +189,8 @@ func main() {
 		settlementPriceRepo,
 	)
 
-	go ordermatch.Execute(_deribitSvc)
+	fixApp := ordermatch.InitApp(_deribitSvc, _wsOrderbookSvc)
+	go ordermatch.Execute(fixApp)
 
 	_deribitCtrl.NewDeribitHandler(engine, _deribitSvc, _authSvc, userRepo)
 	_wsCtrl.NewWebsocketHandler(
@@ -244,7 +245,7 @@ func main() {
 	_engSvc := _engSvc.NewEngineHandler(engine, redisConn, tradeRepo, _wsOrderbookSvc)
 
 	// kafka listener
-	consumer.KafkaConsumer(orderRepo, _engSvc, _obSvc, _wsOrderSvc, _wsTradeSvc, _wsRawPriceSvc)
+	consumer.KafkaConsumer(orderRepo, _engSvc, _obSvc, _wsOrderSvc, _wsTradeSvc, _wsRawPriceSvc, fixApp)
 
 	// Wait for interrupt signal to gracefully shutdown the server with
 	// a timeout of 5 seconds.
