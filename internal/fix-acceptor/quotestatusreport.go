@@ -122,7 +122,7 @@ func (a *Application) OnQuoteStatusRequestSnapshot(symbol string, responseID str
 	instruments, errGo := utils.ParseInstruments(symbol, false)
 	if errGo != nil {
 		logs.Log.Err(errGo).Msg("Error parsing instruments")
-		return nil, "err"
+		return nil, constant.INVALID_INSTRUMENT
 	}
 
 	orderbook := _orderbookType.GetOrderBook{}
