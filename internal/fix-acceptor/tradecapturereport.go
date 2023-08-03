@@ -1,19 +1,20 @@
 package ordermatch
+
 import (
-	"github.com/quickfixgo/quickfix"
-	"fmt"
-	"gateway/pkg/utils"
-	"github.com/quickfixgo/field"
-	"github.com/quickfixgo/fix44/tradecapturereportrequest"
-	"github.com/quickfixgo/fix44/tradecapturereport"
-	"github.com/shopspring/decimal"
-	"github.com/quickfixgo/enum"
-	"gateway/internal/engine/types"
-	"github.com/Undercurrent-Technologies/kprime-utilities/commons/logs"
-	_userType "gateway/internal/user/types"
-	_orderbookType "gateway/internal/orderbook/types"
-	"gateway/pkg/constant"
 	"context"
+	"fmt"
+	"gateway/internal/engine/types"
+	_orderbookType "gateway/internal/orderbook/types"
+	_userType "gateway/internal/user/types"
+	"gateway/pkg/constant"
+	"gateway/pkg/utils"
+	"github.com/Undercurrent-Technologies/kprime-utilities/commons/logs"
+	"github.com/quickfixgo/enum"
+	"github.com/quickfixgo/field"
+	"github.com/quickfixgo/fix44/tradecapturereport"
+	"github.com/quickfixgo/fix44/tradecapturereportrequest"
+	"github.com/quickfixgo/quickfix"
+	"github.com/shopspring/decimal"
 )
 
 func ADSubscribe(symbol string, sessionID quickfix.SessionID) {
@@ -61,12 +62,12 @@ func ADUnsubscribe(symbol string, sessionID quickfix.SessionID) {
 }
 
 func (a *Application) OnTradeCaptureReportRequestSubscribe(symbol string, sessionID quickfix.SessionID) string {
-	ADSubscribe(symbol, sessionID);
+	ADSubscribe(symbol, sessionID)
 	return ""
 }
 
 func (a *Application) OnTradeCaptureReportRequestUnsubscribe(symbol string, sessionID quickfix.SessionID) string {
-	ADUnsubscribe(symbol, sessionID);
+	ADUnsubscribe(symbol, sessionID)
 	return ""
 }
 
@@ -77,15 +78,15 @@ func (a *Application) BroadcastTradeCaptureReport(trades []*types.Trade) {
 	}
 
 	for _, trade := range trades {
-		symbol := trade.Underlying + "-" + trade.ExpiryDate + "-" + fmt.Sprintf("%.0f", trade.StrikePrice) + "-" + string(trade.Contracts[0]);
+		symbol := trade.Underlying + "-" + trade.ExpiryDate + "-" + fmt.Sprintf("%.0f", trade.StrikePrice) + "-" + string(trade.Contracts[0])
 		conversion, _ := utils.ConvertToFloat(trade.Amount)
 		msg := tradecapturereport.New(
 			field.NewTradeReportID("notification"), // Need Req ID
 			field.NewPreviouslyReported(false),
-			field.NewLastQty(decimal.NewFromFloat(conversion), 2), // decimal
-			field.NewLastPx(decimal.NewFromFloat(trade.Price), 2), // decimal
+			field.NewLastQty(decimal.NewFromFloat(conversion), 2),    // decimal
+			field.NewLastPx(decimal.NewFromFloat(trade.Price), 2),    // decimal
 			field.NewTradeDate(trade.CreatedAt.Format("2006-01-02")), // string YYYYMMDD
-			field.NewTransactTime(trade.CreatedAt), // time
+			field.NewTransactTime(trade.CreatedAt),                   // time
 		)
 		msg.SetSymbol(symbol)
 
@@ -181,16 +182,17 @@ func (a *Application) OnTradeCaptureReportRequest(msg tradecapturereportrequest.
 	}
 
 	// Snapshot + updates
-	if subscriptionRequestType == enum.SubscriptionRequestType_SNAPSHOT_PLUS_UPDATES  || subscriptionRequestType == enum.SubscriptionRequestType_SNAPSHOT {
-		msg,errStr := a.OnTradeCaptureReportRequestSnapshot(tradeRequestID, user, symbol)
+	if subscriptionRequestType == enum.SubscriptionRequestType_SNAPSHOT_PLUS_UPDATES || subscriptionRequestType == enum.SubscriptionRequestType_SNAPSHOT {
+		msg, errStr := a.OnTradeCaptureReportRequestSnapshot(tradeRequestID, user, symbol)
 		if errStr != "" {
 			return quickfix.NewMessageRejectError(errStr, 1, nil)
 		}
-
-		errSnt := quickfix.SendToTarget(msg, sessionID)
-		if errSnt != nil {
-			logs.Log.Err(errSnt).Msg("Error sending message")
-			return quickfix.NewMessageRejectError(constant.ERROR_SENDING_MESSAGE, 1, nil)
+		if msg == nil {
+			errSnt := quickfix.SendToTarget(msg, sessionID)
+			if errSnt != nil {
+				logs.Log.Err(errSnt).Msg("Error sending message")
+				return quickfix.NewMessageRejectError(constant.ERROR_SENDING_MESSAGE, 1, nil)
+			}
 		}
 	}
 
@@ -234,6 +236,10 @@ func (a *Application) OnTradeCaptureReportRequestSnapshot(tradeRequestID string,
 
 	// get last trade from repo
 	trades := a.TradeRepository.GetLastTrades(orderbook)
+	if len(trades) == 0 {
+		return nil, ""
+	}
+
 	lastTrade := trades[len(trades)-1]
 
 	conversion, _ := utils.ConvertToFloat(lastTrade.Amount)
@@ -241,10 +247,10 @@ func (a *Application) OnTradeCaptureReportRequestSnapshot(tradeRequestID string,
 	msg := tradecapturereport.New(
 		field.NewTradeReportID(tradeRequestID), // Need Req ID
 		field.NewPreviouslyReported(false),
-		field.NewLastQty(decimal.NewFromFloat(conversion), 2), // decimal
-		field.NewLastPx(decimal.NewFromFloat(lastTrade.Price), 2), // decimal
+		field.NewLastQty(decimal.NewFromFloat(conversion), 2),        // decimal
+		field.NewLastPx(decimal.NewFromFloat(lastTrade.Price), 2),    // decimal
 		field.NewTradeDate(lastTrade.CreatedAt.Format("2006-01-02")), // string YYYYMMDD
-		field.NewTransactTime(lastTrade.CreatedAt), // time
+		field.NewTransactTime(lastTrade.CreatedAt),                   // time
 	)
 	msg.SetSymbol(symbol)
 
@@ -255,5 +261,5 @@ func (a *Application) OnTradeCaptureReportRequestSnapshot(tradeRequestID string,
 	row.SetOrderID("")
 	msg.SetNoSides(grp)
 
-	return &msg, "";
+	return &msg, ""
 }
