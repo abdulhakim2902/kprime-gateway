@@ -1,17 +1,17 @@
 package ordermatch
+
 import (
-	"github.com/quickfixgo/quickfix"
 	"fmt"
-	"gateway/pkg/utils"
-	"github.com/quickfixgo/field"
-	"github.com/quickfixgo/fix44/quotestatusrequest"
-	"github.com/quickfixgo/fix44/quotestatusreport"
-	"github.com/shopspring/decimal"
-	"github.com/quickfixgo/enum"
-	"github.com/Undercurrent-Technologies/kprime-utilities/commons/logs"
 	_orderbookType "gateway/internal/orderbook/types"
 	"gateway/pkg/constant"
-
+	"gateway/pkg/utils"
+	"github.com/Undercurrent-Technologies/kprime-utilities/commons/logs"
+	"github.com/quickfixgo/enum"
+	"github.com/quickfixgo/field"
+	"github.com/quickfixgo/fix44/quotestatusreport"
+	"github.com/quickfixgo/fix44/quotestatusrequest"
+	"github.com/quickfixgo/quickfix"
+	"github.com/shopspring/decimal"
 )
 
 func ASubscribe(symbol string, sessionID quickfix.SessionID) {
@@ -60,6 +60,7 @@ func AUnsubscribe(symbol string, sessionID quickfix.SessionID) {
 
 // Quote status request (a)
 // Required tags:
+// 117 QuoteID
 // 55 symbol
 // 263 SubscriptionRequestType
 // Response Quote Status Report (AI)
@@ -95,8 +96,8 @@ func (a *Application) OnQuoteStatusRequest(msg quotestatusrequest.QuoteStatusReq
 	}
 
 	// snapshot + updates
-	if subscriptionRequestType == enum.SubscriptionRequestType_SNAPSHOT_PLUS_UPDATES  || subscriptionRequestType == enum.SubscriptionRequestType_SNAPSHOT {
-		res,errStr := a.OnQuoteStatusRequestSnapshot(symbol, quoteID)
+	if subscriptionRequestType == enum.SubscriptionRequestType_SNAPSHOT_PLUS_UPDATES || subscriptionRequestType == enum.SubscriptionRequestType_SNAPSHOT {
+		res, errStr := a.OnQuoteStatusRequestSnapshot(symbol, quoteID)
 		if errStr != "" {
 			return quickfix.NewMessageRejectError(errStr, 1, nil)
 		}
@@ -116,7 +117,7 @@ func (a *Application) OnQuoteStatusRequest(msg quotestatusrequest.QuoteStatusReq
 	return nil
 }
 
-func (a *Application) OnQuoteStatusRequestSnapshot(symbol string, responseID string) (*quotestatusreport.QuoteStatusReport, string){
+func (a *Application) OnQuoteStatusRequestSnapshot(symbol string, responseID string) (*quotestatusreport.QuoteStatusReport, string) {
 
 	// Split symbol
 	instruments, errGo := utils.ParseInstruments(symbol, false)
@@ -133,7 +134,7 @@ func (a *Application) OnQuoteStatusRequestSnapshot(symbol string, responseID str
 	quote, _ := a.WSService.GetDataQuote(orderbook)
 	mktAskPrice := quote.BestAskPrice
 	mktBidPrice := quote.BestBidPrice
-	
+
 	res := quotestatusreport.New(field.NewQuoteID(responseID))
 	res.SetMktBidPx(decimal.NewFromFloat(mktBidPrice), 2)
 	res.SetMktOfferPx(decimal.NewFromFloat(mktAskPrice), 2)

@@ -22,9 +22,9 @@ import (
 	"fmt"
 	_deribitModel "gateway/internal/deribit/model"
 	_deribitSvc "gateway/internal/deribit/service"
-	_wsSvc "gateway/internal/ws/service"
 	"gateway/internal/engine/types"
 	"gateway/internal/repositories"
+	_wsSvc "gateway/internal/ws/service"
 	"gateway/pkg/redis"
 	"gateway/pkg/utils"
 	"io"
@@ -35,9 +35,9 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
-	"sync"
 
 	_mongo "gateway/pkg/mongo"
 
@@ -58,10 +58,10 @@ import (
 	"github.com/quickfixgo/fix44/ordercancelreplacerequest"
 	"github.com/quickfixgo/fix44/ordercancelrequest"
 	"github.com/quickfixgo/fix44/ordermasscancelrequest"
-	"github.com/quickfixgo/fix44/tradecapturereportrequest"
 	"github.com/quickfixgo/fix44/quotestatusrequest"
 	"github.com/quickfixgo/fix44/securitylist"
 	"github.com/quickfixgo/fix44/securitylistrequest"
+	"github.com/quickfixgo/fix44/tradecapturereportrequest"
 	"github.com/quickfixgo/tag"
 	"github.com/shopspring/decimal"
 	"go.mongodb.org/mongo-driver/bson"
@@ -88,21 +88,21 @@ type SubsManager struct {
 	ADSubscriptionsList map[quickfix.SessionID][]string
 
 	// For quote status report
-	ASubscriptions	map[string]map[quickfix.SessionID]bool
-	ASubscriptionsList	map[quickfix.SessionID][]string
+	ASubscriptions     map[string]map[quickfix.SessionID]bool
+	ASubscriptionsList map[quickfix.SessionID][]string
 
 	// Add more subscription here
-	mu                sync.Mutex
+	mu sync.Mutex
 }
 
 var subsManager = &SubsManager{
-		ADSubscriptions:     make(map[string]map[quickfix.SessionID]bool),
-		ADSubscriptionsList: make(map[quickfix.SessionID][]string),
+	ADSubscriptions:     make(map[string]map[quickfix.SessionID]bool),
+	ADSubscriptionsList: make(map[quickfix.SessionID][]string),
 
-		ASubscriptions:     make(map[string]map[quickfix.SessionID]bool),
-		ASubscriptionsList: make(map[quickfix.SessionID][]string),
+	ASubscriptions:     make(map[string]map[quickfix.SessionID]bool),
+	ASubscriptionsList: make(map[quickfix.SessionID][]string),
 
-		mu:                sync.Mutex{},
+	mu: sync.Mutex{},
 }
 
 var userSession map[string]*quickfix.SessionID
@@ -164,7 +164,7 @@ type Application struct {
 	*repositories.OrderRepository
 	*repositories.TradeRepository
 	DeribitService _deribitSvc.IDeribitService
-	WSService _wsSvc.IwsOrderbookService
+	WSService      _wsSvc.IwsOrderbookService
 	redis          *redis.RedisConnectionPool
 }
 
@@ -182,7 +182,7 @@ func newApplication(deribit _deribitSvc.IDeribitService, wsSvc _wsSvc.IwsOrderbo
 		UserRepository:  userRepo,
 		OrderRepository: orderRepo,
 		TradeRepository: tradeRepo,
-		WSService: wsSvc,
+		WSService:       wsSvc,
 		DeribitService:  deribit,
 		redis:           redis,
 	}
@@ -771,9 +771,8 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 func (a *Application) OnEngineSavedReceived(data types.EngineResponse) {
 	// Broadcast Best Bid and Best Ask (market price)
 	takerOrder := data.Matches.TakerOrder
-	instrumentName := takerOrder.Underlying + "-" + takerOrder.ExpiryDate + "-" + fmt.Sprintf("%.0f", takerOrder.StrikePrice) + "-" + string(takerOrder.Contracts[0]);
+	instrumentName := takerOrder.Underlying + "-" + takerOrder.ExpiryDate + "-" + fmt.Sprintf("%.0f", takerOrder.StrikePrice) + "-" + string(takerOrder.Contracts[0])
 	a.BroadcastQuoteStatusReport(instrumentName)
-
 
 }
 
@@ -788,7 +787,7 @@ func (a *Application) OnTradeHappens(data types.EngineResponse) {
 	a.BroadcastTradeCaptureReport(data.Matches.Trades)
 
 	takerOrder := data.Matches.TakerOrder
-	instrumentName := takerOrder.Underlying + "-" + takerOrder.ExpiryDate + "-" + fmt.Sprintf("%.0f", takerOrder.StrikePrice) + "-" + string(takerOrder.Contracts[0]);
+	instrumentName := takerOrder.Underlying + "-" + takerOrder.ExpiryDate + "-" + fmt.Sprintf("%.0f", takerOrder.StrikePrice) + "-" + string(takerOrder.Contracts[0])
 
 	// Broadcast order book
 	BroadcastOrderBook(instrumentName)
@@ -806,7 +805,7 @@ func BroadcastOrderBook(instrument string) {
 		fmt.Println("debug BroadcastOrderBook No subscribers")
 		return
 	}
-	
+
 	response := []MarketDataResponse{}
 
 	splits := strings.Split(instrument, "-")
@@ -898,7 +897,7 @@ func BroadcastTrades(trades []*types.Trade) {
 	grp := marketdataincrementalrefresh.NewNoMDEntriesRepeatingGroup()
 	for _, trade := range trades {
 		row := grp.Add()
-		symbol := trade.Underlying + "-" + trade.ExpiryDate + "-" + fmt.Sprintf("%.0f", trade.StrikePrice) + "-" + string(trade.Contracts[0]);
+		symbol := trade.Underlying + "-" + trade.ExpiryDate + "-" + fmt.Sprintf("%.0f", trade.StrikePrice) + "-" + string(trade.Contracts[0])
 		fmt.Println("debug symbol", symbol)
 
 		row.SetMDUpdateAction(enum.MDUpdateAction_NEW)
@@ -906,12 +905,12 @@ func BroadcastTrades(trades []*types.Trade) {
 		// Symbol
 		row.SetSymbol(symbol)
 		// Price. Tag 270
-		row.SetMDEntryPx(decimal.NewFromFloat(trade.Price), 2);
+		row.SetMDEntryPx(decimal.NewFromFloat(trade.Price), 2)
 		// Amount. Tag 271
-		amt, _:= utils.ConvertToFloat(trade.Amount)
-		row.SetMDEntrySize(decimal.NewFromFloat(amt), 2);
+		amt, _ := utils.ConvertToFloat(trade.Amount)
+		row.SetMDEntrySize(decimal.NewFromFloat(amt), 2)
 		// Type. Tag 269
-		row.SetMDEntryType(enum.MDEntryType_TRADE);
+		row.SetMDEntryType(enum.MDEntryType_TRADE)
 	}
 	msg.SetNoMDEntries(grp)
 
@@ -1055,7 +1054,7 @@ func sumAmount(data []MarketDataResponse, og []MarketDataResponse) (res []Market
 }
 
 func OnMatchingOrder(data types.EngineResponse) {
-	return;
+	return
 
 	// No matches, then nothing to do
 	if data.Matches == nil {
@@ -1253,10 +1252,10 @@ func (a *Application) updateOrder(order Order, status enum.OrdStatus) {
 func (a *Application) OrderConfirmation(data types.EngineResponse) {
 	fmt.Println("OrderConfirmation")
 	userId := data.Matches.TakerOrder.UserID.Hex()
-	takerOrder := data.Matches.TakerOrder;
+	takerOrder := data.Matches.TakerOrder
 	symbol := takerOrder.Underlying + "-" + takerOrder.ExpiryDate + "-" + fmt.Sprintf("%.0f", takerOrder.StrikePrice) + "-" + string(takerOrder.Contracts[0])
 
-	// Point 1, execution report for the taker order 
+	// Point 1, execution report for the taker order
 	if userSession == nil {
 		if userSession[userId] == nil {
 			return
@@ -1303,13 +1302,13 @@ func (a *Application) OrderConfirmation(data types.EngineResponse) {
 	conversion, _ := utils.ConvertToFloat(takerOrder.FilledAmount)
 
 	msg := executionreport.New(
-		field.NewOrderID(takerOrder.ID.Hex()),    // 37
-		field.NewExecID(strconv.Itoa(exec)), // 17
-		field.NewExecType(fixExecType),      // 150
-		field.NewOrdStatus(fixStatus),       // 39
-		field.NewSide(fixSide),              // 54
+		field.NewOrderID(takerOrder.ID.Hex()), // 37
+		field.NewExecID(strconv.Itoa(exec)),   // 17
+		field.NewExecType(fixExecType),        // 150
+		field.NewOrdStatus(fixStatus),         // 39
+		field.NewSide(fixSide),                // 54
 		field.NewLeavesQty(decimal.NewFromFloat(takerOrder.Amount).Sub(decimal.NewFromFloat(conversion)), 2), // Order quantity open for further execution (LeavesQty = OrderQty - CumQty) 151
-		field.NewCumQty(decimal.NewFromFloat(conversion), 2),                                            // Executed Qty 14
+		field.NewCumQty(decimal.NewFromFloat(conversion), 2),                                                 // Executed Qty 14
 		field.NewAvgPx(decimal.NewFromFloat(takerOrder.Price), 2),                                            // 6 TODO: FIX ME
 	)
 
@@ -1326,23 +1325,22 @@ func (a *Application) OrderConfirmation(data types.EngineResponse) {
 	msg.Set(field.NewPartyID(takerOrder.ClientID))
 
 	// Setting Order Type (Market or Limit) -- Tag 40
-	if (takerOrder.Type == _utilitiesType.MARKET){
-		msg.SetOrdType(enum.OrdType_MARKET);
+	if takerOrder.Type == _utilitiesType.MARKET {
+		msg.SetOrdType(enum.OrdType_MARKET)
 	} else {
-		msg.SetOrdType(enum.OrdType_LIMIT);
+		msg.SetOrdType(enum.OrdType_LIMIT)
 	}
 
 	// Point 2, check if there's trades
-	if (conversion == 0) {
+	if conversion == 0 {
 		fmt.Println("debug no trades")
 		msg.SetLastQty(decimal.NewFromFloat(0), 2) // 32
-		msg.SetLastPx(decimal.NewFromFloat(0), 2)   // 31
+		msg.SetLastPx(decimal.NewFromFloat(0), 2)  // 31
 	} else {
 		fmt.Println("debug there are trades")
-		msg.SetLastQty(decimal.NewFromFloat(conversion), 2) // 32
-		msg.SetLastPx(decimal.NewFromFloat(takerOrder.Price), 2)   // 31
+		msg.SetLastQty(decimal.NewFromFloat(conversion), 2)      // 32
+		msg.SetLastPx(decimal.NewFromFloat(takerOrder.Price), 2) // 31
 	}
-
 
 	err := quickfix.SendToTarget(msg, *sessionId)
 	if err != nil {
@@ -1362,15 +1360,15 @@ func (a *Application) MakerConfirmation(data types.EngineResponse) {
 
 	for _, trade := range data.Matches.Trades {
 		// Only carse about maker
-		
-		userId := trade.Maker.UserID.Hex();
+
+		userId := trade.Maker.UserID.Hex()
 		// CHeck if the user has FIX session
-		if (userSession[userId] == nil) {
+		if userSession[userId] == nil {
 			continue
 		}
 		sessionId := userSession[userId]
 
-		makerOrderID := trade.Maker.OrderID.Hex();
+		makerOrderID := trade.Maker.OrderID.Hex()
 		// Find order based on the engine response
 		// Do not query into the database - since it may need sometime for DB to reflect
 		var makerOrder *_orderbookType.Order
@@ -1382,7 +1380,7 @@ func (a *Application) MakerConfirmation(data types.EngineResponse) {
 			}
 		}
 
-		if (makerOrder == nil) {
+		if makerOrder == nil {
 			fmt.Println("debug makerOrder nil")
 			continue
 		}
@@ -1391,7 +1389,7 @@ func (a *Application) MakerConfirmation(data types.EngineResponse) {
 		symbol := makerOrder.Underlying + "-" + makerOrder.ExpiryDate + "-" + fmt.Sprintf("%.0f", makerOrder.StrikePrice) + "-" + string(makerOrder.Contracts[0])
 
 		execID := "KPR"
-		execType := enum.ExecType_TRADE;
+		execType := enum.ExecType_TRADE
 		ordStatus := enum.OrdStatus_FILLED
 		side := enum.Side_BUY
 		conversion, _ := utils.ConvertToFloat(makerOrder.FilledAmount)
@@ -1413,14 +1411,14 @@ func (a *Application) MakerConfirmation(data types.EngineResponse) {
 		fmt.Println("debug makerOrder.ID", makerOrder.ID)
 
 		msg := executionreport.New(
-			field.NewOrderID(makerOrder.ID.Hex()),    // 37
-			field.NewExecID(execID), // 17
-			field.NewExecType(execType),      // 150
-			field.NewOrdStatus(ordStatus),       // 39
-			field.NewSide(side),              // 54
-			field.NewLeavesQty(leavesQty, 2), // Order quantity open for further execution (LeavesQty = OrderQty - CumQty) 151
-			field.NewCumQty(cumQty, 2),                                            // Executed Qty 14
-			field.NewAvgPx(avgPx, 2),                                            // 6 TODO: FIX ME
+			field.NewOrderID(makerOrder.ID.Hex()), // 37
+			field.NewExecID(execID),               // 17
+			field.NewExecType(execType),           // 150
+			field.NewOrdStatus(ordStatus),         // 39
+			field.NewSide(side),                   // 54
+			field.NewLeavesQty(leavesQty, 2),      // Order quantity open for further execution (LeavesQty = OrderQty - CumQty) 151
+			field.NewCumQty(cumQty, 2),            // Executed Qty 14
+			field.NewAvgPx(avgPx, 2),              // 6 TODO: FIX ME
 		)
 
 		// ClOrderID -- Order MT ID in MT5
@@ -1436,16 +1434,16 @@ func (a *Application) MakerConfirmation(data types.EngineResponse) {
 		msg.Set(field.NewPartyID(makerOrder.ClientID))
 
 		// Setting Order Type (Market or Limit) -- Tag 40
-		if (makerOrder.Type == _utilitiesType.MARKET){
-			msg.SetOrdType(enum.OrdType_MARKET);
+		if makerOrder.Type == _utilitiesType.MARKET {
+			msg.SetOrdType(enum.OrdType_MARKET)
 		} else {
-			msg.SetOrdType(enum.OrdType_LIMIT);
+			msg.SetOrdType(enum.OrdType_LIMIT)
 		}
 
 		// Convert trade amount from string to float
 		conversion, _ = utils.ConvertToFloat(trade.Amount)
 		msg.SetLastQty(decimal.NewFromFloat(conversion), 2) // 32
-		msg.SetLastPx(decimal.NewFromFloat(trade.Price), 2)   // 31
+		msg.SetLastPx(decimal.NewFromFloat(trade.Price), 2) // 31
 
 		err := quickfix.SendToTarget(msg, *sessionId)
 		if err != nil {
@@ -1588,7 +1586,7 @@ const (
 	long  = "Start an order matching (FIX acceptor) service."
 )
 
-func InitApp(deribit _deribitSvc.IDeribitService, wsSvc _wsSvc.IwsOrderbookService) *Application{
+func InitApp(deribit _deribitSvc.IDeribitService, wsSvc _wsSvc.IwsOrderbookService) *Application {
 	return newApplication(deribit, wsSvc)
 }
 

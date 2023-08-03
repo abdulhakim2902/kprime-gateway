@@ -6,11 +6,11 @@ import (
 	"gateway/pkg/collector"
 	"gateway/pkg/protocol"
 	"gateway/pkg/utils"
+	"github.com/Undercurrent-Technologies/kprime-utilities/commons/logs"
 	"log"
 	"os"
 	"strconv"
 	"strings"
-	"github.com/Undercurrent-Technologies/kprime-utilities/commons/logs"
 
 	engInt "gateway/internal/engine/service"
 	_engineType "gateway/internal/engine/types"
@@ -122,10 +122,6 @@ func onEngineReceived(oSvc oInt.IwsOrderService, message *sarama.ConsumerMessage
 
 	// convert mongodb object id to string
 	userIDStr := data.Matches.TakerOrder.UserID.Hex()
-
-	// Get instrument name from TakerOrder
-	//takerOrder := data.Matches.TakerOrder;
-	//instrumentName := takerOrder.Underlying + "-" + takerOrder.ExpiryDate + "-" + fmt.Sprintf("%.0f", takerOrder.StrikePrice) + "-" + string(takerOrder.Contracts[0])
 
 	// Handle taker order (if FIX user is subscribing)
 	go fixApp.OrderConfirmation(data)
