@@ -30,6 +30,7 @@ func KafkaConsumer(
 	oSvc oInt.IwsOrderService,
 	tradeSvc oInt.IwsTradeService,
 	rawSvc oInt.IwsRawPriceService,
+	fixApp *ordermatch.Application,
 ) {
 	// Metrics
 	go func() {
@@ -58,9 +59,10 @@ func KafkaConsumer(
 			for message := range partitionConsumer.Messages() {
 				switch topic {
 				case "ENGINE":
-					go handleTopicOrder(oSvc, message)
+					go onEngineReceived(oSvc, message, fixApp)
 					go engSvc.HandleConsume(message)
 				case "ENGINE_SAVED":
+					go onEngineSavedReceived(message, fixApp)
 					go engSvc.HandleConsumeQuote(message)
 					go oSvc.HandleConsumeUserOrder(message)
 					go tradeSvc.HandleConsumeUserTrades(message)
@@ -88,7 +90,21 @@ func KafkaConsumer(
 	select {}
 }
 
-func handleTopicOrder(oSvc oInt.IwsOrderService, message *sarama.ConsumerMessage) {
+// Hook when ENGINE_SAVED topic received
+func onEngineSavedReceived(message *sarama.ConsumerMessage, fixApp *ordermatch.Application) {
+	str := string(message.Value)
+	var data _engineType.EngineResponse
+	err := json.Unmarshal([]byte(str), &data)
+	if err != nil {
+		logs.Log.Error().Err(err).Msg("Error parsing JSON")
+		return
+	}
+
+	fixApp.OnEngineSavedReceived(data)
+}
+
+// Hook when ENGINE topic received
+func onEngineReceived(oSvc oInt.IwsOrderService, message *sarama.ConsumerMessage, fixApp *ordermatch.Application) {
 	logs.Log.Info().Msg(fmt.Sprintf("Received message from ORDER: %s\n", string(message.Value)))
 
 	str := string(message.Value)
@@ -112,13 +128,13 @@ func handleTopicOrder(oSvc oInt.IwsOrderService, message *sarama.ConsumerMessage
 	//instrumentName := takerOrder.Underlying + "-" + takerOrder.ExpiryDate + "-" + fmt.Sprintf("%.0f", takerOrder.StrikePrice) + "-" + string(takerOrder.Contracts[0])
 
 	// Handle taker order (if FIX user is subscribing)
-	go ordermatch.OrderConfirmation(data)
+	go fixApp.OrderConfirmation(data)
 
 	// Handle maker order (if FIX user is subscribing)
-	go ordermatch.MakerConfirmation(data)
+	go fixApp.MakerConfirmation(data)
 
 	// FIX Subscription
-	go ordermatch.OnTradeHappens(data)
+	go fixApp.OnTradeHappens(data)
 
 	// no need to use HandleConsume
 	// userId := data.Matches.TakerOrder.UserID

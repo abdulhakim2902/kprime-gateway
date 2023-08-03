@@ -22,13 +22,13 @@ import (
 	"fmt"
 	_deribitModel "gateway/internal/deribit/model"
 	_deribitSvc "gateway/internal/deribit/service"
+	_wsSvc "gateway/internal/ws/service"
 	"gateway/internal/engine/types"
 	"gateway/internal/repositories"
 	"gateway/pkg/redis"
 	"gateway/pkg/utils"
 	"io"
 	"io/ioutil"
-	"gateway/pkg/constant"
 	"os"
 	"os/signal"
 	"path"
@@ -37,7 +37,6 @@ import (
 	"strings"
 	"syscall"
 	"time"
-	_userType "gateway/internal/user/types"
 	"sync"
 
 	_mongo "gateway/pkg/mongo"
@@ -60,7 +59,7 @@ import (
 	"github.com/quickfixgo/fix44/ordercancelrequest"
 	"github.com/quickfixgo/fix44/ordermasscancelrequest"
 	"github.com/quickfixgo/fix44/tradecapturereportrequest"
-	"github.com/quickfixgo/fix44/tradecapturereport"
+	"github.com/quickfixgo/fix44/quotestatusrequest"
 	"github.com/quickfixgo/fix44/securitylist"
 	"github.com/quickfixgo/fix44/securitylistrequest"
 	"github.com/quickfixgo/tag"
@@ -83,61 +82,27 @@ type VMessageSubscriber struct {
 	Trade          bool
 }
 
-// Subscribing MsgType AD
 type SubsManager struct {
+	// Subscribing MsgType AD
 	ADSubscriptions     map[string]map[quickfix.SessionID]bool
 	ADSubscriptionsList map[quickfix.SessionID][]string
+
+	// For quote status report
+	ASubscriptions	map[string]map[quickfix.SessionID]bool
+	ASubscriptionsList	map[quickfix.SessionID][]string
 
 	// Add more subscription here
 	mu                sync.Mutex
 }
 
-func NewSubsManager() *SubsManager {
-	return &SubsManager{
+var subsManager = &SubsManager{
 		ADSubscriptions:     make(map[string]map[quickfix.SessionID]bool),
 		ADSubscriptionsList: make(map[quickfix.SessionID][]string),
+
+		ASubscriptions:     make(map[string]map[quickfix.SessionID]bool),
+		ASubscriptionsList: make(map[quickfix.SessionID][]string),
+
 		mu:                sync.Mutex{},
-	}
-}
-
-
-func (a *Application) ADSubscribe(symbol string, sessionID quickfix.SessionID) {
-	a.SubsManager.mu.Lock()
-	defer a.SubsManager.mu.Unlock()
-
-	if a.SubsManager.ADSubscriptions[symbol] == nil {
-		a.SubsManager.ADSubscriptions[symbol] = make(map[quickfix.SessionID]bool)
-	}
-	fmt.Println("sessionID", sessionID)
-	fmt.Println("symbol", symbol)
-	fmt.Println("before subscribe", a.SubsManager.ADSubscriptions[symbol][sessionID])
-
-	a.SubsManager.ADSubscriptions[symbol][sessionID] = true
-
-	fmt.Println("after subscribe", a.SubsManager.ADSubscriptions[symbol][sessionID])
-
-	if a.SubsManager.ADSubscriptionsList[sessionID] == nil {
-		a.SubsManager.ADSubscriptionsList[sessionID] = []string{}
-	}
-
-	a.SubsManager.ADSubscriptionsList[sessionID] = append(a.SubsManager.ADSubscriptionsList[sessionID], symbol)
-}
-
-func (a *Application) ADUnsubscribe(symbol string, sessionID quickfix.SessionID) {
-	a.SubsManager.mu.Lock()
-	defer a.SubsManager.mu.Unlock()
-
-	symbols := a.SubsManager.ADSubscriptionsList[sessionID]
-	if symbols == nil {
-		return
-	}
-
-	for _, id := range a.SubsManager.ADSubscriptionsList[sessionID] {
-		if a.SubsManager.ADSubscriptions[id][sessionID] {
-			a.SubsManager.ADSubscriptions[id][sessionID] = false
-			delete(a.SubsManager.ADSubscriptions[id], sessionID)
-		}
-	}
 }
 
 var userSession map[string]*quickfix.SessionID
@@ -198,12 +163,12 @@ type Application struct {
 	*repositories.UserRepository
 	*repositories.OrderRepository
 	*repositories.TradeRepository
-	*SubsManager
 	DeribitService _deribitSvc.IDeribitService
+	WSService _wsSvc.IwsOrderbookService
 	redis          *redis.RedisConnectionPool
 }
 
-func newApplication(deribit _deribitSvc.IDeribitService) *Application {
+func newApplication(deribit _deribitSvc.IDeribitService, wsSvc _wsSvc.IwsOrderbookService) *Application {
 
 	mongoDb, _ := _mongo.InitConnection(os.Getenv("MONGO_URL"))
 	redis := redis.NewRedisConnectionPool(os.Getenv("REDIS_URL"))
@@ -212,14 +177,12 @@ func newApplication(deribit _deribitSvc.IDeribitService) *Application {
 	tradeRepo := repositories.NewTradeRepository(mongoDb)
 	userRepo := repositories.NewUserRepository(mongoDb)
 
-	subsManager := NewSubsManager()
-
 	app := &Application{
 		MessageRouter:   quickfix.NewMessageRouter(),
 		UserRepository:  userRepo,
 		OrderRepository: orderRepo,
 		TradeRepository: tradeRepo,
-		SubsManager:    subsManager,
+		WSService: wsSvc,
 		DeribitService:  deribit,
 		redis:           redis,
 	}
@@ -230,6 +193,7 @@ func newApplication(deribit _deribitSvc.IDeribitService) *Application {
 	app.AddRoute(ordermasscancelrequest.Route(app.onOrderMassCancelRequest))
 	app.AddRoute(securitylistrequest.Route(app.onSecurityListRequest))
 	app.AddRoute(tradecapturereportrequest.Route(app.OnTradeCaptureReportRequest))
+	app.AddRoute(quotestatusrequest.Route(app.OnQuoteStatusRequest))
 	return app
 }
 
@@ -240,7 +204,11 @@ func (a Application) OnCreate(sessionID quickfix.SessionID) {}
 func (a Application) OnLogon(sessionID quickfix.SessionID) {}
 
 // OnLogout implemented as part of Application interface
-func (a Application) OnLogout(sessionID quickfix.SessionID) {}
+func (a Application) OnLogout(sessionID quickfix.SessionID) {
+	// unsubscribe
+	ADUnsubscribeAll(sessionID)
+	AUnsubscribeAll(sessionID)
+}
 
 // ToAdmin implemented as part of Application interface
 func (a Application) ToAdmin(msg *quickfix.Message, sessionID quickfix.SessionID) {}
@@ -385,175 +353,6 @@ func (a *Application) onNewOrderSingle(msg newordersingle.NewOrderSingle, sessio
 
 	fmt.Println(response, reason, r)
 	return nil
-}
-
-// MsgType AD
-// https://www.onixs.biz/fix-dictionary/4.4/msgtype_ad_6568.html#:~:text=Description,the%20trade%20capture%20report%20request.
-// Required tags:
-// 568 TradeRequestID
-// 569 TradeRequestType = always 0
-// 263 SubscriptionRequestType = can be 0 snapshot, 1 subscribe, 2 unsubscribe
-// 55 Symbol
-// Response
-// Required tags:
-// 571 TradeReportID
-// 32 LastQty
-// 31 LastPx
-// 55 Symbol
-func (a *Application) OnTradeCaptureReportRequest(msg tradecapturereportrequest.TradeCaptureReportRequest, sessionID quickfix.SessionID) (err quickfix.MessageRejectError) {
-
-	// Check user session
-	if userSession == nil {
-		logs.Log.Err(fmt.Errorf("no session found")).Msg("no session found")
-		return quickfix.NewMessageRejectError(constant.NO_SESSION_FOUND, 1, nil)
-	}
-
-	userId := ""
-	for i, v := range userSession {
-		if v.String() == sessionID.String() {
-			userId = i
-		}
-	}
-	user, e := a.UserRepository.FindById(context.TODO(), userId)
-	if e != nil {
-		logs.Log.Err(e).Msg("Failed getting user")
-		return quickfix.NewMessageRejectError(constant.NO_USER_FOUND, 1, nil)
-	}
-
-	// 568
-	tradeRequestID, err := msg.GetTradeRequestID()
-	if err != nil {
-		logs.Log.Err(err).Msg("Error getting tradeRequestID")
-		return err
-	}
-
-	// 569
-	tradeRequestType, err := msg.GetTradeRequestType()
-	if err != nil {
-		logs.Log.Err(err).Msg("Error getting tradeRequestType")
-		return err
-	}
-
-	// 263
-	subscriptionRequestType, err := msg.GetSubscriptionRequestType()
-	if err != nil {
-		logs.Log.Err(err).Msg("Error getting subscriptionRequestType")
-		return err
-	}
-
-	// 55
-	symbol, err := msg.GetSymbol()
-	if err != nil {
-		logs.Log.Err(err).Msg("Error getting symbol")
-		return err
-	}
-
-	// Validating requests
-	if tradeRequestType != enum.TradeRequestType_ALL_TRADES {
-		logs.Log.Err(err).Msg("Invalid tradeRequestType")
-		return quickfix.NewMessageRejectError("Invalid tradeRequestType", 1, nil)
-	}
-
-	// unsubscribe
-	if subscriptionRequestType == enum.SubscriptionRequestType_DISABLE_PREVIOUS_SNAPSHOT_PLUS_UPDATE_REQUEST {
-		fmt.Println("debug unsubscribe")
-		_ = a.OnTradeCaptureReportRequestUnsubscribe(symbol, sessionID)
-		return
-	}
-
-	// Snapshot + updates
-	if subscriptionRequestType == enum.SubscriptionRequestType_SNAPSHOT_PLUS_UPDATES  || subscriptionRequestType == enum.SubscriptionRequestType_SNAPSHOT {
-		fmt.Println("debug snapshot + updates")
-
-		errStr := a.OnTradeCaptureReportRequestSnapshot(tradeRequestID, user, symbol, sessionID)
-		if errStr != "" {
-			return quickfix.NewMessageRejectError(errStr, 1, nil)
-		}
-	}
-
-	// subscribe
-	if subscriptionRequestType == enum.SubscriptionRequestType_SNAPSHOT_PLUS_UPDATES {
-		fmt.Println("debug snapshot")
-
-		errStr := a.OnTradeCaptureReportRequestSubscribe(symbol, sessionID)
-		if errStr != "" {
-			return quickfix.NewMessageRejectError(errStr, 1, nil)
-		}
-	}
-
-	return
-}
-
-// Required tags:
-// 571 TradeReportID
-// 32 LastQty
-// 31 LastPx
-// 55 Symbol
-func (a *Application) OnTradeCaptureReportRequestSnapshot(tradeRequestID string, user *_userType.User, symbol string, sessionID quickfix.SessionID) string {
-	// Create an empty model from _orderbookType.Orderbook
-	orderbook := _orderbookType.GetOrderBook{}
-
-	// Split symbol
-	instruments, err := utils.ParseInstruments(symbol, false)
-	if err != nil {
-		logs.Log.Err(err).Msg("Error parsing instruments")
-		return constant.INVALID_INSTRUMENT
-	}
-
-	orderbook.Underlying = instruments.Underlying
-	orderbook.StrikePrice = instruments.Strike
-	orderbook.ExpiryDate = instruments.ExpDate
-
-	orderbook.UserRole = user.Role.Name
-	ordExclusions := []string{}
-	for _, userCast := range user.OrderExclusions {
-		ordExclusions = append(ordExclusions, userCast.UserID)
-	}
-	orderbook.UserOrderExclusions = ordExclusions
-
-	// get last trade from repo
-	trades := a.TradeRepository.GetLastTrades(orderbook)
-	lastTrade := trades[len(trades)-1]
-
-	fmt.Println("debug trades len", len(trades))
-	fmt.Println(fmt.Printf("debug last trade %v", lastTrade))
-
-	conversion, _ := utils.ConvertToFloat(lastTrade.Amount)
-
-	msg := tradecapturereport.New(
-		field.NewTradeReportID("tradeRequestID"), // Need Req ID
-		field.NewPreviouslyReported(false),
-		field.NewLastQty(decimal.NewFromFloat(conversion), 2), // decimal
-		field.NewLastPx(decimal.NewFromFloat(lastTrade.Price), 2), // decimal
-		field.NewTradeDate(lastTrade.CreatedAt.Format("2006-01-02")), // string YYYYMMDD
-		field.NewTransactTime(lastTrade.CreatedAt), // time
-	)
-	msg.SetSymbol(symbol)
-
-	// We did not implement sides (side and order ID)
-	grp := tradecapturereport.NewNoSidesRepeatingGroup()
-	row := grp.Add()
-	row.SetSide(enum.Side_BUY)
-	row.SetOrderID("")
-	msg.SetNoSides(grp)
-
-	err = quickfix.SendToTarget(msg, sessionID)
-	if err != nil {
-		logs.Log.Err(err).Msg("Error sending message")
-		return constant.ERROR_SENDING_MESSAGE
-	}
-
-	return "";
-}
-
-func (a *Application) OnTradeCaptureReportRequestSubscribe(symbol string, sessionID quickfix.SessionID) string {
-	a.ADSubscribe(symbol, sessionID);
-	return ""
-}
-
-func (a *Application) OnTradeCaptureReportRequestUnsubscribe(symbol string, sessionID quickfix.SessionID) string {
-	a.ADUnsubscribe(symbol, sessionID);
-	return ""
 }
 
 func (a Application) broadcastInstrumentList(currency string) {
@@ -968,11 +767,25 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 	return
 }
 
+// Hook when ENGINE_SAVED topic received
+func (a *Application) OnEngineSavedReceived(data types.EngineResponse) {
+	// Broadcast Best Bid and Best Ask (market price)
+	takerOrder := data.Matches.TakerOrder
+	instrumentName := takerOrder.Underlying + "-" + takerOrder.ExpiryDate + "-" + fmt.Sprintf("%.0f", takerOrder.StrikePrice) + "-" + string(takerOrder.Contracts[0]);
+	a.BroadcastQuoteStatusReport(instrumentName)
+
+
+}
+
 // Hook when Engine topic received
-func OnTradeHappens(data types.EngineResponse) {
+func (a *Application) OnTradeHappens(data types.EngineResponse) {
 	// Handle Ticks
 	// Broadcast last price and volume based on instrument name
 	BroadcastTrades(data.Matches.Trades)
+
+	// Broadcast LastPx and LastQty
+	// TradeCaptureReport - tradecapturereport.go
+	a.BroadcastTradeCaptureReport(data.Matches.Trades)
 
 	takerOrder := data.Matches.TakerOrder
 	instrumentName := takerOrder.Underlying + "-" + takerOrder.ExpiryDate + "-" + fmt.Sprintf("%.0f", takerOrder.StrikePrice) + "-" + string(takerOrder.Contracts[0]);
@@ -1153,7 +966,7 @@ func OnMarketDataUpdate(instrument string, book _orderbookType.BookData) {
 		if subs.Trade {
 			splits := strings.Split(instrument, "-")
 			price, _ := strconv.ParseFloat(splits[2], 64)
-			trades := newApplication(nil).GetTrade(bson.M{
+			trades := newApplication(nil, nil).GetTrade(bson.M{
 				"underlying":  splits[0],
 				"expiryDate":  splits[1],
 				"strikePrice": price,
@@ -1437,7 +1250,8 @@ func (a *Application) updateOrder(order Order, status enum.OrdStatus) {
 // 2. If the order is partially filled/filled (based on the trades), then add LastQty and LastPx
 // For point 2, we need several things:
 // - 1363	FillExecID, 1364	FillPx, 1365	FillQty
-func OrderConfirmation(data types.EngineResponse) {
+func (a *Application) OrderConfirmation(data types.EngineResponse) {
+	fmt.Println("OrderConfirmation")
 	userId := data.Matches.TakerOrder.UserID.Hex()
 	takerOrder := data.Matches.TakerOrder;
 	symbol := takerOrder.Underlying + "-" + takerOrder.ExpiryDate + "-" + fmt.Sprintf("%.0f", takerOrder.StrikePrice) + "-" + string(takerOrder.Contracts[0])
@@ -1534,11 +1348,11 @@ func OrderConfirmation(data types.EngineResponse) {
 	if err != nil {
 		fmt.Print(err.Error())
 	}
-	newApplication(nil).
+	newApplication(nil, nil).
 		broadcastInstrumentList(takerOrder.Underlying)
 }
 
-func MakerConfirmation(data types.EngineResponse) {
+func (a *Application) MakerConfirmation(data types.EngineResponse) {
 	// Check if there's any trades
 	if len(data.Matches.Trades) == 0 {
 		return
@@ -1774,7 +1588,11 @@ const (
 	long  = "Start an order matching (FIX acceptor) service."
 )
 
-func Execute(deribit _deribitSvc.IDeribitService) error {
+func InitApp(deribit _deribitSvc.IDeribitService, wsSvc _wsSvc.IwsOrderbookService) *Application{
+	return newApplication(deribit, wsSvc)
+}
+
+func Execute(app *Application) error {
 	cfgFileName := "ordermatch.cfg"
 	templateCfg := "ordermatch_template.cfg"
 	_, b, _, _ := runtime.Caller(0)
@@ -1801,7 +1619,7 @@ func Execute(deribit _deribitSvc.IDeribitService) error {
 	}
 
 	logger := log.NewFancyLog()
-	app := newApplication(deribit)
+	// app := newApplication(deribit)
 	acceptor, err := quickfix.NewAcceptor(app, quickfix.NewMemoryStoreFactory(), appSettings, logger)
 	if err != nil {
 		return fmt.Errorf("unable to create acceptor: %s", err)
