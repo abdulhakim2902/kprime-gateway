@@ -59,7 +59,6 @@ import (
 	"github.com/quickfixgo/fix44/ordercancelrequest"
 	"github.com/quickfixgo/fix44/ordermasscancelrequest"
 	"github.com/quickfixgo/fix44/quotestatusrequest"
-	"github.com/quickfixgo/fix44/securitylist"
 	"github.com/quickfixgo/fix44/securitylistrequest"
 	"github.com/quickfixgo/fix44/tradecapturereportrequest"
 	"github.com/quickfixgo/tag"
@@ -91,6 +90,10 @@ type SubsManager struct {
 	ASubscriptions     map[string]map[quickfix.SessionID]bool
 	ASubscriptionsList map[quickfix.SessionID][]string
 
+	// For security list request (x)
+	XSubscriptions     map[string]map[quickfix.SessionID]bool
+	XSubscriptionsList map[quickfix.SessionID][]string
+
 	// Add more subscription here
 	mu sync.Mutex
 }
@@ -101,6 +104,9 @@ var subsManager = &SubsManager{
 
 	ASubscriptions:     make(map[string]map[quickfix.SessionID]bool),
 	ASubscriptionsList: make(map[quickfix.SessionID][]string),
+
+	XSubscriptions:     make(map[string]map[quickfix.SessionID]bool),
+	XSubscriptionsList: make(map[quickfix.SessionID][]string),
 
 	mu: sync.Mutex{},
 }
@@ -208,6 +214,7 @@ func (a Application) OnLogout(sessionID quickfix.SessionID) {
 	// unsubscribe
 	ADUnsubscribeAll(sessionID)
 	AUnsubscribeAll(sessionID)
+	XUnsubscribeAll(sessionID)
 }
 
 // ToAdmin implemented as part of Application interface
@@ -353,12 +360,6 @@ func (a *Application) onNewOrderSingle(msg newordersingle.NewOrderSingle, sessio
 
 	fmt.Println(response, reason, r)
 	return nil
-}
-
-func (a Application) broadcastInstrumentList(currency string) {
-	for _, subs := range xMessagesSubs {
-		a.SecurityListResponse(currency, subs.secReq, subs.sessiondID)
-	}
 }
 
 func (a *Application) onOrderUpdateRequest(msg ordercancelreplacerequest.OrderCancelReplaceRequest, sessionID quickfix.SessionID) quickfix.MessageRejectError {
@@ -774,6 +775,8 @@ func (a *Application) OnEngineSavedReceived(data types.EngineResponse) {
 	instrumentName := takerOrder.Underlying + "-" + takerOrder.ExpiryDate + "-" + fmt.Sprintf("%.0f", takerOrder.StrikePrice) + "-" + string(takerOrder.Contracts[0])
 	a.BroadcastQuoteStatusReport(instrumentName)
 
+	// Broadcast NEW Security List / Instrument Name
+	a.BroadcastSecurityList(instrumentName)
 }
 
 // Hook when Engine topic received
@@ -1346,8 +1349,7 @@ func (a *Application) OrderConfirmation(data types.EngineResponse) {
 	if err != nil {
 		fmt.Print(err.Error())
 	}
-	newApplication(nil, nil).
-		broadcastInstrumentList(takerOrder.Underlying)
+
 }
 
 func (a *Application) MakerConfirmation(data types.EngineResponse) {
@@ -1453,43 +1455,6 @@ func (a *Application) MakerConfirmation(data types.EngineResponse) {
 
 }
 
-func (a Application) onSecurityListRequest(msg securitylistrequest.SecurityListRequest, sessionID quickfix.SessionID) quickfix.MessageRejectError {
-	secReq, err := msg.GetSecurityReqID()
-	if err != nil {
-		return err
-	}
-
-	currency, err := msg.GetCurrency()
-	if err != nil {
-		return err
-	}
-
-	subs, err := msg.GetSubscriptionRequestType()
-	if err != nil {
-		return err
-	}
-
-	if subs == enum.SubscriptionRequestType_SNAPSHOT_PLUS_UPDATES {
-		xMessagesSubs = append(xMessagesSubs, XMessageSubscriber{
-			sessiondID: sessionID,
-			secReq:     secReq,
-		})
-	} else if subs == enum.SubscriptionRequestType_DISABLE_PREVIOUS_SNAPSHOT_PLUS_UPDATE_REQUEST {
-		for _, x := range xMessagesSubs {
-			if x.sessiondID == sessionID {
-				xMessagesSubs = removeXMessageSubscriber(xMessagesSubs, x)
-			}
-		}
-	}
-
-	err = a.SecurityListResponse(currency, secReq, sessionID)
-	if err != nil {
-		logs.Log.Err(err).Msg("Error sending security list response")
-		return err
-	}
-	return nil
-}
-
 func removeXMessageSubscriber(array []XMessageSubscriber, element XMessageSubscriber) []XMessageSubscriber {
 	for i, v := range array {
 		if v == element {
@@ -1528,56 +1493,6 @@ func removeVMessageSubscriber(array []VMessageSubscriber, element VMessageSubscr
 		}
 	}
 	return array
-}
-
-// Response (y) Security List
-// 320 SecurityReqID
-// 322 SecurityResponseID = {Currency} - {Timestamp}
-// 560 SecurityRequestResult = 0 means success
-// => 55 Symbol
-// => 107 SecurityDesc
-// => 167 SecurityType
-// => 947 StrikeCurrency (USD)
-// => 202 StrikePrice
-func (a Application) SecurityListResponse(currency string, secReq string, sessionID quickfix.SessionID) quickfix.MessageRejectError {
-	secRes := time.Now().UnixMicro()
-	res := securitylist.New(
-		field.NewSecurityReqID(secReq),                                           // 320
-		field.NewSecurityResponseID(strconv.Itoa(int(secRes))),                   // 322
-		field.NewSecurityRequestResult(enum.SecurityRequestResult_VALID_REQUEST), // 0
-	)
-
-	// Getting User ID
-	userId := ""
-	for i, v := range userSession {
-		if v.String() == sessionID.String() {
-			userId = i
-		}
-	}
-
-	// Get Available Instruments, including expired ones
-	instruments, e := a.OrderRepository.GetInstruments(userId, currency, false)
-	if e != nil {
-		return quickfix.NewMessageRejectError(e.Error(), 0, nil)
-	}
-
-	// Group Responses
-	secListGroup := securitylist.NewNoRelatedSymRepeatingGroup()
-	for _, instrument := range instruments {
-		row := secListGroup.Add()
-
-		instrumentName := instrument.InstrumentName
-		row.SetSymbol(instrumentName)
-
-		row.SetSecurityDesc("OPTIONS")
-		row.SetSecurityType("OPT")
-		row.SetStrikePrice(decimal.NewFromFloat(instrument.Strike), 0)
-		row.SetStrikeCurrency("USD")
-	}
-
-	res.SetNoRelatedSym(secListGroup)
-	quickfix.SendToTarget(res, sessionID)
-	return nil
 }
 
 const (
