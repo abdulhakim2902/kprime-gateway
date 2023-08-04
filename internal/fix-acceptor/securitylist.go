@@ -130,6 +130,7 @@ func (a Application) SecurityListSnapshot(currency string, secReq string, sessio
 		return quickfix.NewMessageRejectError(e.Error(), 0, nil)
 	}
 
+	fmt.Println("debug instrument len", len(instruments))
 	// Group Responses
 	secListGroup := securitylist.NewNoRelatedSymRepeatingGroup()
 	for _, instrument := range instruments {
