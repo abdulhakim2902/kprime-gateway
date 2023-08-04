@@ -133,7 +133,12 @@ func (a Application) SecurityListSnapshot(currency string, secReq string, sessio
 	fmt.Println("debug instrument len", len(instruments))
 	// Group Responses
 	secListGroup := securitylist.NewNoRelatedSymRepeatingGroup()
+	i := 1
 	for _, instrument := range instruments {
+		i++
+		if i == 20 {
+			break
+		}
 		row := secListGroup.Add()
 
 		instrumentName := instrument.InstrumentName
