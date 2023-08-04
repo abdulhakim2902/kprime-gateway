@@ -783,6 +783,34 @@ func tradePriceAvgQuery(instrument utils.Instruments) (query bson.A) {
 	return
 }
 
+func (r OrderRepository) GetOrderCountByInstrument(underlying string, strikePrice float64, expiryDate string, contract string) int {
+	queryBuilderCount := func() interface{} {
+		return []bson.M{
+			{
+				"$match": bson.M{
+					"status":      bson.M{"$in": []types.OrderStatus{types.OPEN, types.PARTIALLY_FILLED}},
+					"underlying":  underlying,
+					"strikePrice": strikePrice,
+					"expiryDate":  expiryDate,
+					"contracts":   contract,
+				},
+			},
+			{
+				"$count": "count",
+			},
+		}
+	}
+
+	countPipeline := queryBuilderCount()
+	counts := r.CountAggregate(countPipeline)
+
+	if len(counts) == 0 {
+		return 0
+	}
+
+	return counts[0].Count
+}
+
 func (r OrderRepository) GetOrderBook(o _orderbookType.GetOrderBook) *_orderbookType.Orderbook {
 
 	queryBuilder := func(side types.Side, priceOrder int) interface{} {
