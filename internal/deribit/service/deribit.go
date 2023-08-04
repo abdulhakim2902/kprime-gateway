@@ -14,6 +14,7 @@ import (
 	"gateway/pkg/redis"
 	"gateway/pkg/utils"
 	"log"
+	"strconv"
 	"strings"
 	"time"
 
@@ -297,6 +298,13 @@ func (svc *deribitService) DeribitGetLastTradesByInstrument(ctx context.Context,
 			contracts = "P"
 		}
 
+		markPrice, _ := strconv.ParseFloat(jsonDoc["markPrice"].(string), 64)
+		var markIv float64
+
+		if markPrice != 0 {
+			markIv = svc.tradeRepo.GetMarkIv(markPrice, contracts, jsonDoc["expiryDate"].(string), jsonDoc["strikePrice"].(float64), jsonDoc["indexPrice"].(float64))
+		}
+
 		tradeObjectId := jsonDoc["_id"].(primitive.ObjectID)
 		conversion, _ := utils.ConvertToFloat(jsonDoc["amount"].(string))
 		resultData := model.DeribitGetLastTradesByInstrumentValue{
@@ -310,7 +318,14 @@ func (svc *deribitService) DeribitGetLastTradesByInstrument(ctx context.Context,
 			IndexPrice:     jsonDoc["indexPrice"].(float64),
 			TickDirection:  jsonDoc["tickDirection"].(int32),
 			TradeSeq:       jsonDoc["tradeSequence"].(int32),
+			MarkPrice:      &markPrice,
+			MarkIv:         &markIv,
 			CreatedAt:      jsonDoc["createdAt"].(primitive.DateTime).Time(),
+		}
+
+		if markPrice == 0 {
+			resultData.MarkPrice = nil
+			resultData.MarkIv = nil
 		}
 
 		_getLastTradesByInstrument = append(_getLastTradesByInstrument, resultData)
