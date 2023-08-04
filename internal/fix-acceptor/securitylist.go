@@ -2,6 +2,7 @@ package ordermatch
 
 import (
 	"fmt"
+	_deribitModel "gateway/internal/deribit/model"
 	"gateway/pkg/utils"
 	"github.com/Undercurrent-Technologies/kprime-utilities/commons/logs"
 	"github.com/quickfixgo/enum"
@@ -11,6 +12,7 @@ import (
 	"github.com/quickfixgo/quickfix"
 	"github.com/shopspring/decimal"
 	"strconv"
+
 	"time"
 )
 
@@ -131,29 +133,43 @@ func (a Application) SecurityListSnapshot(currency string, secReq string, sessio
 		return quickfix.NewMessageRejectError(e.Error(), 0, nil)
 	}
 
-	fmt.Println("debug instrument len", len(instruments))
+	instrumentChunks := a.chunkByInstrument(instruments, 100)
+
+	fmt.Println("debug chunk", len(instrumentChunks))
 	// Group Responses
-	secListGroup := securitylist.NewNoRelatedSymRepeatingGroup()
-	i := 1
-	for _, instrument := range instruments {
-		i++
-		if i == 20 {
-			break
+	for _, chunk := range instrumentChunks {
+		secListGroup := securitylist.NewNoRelatedSymRepeatingGroup()
+		for _, instrument := range chunk {
+			row := secListGroup.Add()
+
+			instrumentName := instrument.InstrumentName
+			row.SetSymbol(instrumentName)
+
+			row.SetSecurityDesc("OPTIONS")
+			row.SetSecurityType("OPT")
+			row.SetStrikePrice(decimal.NewFromFloat(instrument.Strike), 0)
+			row.SetStrikeCurrency("USD")
 		}
-		row := secListGroup.Add()
 
-		instrumentName := instrument.InstrumentName
-		row.SetSymbol(instrumentName)
-
-		row.SetSecurityDesc("OPTIONS")
-		row.SetSecurityType("OPT")
-		row.SetStrikePrice(decimal.NewFromFloat(instrument.Strike), 0)
-		row.SetStrikeCurrency("USD")
+		res.SetNoRelatedSym(secListGroup)
+		quickfix.SendToTarget(res, sessionID)
 	}
-
-	res.SetNoRelatedSym(secListGroup)
-	quickfix.SendToTarget(res, sessionID)
 	return nil
+}
+
+func (a Application) chunkByInstrument(instruments []*_deribitModel.DeribitGetInstrumentsResponse, chunkSize int) [][]*_deribitModel.DeribitGetInstrumentsResponse {
+	var chunks [][]*_deribitModel.DeribitGetInstrumentsResponse
+	for i := 0; i < len(instruments); i += chunkSize {
+		end := i + chunkSize
+
+		// Necessary check to avoid slicing beyond slice capacity
+		if end > len(instruments) {
+			end = len(instruments)
+		}
+
+		chunks = append(chunks, instruments[i:end])
+	}
+	return chunks
 }
 
 // Handle when ENGINE_SAVED hook being called
