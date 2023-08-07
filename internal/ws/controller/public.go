@@ -341,6 +341,16 @@ func (svc *wsHandler) publicUnsubscribeAll(input interface{}, c *ws.Client) {
 	protocol.SendSuccessMsg(connKey, "ok")
 }
 
+// getLastTradesByInstrument asyncApi
+// @summary Retrieve latest trades
+// @description Retrieve the latest trades that have occurred for a specific instrument.
+// @payload model.GetLastTradesByInstrumentParams
+// @x-response model.DeribitGetLastTradesByInstrumentResponse
+// @contentType application/json
+// @auth public
+// @queue public.get_last_trades_by_instrument
+// @method get_last_trades_by_instrument
+// @tags public trades instrument
 func (svc *wsHandler) getLastTradesByInstrument(input interface{}, c *ws.Client) {
 	var msg deribitModel.RequestDto[deribitModel.GetLastTradesByInstrumentParams]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
@@ -386,6 +396,16 @@ func (svc *wsHandler) getLastTradesByInstrument(input interface{}, c *ws.Client)
 	protocol.SendSuccessMsg(connKey, result)
 }
 
+// getIndexPrice asyncApi
+// @summary Retrieve index price
+// @description Retrieves the current index price value for given index name.
+// @payload model.GetIndexPriceParams
+// @x-response model.DeribitGetIndexPriceResponse
+// @contentType application/json
+// @auth public
+// @queue public.get_index_price
+// @method get_index_price
+// @tags public index_price
 func (svc *wsHandler) getIndexPrice(input interface{}, c *ws.Client) {
 	var msg deribitModel.RequestDto[deribitModel.GetIndexPriceParams]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
@@ -418,6 +438,16 @@ func (svc *wsHandler) getIndexPrice(input interface{}, c *ws.Client) {
 	protocol.SendSuccessMsg(connKey, result)
 }
 
+// getDeliveryPrices asyncApi
+// @summary Retrieve delivery prices
+// @description Retrives delivery prices for then given index.
+// @payload model.DeliveryPricesParams
+// @x-response model.DeliveryPricesResponse
+// @contentType application/json
+// @auth public
+// @queue public.get_delivery_prices
+// @method get_delivery_prices
+// @tags public delivery_prices
 func (svc *wsHandler) getDeliveryPrices(input interface{}, c *ws.Client) {
 	var msg deribitModel.RequestDto[deribitModel.DeliveryPricesParams]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
@@ -452,6 +482,16 @@ func (svc *wsHandler) getDeliveryPrices(input interface{}, c *ws.Client) {
 	protocol.SendSuccessMsg(connKey, result)
 }
 
+// setHeartbeat asyncApi
+// @summary Retrieve heartbeats signal
+// @description Signals the Websocket connection to send and request heartbeats.
+// @payload model.SetHeartbeatParams
+// @x-response model.HeartbeatResponse
+// @contentType application/json
+// @auth public
+// @queue public.set_heartbeat
+// @method set_heartbeat
+// @tags public heartbeat
 func (svc *wsHandler) setHeartbeat(input interface{}, c *ws.Client) {
 	var msg deribitModel.RequestDto[deribitModel.SetHeartbeatParams]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
@@ -486,6 +526,16 @@ func (svc *wsHandler) setHeartbeat(input interface{}, c *ws.Client) {
 	protocol.SendSuccessMsg(connKey, "ok")
 }
 
+// test asyncApi
+// @summary Test connection to the server
+// @description Tests the connection to the API server, and returns its version.
+// @payload model.TestParams
+// @x-response model.TestResponse
+// @contentType application/json
+// @auth public
+// @queue public.test
+// @method test
+// @tags public test
 func (svc *wsHandler) test(input interface{}, c *ws.Client) {
 	var msg deribitModel.RequestDto[deribitModel.TestParams]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
@@ -521,6 +571,15 @@ func (svc *wsHandler) test(input interface{}, c *ws.Client) {
 	protocol.SendSuccessMsg(connKey, result)
 }
 
+// publicGetTime asyncApi
+// @summary Retrieves the current time
+// @description Retrieves the current time (in milliseconds). This API endpoint can be used to check the clock skew between your software and Deribit's systems. This method takes no parameters.
+// @x-response model.TimeResponse
+// @contentType application/json
+// @auth public
+// @queue public.get_time
+// @method get_time
+// @tags public time
 func (svc *wsHandler) publicGetTime(input interface{}, c *ws.Client) {
 	var msg deribitModel.RequestDto[interface{}]
 	if err := utils.UnmarshalAndValidateWS(input, &msg); err != nil {
