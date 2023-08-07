@@ -133,9 +133,10 @@ func (a Application) SecurityListSnapshot(currency string, secReq string, sessio
 		return quickfix.NewMessageRejectError(e.Error(), 0, nil)
 	}
 
+	instruments = instruments[:10]
+
 	instrumentChunks := a.chunkByInstrument(instruments, 100)
 
-	fmt.Println("debug chunk", len(instrumentChunks))
 	// Group Responses
 	for _, chunk := range instrumentChunks {
 		secListGroup := securitylist.NewNoRelatedSymRepeatingGroup()
