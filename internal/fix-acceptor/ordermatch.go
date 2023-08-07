@@ -655,16 +655,6 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 
 	noRelatedsym, _ := msg.GetNoRelatedSym()
 
-	// if subs == enum.SubscriptionRequestType_SNAPSHOT_PLUS_UPDATES { // subscribe
-	// 	vMessageSubs = addVMessagesSubscriber(vMessageSubs, sessionID, utils.ArrContains(entries, "0"), utils.ArrContains(entries, "1"), utils.ArrContains(entries, "2"), noRelatedsym)
-	// } else if subs == enum.SubscriptionRequestType_DISABLE_PREVIOUS_SNAPSHOT_PLUS_UPDATE_REQUEST { // unsubscribe
-	// 	for _, subs := range vMessageSubs {
-	// 		if subs.sessiondID.String() == sessionID.String() {
-	// 			vMessageSubs = removeVMessageSubscriber(vMessageSubs, subs)
-	// 		}
-	// 	}
-	// }
-
 	// loop based on symbol requested
 	for i := 0; i < noRelatedsym.Len(); i++ {
 		response := []MarketDataResponse{}
