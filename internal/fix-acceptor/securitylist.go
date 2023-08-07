@@ -1,7 +1,6 @@
 package ordermatch
 
 import (
-	"fmt"
 	_deribitModel "gateway/internal/deribit/model"
 	"gateway/pkg/utils"
 	"github.com/Undercurrent-Technologies/kprime-utilities/commons/logs"
