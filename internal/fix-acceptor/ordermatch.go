@@ -660,6 +660,12 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 		response := []MarketDataResponse{}
 		sym, _ := noRelatedsym.Get(i).GetSymbol()
 
+		_, errParse := utils.ParseInstruments(sym, false)
+		if errParse != nil {
+			logs.Log.Err(errParse).Msg("Error parsing instrument")
+			return
+		}
+
 		// Handle Subscriber
 		if subs == enum.SubscriptionRequestType_SNAPSHOT_PLUS_UPDATES {
 			VSubscribe(sym, sessionID)
@@ -839,7 +845,7 @@ func (a *Application) BroadcastOrderBook(instrument string) {
 		return
 	}
 
-	snap := marketdatasnapshotful lrefresh.New()
+	snap := marketdatasnapshotfullrefresh.New()
 	snap.SetSymbol(instrument)
 	snap.SetMDReqID("notification")
 	grp := marketdatasnapshotfullrefresh.NewNoMDEntriesRepeatingGroup()
