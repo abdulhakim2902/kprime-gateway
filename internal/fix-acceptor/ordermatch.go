@@ -94,6 +94,10 @@ type SubsManager struct {
 	XSubscriptions     map[string]map[quickfix.SessionID]bool
 	XSubscriptionsList map[quickfix.SessionID][]string
 
+	// For market data request (V)
+	VSubscriptions     map[string]map[quickfix.SessionID]bool
+	VSubscriptionsList map[quickfix.SessionID][]string
+
 	// Add more subscription here
 	mu sync.Mutex
 }
@@ -107,6 +111,9 @@ var subsManager = &SubsManager{
 
 	XSubscriptions:     make(map[string]map[quickfix.SessionID]bool),
 	XSubscriptionsList: make(map[quickfix.SessionID][]string),
+
+	VSubscriptions:     make(map[string]map[quickfix.SessionID]bool),
+	VSubscriptionsList: make(map[quickfix.SessionID][]string),
 
 	mu: sync.Mutex{},
 }
@@ -215,6 +222,7 @@ func (a Application) OnLogout(sessionID quickfix.SessionID) {
 	ADUnsubscribeAll(sessionID)
 	AUnsubscribeAll(sessionID)
 	XUnsubscribeAll(sessionID)
+	VUnsubscribeAll(sessionID)
 }
 
 // ToAdmin implemented as part of Application interface
@@ -627,6 +635,7 @@ func (a *Application) sendOrderCancelReject(
 	}
 }
 
+// MsgType V
 func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataRequest, sessionID quickfix.SessionID) (err quickfix.MessageRejectError) {
 	subs, _ := msg.GetSubscriptionRequestType()
 
@@ -645,22 +654,22 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 	}
 
 	noRelatedsym, _ := msg.GetNoRelatedSym()
-	if subs == enum.SubscriptionRequestType_SNAPSHOT_PLUS_UPDATES { // subscribe
-		vMessageSubs = addVMessagesSubscriber(vMessageSubs, sessionID, utils.ArrContains(entries, "0"), utils.ArrContains(entries, "1"), utils.ArrContains(entries, "2"), noRelatedsym)
-	} else if subs == enum.SubscriptionRequestType_DISABLE_PREVIOUS_SNAPSHOT_PLUS_UPDATE_REQUEST { // unsubscribe
-		for _, subs := range vMessageSubs {
-			if subs.sessiondID.String() == sessionID.String() {
-				vMessageSubs = removeVMessageSubscriber(vMessageSubs, subs)
-			}
-		}
-	}
 
 	// loop based on symbol requested
 	for i := 0; i < noRelatedsym.Len(); i++ {
 		response := []MarketDataResponse{}
 		sym, _ := noRelatedsym.Get(i).GetSymbol()
 
-		fmt.Println("debug sym", sym)
+		_, errParse := utils.ParseInstruments(sym, false)
+		if errParse != nil {
+			logs.Log.Err(errParse).Msg("Error parsing instrument")
+			return
+		}
+
+		// Handle Subscriber
+		if subs == enum.SubscriptionRequestType_SNAPSHOT_PLUS_UPDATES {
+			VSubscribe(sym, sessionID)
+		}
 
 		// Split Instrument Name
 		splits := strings.Split(sym, "-")
@@ -674,11 +683,6 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 			StrikePrice:    price,
 		}
 		_orderbook := a.OrderRepository.GetOrderBook(_order)
-		fmt.Printf("%+v\n", _orderbook.Asks)
-
-		fmt.Println("bid %v", _orderbook.Bids)
-		fmt.Println("InstrumentName", _orderbook.InstrumentName)
-		fmt.Println("InstrumentName", _orderbook.InstrumentName)
 
 		// 0 means BID / BUY
 		if utils.ArrContains(entries, "0") {
@@ -758,7 +762,6 @@ func (a *Application) onMarketDataRequest(msg marketdatarequest.MarketDataReques
 			row.SetOrderID(res.MakerID)
 		}
 		snap.SetNoMDEntries(grp)
-		fmt.Println("SENDING")
 		error := quickfix.SendToTarget(snap, sessionID)
 		if error != nil {
 			logs.Log.Err(error).Msg("Error sending market data")
@@ -793,21 +796,12 @@ func (a *Application) OnTradeHappens(data types.EngineResponse) {
 	instrumentName := takerOrder.Underlying + "-" + takerOrder.ExpiryDate + "-" + fmt.Sprintf("%.0f", takerOrder.StrikePrice) + "-" + string(takerOrder.Contracts[0])
 
 	// Broadcast order book
-	BroadcastOrderBook(instrumentName)
+	a.BroadcastOrderBook(instrumentName)
 }
 
 // Broadcast whole order book
 // Whoever submit GetMarketDataRequest will receive this broadcast
-func BroadcastOrderBook(instrument string) {
-
-	mongoDb, _ := _mongo.InitConnection(os.Getenv("MONGO_URL"))
-	orderRepo := repositories.NewOrderRepository(mongoDb)
-
-	// Check whether we have subscribers
-	if len(vMessageSubs) == 0 {
-		fmt.Println("debug BroadcastOrderBook No subscribers")
-		return
-	}
+func (a *Application) BroadcastOrderBook(instrument string) {
 
 	response := []MarketDataResponse{}
 
@@ -820,7 +814,7 @@ func BroadcastOrderBook(instrument string) {
 		ExpiryDate:     splits[1],
 		StrikePrice:    price,
 	}
-	_orderbook := orderRepo.GetOrderBook(_order)
+	_orderbook := a.OrderRepository.GetOrderBook(_order)
 
 	// Loop Order Book Bids
 	for _, bid := range _orderbook.Bids {
@@ -851,10 +845,9 @@ func BroadcastOrderBook(instrument string) {
 		return
 	}
 
-	fmt.Println("debug broadcast orderbook")
 	snap := marketdatasnapshotfullrefresh.New()
 	snap.SetSymbol(instrument)
-	snap.SetMDReqID("orderbook")
+	snap.SetMDReqID("notification")
 	grp := marketdatasnapshotfullrefresh.NewNoMDEntriesRepeatingGroup()
 	response = mapMarketDataResponse(response)
 	for _, res := range response {
@@ -868,10 +861,12 @@ func BroadcastOrderBook(instrument string) {
 	snap.SetNoMDEntries(grp)
 
 	// Broadcast to all subscribers
-	for _, sess := range vMessageSubs {
-		err := quickfix.SendToTarget(snap, sess.sessiondID)
-		if err != nil {
-			logs.Log.Err(err).Msg("Error sending orderbook update")
+	for sessionID, status := range subsManager.VSubscriptions[instrument] {
+		if status {
+			err := quickfix.SendToTarget(snap, sessionID)
+			if err != nil {
+				logs.Log.Err(err).Msg("Error sending quote capture request update")
+			}
 		}
 	}
 }
