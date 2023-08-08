@@ -61,6 +61,9 @@ import (
 	"github.com/quickfixgo/fix44/quotestatusrequest"
 	"github.com/quickfixgo/fix44/securitylistrequest"
 	"github.com/quickfixgo/fix44/tradecapturereportrequest"
+
+	"github.com/Undercurrent-Technologies/kprime-utilities/types/validation_reason"
+
 	"github.com/quickfixgo/tag"
 	"github.com/shopspring/decimal"
 	"go.mongodb.org/mongo-driver/bson"
@@ -1356,6 +1359,12 @@ func (a *Application) OrderConfirmation(data types.EngineResponse) {
 		fmt.Println("debug there are trades")
 		msg.SetLastQty(decimal.NewFromFloat(conversion), 2)      // 32
 		msg.SetLastPx(decimal.NewFromFloat(takerOrder.Price), 2) // 31
+	}
+
+	// Handle Rejected / Validation Reasons
+	if data.Validation != validation_reason.NONE {
+		msg.SetExecType(enum.ExecType_REJECTED)
+		msg.SetOrdRejReason(enum.OrdRejReason_OTHER)
 	}
 
 	err := quickfix.SendToTarget(msg, *sessionId)
