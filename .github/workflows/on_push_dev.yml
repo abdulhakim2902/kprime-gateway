@@ -26,7 +26,7 @@ jobs:
           docker build \
             --build-arg ACCESS_USER=${ACCESS_USER} \
             --build-arg ACCESS_TOKEN=${ACCESS_TOKEN} \
-            --build-arg UTITLITIES=kprime-utilities \
+            --build-arg UTILITIES=kprime-utilities \
             -t ${IMAGE_TAG} .
 
       - name: Push image to registry

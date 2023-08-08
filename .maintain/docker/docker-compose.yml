@@ -10,11 +10,15 @@ networks:
 
 services:
   gateway:
-    image: 'ghcr.io/undercurrent-technologies/gateway:latest'
+    image: 'ghcr.io/undercurrent-technologies/gateway:dev'
     container_name: 'gateway'
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        - ACCESS_USER=${ACCESS_USER}
+        - ACCESS_TOKEN=${ACCESS_TOKEN}
+        - UTILITIES=${UTILITIES}
     networks:
       - database
       - gateway
