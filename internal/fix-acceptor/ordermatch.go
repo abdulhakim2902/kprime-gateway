@@ -343,6 +343,14 @@ func (a *Application) onNewOrderSingle(msg newordersingle.NewOrderSingle, sessio
 	priceFloat, _ := strconv.ParseFloat(price.String(), 64)
 	amountFloat, _ := strconv.ParseFloat(orderQty.String(), 64)
 
+	tif, err := msg.GetTimeInForce()
+	if err != nil {
+		logs.Log.Err(err).Msg("Error getting time in force")
+		return err
+	}
+
+	fmt.Println("debug tif", tif)
+
 	response, reason, r := a.DeribitService.DeribitRequest(context.TODO(), user.ID.Hex(), _deribitModel.DeribitRequest{
 		ClientId:       partyId.String(),
 		InstrumentName: symbol,
