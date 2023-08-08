@@ -73,17 +73,17 @@ type GetOrderBookParams struct {
 }
 
 type GetLastTradesByInstrumentParams struct {
-	InstrumentName string    `json:"instrument_name" validate:"required" form:"instrument_name"`
-	StartSeq       int64     `json:"start_seq" form:"start_seq"`
-	EndSeq         int64     `json:"end_seq" form:"end_seq"`
-	StartTimestamp time.Time `json:"start_timestamp" form:"start_timestamp"`
-	EndTimestamp   time.Time `json:"end_timestamp" form:"end_timestamp"`
-	Count          int64     `json:"count" form:"count"`
-	Sorting        string    `json:"sorting" form:"sorting"`
+	InstrumentName string    `json:"instrument_name" validate:"required" form:"instrument_name" description:"Instrument name"`
+	StartSeq       int64     `json:"start_seq" form:"start_seq" description:"The sequence number of the first trade to be returned"`
+	EndSeq         int64     `json:"end_seq" form:"end_seq" description:"The sequence number of the last trade to be returned"`
+	StartTimestamp time.Time `json:"start_timestamp" form:"start_timestamp" description:"The earliest timestamp to return result from"`
+	EndTimestamp   time.Time `json:"end_timestamp" form:"end_timestamp" description:"The most recent timestamp to return result from"`
+	Count          int64     `json:"count" form:"count" example:"10" description:"Number of requested items"`
+	Sorting        string    `json:"sorting" form:"sorting" oneof:"asc,desc,default" description:"Direction of results sorting"`
 }
 
 type GetIndexPriceParams struct {
-	IndexName string `json:"index_name" validate:"required" form:"index_name"`
+	IndexName string `json:"index_name" validate:"required" form:"index_name" description:"Index identifier"`
 }
 
 type DeribitGetIndexPriceRequest struct {
@@ -91,31 +91,31 @@ type DeribitGetIndexPriceRequest struct {
 }
 
 type DeribitGetIndexPriceResponse struct {
-	IndexPrice float64 `json:"index_price"`
+	IndexPrice float64 `json:"index_price" description:"Value of requested index"`
 }
 
 type DeribitGetUserTradesByOrderValue struct {
-	TradeId         primitive.ObjectID `json:"trade_id" bson:"_id"`
-	Amount          float64            `json:"amount" bson:"amount"`
-	Direction       types.Side         `json:"direction" bson:"direction"`
-	InstrumentName  string             `json:"instrument_name" bson:"InstrumentName"`
-	OrderId         primitive.ObjectID `json:"order_id" bson:"order_id"`
-	OrderType       types.Type         `json:"order_type" bson:"order_type"`
-	Price           float64            `json:"price" bson:"price"`
-	State           types.OrderStatus  `json:"state" bson:"state"`
-	Timestamp       int64              `json:"timestamp" bson:"timestamp"`
-	Api             bool               `json:"api"`
-	IndexPrice      float64            `json:"index_price" bson:"indexPrice"`
-	Label           string             `json:"label,omitempty" bson:"label"`
-	TickDirection   int                `json:"tick_direction" bson:"tickDirection"`
-	TradeSequence   int                `json:"trade_seq" bson:"tradeSequence"`
-	UnderlyingPrice float64            `json:"underlying_price"`
-	UnderlyingIndex string             `json:"underlying_index"`
-	MarkPrice       float64            `json:"mark_price" bson:"markPrice"`
+	TradeId         primitive.ObjectID `json:"trade_id" bson:"_id" description:"Unique trade identifier"`
+	Amount          float64            `json:"amount" bson:"amount" description:"Trade amount"`
+	Direction       types.Side         `json:"direction" bson:"direction" oneof:"buy,sell" description:"Direction: buy, or sell"`
+	InstrumentName  string             `json:"instrument_name" bson:"InstrumentName" description:"Unique instrument identifier"`
+	OrderId         primitive.ObjectID `json:"order_id" bson:"order_id" description:"Unique order identifier"`
+	OrderType       types.Type         `json:"order_type" bson:"order_type" description:"Order type" oneof:"limit,market,stop_limit,stop_market"`
+	Price           float64            `json:"price" bson:"price" description:"Price in base currency"`
+	State           types.OrderStatus  `json:"state" bson:"state" description:"Order state" oneof:"open,filled,rejected,cancelled,untriggered"`
+	Timestamp       int64              `json:"timestamp" bson:"timestamp" description:"The timestamp of the trade"`
+	Api             bool               `json:"api" description:"true if created with API"`
+	IndexPrice      float64            `json:"index_price" bson:"indexPrice" description:"Index Price at the moment of trade"`
+	Label           string             `json:"label,omitempty" bson:"label" description:"User defined label"`
+	TickDirection   int                `json:"tick_direction" bson:"tickDirection" description:"Direction of the tick" oneof:"0,1,2,3"`
+	TradeSequence   int                `json:"trade_seq" bson:"tradeSequence" description:"The sequence number of the trade within instrument"`
+	UnderlyingPrice float64            `json:"underlying_price" description:"Underlying price for implied volatility calculations"`
+	UnderlyingIndex string             `json:"underlying_index" description:"Name of the underlying future, or index_price"`
+	MarkPrice       float64            `json:"mark_price" bson:"markPrice" description:"The mark price for the instrument"`
 }
 
 type DeribitGetUserTradesByOrderResponse struct {
-	Trades []*DeribitGetUserTradesByOrderValue `json:"trades"`
+	Trades []*DeribitGetUserTradesByOrderValue `json:"trades" description:"array of trades"`
 }
 
 type BaseParams struct {
@@ -561,9 +561,9 @@ type DeribitGetOrderStateByLabelResponse struct {
 }
 
 type DeliveryPricesParams struct {
-	IndexName string `json:"index_name" validate:"required" form:"index_name"`
-	Offset    int    `json:"offset"`
-	Count     int    `json:"count"`
+	IndexName string `json:"index_name" validate:"required" form:"index_name" description:"Index identifier, matches (base) cryptocurrency with quote currency"`
+	Offset    int    `json:"offset" description:"The offset for pagination" example:"0"`
+	Count     int    `json:"count" description:"Number of requested items" example:"10"`
 }
 
 type DeliveryPricesRequest struct {
@@ -573,21 +573,21 @@ type DeliveryPricesRequest struct {
 }
 
 type DeliveryPricesData struct {
-	Date          string  `bson:"date" json:"date"`
-	DeliveryPrice float64 `bson:"delivery_price" json:"delivery_price"`
+	Date          string  `bson:"date" json:"date" description:"The event date with year, month and day"`
+	DeliveryPrice float64 `bson:"delivery_price" json:"delivery_price" description:"The settlement price for the instrument."`
 }
 
 type DeliveryPricesResponse struct {
-	RecordsTotal int                  `bson:"records_total" json:"records_total"`
-	Prices       []DeliveryPricesData `bson:"prices" json:"data"`
+	RecordsTotal int                  `bson:"records_total" json:"records_total" description:"Available delivery prices"`
+	Prices       []DeliveryPricesData `bson:"prices" json:"data" description:"array of delivery prices"`
 }
 
 type SetHeartbeatParams struct {
-	Interval int `json:"interval" validate:"required" form:"interval"`
+	Interval int `json:"interval" validate:"required" form:"interval" description:"The heartbeat interval in seconds, but not less than 10"`
 }
 
 type TestParams struct {
-	ExpectedResult string `json:"expected_result"`
+	ExpectedResult string `json:"expected_result" description:"The value exception will trigger an error response. This may be useful for testing wrapper libraries."`
 }
 
 type GetTradingviewChartDataRequest struct {

@@ -4,19 +4,49 @@ info:
     version: API Version 2
     description: authenticate user with client_key and client_secrets
 channels:
+    public.get_delivery_prices:
+        publish:
+            message:
+                oneOf:
+                    - $ref: '#/components/messages/public.get_delivery_prices'
+    public.get_index_price:
+        publish:
+            message:
+                oneOf:
+                    - $ref: '#/components/messages/public.get_index_price'
+    public.get_last_trades_by_instrument:
+        publish:
+            message:
+                oneOf:
+                    - $ref: '#/components/messages/public.get_last_trades_by_instrument'
+    public.get_time:
+        publish:
+            message:
+                oneOf:
+                    - $ref: '#/components/messages/public.get_time'
+    public.set_heartbeat:
+        publish:
+            message:
+                oneOf:
+                    - $ref: '#/components/messages/public.set_heartbeat'
+    public.test:
+        publish:
+            message:
+                oneOf:
+                    - $ref: '#/components/messages/public.test'
     public/auth:
         publish:
             message:
                 oneOf:
                     - $ref: '#/components/messages/public.auth'
     user.orders.{instrument_name}.{interval}:
-        publish:
+        subscribe:
             message:
                 oneOf:
-                    - $ref: '#/components/messages/private.user.orders.instrument_name.interval'
+                    - $ref: '#/components/messages/private.subscribe.user.orders.instrument_name.interval'
 components:
     messages:
-        private.user.orders.instrument_name.interval:
+        private.subscribe.user.orders.instrument_name.interval:
             tags:
                 - name: private
                 - name: subscribe
@@ -37,7 +67,101 @@ components:
                 $ref: '#/components/schemas/types.AuthResponse'
             summary: authenticate user
             description: authenticate user with client_key and client_secrets
+        public.get_delivery_prices:
+            tags:
+                - name: public
+                - name: delivery_prices
+            payload:
+                $ref: '#/components/schemas/model.DeliveryPricesParams'
+            x-response:
+                $ref: '#/components/schemas/model.DeliveryPricesResponse'
+            summary: Retrieve delivery prices
+            description: Retrives delivery prices for then given index.
+        public.get_index_price:
+            tags:
+                - name: public
+                - name: index_price
+            payload:
+                $ref: '#/components/schemas/model.GetIndexPriceParams'
+            x-response:
+                $ref: '#/components/schemas/model.DeribitGetIndexPriceResponse'
+            summary: Retrieve index price
+            description: Retrieves the current index price value for given index name.
+        public.get_last_trades_by_instrument:
+            tags:
+                - name: public
+                - name: trades
+                - name: instrument
+            payload:
+                $ref: '#/components/schemas/model.GetLastTradesByInstrumentParams'
+            x-response:
+                $ref: '#/components/schemas/model.DeribitGetLastTradesByInstrumentResponse'
+            summary: Retrieve latest trades
+            description: Retrieve the latest trades that have occurred for a specific instrument.
+        public.get_time:
+            tags:
+                - name: public
+                - name: time
+            x-response:
+                $ref: '#/components/schemas/model.TimeResponse'
+            summary: Retrieves the current time
+            description: Retrieves the current time (in milliseconds). This API endpoint can be used to check the clock skew between your software and Deribit's systems. This method takes no parameters.
+        public.set_heartbeat:
+            tags:
+                - name: public
+                - name: heartbeat
+            payload:
+                $ref: '#/components/schemas/model.SetHeartbeatParams'
+            x-response:
+                $ref: '#/components/schemas/model.HeartbeatResponse'
+            summary: Retrieve heartbeats signal
+            description: Signals the Websocket connection to send and request heartbeats.
+        public.test:
+            tags:
+                - name: public
+                - name: test
+            payload:
+                $ref: '#/components/schemas/model.TestParams'
+            x-response:
+                $ref: '#/components/schemas/model.TestResponse'
+            summary: Test connection to the server
+            description: Tests the connection to the API server, and returns its version.
     schemas:
+        DeliveryPricesData:
+            type: object
+            properties:
+                date:
+                    description: The event date with year, month and day
+                    type: string
+                delivery_price:
+                    description: The settlement price for the instrument.
+                    type: number
+        DeribitGetLastTradesByInstrumentValue:
+            type: object
+            properties:
+                amount:
+                    type: number
+                api: {}
+                created_at:
+                    type: integer
+                direction:
+                    type: string
+                index_price:
+                    type: number
+                instrument_name:
+                    type: string
+                mark_iv: {}
+                mark_price: {}
+                price:
+                    type: number
+                tick_direction:
+                    type: integer
+                timestamp:
+                    type: integer
+                trade_id:
+                    type: string
+                trade_seq:
+                    type: integer
         Order:
             type: object
             properties:
@@ -115,6 +239,102 @@ components:
                 usd:
                     description: Option price in USD
                     type: number
+        model.DeliveryPricesParams:
+            type: object
+            required:
+                - index_name
+            properties:
+                count:
+                    description: Number of requested items
+                    example: 10
+                    type: integer
+                index_name:
+                    description: Index identifier, matches (base) cryptocurrency with quote currency
+                    type: string
+                offset:
+                    description: The offset for pagination
+                    example: 0
+                    type: integer
+        model.DeliveryPricesResponse:
+            type: object
+            properties:
+                data:
+                    description: array of delivery prices
+                    type: array
+                    items:
+                        - $ref: '#/components/schemas/DeliveryPricesData'
+                records_total:
+                    description: Available delivery prices
+                    type: integer
+        model.DeribitGetIndexPriceResponse:
+            type: object
+            properties:
+                index_price:
+                    description: Value of requested index
+                    type: number
+        model.DeribitGetLastTradesByInstrumentResponse:
+            type: object
+            properties:
+                trades:
+                    type: array
+                    items:
+                        - $ref: '#/components/schemas/DeribitGetLastTradesByInstrumentValue'
+        model.GetIndexPriceParams:
+            type: object
+            required:
+                - index_name
+            properties:
+                index_name:
+                    description: Index identifier
+                    type: string
+        model.GetLastTradesByInstrumentParams:
+            type: object
+            required:
+                - instrument_name
+            properties:
+                count:
+                    description: Number of requested items
+                    example: 10
+                    type: integer
+                end_seq:
+                    description: The sequence number of the last trade to be returned
+                    type: integer
+                end_timestamp:
+                    description: The most recent timestamp to return result from
+                    type: integer
+                instrument_name:
+                    description: Instrument name
+                    type: string
+                sorting:
+                    enum:
+                        - asc
+                        - desc
+                        - default
+                    description: Direction of results sorting
+                    type: string
+                start_seq:
+                    description: The sequence number of the first trade to be returned
+                    type: integer
+                start_timestamp:
+                    description: The earliest timestamp to return result from
+                    type: integer
+        model.HeartbeatResponse:
+            type: object
+            properties:
+                channel:
+                    enum:
+                        - heartbeat
+                        - test_request
+                    description: Response heartbeat type
+                    type: string
+        model.SetHeartbeatParams:
+            type: object
+            required:
+                - interval
+            properties:
+                interval:
+                    description: The heartbeat interval in seconds, but not less than 10
+                    type: integer
         model.SubscribeChannelParameters:
             type: object
             required:
@@ -143,6 +363,24 @@ components:
                     type: array
                     items:
                         - $ref: '#/components/schemas/Order'
+        model.TestParams:
+            type: object
+            properties:
+                expected_result:
+                    description: The value exception will trigger an error response. This may be useful for testing wrapper libraries.
+                    type: string
+        model.TestResponse:
+            type: object
+            properties:
+                version:
+                    description: The API version
+                    type: string
+        model.TimeResponse:
+            type: object
+            properties:
+                result:
+                    description: Current timestamp (milliseconds since the UNIX epoch)
+                    type: integer
         primitive.ObjectID: {}
         types.AuthParams:
             type: object

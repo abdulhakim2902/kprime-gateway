@@ -37,3 +37,15 @@ type Order struct {
 	AveragePrice        *float64           `json:"average_price" bson:"priceAvg" description:"Average fill price of the order"`
 	CancelledReason     string             `json:"cancel_reason" bson:"cancelledReason" description:"Enumerated reason behind cancel"`
 }
+
+type HeartbeatResponse struct {
+	Type string `json:"channel" description:"Response heartbeat type" oneof:"heartbeat,test_request"`
+}
+
+type TestResponse struct {
+	Version string `json:"version" description:"The API version"`
+}
+
+type TimeResponse struct {
+	Result int64 `json:"result" description:"Current timestamp (milliseconds since the UNIX epoch)"`
+}
