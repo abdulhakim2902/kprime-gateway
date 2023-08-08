@@ -349,7 +349,17 @@ func (a *Application) onNewOrderSingle(msg newordersingle.NewOrderSingle, sessio
 		return err
 	}
 
+	tifType := _utilitiesType.GOOD_TIL_CANCELLED
+	if tif == enum.TimeInForce_GOOD_TILL_CANCEL {
+		tifType = _utilitiesType.GOOD_TIL_DAY
+	} else if tif == enum.TimeInForce_IMMEDIATE_OR_CANCEL {
+		tifType = _utilitiesType.IMMEDIATE_OR_CANCEL
+	} else if tif == enum.TimeInForce_FILL_OR_KILL {
+		tifType = _utilitiesType.FILL_OR_KILL
+	}
+
 	fmt.Println("debug tif", tif)
+	fmt.Println("debug tifType", tifType)
 
 	response, reason, r := a.DeribitService.DeribitRequest(context.TODO(), user.ID.Hex(), _deribitModel.DeribitRequest{
 		ClientId:       partyId.String(),
@@ -359,10 +369,10 @@ func (a *Application) onNewOrderSingle(msg newordersingle.NewOrderSingle, sessio
 		Side:           sideType,
 		Price:          priceFloat,
 		Amount:         amountFloat,
-		//
-		MaxShow:    0.1,
-		ReduceOnly: false,
-		PostOnly:   false,
+		TimeInForce:    tifType,
+		MaxShow:        0.1,
+		ReduceOnly:     false,
+		PostOnly:       false,
 	})
 
 	if r != nil {
