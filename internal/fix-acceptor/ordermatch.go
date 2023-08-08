@@ -1331,6 +1331,9 @@ func (a *Application) OrderConfirmation(data types.EngineResponse) {
 		field.NewAvgPx(decimal.NewFromFloat(takerOrder.Price), 2),                                            // 6 TODO: FIX ME
 	)
 
+	// Order Qty. Tag 38
+	msg.SetOrderQty(decimal.NewFromFloat(takerOrder.Amount), 2) // 38
+
 	// ClOrderID -- Order MT ID in MT5
 	msg.SetClOrdID(takerOrder.ClOrdID) // 11
 
